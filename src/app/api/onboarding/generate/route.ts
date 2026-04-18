@@ -1,5 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { generatePlan } from '@/lib/plan/generator'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -7,17 +7,18 @@ import { NextRequest, NextResponse } from 'next/server'
 
 type WizardData = {
   goalType: 'RACE' | 'BODY' | 'FITNESS' | null
-  raceDistance: string | null
-  bodyGoal: string | null
+  raceDistance: string | null   // 'RACE_5K' | 'RACE_10K' | 'RACE_HALF_MARATHON' | etc.
+  bodyGoal: string | null       // 'BODY_RECOMPOSITION' | 'WEIGHT_LOSS'
   raceDate: string | null
   targetTime: string | null
   weightGoalKg: number | null
   age: number | null
   heightCm: number | null
   weightKg: number | null
+  gender: 'male' | 'female' | null
   hrResting: number | null
   hrMax: number | null
-  recentBest5k: string | null
+  recentBest5k: string | null   // formato "mm:ss" o null
   recentBest10k: string | null
   recentBestHalf: string | null
   lastRaceMonthsAgo: number | null
@@ -34,131 +35,88 @@ type WizardData = {
 }
 
 // ---------------------------------------------------------------------------
-// Cálculos fisiológicos
+// Helpers
 // ---------------------------------------------------------------------------
 
-function calcHrMax(age: number, hrMaxInput: number | null): number {
-  if (hrMaxInput && hrMaxInput > 100) return hrMaxInput
-  return Math.round(211 - 0.64 * age)
+/**
+ * Convierte tiempo en formato "mm:ss" o "hh:mm:ss" a segundos.
+ * Devuelve null si el formato es inválido.
+ */
+function timeStringToSecs(timeStr: string | null): number | null {
+  if (!timeStr) return null
+  const parts = timeStr.split(':').map(Number)
+  if (parts.some(isNaN)) return null
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  return null
 }
 
-function calcHrZones(hrMax: number, hrResting: number | null) {
-  const rest = hrResting ?? 60
-  // Zonas basadas en FC de reserva (método Karvonen)
-  const reserve = hrMax - rest
-  return {
-    z1: { min: Math.round(rest + reserve * 0.5), max: Math.round(rest + reserve * 0.6) },
-    z2: { min: Math.round(rest + reserve * 0.6), max: Math.round(rest + reserve * 0.7) },
-    z3: { min: Math.round(rest + reserve * 0.7), max: Math.round(rest + reserve * 0.8) },
-    z4: { min: Math.round(rest + reserve * 0.8), max: Math.round(rest + reserve * 0.9) },
-    z5: { min: Math.round(rest + reserve * 0.9), max: hrMax },
+/**
+ * Mapea los campos del wizard al goalType que entiende el generator.
+ */
+function resolveGoalType(data: WizardData): string {
+  if (data.goalType === 'RACE') {
+    return data.raceDistance ?? 'RACE_HALF_MARATHON'
   }
-}
-
-function calcTDEE(
-  age: number,
-  heightCm: number,
-  weightKg: number,
-  daysPerWeek: number,
-  hoursPerSession: number
-): number {
-  // Mifflin-St Jeor (asumiendo hombre como default — ajustar con sexo cuando se agregue)
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5
-  // Factor de actividad aproximado
-  const weeklyHours = daysPerWeek * hoursPerSession
-  let factor = 1.55
-  if (weeklyHours <= 3) factor = 1.375
-  else if (weeklyHours <= 6) factor = 1.55
-  else factor = 1.725
-  return Math.round(bmr * factor)
+  if (data.goalType === 'BODY') {
+    return data.bodyGoal ?? 'BODY_RECOMPOSITION'
+  }
+  return 'GENERAL_FITNESS'
 }
 
 // ---------------------------------------------------------------------------
 // API Route
 // ---------------------------------------------------------------------------
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const SYSTEM_PROMPT = `Eres coach deportivo de élite. Dado un perfil de atleta, confirma que el plan puede generarse y da 3 recomendaciones clave personalizadas (2-3 oraciones cada una, en español). Sé directo y específico — nada genérico. Responde SOLO en JSON con esta estructura exacta: { "recommendations": [{ "title": "string", "text": "string" }] }`
-
 export async function POST(req: NextRequest) {
   try {
     const data: WizardData = await req.json()
 
-    // 1. Calcular zonas FC
-    const hrMaxCalc = data.age
-      ? calcHrMax(data.age, data.hrMax)
-      : (data.hrMax ?? 180)
-
-    const hrZones = calcHrZones(hrMaxCalc, data.hrResting)
-
-    // 2. Calcular TDEE
-    const tdee =
-      data.age && data.heightCm && data.weightKg
-        ? calcTDEE(data.age, data.heightCm, data.weightKg, data.daysPerWeek, data.hoursPerSession)
-        : null
-
-    // 3. Llamar a Claude Haiku con el perfil
-    const profileSummary = JSON.stringify({
-      objetivo: data.goalType,
-      distancia: data.raceDistance,
-      metaCorporal: data.bodyGoal,
-      fechaCarrera: data.raceDate,
-      tiempoObjetivo: data.targetTime,
-      pesoObjetivo: data.weightGoalKg,
-      edad: data.age,
-      talla: data.heightCm,
-      peso: data.weightKg,
-      fcReposo: data.hrResting,
-      fcMax: hrMaxCalc,
-      zonasFC: hrZones,
-      tdee,
-      mejor5k: data.recentBest5k,
-      mejor10k: data.recentBest10k,
-      ultimaCarrera: data.lastRaceMonthsAgo,
-      lesiones: data.injuries,
-      condiciones: data.conditions,
-      sueno: data.sleepHoursAvg,
-      diasSemana: data.daysPerWeek,
-      horasSesion: data.hoursPerSession,
-      ciudad: data.city,
-      equipamiento: data.equipment,
-      nutricion: data.nutritionCommitment,
-    })
-
-    const aiResponse = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 512,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Perfil del atleta: ${profileSummary}`,
-        },
-      ],
-    })
-
-    const rawText =
-      aiResponse.content[0].type === 'text' ? aiResponse.content[0].text : '{}'
-
-    let recommendations: { title: string; text: string }[] = []
-    try {
-      const parsed = JSON.parse(rawText)
-      recommendations = parsed.recommendations ?? []
-    } catch {
-      // Si Haiku no devuelve JSON válido, continuamos sin recomendaciones
+    // Validación mínima
+    if (!data.age || !data.weightKg || !data.heightCm) {
+      return NextResponse.json(
+        { error: 'Faltan datos del perfil (edad, peso o talla).' },
+        { status: 400 }
+      )
     }
+
+    const goalType = resolveGoalType(data)
+    const best5kSecs = timeStringToSecs(data.recentBest5k)
+    const best10kSecs = timeStringToSecs(data.recentBest10k)
+
+    // userId: usar sesión real cuando esté disponible; por ahora hardcodeado
+    // TODO: reemplazar con `auth()` de Auth.js cuando la sesión esté configurada
+    const userId = 'demo-user'
+
+    const result = await generatePlan({
+      userId,
+      goalType,
+      raceDate: data.raceDate ?? undefined,
+      targetTimeSecs: timeStringToSecs(data.targetTime) ?? undefined,
+      weightGoalKg: data.weightGoalKg ?? undefined,
+      age: data.age,
+      heightCm: data.heightCm,
+      weightKg: data.weightKg,
+      gender: data.gender ?? 'male',
+      hrResting: data.hrResting ?? undefined,
+      hrMax: data.hrMax ?? undefined,
+      daysPerWeek: data.daysPerWeek,
+      hoursPerSession: data.hoursPerSession,
+      injuries: data.injuries,
+      conditions: data.conditions,
+      nutritionCommitment: data.nutritionCommitment ?? 'moderate',
+    })
 
     return NextResponse.json({
       success: true,
-      planId: 'demo-123',
-      hrZones,
-      hrMax: hrMaxCalc,
-      tdee,
-      recommendations,
+      planId: result.planId,
+      recommendations: result.recommendations,
+      hrZones: result.hrZones,
+      hrMax: result.hrMax,
+      tdee: result.tdee,
     })
   } catch (error) {
-    console.error('Onboarding generate error:', error)
+    console.error('[onboarding/generate] Error:', error)
     return NextResponse.json(
       { error: 'Error generando el plan. Intenta de nuevo.' },
       { status: 500 }

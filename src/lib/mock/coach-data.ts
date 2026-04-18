@@ -1,0 +1,62 @@
+export const mockCoach = {
+  id: 'coach-1',
+  name: 'Carlos Entrenador',
+  role: 'COACH',
+}
+
+export const mockAthletes = [
+  {
+    id: 'athlete-1',
+    name: 'Miguel Atencia',
+    email: 'miguel@example.com',
+    goal: 'Media Maratón 1:45',
+    currentWeek: 1,
+    totalWeeks: 18,
+    phase: 'BASE',
+    lastCheckInDaysAgo: 3,
+    weightKg: 100,
+    weightGoalKg: 88,
+    hrResting: 56,
+    adherencePct: 0,
+    alerts: ['Primera semana — sin datos aún'],
+    planStatus: 'ACTIVE',
+  },
+  {
+    id: 'athlete-2',
+    name: 'Laura Gómez',
+    email: 'laura@example.com',
+    goal: '10K sub 50min',
+    currentWeek: 5,
+    totalWeeks: 12,
+    phase: 'DESARROLLO',
+    lastCheckInDaysAgo: 1,
+    weightKg: 62,
+    weightGoalKg: 58,
+    hrResting: 61,
+    adherencePct: 85,
+    alerts: [],
+    planStatus: 'ACTIVE',
+  },
+  {
+    id: 'athlete-3',
+    name: 'Andrés Pérez',
+    email: 'andres@example.com',
+    goal: 'Recomposición corporal',
+    currentWeek: 3,
+    totalWeeks: 16,
+    phase: 'BASE',
+    lastCheckInDaysAgo: 6,
+    weightKg: 85,
+    weightGoalKg: 80,
+    hrResting: 68,
+    adherencePct: 60,
+    alerts: ['FC reposo elevada 3 días', 'Check-in pendiente hace 6 días'],
+    planStatus: 'ACTIVE',
+  },
+]
+
+export const mockAthleteCheckIns = [
+  { week: 1, weightKg: 100, hrResting: 56, sleepScore: 74, energyLevel: 7, adherencePct: 0, painFlag: false },
+  { week: 2, weightKg: 99.2, hrResting: 55, sleepScore: 76, energyLevel: 8, adherencePct: 72, painFlag: false },
+  { week: 3, weightKg: 98.5, hrResting: 57, sleepScore: 71, energyLevel: 6, adherencePct: 65, painFlag: true },
+]

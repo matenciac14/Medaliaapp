@@ -1,0 +1,140 @@
+// ---------------------------------------------------------------------------
+// formulas.ts — Pure math functions for training plan engine
+// No AI, no DB. All functions are deterministic and testable.
+// ---------------------------------------------------------------------------
+
+export type HRZone = { min: number; max: number }
+export type HRZones = { z1: HRZone; z2: HRZone; z3: HRZone; z4: HRZone; z5: HRZone }
+
+/**
+ * Calcula zonas FC.
+ * - Si hrResting > 0: usa método Karvonen (FC reserva)
+ * - Si hrResting === 0: usa porcentaje simple de hrMax
+ *
+ * Z1: 60-70%, Z2: 70-80%, Z3: 80-85%, Z4: 85-90%, Z5: 90-100%
+ */
+export function calculateHRZones(hrMax: number, hrResting: number = 0): HRZones {
+  if (hrResting > 0) {
+    // Karvonen: FCobj = FCreposo + %reserva × (FCmax - FCreposo)
+    const reserve = hrMax - hrResting
+    return {
+      z1: { min: Math.round(hrResting + reserve * 0.60), max: Math.round(hrResting + reserve * 0.70) },
+      z2: { min: Math.round(hrResting + reserve * 0.70), max: Math.round(hrResting + reserve * 0.80) },
+      z3: { min: Math.round(hrResting + reserve * 0.80), max: Math.round(hrResting + reserve * 0.85) },
+      z4: { min: Math.round(hrResting + reserve * 0.85), max: Math.round(hrResting + reserve * 0.90) },
+      z5: { min: Math.round(hrResting + reserve * 0.90), max: hrMax },
+    }
+  }
+
+  // Porcentaje simple de hrMax
+  return {
+    z1: { min: Math.round(hrMax * 0.60), max: Math.round(hrMax * 0.70) },
+    z2: { min: Math.round(hrMax * 0.70), max: Math.round(hrMax * 0.80) },
+    z3: { min: Math.round(hrMax * 0.80), max: Math.round(hrMax * 0.85) },
+    z4: { min: Math.round(hrMax * 0.85), max: Math.round(hrMax * 0.90) },
+    z5: { min: Math.round(hrMax * 0.90), max: hrMax },
+  }
+}
+
+/**
+ * Estima hrMax si el usuario no lo conoce.
+ * Fórmula: 211 - (0.64 × edad)
+ */
+export function estimateHRMax(age: number): number {
+  return Math.round(211 - 0.64 * age)
+}
+
+/**
+ * Calcula TDEE con Mifflin-St Jeor.
+ * Factor de actividad basado en días de entrenamiento por semana.
+ * 3 días = 1.375 | 4 días = 1.55 | 5 días = 1.725 | ≥6 días = 1.9
+ */
+export function calculateTDEE(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  gender: 'male' | 'female',
+  daysPerWeek: number
+): number {
+  const bmr =
+    gender === 'male'
+      ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+      : 10 * weightKg + 6.25 * heightCm - 5 * age - 161
+
+  let factor: number
+  if (daysPerWeek <= 3) factor = 1.375
+  else if (daysPerWeek === 4) factor = 1.55
+  else if (daysPerWeek === 5) factor = 1.725
+  else factor = 1.9
+
+  return Math.round(bmr * factor)
+}
+
+export type MacroDay = { kcal: number; protein: number; carbs: number; fat: number }
+export type Macros = { hard: MacroDay; easy: MacroDay; rest: MacroDay }
+
+/**
+ * Calcula macros periodizados por tipo de día.
+ * - Proteína: 2g/kg siempre
+ * - Déficit si hasWeightGoal: 500 kcal
+ * - Carbos periodizados: día duro 50%, fácil 35%, descanso 25% de kcal
+ * - Grasa: resto de kcal (mínimo 0.5g/kg)
+ */
+export function calculateMacros(tdee: number, weightKg: number, hasWeightGoal: boolean): Macros {
+  const proteinG = Math.round(weightKg * 2)
+  const proteinKcal = proteinG * 4
+
+  function buildDay(kcalTarget: number, carbPct: number): MacroDay {
+    const kcal = Math.max(kcalTarget, 1200) // mínimo seguro
+    const carbKcal = kcal * carbPct
+    const carbsG = Math.round(carbKcal / 4)
+    const fatKcal = kcal - proteinKcal - carbKcal
+    const fatG = Math.max(Math.round(fatKcal / 9), Math.round(weightKg * 0.5))
+    return { kcal, protein: proteinG, carbs: carbsG, fat: fatG }
+  }
+
+  const deficit = hasWeightGoal ? 500 : 0
+
+  return {
+    hard: buildDay(tdee - deficit, 0.50),
+    easy: buildDay(tdee - deficit - 200, 0.35),
+    rest: buildDay(tdee - deficit - 400, 0.25),
+  }
+}
+
+/**
+ * Predice tiempo en carrera usando la fórmula de Riegel.
+ * T2 = T1 × (D2/D1)^1.06
+ * Devuelve null si no hay datos de referencia.
+ */
+export function predictRaceTime(
+  best5kSecs: number | null,
+  best10kSecs: number | null,
+  weightKg: number,
+  targetDistanceKm: number
+): number | null {
+  // Preferir el dato más cercano a la distancia objetivo
+  let refTimeSecs: number | null = null
+  let refDistKm: number | null = null
+
+  if (best10kSecs !== null && targetDistanceKm >= 10) {
+    refTimeSecs = best10kSecs
+    refDistKm = 10
+  } else if (best5kSecs !== null) {
+    refTimeSecs = best5kSecs
+    refDistKm = 5
+  } else if (best10kSecs !== null) {
+    refTimeSecs = best10kSecs
+    refDistKm = 10
+  }
+
+  if (refTimeSecs === null || refDistKm === null) return null
+
+  const predicted = refTimeSecs * Math.pow(targetDistanceKm / refDistKm, 1.06)
+
+  // Factor corrector de peso (atletas más pesados son ligeramente más lentos en carreras largas)
+  // Ajuste mínimo — no sobreingeniería
+  const weightFactor = weightKg > 80 ? 1.02 : 1.0
+
+  return Math.round(predicted * weightFactor)
+}
