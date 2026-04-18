@@ -36,6 +36,11 @@ export default auth((req) => {
     ) {
       return NextResponse.redirect(new URL('/dashboard', nextUrl))
     }
+
+    // Rutas de admin solo para role ADMIN
+    if (pathname.startsWith('/admin') && (session?.user as any)?.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', nextUrl))
+    }
   }
 
   return NextResponse.next()

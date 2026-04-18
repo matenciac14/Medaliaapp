@@ -193,9 +193,23 @@ async function main() {
     },
   })
 
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  await prisma.user.upsert({
+    where: { email: 'admin@medaliq.com' },
+    update: { role: UserRole.ADMIN },
+    create: {
+      email: 'admin@medaliq.com',
+      name: 'Admin Medaliq',
+      password: await bcrypt.hash('admin123!', 12),
+      role: UserRole.ADMIN,
+      config: { ...DEFAULT_USER_CONFIG, onboarding: { completed: true, completedAt: new Date().toISOString() } },
+    },
+  })
+
   console.log(`✅ Coach:    coach@medaliq.com    / coach123`)
   console.log(`✅ Atleta 1: miguel@medaliq.com   / atleta123  (con plan + coach)`)
   console.log(`✅ Atleta 2: ana@medaliq.com      / atleta123  (B2C sin coach)`)
+  console.log(`✅ Admin:    admin@medaliq.com    / admin123!`)
   console.log(`\n🎉 Seed completo.`)
 }
 

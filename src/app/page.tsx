@@ -1,5 +1,31 @@
 import { Button } from "@/components/ui/button";
 
+function CompareCell({ value, highlight = false }: { value: boolean | string; highlight?: boolean }) {
+  if (value === true) {
+    return (
+      <span
+        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold"
+        style={{ color: '#16a34a', backgroundColor: highlight ? 'rgba(22,163,74,0.1)' : 'transparent' }}
+      >
+        ✓
+      </span>
+    );
+  }
+  if (value === false) {
+    return (
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold text-[#dc2626]">
+        ✗
+      </span>
+    );
+  }
+  // string like "básica" or "parcial"
+  return (
+    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+      {value}
+    </span>
+  );
+}
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -233,6 +259,131 @@ export default function Home() {
               Soy entrenador →
             </Button>
           </a>
+        </div>
+      </section>
+
+      {/* ¿Por qué Medaliq? — Tabla de comparación */}
+      <section className="py-20 px-4 bg-[#f8fafc]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+              Comparación
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-3">
+              Hecho para LatAm. Sin compromisos.
+            </h2>
+            <p className="text-gray-500 text-base max-w-xl mx-auto">
+              Las apps globales no fueron diseñadas para ti. Medaliq sí.
+            </p>
+          </div>
+
+          {/* Tabla desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 w-48"></th>
+                  <th className="py-4 px-4 text-center w-36">
+                    <div className="bg-[#1e3a5f] text-white rounded-xl py-2 px-3 font-bold text-sm">
+                      Medaliq
+                    </div>
+                  </th>
+                  <th className="py-4 px-4 text-center text-sm font-semibold text-gray-400 w-36">TrainingPeaks</th>
+                  <th className="py-4 px-4 text-center text-sm font-semibold text-gray-400 w-36">Freeletics</th>
+                  <th className="py-4 px-4 text-center text-sm font-semibold text-gray-400 w-36">Strava</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {
+                    feature: 'En español',
+                    medaliq: true,
+                    trainingpeaks: false,
+                    freeletics: false,
+                    strava: true,
+                  },
+                  {
+                    feature: 'AI personalizada',
+                    medaliq: true,
+                    trainingpeaks: false,
+                    freeletics: 'básica',
+                    strava: false,
+                  },
+                  {
+                    feature: 'Planes que se ajustan solos',
+                    medaliq: true,
+                    trainingpeaks: false,
+                    freeletics: false,
+                    strava: false,
+                  },
+                  {
+                    feature: 'Coach + atleta integrados',
+                    medaliq: true,
+                    trainingpeaks: true,
+                    freeletics: false,
+                    strava: false,
+                  },
+                  {
+                    feature: 'Nutrición integrada',
+                    medaliq: true,
+                    trainingpeaks: false,
+                    freeletics: 'parcial',
+                    strava: false,
+                  },
+                  {
+                    feature: 'Precio asequible para LatAm',
+                    medaliq: true,
+                    trainingpeaks: false,
+                    freeletics: 'parcial',
+                    strava: true,
+                  },
+                ].map((row, i) => (
+                  <tr
+                    key={row.feature}
+                    className={i % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]'}
+                  >
+                    <td className="py-4 px-4 text-sm font-medium text-gray-700">{row.feature}</td>
+                    <td className="py-4 px-4 text-center bg-[#1e3a5f]/5">
+                      <CompareCell value={row.medaliq} highlight />
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <CompareCell value={row.trainingpeaks} />
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <CompareCell value={row.freeletics} />
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <CompareCell value={row.strava} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards mobile */}
+          <div className="md:hidden space-y-3">
+            {[
+              { feature: 'En español', medaliq: true, competidores: 'Solo Strava' },
+              { feature: 'AI personalizada', medaliq: true, competidores: 'Freeletics básico' },
+              { feature: 'Planes que se ajustan solos', medaliq: true, competidores: 'Ninguno' },
+              { feature: 'Coach + atleta integrados', medaliq: true, competidores: 'Solo TrainingPeaks' },
+              { feature: 'Nutrición integrada', medaliq: true, competidores: 'Freeletics parcial' },
+              { feature: 'Precio asequible para LatAm', medaliq: true, competidores: 'Solo Strava' },
+            ].map((row) => (
+              <div key={row.feature} className="bg-white rounded-xl p-4 border border-gray-100 flex items-center justify-between shadow-sm">
+                <span className="text-sm font-medium text-gray-700 flex-1">{row.feature}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-[#16a34a] font-bold text-lg">✓</span>
+                  <span className="text-xs text-gray-400 w-28 text-right">{row.competidores}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Comparación basada en planes públicos de TrainingPeaks Premium ($19.95/mes), Freeletics Coach (~$11/mes anual) y Strava ($11.99/mes) a abril 2026.
+          </p>
         </div>
       </section>
 
