@@ -1,65 +1,330 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-white text-gray-900 font-sans">
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <span className="text-2xl font-bold text-[#1e3a5f]">Medaliq</span>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+            <a href="#como-funciona" className="hover:text-[#1e3a5f] transition-colors">Cómo funciona</a>
+            <a href="#entrenadores" className="hover:text-[#1e3a5f] transition-colors">Para entrenadores</a>
+            <a href="#precios" className="hover:text-[#1e3a5f] transition-colors">Precios</a>
+          </div>
+          <a href="/onboarding">
+            <Button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg">
+              Empieza gratis
+            </Button>
+          </a>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="bg-gradient-to-br from-[#1e3a5f] to-[#0f2240] text-white py-24 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1 rounded-full">
+              🔬 Basado en ciencia del deporte
+            </span>
+            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1 rounded-full">
+              🌎 Para LatAm
+            </span>
+            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1 rounded-full">
+              📈 Planes vivos, no PDFs
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-6xl font-extrabold leading-tight tracking-tight mb-6">
+            Tu coach de élite,{" "}
+            <span className="text-[#f97316]">siempre disponible</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Recompone tu cuerpo, alcanza tu meta en carrera o gestiona a tus atletas — con un AI que genera planes periodizados y los ajusta según tus datos reales.
           </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/onboarding">
+              <Button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-8 py-4 rounded-xl text-lg w-full sm:w-auto">
+                Crea tu plan gratis
+              </Button>
+            </a>
+            <a href="#como-funciona">
+              <Button
+                variant="outline"
+                className="border-white/30 text-white bg-white/10 hover:bg-white/20 font-semibold px-8 py-4 rounded-xl text-lg w-full sm:w-auto"
+              >
+                Ver cómo funciona
+              </Button>
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+      </section>
+
+      {/* ¿Para quién es? */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
+            ¿Para quién es Medaliq?
+          </h2>
+          <p className="text-center text-gray-500 mb-12 text-base">Tres perfiles, un solo coach inteligente.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1 */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="text-4xl mb-4">🏃</div>
+              <h3 className="text-xl font-bold text-[#1e3a5f] mb-2">Atleta amateur</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Quieres bajar peso sin perder músculo, mejorar tu composición corporal y sentirte con más energía. Sin plantillas genéricas — un plan hecho para tu cuerpo y tu ritmo de vida.
+              </p>
+            </div>
+            {/* Card 2 */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="text-4xl mb-4">🚴</div>
+              <h3 className="text-xl font-bold text-[#1e3a5f] mb-2">Corredor / ciclista</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Tienes una carrera en el horizonte y quieres llegar al día D en tu mejor forma. El AI construye tu plan de 12–20 semanas y lo ajusta según cómo vas respondiendo.
+              </p>
+            </div>
+            {/* Card 3 */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="text-4xl mb-4">📋</div>
+              <h3 className="text-xl font-bold text-[#1e3a5f] mb-2">Entrenador profesional</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Gestionas varios atletas y el tiempo no alcanza. El AI hace el trabajo pesado de diseño y seguimiento — tú te enfocas en lo que realmente agrega valor: el criterio humano.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cómo funciona */}
+      <section id="como-funciona" className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
+            Cómo funciona
+          </h2>
+          <p className="text-center text-gray-500 mb-14 text-base">De cero a plan periodizado en minutos.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                step: "01",
+                title: "Cuéntanos tu objetivo",
+                desc: "Un chat de intake personalizado recoge tu historial, metas, disponibilidad y limitaciones. Sin formularios aburridos.",
+              },
+              {
+                step: "02",
+                title: "Tu plan en minutos",
+                desc: "El AI genera un plan periodizado por semanas adaptado a ti — carga progresiva, bloques de trabajo y recuperación.",
+              },
+              {
+                step: "03",
+                title: "Entrena con guía",
+                desc: "Cada día tienes la sesión del día, recomendaciones de nutrición y carga ajustada a tu ritmo circadiano.",
+              },
+              {
+                step: "04",
+                title: "El plan se adapta",
+                desc: "Check-in semanal → el AI analiza tus datos reales (peso, FC, sueño, adherencia) y actualiza el plan.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="flex flex-col gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {item.step}
+                </div>
+                <h3 className="text-base font-bold text-[#1e3a5f]">{item.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* El coach que nunca da plantillas */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 leading-tight">
+              El coach que nunca te da plantillas genéricas
+            </h2>
+            <p className="text-gray-500 mb-8 text-base leading-relaxed">
+              Medaliq analiza tus datos continuamente para darte el plan más inteligente — no el promedio.
+            </p>
+            <ul className="space-y-4">
+              {[
+                { icon: "🔍", text: "Detecta inconsistencias en tus datos antes de que te afecten" },
+                { icon: "❤️", text: "Zonas de FC personalizadas, no las genéricas de internet" },
+                { icon: "🥗", text: "Nutrición adaptada al tipo de sesión del día" },
+                { icon: "⚠️", text: "Alertas automáticas de sobrecarga o bajo rendimiento" },
+              ].map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
+                  <span className="text-xl shrink-0">{item.icon}</span>
+                  <span className="text-gray-700 text-sm leading-relaxed">{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* App Mockup */}
+          <div className="bg-[#1e3a5f] rounded-2xl p-6 text-white shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Sesión de hoy</span>
+              <span className="bg-[#f97316] text-white text-xs font-bold px-2 py-1 rounded-full">Zona 3</span>
+            </div>
+            <h4 className="text-lg font-bold mb-1">Intervalos 4×8 min</h4>
+            <p className="text-blue-200 text-xs mb-6">Martes · Semana 7 de 18</p>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-xl font-bold text-[#f97316]">68</div>
+                <div className="text-xs text-blue-200 mt-1">FC reposo</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-xl font-bold text-[#f97316]">7.2h</div>
+                <div className="text-xs text-blue-200 mt-1">Sueño</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-xl font-bold text-[#f97316]">92%</div>
+                <div className="text-xs text-blue-200 mt-1">Adherencia</div>
+              </div>
+            </div>
+            <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
+              <span className="text-[#f97316] font-semibold">Coach AI: </span>
+              Tu FC reposo bajó 3 bpm esta semana — buena señal de recuperación. Mantén la intensidad de hoy.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Para Entrenadores */}
+      <section id="entrenadores" className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+            Para entrenadores
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
+            Amplifica tu coaching con AI
+          </h2>
+          <p className="text-gray-500 mb-12 max-w-xl mx-auto text-base">
+            El AI no te reemplaza — te libera del trabajo operativo para que puedas enfocarte en lo que realmente importa.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            {[
+              {
+                icon: "📊",
+                title: "Dashboard unificado",
+                desc: "Ve el estado de todos tus atletas en un solo lugar — carga, adherencia, alertas y próximas sesiones.",
+              },
+              {
+                icon: "✅",
+                title: "El AI genera, tú apruebas",
+                desc: "Medaliq propone el plan. Tú lo revisas, ajustas con un clic y lo publicas. Tu criterio siempre manda.",
+              },
+              {
+                icon: "🔔",
+                title: "Alertas inteligentes",
+                desc: "Recibe notificaciones cuando un atleta muestra señales de sobrecarga, bajo rendimiento o cambio en sus datos.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="bg-gray-50 rounded-2xl p-6 text-left hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h3 className="text-base font-bold text-[#1e3a5f] mb-2">{item.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <a href="/onboarding">
+            <Button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl">
+              Soy entrenador →
+            </Button>
           </a>
         </div>
-      </main>
+      </section>
+
+      {/* Pricing */}
+      <section id="precios" className="py-20 px-4 bg-gray-50">
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">Precios simples</h2>
+          <p className="text-gray-500 mb-12 text-base">Sin sorpresas. Cancela cuando quieras.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Free */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col">
+              <div className="mb-4">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Free</span>
+                <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$0</div>
+                <div className="text-gray-400 text-sm">para siempre</div>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-6">
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Plan básico con 1 objetivo</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Intake conversacional</li>
+                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> AI chat continuo</li>
+                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> Integraciones (Garmin, etc.)</li>
+                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> Ajuste automático del plan</li>
+              </ul>
+              <a href="/onboarding">
+                <Button variant="outline" className="w-full border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold">
+                  Empezar gratis
+                </Button>
+              </a>
+            </div>
+
+            {/* Pro — destacado */}
+            <div className="bg-[#1e3a5f] rounded-2xl p-6 border-2 border-[#f97316] shadow-xl text-left flex flex-col relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#f97316] text-white text-xs font-bold px-4 py-1 rounded-full">Más popular</span>
+              </div>
+              <div className="mb-4">
+                <span className="text-xs font-semibold text-blue-300 uppercase tracking-widest">Pro</span>
+                <div className="text-4xl font-extrabold text-white mt-2">$15</div>
+                <div className="text-blue-300 text-sm">por mes</div>
+              </div>
+              <ul className="space-y-3 text-sm text-blue-100 flex-1 mb-6">
+                <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> Plan completo + periodización</li>
+                <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> AI chat continuo</li>
+                <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> Integración Garmin / Polar</li>
+                <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> Ajuste automático semanal</li>
+                <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> Nutrición por sesión</li>
+              </ul>
+              <a href="/onboarding">
+                <Button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold">
+                  Empezar con Pro
+                </Button>
+              </a>
+            </div>
+
+            {/* Coach */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col">
+              <div className="mb-4">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Coach</span>
+                <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$49</div>
+                <div className="text-gray-400 text-sm">por mes</div>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-6">
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Hasta 20 atletas</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Dashboard de entrenador</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Override de planes</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Alertas de atletas</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Todo lo de Pro para cada atleta</li>
+              </ul>
+              <a href="/onboarding">
+                <Button variant="outline" className="w-full border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors">
+                  Quiero ser Coach
+                </Button>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#1e3a5f] text-blue-200 py-10 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <span className="text-xl font-extrabold text-white">Medaliq</span>
+            <span className="text-sm text-blue-300">Hecho para LatAm 🌎</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+            <a href="/terminos" className="hover:text-white transition-colors">Términos</a>
+            <a href="/privacidad" className="hover:text-white transition-colors">Privacidad</a>
+            <a href="mailto:hola@medaliq.com" className="hover:text-white transition-colors">hola@medaliq.com</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
