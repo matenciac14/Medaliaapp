@@ -201,6 +201,14 @@ function CompleteModal({
   )
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function parseTargetReps(scheme: string): number | null {
+  const first = scheme.split(/[-,x ]/)[0].trim()
+  const n = parseInt(first)
+  return isNaN(n) ? null : n
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GymSessionPage() {
@@ -472,6 +480,14 @@ export default function GymSessionPage() {
           const completedCount = sets.filter((s) => s.completed).length
           const allDone = completedCount === sets.length && sets.length > 0
           const showTimer = activeTimer?.weId === we.id
+          const targetReps = parseTargetReps(we.repsScheme)
+          const allRepsHit =
+            allDone &&
+            targetReps !== null &&
+            sets.every((s) => {
+              const reps = parseInt(s.repsCompleted)
+              return !isNaN(reps) && reps >= targetReps
+            })
 
           return (
             <div
@@ -617,6 +633,17 @@ export default function GymSessionPage() {
                       seconds={activeTimer!.seconds}
                       onDone={() => setActiveTimer(null)}
                     />
+                  )}
+
+                  {/* Progression suggestion */}
+                  {allRepsHit && (
+                    <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                      <span className="text-base">🏋️</span>
+                      <div>
+                        <p className="text-xs font-bold text-green-700">+2.5 kg recomendado</p>
+                        <p className="text-[10px] text-green-600">Completaste todos los reps objetivo — sube el peso la próxima sesión</p>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

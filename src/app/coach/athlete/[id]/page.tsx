@@ -1,11 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { mockAthletes, mockAthleteCheckIns } from '@/lib/mock/coach-data'
 import AthleteFeatureToggles from './_components/AthleteFeatureToggles'
 
-const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición']
+const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Gym']
+
+// ─── Gym Types ──────────────────────────────────────────────────────────────
+
+type GymExerciseLog = {
+  exerciseId: string
+  name: string
+  muscleGroups: string[]
+  logs: {
+    date: string
+    sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null }[]
+  }[]
+}
 
 const mockWeekPlan = [
   {
@@ -44,6 +56,24 @@ export default function AthleteDetailPage({ params }: { params: { id: string } }
   const [activeTab, setActiveTab] = useState('Resumen')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({})
+
+  // Gym tab state
+  const [gymLogs, setGymLogs] = useState<GymExerciseLog[]>([])
+  const [gymLoading, setGymLoading] = useState(false)
+  const [gymLoaded, setGymLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Gym' || gymLoaded) return
+    setGymLoading(true)
+    fetch(`/api/coach/gym/athlete/${params.id}/logs`)
+      .then((r) => r.json())
+      .then((data) => {
+        setGymLogs(Array.isArray(data) ? data : [])
+        setGymLoaded(true)
+      })
+      .catch(() => setGymLogs([]))
+      .finally(() => setGymLoading(false))
+  }, [activeTab, gymLoaded, params.id])
 
   // Use first athlete as mock for all IDs
   const athlete = mockAthletes[0]
@@ -353,6 +383,102 @@ export default function AthleteDetailPage({ params }: { params: { id: string } }
           <div className="text-4xl mb-4">🥗</div>
           <h2 className="text-lg font-semibold text-gray-700 mb-2">Plan nutricional</h2>
           <p className="text-gray-400 text-sm">Próximamente — en desarrollo</p>
+        </div>
+      )}
+
+      {/* Tab: Gym */}
+      {activeTab === 'Gym' && (
+        <div className="space-y-5">
+          {gymLoading && (
+            <div className="text-center py-16 text-gray-400 text-sm">Cargando logs de gym...</div>
+          )}
+
+          {!gymLoading && gymLogs.length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center">
+              <div className="text-4xl mb-3">🏋️</div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-1">Sin sesiones registradas</h2>
+              <p className="text-gray-400 text-sm">El atleta aún no ha completado sesiones de gym</p>
+            </div>
+          )}
+
+          {!gymLoading && gymLogs.map((ex) => {
+            // Compute max weight per session for mini chart
+            const maxWeight = Math.max(
+              1,
+              ...ex.logs.flatMap((l) => l.sets.map((s) => s.weightKg ?? 0))
+            )
+
+            return (
+              <div key={ex.exerciseId} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{ex.name}</h3>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {ex.muscleGroups.slice(0, 3).map((mg) => (
+                        <span key={mg} className="text-[10px] font-medium bg-[#1e3a5f]/10 text-[#1e3a5f] px-1.5 py-0.5 rounded-full">
+                          {mg}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400">{ex.logs.length} sesión{ex.logs.length !== 1 ? 'es' : ''}</span>
+                </div>
+
+                {/* Mini bar chart — max weight per session */}
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Peso máximo por sesión (kg)</p>
+                  <div className="flex items-end gap-1.5 h-16">
+                    {ex.logs.map((log, li) => {
+                      const sessionMax = Math.max(0, ...log.sets.map((s) => s.weightKg ?? 0))
+                      const heightPct = maxWeight > 0 ? (sessionMax / maxWeight) * 100 : 0
+                      return (
+                        <div key={li} className="flex flex-col items-center gap-0.5 flex-1 min-w-0">
+                          <span className="text-[9px] text-gray-400 font-mono truncate w-full text-center">
+                            {sessionMax > 0 ? `${sessionMax}` : '—'}
+                          </span>
+                          <div
+                            className="w-full rounded-t-sm transition-all"
+                            style={{
+                              height: `${Math.max(heightPct, 4)}%`,
+                              backgroundColor: '#f97316',
+                              opacity: 0.5 + (li / ex.logs.length) * 0.5,
+                            }}
+                          />
+                          <span className="text-[8px] text-gray-300 truncate w-full text-center">
+                            {log.date.slice(5)}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Last session detail */}
+                {ex.logs.length > 0 && (() => {
+                  const last = ex.logs[ex.logs.length - 1]
+                  return (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-2">Última sesión — {last.date}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {last.sets.map((s) => (
+                          <div
+                            key={s.setNumber}
+                            className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs"
+                          >
+                            <span className="font-bold text-[#1e3a5f] w-4 text-center">{s.setNumber}</span>
+                            <span className="text-gray-500">
+                              {s.weightKg != null ? `${s.weightKg} kg` : '—'} × {s.repsCompleted ?? '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

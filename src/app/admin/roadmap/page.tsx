@@ -39,10 +39,10 @@ const PHASES = [
   {
     id: 'gym',
     label: 'Fase 3 — Gym Coach',
-    period: 'En construcción',
-    color: '#f97316',
-    bgColor: '#fff7ed',
-    borderColor: '#fed7aa',
+    period: 'Completado',
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    borderColor: '#86efac',
     items: [
       { title: 'Schema DB: Exercise, WorkoutTemplate, AssignedWorkout, GymSession, SetLog', done: true, note: 'Migración aplicada' },
       { title: '39 ejercicios globales en seed', done: true, note: 'Todos los grupos musculares' },
@@ -52,8 +52,8 @@ const PHASES = [
       { title: 'Dashboard gym atleta (rutina activa + adherencia)', done: true, note: 'Grid semanal de completitud' },
       { title: 'Tracker de sesión en tiempo real', done: true, note: 'Sets/pesos, timer descanso, referencia sesión anterior' },
       { title: 'Historial de sesiones gym', done: true, note: 'Expandible con pesos por serie' },
-      { title: 'Progresión de cargas sugerida por AI', done: false, note: 'Si completó todos los reps → +2.5kg sugerido' },
-      { title: 'Coach ve logs y progresión del atleta en gym', done: false, note: 'Gráfica de peso por ejercicio vs semanas' },
+      { title: 'Progresión de cargas sugerida por AI', done: true, note: 'Si completó todos los reps objetivo → badge +2.5kg en sesión' },
+      { title: 'Coach ve logs y progresión del atleta en gym', done: true, note: 'Tab Gym en panel atleta: gráfica de peso por ejercicio + detalle última sesión' },
     ],
   },
   {
