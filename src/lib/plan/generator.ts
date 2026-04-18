@@ -5,6 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db/prisma'
+import { parseUserConfig } from '@/lib/config/user-config'
 import {
   calculateHRZones,
   calculateMacros,
@@ -254,6 +255,62 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
       }
 
       return trainingPlan
+    })
+
+    // Determinar sport.type y sport.goal a partir del goalType
+    const goalTypeUpper = input.goalType.toUpperCase()
+    let sportType: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL'
+    let sportGoal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS'
+
+    if (goalTypeUpper.startsWith('RACE_CYCLING')) {
+      sportType = 'CYCLING'
+      sportGoal = 'RACE'
+    } else if (goalTypeUpper.startsWith('RACE_TRIATHLON')) {
+      sportType = 'TRIATHLON'
+      sportGoal = 'RACE'
+    } else if (goalTypeUpper.startsWith('RACE_')) {
+      sportType = 'RUNNING'
+      sportGoal = 'RACE'
+    } else if (goalTypeUpper === 'BODY_RECOMPOSITION' || goalTypeUpper === 'WEIGHT_LOSS') {
+      sportType = 'STRENGTH'
+      sportGoal = 'BODY_RECOMPOSITION'
+    } else {
+      sportType = 'GENERAL'
+      sportGoal = 'GENERAL_FITNESS'
+    }
+
+    // Actualizar User.config tras guardar el plan
+    const existingUser = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { config: true },
+    })
+    const currentConfig = parseUserConfig(existingUser?.config)
+    const newConfig = {
+      ...currentConfig,
+      features: {
+        ...currentConfig.features,
+        plan: true,
+        checkin: true,
+        log: true,
+      },
+      onboarding: {
+        completed: true,
+        completedAt: new Date().toISOString(),
+      },
+      plan: {
+        activePlanId: result.id,
+        currentWeek: 1,
+        totalWeeks: result.totalWeeks,
+        phase: 'BASE' as const,
+      },
+      sport: {
+        type: sportType,
+        goal: sportGoal,
+      },
+    }
+    await prisma.user.update({
+      where: { id: input.userId },
+      data: { config: newConfig },
     })
 
     return {

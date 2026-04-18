@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+import { parseUserConfig } from '@/lib/config/user-config'
 
 interface CheckInBody {
   weightKg?: number
@@ -11,7 +14,6 @@ interface CheckInBody {
   painDescription?: string
   energyLevel: number
   notes?: string
-  // Para comparacion con semana anterior (se calcularia en BD)
   previousWeightKg?: number
   previousHrResting?: number
 }
@@ -35,17 +37,80 @@ function evaluateAlerts(data: CheckInBody): string[] {
   return alerts
 }
 
+function getCurrentWeekNumber(startDate: Date): number {
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const elapsed = Date.now() - startDate.getTime()
+  return Math.max(1, Math.floor(elapsed / msPerWeek) + 1)
+}
+
+function getISOWeekNumber(): number {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), 0, 1)
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  return Math.ceil(((now.getTime() - start.getTime()) / msPerWeek) + 1)
+}
+
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const userId = session.user.id
   const body: CheckInBody = await req.json()
 
-  // TODO: Guardar en BD — crear WeeklyCheckIn en Prisma
-  // const prisma = ...
-  // await prisma.weeklyCheckIn.create({ data: { ...body, userId, weekNumber, date: new Date() } })
+  // Calcular weekNumber desde el plan activo o usar semana ISO del año
+  let weekNumber: number
+
+  const activePlan = await prisma.trainingPlan.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    select: { startDate: true },
+  })
+
+  if (activePlan) {
+    weekNumber = getCurrentWeekNumber(activePlan.startDate)
+  } else {
+    weekNumber = getISOWeekNumber()
+  }
 
   const alerts = evaluateAlerts(body)
 
-  console.log('[checkin] Recibido:', body)
-  console.log('[checkin] Alertas:', alerts)
+  const checkInData = {
+    weightKg: body.weightKg,
+    hrResting: body.hrResting,
+    sleepHours: body.sleepHours,
+    sleepScore: body.sleepScore,
+    hardestSessionRpe: body.hardestRpe,
+    dietAdherencePct: body.adherencePct,
+    painFlag: body.hasPain,
+    energyLevel: body.energyLevel,
+    notes: body.notes,
+    adjustmentsTriggered: alerts,
+    recordedAt: new Date(),
+  }
 
-  return NextResponse.json({ success: true, alerts })
+  await prisma.weeklyCheckIn.upsert({
+    where: { userId_weekNumber: { userId, weekNumber } },
+    update: { ...checkInData },
+    create: { userId, weekNumber, ...checkInData },
+  })
+
+  // Si es el primer check-in, activar features.progress
+  const checkInCount = await prisma.weeklyCheckIn.count({ where: { userId } })
+  if (checkInCount === 1) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { config: true },
+    })
+    if (user) {
+      const config = parseUserConfig(user.config)
+      config.features.progress = true
+      await prisma.user.update({
+        where: { id: userId },
+        data: { config: config as any },
+      })
+    }
+  }
+
+  return NextResponse.json({ ok: true, alerts })
 }

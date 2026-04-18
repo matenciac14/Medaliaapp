@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { generatePlan } from '@/lib/plan/generator'
 
 // ---------------------------------------------------------------------------
@@ -84,9 +85,11 @@ export async function POST(req: NextRequest) {
     const best5kSecs = timeStringToSecs(data.recentBest5k)
     const best10kSecs = timeStringToSecs(data.recentBest10k)
 
-    // userId: usar sesión real cuando esté disponible; por ahora hardcodeado
-    // TODO: reemplazar con `auth()` de Auth.js cuando la sesión esté configurada
-    const userId = 'demo-user'
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+    }
+    const userId = session.user.id
 
     const result = await generatePlan({
       userId,
