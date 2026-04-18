@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { mockWeeks } from '@/lib/mock/dashboard-data'
 
@@ -314,6 +315,10 @@ export default function ProgressPage() {
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
+
+      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+        <span>←</span> Volver al inicio
+      </Link>
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">

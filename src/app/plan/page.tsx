@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mockPlan, mockWeeks } from '@/lib/mock/dashboard-data'
@@ -64,6 +65,11 @@ export default function PlanPage() {
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto">
+
+      {/* Back */}
+      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-5 transition-colors">
+        <span>←</span> Volver al inicio
+      </Link>
 
       {/* Header */}
       <div className="mb-6">

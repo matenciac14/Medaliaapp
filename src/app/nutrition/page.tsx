@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { mockNutritionPlan, mockMeals, mockSupplements, todaySessionType } from '@/lib/mock/nutrition-data'
 
 // Determina tipo de día según sesión
@@ -124,6 +125,10 @@ export default function NutritionPage() {
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+
+      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+        <span>←</span> Volver al inicio
+      </Link>
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-2">
