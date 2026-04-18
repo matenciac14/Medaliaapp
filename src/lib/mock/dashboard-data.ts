@@ -2,6 +2,10 @@ export const mockUser = {
   id: 'demo-user',
   name: 'Miguel Atencia',
   role: 'ATHLETE',
+  // Feature flags — se reemplazarán por datos reales de DB
+  hasPlan: true,
+  hasNutrition: true,
+  hasCheckIns: true,
 }
 
 export const mockPlan = {

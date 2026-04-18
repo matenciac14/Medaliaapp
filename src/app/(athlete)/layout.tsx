@@ -14,16 +14,17 @@ import {
 import { cn } from '@/lib/utils'
 import { mockUser } from '@/lib/mock/dashboard-data'
 
-const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/plan', label: 'Mi Plan', icon: CalendarDays },
-  { href: '/nutrition', label: 'Nutrición', icon: Apple },
-  { href: '/progress', label: 'Progreso', icon: TrendingUp },
-  { href: '/checkin', label: 'Check-in', icon: ClipboardCheck },
-]
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
+    { href: '/plan', label: 'Mi Plan', icon: CalendarDays, show: mockUser.hasPlan },
+    { href: '/checkin', label: 'Check-in', icon: ClipboardCheck, show: mockUser.hasPlan },
+    { href: '/nutrition', label: 'Nutrición', icon: Apple, show: mockUser.hasNutrition },
+    { href: '/progress', label: 'Progreso', icon: TrendingUp, show: mockUser.hasCheckIns },
+    { href: '/coach', label: 'Panel Coach', icon: Users, show: mockUser.role === 'COACH' },
+  ].filter((l) => l.show)
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -59,22 +60,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             )
           })}
-
-          {/* Link coach solo si es COACH */}
-          {mockUser.role === 'COACH' && (
-            <Link
-              href="/coach"
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                pathname.startsWith('/coach')
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <Users size={18} />
-              Panel Coach
-            </Link>
-          )}
         </nav>
 
         {/* Usuario + logout */}
@@ -118,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
 
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-10">
-          {navLinks.slice(0, 5).map(({ href, label, icon: Icon }) => {
+          {navLinks.slice(0, 5).map(({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
             const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
               <Link
