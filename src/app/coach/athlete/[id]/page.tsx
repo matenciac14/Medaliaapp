@@ -206,6 +206,17 @@ export default function AthleteDetailPage({ params }: { params: { id: string } }
       {/* Tab: Plan */}
       {activeTab === 'Plan' && (
         <div className="space-y-6">
+          {/* Review CTA */}
+          <div className="flex justify-end">
+            <Link
+              href={`/coach/plan/${params.id}/review`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              Revisar y aprobar →
+            </Link>
+          </div>
+
           {mockWeekPlan.map((week) => (
             <div key={week.week} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <h2 className="font-semibold mb-4" style={{ color: '#1e3a5f' }}>
