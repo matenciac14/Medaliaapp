@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Users,
   LogOut,
+  Dumbbell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -30,6 +31,7 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/checkin',   label: 'Check-in',     icon: ClipboardCheck,  show: features.checkin },
     { href: '/nutrition', label: 'Nutrición',    icon: Apple,           show: features.nutrition },
     { href: '/progress',  label: 'Progreso',     icon: TrendingUp,      show: features.progress },
+    { href: '/gym',       label: 'Rutina gym',   icon: Dumbbell,        show: features.gym },
     { href: '/coach',     label: 'Panel Coach',  icon: Users,           show: features.coach },
   ].filter((l) => l.show)
 

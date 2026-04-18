@@ -6,9 +6,11 @@ import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
-  { href: '/coach/dashboard', label: 'Mis atletas', icon: '👥' },
-  { href: '/coach/invite',    label: 'Invitar atleta', icon: '➕' },
-  { href: '/coach/settings',  label: 'Configuración', icon: '⚙️' },
+  { href: '/coach/dashboard',   label: 'Mis atletas',       icon: '👥' },
+  { href: '/coach/gym',         label: 'Rutinas gym',        icon: '💪' },
+  { href: '/coach/profile',     label: 'Mi perfil público',  icon: '🌐' },
+  { href: '/coach/clients/new', label: 'Crear asesorado',    icon: '➕' },
+  { href: '/coach/settings',    label: 'Configuración',      icon: '⚙️' },
 ]
 
 type Props = { coachName: string }

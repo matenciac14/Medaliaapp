@@ -4,7 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── AUTH ───────────────────────────────────────────────────────────────────
@@ -21,16 +22,26 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  profile       HealthProfile?
-  goals         Goal[]
-  trainingPlans TrainingPlan[]
-  sessionLogs   SessionLog[]
-  checkIns      WeeklyCheckIn[]
-  nutritionPlan NutritionPlan?
-  coachOf       CoachAthlete[] @relation("CoachRelation")
-  coachedBy     CoachAthlete[] @relation("AthleteRelation")
+  accounts          Account[]
+  sessions          Session[]
+  profile           HealthProfile?
+  goals             Goal[]
+  trainingPlans     TrainingPlan[]
+  sessionLogs       SessionLog[]
+  checkIns          WeeklyCheckIn[]
+  nutritionPlan     NutritionPlan?
+  coachOf           CoachAthlete[]    @relation("CoachRelation")
+  coachedBy         CoachAthlete[]    @relation("AthleteRelation")
+
+  // Gym feature
+  exercises          Exercise[]        @relation("CoachExercises")
+  workoutTemplates   WorkoutTemplate[] @relation("CoachTemplates")
+  coachAssignments   AssignedWorkout[] @relation("CoachAssignments")
+  athleteAssignments AssignedWorkout[] @relation("AthleteAssignments")
+  gymSessions        GymSession[]
+
+  // Marketplace
+  coachProfile       CoachProfile?
 }
 
 enum UserRole {
@@ -275,6 +286,221 @@ model WeeklyCheckIn {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, weekNumber])
+}
+
+// ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
+
+model Exercise {
+  id           String   @id @default(cuid())
+  coachId      String?  // null = librería global, string = ejercicio personalizado del coach
+  name         String
+  muscleGroups String[] // ["QUADRICEPS", "GLUTES", "HAMSTRINGS"]
+  equipment    EquipmentType @default(BARBELL)
+  category     ExerciseCategory @default(COMPOUND)
+  description  String?
+  tips         String?
+  imageUrl     String?
+  isGlobal     Boolean  @default(false) // true = librería base de Medaliq
+
+  coach            User?             @relation("CoachExercises", fields: [coachId], references: [id])
+  workoutExercises WorkoutExercise[]
+
+  createdAt DateTime @default(now())
+}
+
+enum EquipmentType {
+  BARBELL
+  DUMBBELL
+  MACHINE
+  CABLE
+  SMITH
+  BODYWEIGHT
+  KETTLEBELL
+  BAND
+  OTHER
+}
+
+enum ExerciseCategory {
+  COMPOUND
+  ISOLATION
+  CARDIO
+  STRETCH
+  FUNCTIONAL
+}
+
+model WorkoutTemplate {
+  id          String  @id @default(cuid())
+  coachId     String
+  name        String
+  description String?
+  goal        String? // "HYPERTROPHY", "STRENGTH", "TONING", "FUNCTIONAL"
+  level       String? // "BEGINNER", "INTERMEDIATE", "ADVANCED"
+  daysPerWeek Int     @default(6)
+  isActive    Boolean @default(true)
+
+  coach       User             @relation("CoachTemplates", fields: [coachId], references: [id])
+  days        WorkoutDay[]
+  assignments AssignedWorkout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkoutDay {
+  id           String   @id @default(cuid())
+  templateId   String
+  dayOfWeek    Int      // 1=Lunes … 7=Domingo
+  label        String   // "Lunes — Cuádriceps y Gemelos"
+  muscleGroups String[]
+  isRestDay    Boolean  @default(false)
+  warmupNotes  String?
+  cardioNotes  String?
+  order        Int      @default(0)
+
+  template  WorkoutTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercises WorkoutExercise[]
+}
+
+model WorkoutExercise {
+  id           String      @id @default(cuid())
+  dayId        String
+  exerciseId   String
+  order        Int
+  sets         Int         // 4
+  repsScheme   String      // "12-15-18-20" | "12" | "hasta el fallo"
+  restSeconds  Int?        // 90
+  notes        String?
+  setType      SetType     @default(NORMAL)
+  supersetWith String?     // id de otro WorkoutExercise
+
+  day      WorkoutDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercise Exercise   @relation(fields: [exerciseId], references: [id])
+  setLogs  SetLog[]
+}
+
+enum SetType {
+  NORMAL
+  SUPERSET
+  BISERIE
+  DROPSET
+  CIRCUIT
+}
+
+model AssignedWorkout {
+  id            String    @id @default(cuid())
+  templateId    String
+  athleteId     String
+  coachId       String
+  startDate     DateTime
+  endDate       DateTime?
+  weeksDuration Int?
+  isActive      Boolean   @default(true)
+  notes         String?
+
+  template    WorkoutTemplate @relation(fields: [templateId], references: [id])
+  athlete     User            @relation("AthleteAssignments", fields: [athleteId], references: [id])
+  coach       User            @relation("CoachAssignments", fields: [coachId], references: [id])
+  gymSessions GymSession[]
+
+  createdAt DateTime @default(now())
+}
+
+model GymSession {
+  id                String   @id @default(cuid())
+  athleteId         String
+  assignedWorkoutId String
+  dayOfWeek         Int
+  date              DateTime
+  durationMin       Int?
+  rpe               Int?     // 1-10
+  notes             String?
+  completed         Boolean  @default(false)
+
+  athlete         User            @relation(fields: [athleteId], references: [id])
+  assignedWorkout AssignedWorkout @relation(fields: [assignedWorkoutId], references: [id])
+  setLogs         SetLog[]
+
+  createdAt DateTime @default(now())
+}
+
+model SetLog {
+  id                String  @id @default(cuid())
+  sessionId         String
+  workoutExerciseId String
+  setNumber         Int
+  weightKg          Float?
+  repsCompleted     Int?
+  completed         Boolean @default(false)
+  notes             String?
+
+  session         GymSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id])
+}
+
+// ─── MARKETPLACE DE COACHES ─────────────────────────────────────────────────
+
+model CoachProfile {
+  id             String   @id @default(cuid())
+  coachId        String   @unique
+  slug           String   @unique   // "carlos-entrenador"
+  bio            String?
+  avatarUrl      String?
+  headline       String?            // "Especialista en media maratón y recomposición"
+  specialties    String[]           // ["RUNNING", "GYM", "CYCLING", "TRIATHLON", "FUNCTIONAL"]
+  city           String?
+  country        String   @default("CO")
+  whatsapp       String?
+  instagram      String?
+  yearsExp       Int?
+  certifications String[]
+  isPublic       Boolean  @default(false)
+
+  coach    User           @relation(fields: [coachId], references: [id])
+  programs CoachProgram[]
+  posts    CoachPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CoachProgram {
+  id            String   @id @default(cuid())
+  profileId     String
+  name          String   // "Plan Media Maratón — 18 semanas"
+  description   String?
+  sport         String   // "RUNNING", "GYM", "CYCLING", "TRIATHLON", "FUNCTIONAL"
+  level         String   // "BEGINNER", "INTERMEDIATE", "ADVANCED"
+  durationWeeks Int?
+  priceMonth    Float?   // USD/mes
+  currency      String   @default("USD")
+  includes      String[] // ["Plan personalizado", "Check-in semanal", "Chat directo"]
+  isActive      Boolean  @default(true)
+
+  profile CoachProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model CoachPost {
+  id        String   @id @default(cuid())
+  profileId String
+  type      PostType
+  title     String
+  body      String
+  imageUrl  String?
+  tags      String[]
+  isPublic  Boolean  @default(true)
+
+  profile CoachProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+enum PostType {
+  TIP
+  ROUTINE_SHOWCASE
+  ACHIEVEMENT
+  ANNOUNCEMENT
 }
 
 // ─── PLAN NUTRICIONAL ───────────────────────────────────────────────────────

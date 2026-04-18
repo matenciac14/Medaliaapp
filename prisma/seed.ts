@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType } from '../src/generated/prisma/client'
+import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
 import { FULL_ATHLETE_CONFIG, COACH_CONFIG, DEFAULT_USER_CONFIG } from '../src/lib/config/user-config'
@@ -206,6 +206,82 @@ async function main() {
     },
   })
 
+  // ── Ejercicios globales (librería base Medaliq) ───────────────────────────
+  const globalExercises: Array<{
+    id: string
+    name: string
+    muscleGroups: string[]
+    equipment: EquipmentType
+    category: ExerciseCategory
+  }> = [
+    // QUADRICEPS
+    { id: 'global-exercise-sentadilla-frontal',      name: 'Sentadilla frontal',              muscleGroups: ['QUADRICEPS', 'GLUTES'],                   equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-sentadilla-sumo',         name: 'Sentadilla sumo',                 muscleGroups: ['QUADRICEPS', 'GLUTES', 'HAMSTRINGS'],      equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-prensa',                  name: 'Prensa',                          muscleGroups: ['QUADRICEPS', 'GLUTES'],                   equipment: EquipmentType.MACHINE,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-extension-rodillas',      name: 'Extensión de rodillas',           muscleGroups: ['QUADRICEPS'],                             equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-avanzadas',               name: 'Avanzadas (Lunges)',               muscleGroups: ['QUADRICEPS', 'GLUTES'],                   equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-sentadilla-hack',         name: 'Sentadilla hack',                 muscleGroups: ['QUADRICEPS'],                             equipment: EquipmentType.MACHINE,    category: ExerciseCategory.COMPOUND },
+    // HAMSTRINGS
+    { id: 'global-exercise-flexion-rodillas-acostado', name: 'Flexión de rodillas acostado', muscleGroups: ['HAMSTRINGS'],                             equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-flexion-rodillas-sentado',  name: 'Flexión de rodillas sentado',  muscleGroups: ['HAMSTRINGS'],                             equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-peso-muerto',             name: 'Peso muerto',                     muscleGroups: ['HAMSTRINGS', 'GLUTES', 'BACK'],           equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-hip-thrust',              name: 'Hip Thrust',                      muscleGroups: ['GLUTES', 'HAMSTRINGS'],                   equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    // GLUTES
+    { id: 'global-exercise-patada-gluteos-maquina',  name: 'Patada de glúteos en máquina',    muscleGroups: ['GLUTES'],                                 equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-abduccion-maquina',       name: 'Abducción en máquina',            muscleGroups: ['GLUTES'],                                 equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-aduccion-maquina',        name: 'Aducción en máquina',             muscleGroups: ['GLUTES'],                                 equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    // CHEST
+    { id: 'global-exercise-press-plano-barra',       name: 'Press plano con barra',           muscleGroups: ['CHEST'],                                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-press-inclinado-barra',   name: 'Press inclinado con barra',       muscleGroups: ['CHEST'],                                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-press-declinado-mancuernas', name: 'Press declinado con mancuernas', muscleGroups: ['CHEST'],                               equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-cruces-polea-alta',       name: 'Cruces en polea alta',            muscleGroups: ['CHEST'],                                  equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
+    // BACK
+    { id: 'global-exercise-remo-barra',              name: 'Remo con barra',                  muscleGroups: ['BACK'],                                   equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-remo-mancuernas',         name: 'Remo con mancuernas',             muscleGroups: ['BACK'],                                   equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-jalon-polea-alta',        name: 'Jalón polea alta',                muscleGroups: ['BACK'],                                   equipment: EquipmentType.CABLE,      category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-dominadas',               name: 'Dominadas',                       muscleGroups: ['BACK'],                                   equipment: EquipmentType.BODYWEIGHT, category: ExerciseCategory.COMPOUND },
+    // SHOULDERS
+    { id: 'global-exercise-press-militar-barra',     name: 'Press militar con barra',         muscleGroups: ['SHOULDERS'],                              equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-press-arnold',            name: 'Press Arnold',                    muscleGroups: ['SHOULDERS'],                              equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
+    { id: 'global-exercise-elevacion-lateral',       name: 'Elevación lateral',               muscleGroups: ['SHOULDERS'],                              equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-elevacion-frontal',       name: 'Elevación frontal',               muscleGroups: ['SHOULDERS'],                              equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-pajaros',                 name: 'Pájaros (Reverse Fly)',            muscleGroups: ['SHOULDERS'],                              equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    // BICEPS
+    { id: 'global-exercise-flexion-barra-z',         name: 'Flexión de codo con barra Z',     muscleGroups: ['BICEPS'],                                 equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-martillo-mancuernas',     name: 'Martillo con mancuernas',         muscleGroups: ['BICEPS'],                                 equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-concentrado-mancuernas',  name: 'Concentrado con mancuernas',      muscleGroups: ['BICEPS'],                                 equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-predicador',              name: 'Predicador',                      muscleGroups: ['BICEPS'],                                 equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
+    // TRICEPS
+    { id: 'global-exercise-press-frances',           name: 'Press francés',                   muscleGroups: ['TRICEPS'],                                equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-push-down',               name: 'Push down en polea',              muscleGroups: ['TRICEPS'],                                equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-extension-codo',          name: 'Extensión de codo',               muscleGroups: ['TRICEPS'],                                equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-patada-triceps',          name: 'Patada de tríceps',               muscleGroups: ['TRICEPS'],                                equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
+    // CALVES
+    { id: 'global-exercise-elevacion-talones-maquina', name: 'Elevación de talones en máquina', muscleGroups: ['CALVES'],                              equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-extension-plantar-prensa',  name: 'Extensión plantar en prensa',   muscleGroups: ['CALVES'],                                 equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-elevacion-talones-sentado', name: 'Elevación de talones sentado',  muscleGroups: ['CALVES'],                                 equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
+    // ABS
+    { id: 'global-exercise-elevacion-piernas-colgado', name: 'Elevación de piernas colgado',  muscleGroups: ['ABS'],                                    equipment: EquipmentType.BODYWEIGHT, category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-abs-roller',              name: 'Abs roller',                      muscleGroups: ['ABS'],                                    equipment: EquipmentType.OTHER,      category: ExerciseCategory.ISOLATION },
+  ]
+
+  for (const ex of globalExercises) {
+    await prisma.exercise.upsert({
+      where: { id: ex.id },
+      update: { name: ex.name, muscleGroups: ex.muscleGroups, equipment: ex.equipment, category: ex.category },
+      create: {
+        id: ex.id,
+        coachId: null,
+        name: ex.name,
+        muscleGroups: ex.muscleGroups,
+        equipment: ex.equipment,
+        category: ex.category,
+        isGlobal: true,
+      },
+    })
+  }
+
+  console.log(`✅ Ejercicios: ${globalExercises.length} ejercicios globales`)
   console.log(`✅ Coach:    coach@medaliq.com    / coach123`)
   console.log(`✅ Atleta 1: miguel@medaliq.com   / atleta123  (con plan + coach)`)
   console.log(`✅ Atleta 2: ana@medaliq.com      / atleta123  (B2C sin coach)`)

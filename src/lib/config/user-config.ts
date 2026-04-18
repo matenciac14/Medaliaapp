@@ -13,6 +13,7 @@ export type UserConfig = {
     progress: boolean    // Tiene historial suficiente para ver progreso
     log: boolean         // Puede registrar sesiones
     coach: boolean       // Tiene acceso al panel de coach (role COACH)
+    gym: boolean         // Tiene rutina de gym asignada
   }
   sport: {
     type: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL' | null
@@ -44,6 +45,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
     progress: false,
     log: false,
     coach: false,
+    gym: false,
   },
   sport: {
     type: null,
@@ -75,6 +77,7 @@ export const FULL_ATHLETE_CONFIG: UserConfig = {
     progress: true,
     log: true,
     coach: false,
+    gym: true,
   },
   sport: {
     type: 'RUNNING',
@@ -106,6 +109,7 @@ export const COACH_CONFIG: UserConfig = {
     progress: false,
     log: false,
     coach: true,
+    gym: false,
   },
   sport: { type: null, goal: null },
   plan: { activePlanId: null, currentWeek: 0, totalWeeks: 0, phase: null },

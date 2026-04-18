@@ -14,7 +14,9 @@ export default auth((req) => {
   const isPublicRoute =
     PUBLIC_ROUTES.includes(pathname) ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/join')
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/coaches') ||
+    pathname.startsWith('/p/')
 
   // Redirige a login si no autenticado en ruta privada
   if (!isLoggedIn && !isPublicRoute) {
@@ -40,6 +42,17 @@ export default auth((req) => {
     // Rutas de admin solo para role ADMIN
     if (pathname.startsWith('/admin') && (session?.user as any)?.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/dashboard', nextUrl))
+    }
+
+    // Admin siempre va a /admin, nunca al dashboard de atleta
+    const role = (session.user as any).role
+    if (role === 'ADMIN' && !pathname.startsWith('/admin') && !isPublicRoute && !pathname.startsWith('/api')) {
+      return NextResponse.redirect(new URL('/admin', nextUrl))
+    }
+
+    // Coach que intenta ir al dashboard de atleta → su propio dashboard
+    if (role === 'COACH' && pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/coach/dashboard', nextUrl))
     }
   }
 
