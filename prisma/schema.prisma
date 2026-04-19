@@ -228,6 +228,7 @@ model PlannedSession {
   zoneTarget  String?
   structure   String?
   detailText  String?
+  coachNote   String?
   date        DateTime
 
   week PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)

@@ -110,11 +110,13 @@ export default async function AthleteDetailPage({
           focusDescription: week.focusDescription,
           isRecoveryWeek: week.isRecoveryWeek,
           sessions: week.sessions.map((s) => ({
+            id: s.id,
             dayOfWeek: s.dayOfWeek,
             type: s.type,
             durationMin: s.durationMin,
             detailText: s.detailText,
             zoneTarget: s.zoneTarget,
+            coachNote: s.coachNote,
           })),
         })),
       }

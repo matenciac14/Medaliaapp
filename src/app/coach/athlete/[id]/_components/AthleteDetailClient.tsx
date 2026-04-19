@@ -30,11 +30,13 @@ export type PlanWeekData = {
   focusDescription: string | null
   isRecoveryWeek: boolean
   sessions: {
+    id: string
     dayOfWeek: number
     type: string
     durationMin: number
     detailText: string | null
     zoneTarget: string | null
+    coachNote: string | null
   }[]
 }
 
@@ -142,8 +144,19 @@ export default function AthleteDetailClient({
   initialFeatures,
 }: AthleteDetailClientProps) {
   const [activeTab, setActiveTab] = useState('Resumen')
-  const [notes, setNotes] = useState<Record<string, string>>({})
+
+  // Initialize notes from server data (persisted coachNotes)
+  const [notes, setNotes] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    activePlan?.weeks.forEach((w) => {
+      w.sessions.forEach((s) => {
+        if (s.coachNote) initial[s.id] = s.coachNote
+      })
+    })
+    return initial
+  })
   const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({})
+  const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
 
   // Gym tab state
   const [gymLogs, setGymLogs] = useState<GymExerciseLog[]>([])
@@ -163,13 +176,23 @@ export default function AthleteDetailClient({
       .finally(() => setGymLoading(false))
   }, [activeTab, gymLoaded, athleteId])
 
-  function handleNoteChange(key: string, value: string) {
-    setNotes((prev) => ({ ...prev, [key]: value }))
-    setSavedNotes((prev) => ({ ...prev, [key]: false }))
+  function handleNoteChange(sessionId: string, value: string) {
+    setNotes((prev) => ({ ...prev, [sessionId]: value }))
+    setSavedNotes((prev) => ({ ...prev, [sessionId]: false }))
   }
 
-  function handleSaveNote(key: string) {
-    setSavedNotes((prev) => ({ ...prev, [key]: true }))
+  async function handleSaveNote(sessionId: string) {
+    setSavingNotes((prev) => ({ ...prev, [sessionId]: true }))
+    try {
+      await fetch(`/api/coach/sessions/${sessionId}/note`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: notes[sessionId] ?? '' }),
+      })
+      setSavedNotes((prev) => ({ ...prev, [sessionId]: true }))
+    } finally {
+      setSavingNotes((prev) => ({ ...prev, [sessionId]: false }))
+    }
   }
 
   // HR zones calculation
@@ -418,44 +441,42 @@ export default function AthleteDetailClient({
                   <p className="text-xs text-gray-500 mb-3">{week.focusDescription}</p>
                 )}
                 <div className="space-y-4">
-                  {week.sessions.map((session, si) => {
-                    const noteKey = `${week.weekNumber}-${si}`
-                    return (
-                      <div key={si} className="border-l-2 pl-4" style={{ borderColor: '#f97316' }}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-gray-400 uppercase">
-                            {DAY_NAMES[session.dayOfWeek] ?? `Día ${session.dayOfWeek}`}
-                          </span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {SESSION_TYPE_LABELS[session.type] ?? session.type}
-                          </span>
-                          <span className="text-xs text-gray-400">{session.durationMin} min</span>
-                        </div>
-                        {session.detailText && (
-                          <p className="text-xs text-gray-500 mb-2">{session.detailText}</p>
-                        )}
-                        {session.zoneTarget && (
-                          <p className="text-xs text-blue-600 mb-2">Zona: {session.zoneTarget}</p>
-                        )}
-                        <div className="flex gap-2 items-start">
-                          <textarea
-                            rows={2}
-                            placeholder="Nota del coach..."
-                            value={notes[noteKey] ?? ''}
-                            onChange={(e) => handleNoteChange(noteKey, e.target.value)}
-                            className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-700 placeholder-gray-300"
-                          />
-                          <button
-                            onClick={() => handleSaveNote(noteKey)}
-                            className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
-                            style={{ backgroundColor: savedNotes[noteKey] ? '#16a34a' : '#1e3a5f' }}
-                          >
-                            {savedNotes[noteKey] ? '✓ Guardado' : 'Guardar nota'}
-                          </button>
-                        </div>
+                  {week.sessions.map((session) => (
+                    <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#f97316' }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-gray-400 uppercase">
+                          {DAY_NAMES[session.dayOfWeek] ?? `Día ${session.dayOfWeek}`}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {SESSION_TYPE_LABELS[session.type] ?? session.type}
+                        </span>
+                        <span className="text-xs text-gray-400">{session.durationMin} min</span>
                       </div>
-                    )
-                  })}
+                      {session.detailText && (
+                        <p className="text-xs text-gray-500 mb-2">{session.detailText}</p>
+                      )}
+                      {session.zoneTarget && (
+                        <p className="text-xs text-blue-600 mb-2">Zona: {session.zoneTarget}</p>
+                      )}
+                      <div className="flex gap-2 items-start">
+                        <textarea
+                          rows={2}
+                          placeholder="Nota del coach..."
+                          value={notes[session.id] ?? ''}
+                          onChange={(e) => handleNoteChange(session.id, e.target.value)}
+                          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-700 placeholder-gray-300"
+                        />
+                        <button
+                          onClick={() => handleSaveNote(session.id)}
+                          disabled={savingNotes[session.id]}
+                          className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                          style={{ backgroundColor: savedNotes[session.id] ? '#16a34a' : '#1e3a5f' }}
+                        >
+                          {savingNotes[session.id] ? '...' : savedNotes[session.id] ? '✓ Guardado' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                   {week.sessions.length === 0 && (
                     <p className="text-xs text-gray-400">Sin sesiones planificadas para esta semana</p>
                   )}
