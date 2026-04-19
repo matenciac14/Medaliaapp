@@ -158,6 +158,11 @@ export default function AthleteDetailClient({
   const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({})
   const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
 
+  // Nutrition edit state
+  const [editingNutrition, setEditingNutrition] = useState(false)
+  const [nutritionDraft, setNutritionDraft] = useState<NutritionPlanData>(nutritionPlan)
+  const [savingNutrition, setSavingNutrition] = useState(false)
+
   // Gym tab state
   const [gymLogs, setGymLogs] = useState<GymExerciseLog[]>([])
   const [gymLoading, setGymLoading] = useState(false)
@@ -192,6 +197,23 @@ export default function AthleteDetailClient({
       setSavedNotes((prev) => ({ ...prev, [sessionId]: true }))
     } finally {
       setSavingNotes((prev) => ({ ...prev, [sessionId]: false }))
+    }
+  }
+
+  async function handleSaveNutrition() {
+    if (!nutritionDraft) return
+    setSavingNutrition(true)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/nutrition`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nutritionDraft),
+      })
+      if (res.ok) {
+        setEditingNutrition(false)
+      }
+    } finally {
+      setSavingNutrition(false)
     }
   }
 
@@ -617,28 +639,84 @@ export default function AthleteDetailClient({
             <>
               {/* TDEE & targets */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <h2 className="font-semibold text-gray-900 mb-4">Targets calóricos</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <Stat label="TDEE base" value={`${nutritionPlan.tdee} kcal`} />
-                  <Stat label="Día duro" value={`${nutritionPlan.targetKcalHard} kcal`} />
-                  <Stat label="Día fácil" value={`${nutritionPlan.targetKcalEasy} kcal`} />
-                  <Stat label="Día descanso" value={`${nutritionPlan.targetKcalRest} kcal`} />
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-gray-900">Targets calóricos</h2>
+                  {!editingNutrition && (
+                    <button
+                      onClick={() => { setNutritionDraft(nutritionPlan); setEditingNutrition(true) }}
+                      className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                    >
+                      ✏️ Editar
+                    </button>
+                  )}
                 </div>
+                {editingNutrition && nutritionDraft ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: 'tdee', label: 'TDEE base (kcal)' },
+                        { key: 'targetKcalHard', label: 'Día duro (kcal)' },
+                        { key: 'targetKcalEasy', label: 'Día fácil (kcal)' },
+                        { key: 'targetKcalRest', label: 'Día descanso (kcal)' },
+                        { key: 'proteinG', label: 'Proteína (g)' },
+                        { key: 'carbsHardG', label: 'Carbs duro (g)' },
+                        { key: 'carbsEasyG', label: 'Carbs fácil (g)' },
+                        { key: 'fatG', label: 'Grasas (g)' },
+                      ].map(({ key, label }) => (
+                        <div key={key}>
+                          <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={(nutritionDraft as Record<string, number>)[key] ?? ''}
+                            onChange={(e) => setNutritionDraft((prev) => prev ? { ...prev, [key]: Number(e.target.value) } : prev)}
+                            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => setEditingNutrition(false)}
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveNutrition}
+                        disabled={savingNutrition}
+                        className="flex-1 px-3 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60 transition-opacity"
+                        style={{ backgroundColor: '#1e3a5f' }}
+                      >
+                        {savingNutrition ? 'Guardando...' : 'Guardar cambios'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <Stat label="TDEE base" value={`${nutritionPlan.tdee} kcal`} />
+                    <Stat label="Día duro" value={`${nutritionPlan.targetKcalHard} kcal`} />
+                    <Stat label="Día fácil" value={`${nutritionPlan.targetKcalEasy} kcal`} />
+                    <Stat label="Día descanso" value={`${nutritionPlan.targetKcalRest} kcal`} />
+                  </div>
+                )}
               </div>
 
-              {/* Macros */}
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <h2 className="font-semibold text-gray-900 mb-4">Macronutrientes</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <Stat label="Proteína" value={`${nutritionPlan.proteinG} g`} />
-                  <Stat label="Carbs (duro)" value={`${nutritionPlan.carbsHardG} g`} />
-                  <Stat label="Carbs (fácil)" value={`${nutritionPlan.carbsEasyG} g`} />
-                  <Stat label="Grasas" value={`${nutritionPlan.fatG} g`} />
+              {/* Macros — solo en modo vista */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Macronutrientes</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <Stat label="Proteína" value={`${nutritionPlan.proteinG} g`} />
+                    <Stat label="Carbs (duro)" value={`${nutritionPlan.carbsHardG} g`} />
+                    <Stat label="Carbs (fácil)" value={`${nutritionPlan.carbsEasyG} g`} />
+                    <Stat label="Grasas" value={`${nutritionPlan.fatG} g`} />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Context */}
-              {healthProfile && (
+              {healthProfile && !editingNutrition && (
                 <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 text-sm text-gray-600">
                   <p>
                     Calculado para{' '}

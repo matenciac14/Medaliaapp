@@ -31,6 +31,23 @@ export type Translations = {
       card2Desc: string
       card3Title: string
       card3Desc: string
+      // Tab-based profile switcher
+      tab1Label: string
+      tab1Title: string
+      tab1Desc: string
+      tab1Gets: string
+      tab2Label: string
+      tab2Title: string
+      tab2Desc: string
+      tab2Gets: string
+      tab3Label: string
+      tab3Title: string
+      tab3Desc: string
+      tab3Gets: string
+      tab4Label: string
+      tab4Title: string
+      tab4Desc: string
+      tab4Gets: string
     }
     howItWorks: {
       title: string
@@ -43,6 +60,8 @@ export type Translations = {
       step3Desc: string
       step4Title: string
       step4Desc: string
+      step5Title: string
+      step5Desc: string
     }
     features: {
       title: string
@@ -112,6 +131,19 @@ export type Translations = {
       coachF3: string
       coachF4: string
       coachF5: string
+      // Trial tier
+      trialLabel: string
+      trialPeriod: string
+      trialBadge: string
+      trialCta: string
+      trialF1: string
+      trialF2: string
+      trialF3: string
+      trialF4: string
+      trialF5: string
+      // Coach tier new fields
+      perAthlete: string
+      forCoachesLabel: string
     }
     finalCta: {
       title: string

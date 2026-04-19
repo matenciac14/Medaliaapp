@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import RevealOnScroll from "./_components/RevealOnScroll";
 import { getT } from "@/lib/i18n/server";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
+import ProfileTabs from "./_components/ProfileTabs";
 
 export default async function Home() {
   const t = await getT()
@@ -117,7 +118,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ¿Para quién es? */}
+      {/* ¿Para quién es? — Interactive tab switcher */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <RevealOnScroll>
@@ -126,62 +127,73 @@ export default async function Home() {
             </h2>
             <p className="text-center text-gray-500 mb-12 text-base">{l.profiles.subtitle}</p>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                emoji: '🏃',
-                title: l.profiles.card1Title,
-                desc: l.profiles.card1Desc,
-                delay: 0,
-              },
-              {
-                emoji: '🚴',
-                title: l.profiles.card2Title,
-                desc: l.profiles.card2Desc,
-                delay: 100,
-              },
-              {
-                emoji: '📋',
-                title: l.profiles.card3Title,
-                desc: l.profiles.card3Desc,
-                delay: 200,
-              },
-            ].map(({ emoji, title, desc, delay }) => (
-              <RevealOnScroll key={title} delay={delay}>
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full">
-                  <div className="text-4xl mb-4">{emoji}</div>
-                  <h3 className="text-xl font-bold text-[#1e3a5f] mb-2">{title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
-                </div>
-              </RevealOnScroll>
-            ))}
-          </div>
+          <RevealOnScroll delay={100}>
+            <ProfileTabs
+              ctaLabel={l.pricing.trialCta}
+              tabs={[
+                {
+                  label: l.profiles.tab1Label,
+                  title: l.profiles.tab1Title,
+                  desc: l.profiles.tab1Desc,
+                  gets: l.profiles.tab1Gets,
+                },
+                {
+                  label: l.profiles.tab2Label,
+                  title: l.profiles.tab2Title,
+                  desc: l.profiles.tab2Desc,
+                  gets: l.profiles.tab2Gets,
+                },
+                {
+                  label: l.profiles.tab3Label,
+                  title: l.profiles.tab3Title,
+                  desc: l.profiles.tab3Desc,
+                  gets: l.profiles.tab3Gets,
+                },
+                {
+                  label: l.profiles.tab4Label,
+                  title: l.profiles.tab4Title,
+                  desc: l.profiles.tab4Desc,
+                  gets: l.profiles.tab4Gets,
+                },
+              ]}
+            />
+          </RevealOnScroll>
         </div>
       </section>
 
       {/* Cómo funciona */}
       <section id="como-funciona" className="py-20 px-4 bg-white">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
               {l.howItWorks.title}
             </h2>
             <p className="text-center text-gray-500 mb-14 text-base">{l.howItWorks.subtitle}</p>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="flex flex-col gap-0">
             {[
-              { step: "01", title: l.howItWorks.step1Title, desc: l.howItWorks.step1Desc, delay: 0 },
-              { step: "02", title: l.howItWorks.step2Title, desc: l.howItWorks.step2Desc, delay: 100 },
-              { step: "03", title: l.howItWorks.step3Title, desc: l.howItWorks.step3Desc, delay: 200 },
-              { step: "04", title: l.howItWorks.step4Title, desc: l.howItWorks.step4Desc, delay: 300 },
-            ].map((item) => (
+              { step: "1", title: l.howItWorks.step1Title, desc: l.howItWorks.step1Desc, delay: 0 },
+              { step: "2", title: l.howItWorks.step2Title, desc: l.howItWorks.step2Desc, delay: 80 },
+              { step: "3", title: l.howItWorks.step3Title, desc: l.howItWorks.step3Desc, delay: 160 },
+              { step: "4", title: l.howItWorks.step4Title, desc: l.howItWorks.step4Desc, delay: 240 },
+              { step: "5", title: l.howItWorks.step5Title, desc: l.howItWorks.step5Desc, delay: 320 },
+            ].map((item, idx, arr) => (
               <RevealOnScroll key={item.step} delay={item.delay}>
-                <div className="flex flex-col gap-3 group">
-                  <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold shrink-0 group-hover:bg-[#f97316] transition-colors duration-300">
-                    {item.step}
+                <div className="flex gap-5 group">
+                  {/* Step number + connector */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold group-hover:bg-[#f97316] transition-colors duration-300 z-10">
+                      {item.step}
+                    </div>
+                    {idx < arr.length - 1 && (
+                      <div className="w-0.5 flex-1 bg-gradient-to-b from-[#1e3a5f]/30 to-transparent my-1" style={{ minHeight: '2.5rem' }} />
+                    )}
                   </div>
-                  <h3 className="text-base font-bold text-[#1e3a5f]">{item.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  {/* Content */}
+                  <div className="pb-8">
+                    <h3 className="text-base font-bold text-[#1e3a5f] mt-2 mb-1">{item.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
               </RevealOnScroll>
             ))}
@@ -384,13 +396,16 @@ export default async function Home() {
 
       {/* Pricing */}
       <section id="precios" className="py-20 px-4 bg-gray-50">
-        <div className="max-w-5xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto text-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">{l.pricing.title}</h2>
             <p className="text-gray-500 mb-12 text-base">{l.pricing.subtitle}</p>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Free */}
+
+          {/* Atletas row — Free + Trial + Pro */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+            {/* Free (after trial) */}
             <RevealOnScroll>
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col hover:shadow-md transition-shadow h-full">
                 <div className="mb-4">
@@ -413,11 +428,42 @@ export default async function Home() {
               </div>
             </RevealOnScroll>
 
-            {/* Pro */}
-            <RevealOnScroll delay={100}>
-              <div className="bg-[#1e3a5f] rounded-2xl p-6 border-2 border-[#f97316] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#f97316] text-white text-xs font-bold px-4 py-1 rounded-full">{l.pricing.popular}</span>
+            {/* Trial 30 días — "Empieza aquí" */}
+            <RevealOnScroll delay={80}>
+              <div className="rounded-2xl p-6 border-2 border-[#f97316] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full"
+                style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fff 60%)' }}>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <span className="bg-[#f97316] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">
+                    {l.pricing.trialBadge}
+                  </span>
+                </div>
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-orange-500 uppercase tracking-widest">{l.pricing.trialLabel}</span>
+                  <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$0</div>
+                  <div className="text-orange-500 text-sm font-medium">{l.pricing.trialPeriod}</div>
+                </div>
+                <ul className="space-y-3 text-sm text-gray-700 flex-1 mb-6">
+                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF1}</li>
+                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF2}</li>
+                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF3}</li>
+                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF4}</li>
+                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF5}</li>
+                </ul>
+                <a href="/onboarding">
+                  <Button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold anim-pulse-cta">
+                    {l.pricing.trialCta}
+                  </Button>
+                </a>
+              </div>
+            </RevealOnScroll>
+
+            {/* Pro — most popular */}
+            <RevealOnScroll delay={160}>
+              <div className="bg-[#1e3a5f] rounded-2xl p-6 border-2 border-[#1e3a5f] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <span className="bg-white text-[#1e3a5f] text-xs font-bold px-4 py-1 rounded-full border border-[#1e3a5f]">
+                    {l.pricing.popular}
+                  </span>
                 </div>
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-blue-300 uppercase tracking-widest">{l.pricing.proLabel}</span>
@@ -438,30 +484,41 @@ export default async function Home() {
                 </a>
               </div>
             </RevealOnScroll>
-
-            {/* Coach */}
-            <RevealOnScroll delay={200}>
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col hover:shadow-md transition-shadow h-full">
-                <div className="mb-4">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{l.pricing.coachLabel}</span>
-                  <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$49</div>
-                  <div className="text-gray-400 text-sm">{l.pricing.coachPeriod}</div>
-                </div>
-                <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-6">
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.coachF1}</li>
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.coachF2}</li>
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.coachF3}</li>
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.coachF4}</li>
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.coachF5}</li>
-                </ul>
-                <a href="/onboarding">
-                  <Button variant="outline" className="w-full border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors">
-                    {l.pricing.coachCta}
-                  </Button>
-                </a>
-              </div>
-            </RevealOnScroll>
           </div>
+
+          {/* Coach tier — full width card */}
+          <RevealOnScroll delay={200}>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow p-6 md:p-8 text-left">
+              <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
+                <div className="shrink-0">
+                  <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-2">
+                    {l.pricing.forCoachesLabel}
+                  </div>
+                  <div className="text-5xl font-extrabold text-[#1e3a5f]">
+                    $6
+                  </div>
+                  <div className="text-gray-500 text-sm mt-1">{l.pricing.perAthlete}</div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-[#1e3a5f] mb-3">{l.pricing.coachLabel}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-2 gap-x-6">
+                    {[l.pricing.coachF1, l.pricing.coachF2, l.pricing.coachF3, l.pricing.coachF4, l.pricing.coachF5].map((f) => (
+                      <div key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="text-green-500 shrink-0">✓</span> {f}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <a href="/onboarding">
+                    <Button variant="outline" className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap">
+                      {l.pricing.coachCta}
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </RevealOnScroll>
         </div>
       </section>
 
