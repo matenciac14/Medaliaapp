@@ -74,7 +74,7 @@ export function AdminSidebarClient() {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-20" style={{ backgroundColor: '#111827' }}>
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#111827' }}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>
             M

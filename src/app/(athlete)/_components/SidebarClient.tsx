@@ -91,7 +91,7 @@ export default function SidebarClient({ user, config }: Props) {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white sticky top-0 z-20">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-[#f97316] flex items-center justify-center font-bold text-white text-xs">M</div>
           <span className="text-lg font-bold">Medaliq</span>
