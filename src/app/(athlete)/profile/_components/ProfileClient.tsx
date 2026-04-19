@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Scale, Heart, Moon, Zap, AlertTriangle, Target, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { User, Scale, Heart, Moon, Zap, AlertTriangle, Target, ChevronDown, ChevronUp, Check, Pencil, X } from 'lucide-react'
 
 type DailyLog = {
   id: string
@@ -56,6 +56,47 @@ export default function ProfileClient({ user }: Props) {
   const [saved, setSaved] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
+  // Edición de perfil base
+  const p = user.profile
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState({
+    age: p?.age?.toString() ?? '',
+    heightCm: p?.heightCm?.toString() ?? '',
+    weightKg: p?.weightKg?.toString() ?? '',
+    weightGoalKg: p?.weightGoalKg?.toString() ?? '',
+    hrResting: p?.hrResting?.toString() ?? '',
+    hrMax: p?.hrMax?.toString() ?? '',
+    injuries: p?.injuries?.join(', ') ?? '',
+    conditions: p?.conditions?.join(', ') ?? '',
+  })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savedProfile, setSavedProfile] = useState(false)
+
+  async function handleSaveProfile() {
+    setSavingProfile(true)
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          age: profileForm.age || undefined,
+          heightCm: profileForm.heightCm || undefined,
+          weightKg: profileForm.weightKg || undefined,
+          weightGoalKg: profileForm.weightGoalKg || undefined,
+          hrResting: profileForm.hrResting || undefined,
+          hrMax: profileForm.hrMax || undefined,
+          injuries: profileForm.injuries ? profileForm.injuries.split(',').map(s => s.trim()).filter(Boolean) : [],
+          conditions: profileForm.conditions ? profileForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : [],
+        }),
+      })
+      setSavedProfile(true)
+      setEditingProfile(false)
+      setTimeout(() => setSavedProfile(false), 2500)
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     try {
@@ -77,8 +118,6 @@ export default function ProfileClient({ user }: Props) {
       setSaving(false)
     }
   }
-
-  const p = user.profile
 
   // Calcular completitud del perfil
   const profileFields = [
@@ -129,45 +168,110 @@ export default function ProfileClient({ user }: Props) {
       </div>
 
       {/* Datos del perfil de salud */}
-      {p && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User size={16} className="text-[#1e3a5f]" />
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Datos de salud</h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500 text-xs">Edad</span><p className="font-semibold">{p.age} años</p></div>
-            <div><span className="text-gray-500 text-xs">Altura</span><p className="font-semibold">{p.heightCm} cm</p></div>
-            <div><span className="text-gray-500 text-xs">Peso actual</span><p className="font-semibold">{p.weightKg} kg</p></div>
-            <div><span className="text-gray-500 text-xs">Peso objetivo</span><p className="font-semibold">{p.weightGoalKg ?? '—'} kg</p></div>
-            <div><span className="text-gray-500 text-xs">FC reposo</span><p className="font-semibold">{p.hrResting ?? '—'} bpm</p></div>
-            <div><span className="text-gray-500 text-xs">FC máxima</span><p className="font-semibold">{p.hrMax ?? '—'} bpm</p></div>
-          </div>
-
-          {(p.injuries.length > 0 || p.conditions.length > 0) && (
-            <div className="pt-3 border-t border-gray-100 space-y-2">
-              {p.injuries.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700">Lesiones</p>
-                    <p className="text-xs text-gray-500">{p.injuries.join(', ')}</p>
-                  </div>
-                </div>
-              )}
-              {p.conditions.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700">Condiciones médicas</p>
-                    <p className="text-xs text-gray-500">{p.conditions.join(', ')}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <button
+            onClick={() => setEditingProfile(!editingProfile)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-[#1e3a5f] transition-colors"
+          >
+            {editingProfile ? <><X size={14} /> Cancelar</> : <><Pencil size={14} /> Editar</>}
+          </button>
         </div>
-      )}
+
+        {editingProfile ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Edad (años)', key: 'age', type: 'number', placeholder: '30' },
+                { label: 'Altura (cm)', key: 'heightCm', type: 'number', placeholder: '175' },
+                { label: 'Peso actual (kg)', key: 'weightKg', type: 'number', placeholder: '75.0', step: '0.1' },
+                { label: 'Peso objetivo (kg)', key: 'weightGoalKg', type: 'number', placeholder: '70.0', step: '0.1' },
+                { label: 'FC reposo (bpm)', key: 'hrResting', type: 'number', placeholder: '55' },
+                { label: 'FC máxima (bpm)', key: 'hrMax', type: 'number', placeholder: '185' },
+              ].map(({ label, key, type, placeholder, step }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">{label}</label>
+                  <input
+                    type={type}
+                    step={step}
+                    placeholder={placeholder}
+                    value={profileForm[key as keyof typeof profileForm]}
+                    onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Lesiones (separadas por coma)</label>
+              <input
+                type="text"
+                placeholder="Ej: rodilla derecha, fascitis plantar"
+                value={profileForm.injuries}
+                onChange={e => setProfileForm(f => ({ ...f, injuries: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Condiciones médicas (separadas por coma)</label>
+              <input
+                type="text"
+                placeholder="Ej: hipertensión, diabetes"
+                value={profileForm.conditions}
+                onChange={e => setProfileForm(f => ({ ...f, conditions: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
+              />
+            </div>
+            <button
+              onClick={handleSaveProfile}
+              disabled={savingProfile}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ backgroundColor: savedProfile ? '#22c55e' : '#1e3a5f' }}
+            >
+              {savedProfile ? <><Check size={16} /> Guardado</> : savingProfile ? 'Guardando...' : 'Guardar perfil'}
+            </button>
+          </div>
+        ) : p ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-gray-500 text-xs">Edad</span><p className="font-semibold">{p.age} años</p></div>
+              <div><span className="text-gray-500 text-xs">Altura</span><p className="font-semibold">{p.heightCm} cm</p></div>
+              <div><span className="text-gray-500 text-xs">Peso actual</span><p className="font-semibold">{p.weightKg} kg</p></div>
+              <div><span className="text-gray-500 text-xs">Peso objetivo</span><p className="font-semibold">{p.weightGoalKg ?? '—'} kg</p></div>
+              <div><span className="text-gray-500 text-xs">FC reposo</span><p className="font-semibold">{p.hrResting ?? '—'} bpm</p></div>
+              <div><span className="text-gray-500 text-xs">FC máxima</span><p className="font-semibold">{p.hrMax ?? '—'} bpm</p></div>
+            </div>
+            {(p.injuries.length > 0 || p.conditions.length > 0) && (
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                {p.injuries.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700">Lesiones</p>
+                      <p className="text-xs text-gray-500">{p.injuries.join(', ')}</p>
+                    </div>
+                  </div>
+                )}
+                {p.conditions.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700">Condiciones médicas</p>
+                      <p className="text-xs text-gray-500">{p.conditions.join(', ')}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">No hay datos de perfil. <button onClick={() => setEditingProfile(true)} className="text-[#f97316] font-medium underline">Agregar datos →</button></p>
+        )}
+      </div>
 
       {/* Formulario de métricas diarias */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
