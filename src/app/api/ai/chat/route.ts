@@ -1,12 +1,19 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import Anthropic from '@anthropic-ai/sdk'
+import { rateLimit } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) return new Response('Unauthorized', { status: 401 })
+
+  const userId = session.user.id
+  const { allowed } = rateLimit(`ai-chat:${userId}`, { limit: 20, windowMs: 60_000 })
+  if (!allowed) {
+    return Response.json({ error: 'Límite de mensajes alcanzado. Intenta en un minuto.' }, { status: 429 })
+  }
 
   const { messages } = await req.json()
 
