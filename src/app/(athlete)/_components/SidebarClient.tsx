@@ -98,10 +98,10 @@ export default function SidebarClient({ user, config }: Props) {
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-sm font-bold"
-          title="Cerrar sesión"
+          className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
         >
-          {user.name.charAt(0).toUpperCase()}
+          <LogOut size={16} />
+          <span>Salir</span>
         </button>
       </header>
 
