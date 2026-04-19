@@ -411,13 +411,22 @@ export default function AthleteDetailClient({
         <div className="space-y-6">
           {/* Review CTA */}
           <div className="flex justify-end">
-            <Link
-              href={`/coach/plan/${athleteId}/review`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1e3a5f' }}
-            >
-              Revisar y aprobar →
-            </Link>
+            {activePlan ? (
+              <Link
+                href={`/coach/plan/${activePlan.id}/review`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Revisar y aprobar →
+              </Link>
+            ) : (
+              <span
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white opacity-40 cursor-not-allowed"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Revisar y aprobar →
+              </span>
+            )}
           </div>
 
           {!activePlan ? (
