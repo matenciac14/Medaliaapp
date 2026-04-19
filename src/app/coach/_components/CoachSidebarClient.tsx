@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -69,7 +70,10 @@ export default function CoachSidebarClient({ coachName }: Props) {
           <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>M</div>
           <span className="text-white font-bold text-base">Medaliq Coach</span>
         </Link>
-        <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#f97316' }}>{initials}</button>
+        <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors">
+          <LogOut size={16} />
+          <span>Salir</span>
+        </button>
       </div>
 
       {/* Mobile bottom nav */}

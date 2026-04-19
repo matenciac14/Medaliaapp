@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { LogOut } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/admin',               label: 'Overview',       icon: '📊' },
@@ -25,7 +26,7 @@ export function AdminSidebarClient() {
       {/* ── Sidebar desktop ── */}
       <aside
         className="hidden lg:flex lg:flex-col w-64 h-screen sticky top-0 overflow-y-auto shrink-0"
-        style={{ backgroundColor: '#111827' }}
+        style={{ backgroundColor: '#1e3a5f' }}
       >
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center gap-2">
@@ -74,7 +75,7 @@ export function AdminSidebarClient() {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#111827' }}>
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>
             M
@@ -85,19 +86,20 @@ export function AdminSidebarClient() {
         </div>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="text-xs text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg"
+          className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
         >
-          Salir
+          <LogOut size={16} />
+          <span>Salir</span>
         </button>
       </header>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 flex z-20">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[9px] font-medium transition-colors"
+            className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors"
             style={{ color: isActive(item.href) ? '#f97316' : '#6b7280' }}
           >
             <span className="text-base leading-none">{item.icon}</span>
