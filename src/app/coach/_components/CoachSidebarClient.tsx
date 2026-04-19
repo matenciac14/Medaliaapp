@@ -23,7 +23,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
     <>
       {/* Sidebar — desktop */}
       <aside
-        className="hidden md:flex md:flex-col w-64 fixed inset-y-0 left-0 z-10 shadow-lg"
+        className="hidden lg:flex lg:flex-col w-64 fixed inset-y-0 left-0 z-10 shadow-lg"
         style={{ backgroundColor: '#1e3a5f' }}
       >
         <div className="px-6 py-5 border-b border-white/10">
@@ -64,7 +64,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
         <Link href="/coach/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>M</div>
           <span className="text-white font-bold text-base">Medaliq Coach</span>
@@ -73,7 +73,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-10">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-10">
         {navLinks.map(({ href, label, icon }) => {
           const isActive = pathname === href || (href !== '/coach/dashboard' && pathname.startsWith(href))
           return (

@@ -13,7 +13,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: '#f8fafc' }}>
       <CoachSidebarClient coachName={coachName} />
-      <main className="flex-1 md:ml-64 pt-14 md:pt-0 min-h-screen">
+      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
         {children}
       </main>
     </div>
