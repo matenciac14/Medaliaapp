@@ -102,17 +102,17 @@ export default function AthleteDetailPage({ params }: { params: { id: string } }
   ]
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-4 py-4 lg:p-6 max-w-4xl mx-auto">
       {/* Back */}
       <Link
         href="/coach/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
       >
         ← Volver al panel
       </Link>
 
       {/* Athlete header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
           style={{ backgroundColor: '#1e3a5f' }}
@@ -126,12 +126,12 @@ export default function AthleteDetailPage({ params }: { params: { id: string } }
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 mb-6">
+      <div className="flex gap-1 border-b border-gray-200 mb-5 overflow-x-auto scrollbar-none">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors"
+            className="px-3 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap shrink-0"
             style={
               activeTab === t
                 ? { color: '#1e3a5f', borderBottom: '2px solid #1e3a5f', marginBottom: '-1px' }
