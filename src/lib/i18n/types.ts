@@ -147,6 +147,7 @@ export type Translations = {
       newAthlete: string
       activations: string
       ai: string
+      roadmap: string
     }
     common: {
       loading: string

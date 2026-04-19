@@ -147,6 +147,7 @@ export const en: Translations = {
       newAthlete: 'New',
       activations: 'Activations',
       ai: 'AI Settings',
+      roadmap: 'Roadmap',
     },
     common: {
       loading: 'Loading...',

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map } from 'lucide-react'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
@@ -19,6 +19,7 @@ export function AdminSidebarClient() {
     { href: '/admin/coaches',       label: s.coaches,        icon: UserCheck       },
     { href: '/admin/subscriptions', label: s.subscriptions,  icon: CreditCard      },
     { href: '/admin/ai',            label: s.ai,             icon: Bot             },
+    { href: '/admin/roadmap',       label: s.roadmap,        icon: Map             },
     { href: '/admin/settings',      label: s.settings,       icon: Settings        },
     { href: '/admin/help',          label: s.help,           icon: HelpCircle      },
   ]
