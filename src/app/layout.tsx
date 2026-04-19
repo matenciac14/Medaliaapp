@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getServerLocale } from "@/lib/i18n/server";
-import { LanguageProvider } from "./_components/LanguageContext";
+import Providers from "./_components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +32,9 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <LanguageProvider initialLocale={locale}>
+        <Providers initialLocale={locale}>
           {children}
-        </LanguageProvider>
+        </Providers>
       </body>
     </html>
   );
