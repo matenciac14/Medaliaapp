@@ -32,7 +32,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       <SidebarClient user={user} config={config} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 overflow-auto pb-16 md:pb-0">
+        <main className="flex-1 overflow-auto pb-20 lg:pb-0">
           {children}
         </main>
       </div>

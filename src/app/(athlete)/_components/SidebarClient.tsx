@@ -38,7 +38,7 @@ export default function SidebarClient({ user, config }: Props) {
   return (
     <>
       {/* ── Sidebar desktop ── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
         {/* Logo */}
         <div className="px-6 py-5 border-b border-white/10">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export default function SidebarClient({ user, config }: Props) {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white sticky top-0 z-20">
+      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white sticky top-0 z-20">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-[#f97316] flex items-center justify-center font-bold text-white text-xs">M</div>
           <span className="text-lg font-bold">Medaliq</span>
@@ -106,7 +106,7 @@ export default function SidebarClient({ user, config }: Props) {
       </header>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
         {navLinks.slice(0, 5).map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
           return (

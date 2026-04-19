@@ -261,17 +261,22 @@ export default function CheckinPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-4">
 
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-xl font-bold text-gray-900">Check-in Semana 1</h1>
-          <p className="text-sm text-gray-500">Cada domingo — 5 minutos para ajustar tu plan</p>
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-bold text-gray-900">Check-in semanal</h1>
+          <p className="text-sm text-gray-400">5 minutos para ajustar tu plan de la próxima semana</p>
         </div>
 
         {/* ——— Seccion 1: Tu cuerpo ——— */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-[#1e3a5f] uppercase tracking-wide">Tu cuerpo esta semana</h2>
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center">
+              <Scale size={14} className="text-[#1e3a5f]" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-900">Tu cuerpo esta semana</h2>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             {/* Peso */}
@@ -352,8 +357,13 @@ export default function CheckinPage() {
         </section>
 
         {/* ——— Seccion 2: Entrenamiento ——— */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-bold text-[#1e3a5f] uppercase tracking-wide">Tu entrenamiento</h2>
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#f97316]/10 flex items-center justify-center">
+              <Zap size={14} className="text-[#f97316]" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-900">Tu entrenamiento</h2>
+          </div>
 
           {/* RPE sesion mas dura */}
           <RpeSlider
@@ -428,8 +438,13 @@ export default function CheckinPage() {
         </section>
 
         {/* ——— Seccion 3: Energia ——— */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-[#1e3a5f] uppercase tracking-wide">Tu energia</h2>
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
+              <Heart size={14} className="text-green-600" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-900">Tu energía</h2>
+          </div>
 
           {/* Cards energia */}
           <div className="space-y-2">
@@ -481,9 +496,9 @@ export default function CheckinPage() {
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full bg-[#f97316] hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-colors shadow-sm"
+          className="w-full bg-[#f97316] hover:bg-orange-600 active:bg-orange-700 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-colors shadow-md"
         >
-          {saving ? 'Guardando...' : 'Guardar check-in'}
+          {saving ? 'Guardando...' : '✓ Guardar check-in'}
         </button>
       </div>
 
