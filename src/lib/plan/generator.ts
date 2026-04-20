@@ -85,7 +85,7 @@ async function getAIRecommendations(
     const userMessage = `Atleta: ${input.age}a, ${input.weightKg}kg, objetivo: ${input.goalType}, lesiones: ${injuriesStr}, condiciones: ${conditionsStr}. Zonas FC: Z2=${zones.z2.min}-${zones.z2.max}bpm, Z4=${zones.z4.min}-${zones.z4.max}bpm. Genera 3 recomendaciones personalizadas. JSON: {"recommendations":[{"title":string,"text":string}]}`
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 500,
       system: 'Coach deportivo experto. Responde SOLO en JSON válido.',
       messages: [{ role: 'user', content: userMessage }],
