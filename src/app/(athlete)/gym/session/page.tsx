@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import {
   ChevronDown,
   ChevronUp,
@@ -213,8 +214,20 @@ function parseTargetReps(scheme: string): number | null {
 
 export default function GymSessionPage() {
   const router = useRouter()
+  const { data: authSession } = useSession()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  if ((authSession?.user as any)?.userPlan === 'FREE') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">🏋️</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
   const [error, setError] = useState<string | null>(null)
 
   // sets state: workoutExercise.id -> array of SetState

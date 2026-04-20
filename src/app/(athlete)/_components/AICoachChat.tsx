@@ -22,9 +22,10 @@ export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt
   const [used, setUsed] = useState(initialUsed)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // 999999 = trial / sin límite efectivo
-  const isUnlimited = monthlyLimit === 999999 || monthlyLimit === 0
-  const limitReached = !isUnlimited && used >= monthlyLimit
+  // 999999 = trial ilimitado | 0 = FREE bloqueado | >0 = Pro con límite
+  const isBlocked = monthlyLimit === 0
+  const isUnlimited = monthlyLimit === 999999
+  const limitReached = isBlocked || (!isUnlimited && used >= monthlyLimit)
   const remaining = isUnlimited ? null : Math.max(0, monthlyLimit - used)
 
   useEffect(() => {
@@ -153,7 +154,13 @@ export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt
 
       {/* Input + contador */}
       <div className="px-3 pb-3">
-        {!isUnlimited && (
+        {isBlocked && (
+          <div className="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 text-center">
+            El AI Coach está disponible en el plan Pro.{' '}
+            <a href="/upgrade" className="font-semibold underline">Ver planes →</a>
+          </div>
+        )}
+        {!isUnlimited && !isBlocked && (
           <div className="flex justify-end mb-1.5">
             <span className={`text-[11px] font-medium ${remaining === 0 ? 'text-amber-600' : 'text-gray-400'}`}>
               {used} / {monthlyLimit} mensajes este mes
@@ -165,7 +172,7 @@ export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-            placeholder={limitReached ? 'Límite mensual alcanzado' : 'Pregunta algo sobre tu plan...'}
+            placeholder={isBlocked ? 'Disponible en plan Pro' : limitReached ? 'Límite mensual alcanzado' : 'Pregunta algo sobre tu plan...'}
             className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
             disabled={loading || limitReached}
           />

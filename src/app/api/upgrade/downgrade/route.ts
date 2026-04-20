@@ -22,8 +22,10 @@ export async function GET() {
       plan: false,
       checkin: false,
       nutrition: false,
-      progress: true,   // mantiene historial visible
-      log: true,        // mantiene log manual
+      progress: false,
+      gym: false,
+      log: true,        // log manual disponible en Free
+      coach: false,
     },
     trial: {
       plan: 'FREE' as const,

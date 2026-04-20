@@ -37,6 +37,17 @@ export default async function GymPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
+  if ((session.user as any).userPlan === 'FREE') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">🏋️</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym, sigue la progresión de cargas y accede a rutinas asignadas por tu coach.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
+
   const athleteId = session.user.id
 
   // Check today's planned session type

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Scale, Heart, Moon, Zap, FileText, AlertTriangle } from 'lucide-react'
 import { mockMetrics } from '@/lib/mock/dashboard-data'
 
@@ -121,6 +122,18 @@ const ENERGY_OPTIONS = [
 // ——— Page ———
 export default function CheckinPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+
+  if ((session?.user as any)?.userPlan === 'FREE') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">📋</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Check-in semanal disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tu evolución semanal y recibe ajustes automáticos en tu plan con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
 
   // Seccion 1 — cuerpo
   const [weightKg, setWeightKg] = useState<string>('')

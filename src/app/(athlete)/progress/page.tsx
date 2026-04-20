@@ -43,9 +43,17 @@ function calcAdherencePct(
 export default async function ProgressPage() {
   const session = await auth()
 
-  if (!session?.user?.id) {
-    // El layout ya protege esta ruta, pero por si acaso
-    return null
+  if (!session?.user?.id) return null
+
+  if ((session.user as any).userPlan === 'FREE') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">📊</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Progreso disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Visualiza tu evolución de peso, FC y adherencia semana a semana con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
   }
 
   // ── Fetch check-ins ──────────────────────────────────────────────────────
