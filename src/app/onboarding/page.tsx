@@ -10,6 +10,12 @@ import {
   getSteps,
   StepId,
   Sport,
+  CardioMachine,
+  DayType,
+  MuscleGroupSplit,
+  DayConfig,
+  WeekSchedule,
+  getDefaultSchedule,
 } from './_types'
 
 // ---------------------------------------------------------------------------
@@ -852,6 +858,121 @@ function StepGenerating() {
 }
 
 // ---------------------------------------------------------------------------
+// Step — Day Schedule
+// ---------------------------------------------------------------------------
+
+const DOW_LABELS: Record<number, string> = {
+  1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom',
+}
+
+const MACHINE_OPTIONS: { value: CardioMachine; label: string }[] = [
+  { value: 'TREADMILL', label: '🏃 Cinta' },
+  { value: 'ELLIPTICAL', label: '🔄 Elíptica' },
+  { value: 'BIKE', label: '🚴 Bici' },
+  { value: 'ROWING', label: '🚣 Remo' },
+  { value: 'ANY', label: '⚡ Cualquiera' },
+]
+
+function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  const schedule: WeekSchedule = data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek)
+
+  const activeDays = (Object.values(schedule) as DayConfig[]).filter(d => d.type !== 'rest').length
+  const required = data.daysPerWeek
+  const isOk = activeDays === required
+
+  function updateDay(dow: number, config: DayConfig) {
+    update({ weekSchedule: { ...schedule, [dow as 1 | 2 | 3 | 4 | 5 | 6 | 7]: config } })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <StepTitle>¿Cómo quieres organizar tu semana?</StepTitle>
+      <StepSubtitle>Define cada día como fuerza, cardio o descanso.</StepSubtitle>
+
+      <div className={cn(
+        'text-sm font-semibold px-3 py-2 rounded-xl text-center',
+        isOk ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+      )}>
+        {activeDays} de {required} días de entrenamiento seleccionados
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {([1, 2, 3, 4, 5, 6, 7] as const).map((dow) => {
+          const day = schedule[dow]
+          return (
+            <div key={dow} className={cn(
+              'rounded-2xl border-2 transition-all',
+              day.type === 'strength' ? 'border-[#1e3a5f]/30 bg-[#1e3a5f]/3' :
+              day.type === 'cardio'   ? 'border-[#f97316]/30 bg-[#f97316]/3' :
+              'border-gray-200 bg-gray-50'
+            )}>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <span className="text-sm font-bold text-[#1e3a5f] w-8 flex-shrink-0">{DOW_LABELS[dow]}</span>
+                <div className="flex gap-2 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => updateDay(dow, { type: 'strength' })}
+                    className={cn(
+                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
+                      day.type === 'strength'
+                        ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    )}
+                  >💪 Fuerza</button>
+                  <button
+                    type="button"
+                    onClick={() => updateDay(dow, { type: 'cardio', cardioMachine: day.cardioMachine ?? 'ANY' })}
+                    className={cn(
+                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
+                      day.type === 'cardio'
+                        ? 'border-[#f97316] bg-[#f97316] text-white'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    )}
+                  >🏃 Cardio</button>
+                  <button
+                    type="button"
+                    onClick={() => updateDay(dow, { type: 'rest' })}
+                    className={cn(
+                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
+                      day.type === 'rest'
+                        ? 'border-gray-400 bg-gray-100 text-gray-600'
+                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                    )}
+                  >😴 Descanso</button>
+                </div>
+              </div>
+
+              {day.type === 'cardio' && (
+                <div className="px-4 pb-3">
+                  <p className="text-xs text-gray-400 mb-1.5 ml-11">¿Qué máquina usas?</p>
+                  <div className="ml-11 flex gap-2 flex-wrap">
+                    {MACHINE_OPTIONS.map(m => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => updateDay(dow, { type: 'cardio', cardioMachine: m.value })}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                          day.cardioMachine === m.value
+                            ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Step validation
 // ---------------------------------------------------------------------------
 
@@ -884,6 +1005,11 @@ function isStepValid(stepId: StepId, data: WizardData): boolean {
       return true
     case 'schedule':
       return true
+    case 'day-schedule': {
+      if (!data.weekSchedule) return false
+      const activeDays = (Object.values(data.weekSchedule) as DayConfig[]).filter(d => d.type !== 'rest').length
+      return activeDays === data.daysPerWeek
+    }
     case 'health':
       return data.nutritionCommitment !== null
     case 'generating':
@@ -903,6 +1029,7 @@ const STEP_LABELS: Record<StepId, string> = {
   physical: 'Perfil físico',
   'hr-fitness': 'Condición',
   schedule: 'Disponibilidad',
+  'day-schedule': 'Mi semana',
   health: 'Salud',
   generating: 'Generando',
 }
@@ -985,6 +1112,7 @@ export default function OnboardingPage() {
     physical: <StepPhysical data={data} update={update} />,
     'hr-fitness': <StepHRFitness data={data} update={update} />,
     schedule: <StepSchedule data={data} update={update} />,
+    'day-schedule': <StepDaySchedule data={data} update={update} />,
     health: <StepHealth data={data} update={update} />,
     generating: <StepGenerating />,
   }

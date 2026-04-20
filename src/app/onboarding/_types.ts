@@ -9,6 +9,50 @@ export type BodyGoal = 'FAT_LOSS' | 'MUSCLE_GAIN' | 'RECOMPOSITION'
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
 export type HRSource = 'known' | 'estimated'
 
+// ---------------------------------------------------------------------------
+// Day Schedule — distribución semanal de entrenamientos
+// ---------------------------------------------------------------------------
+
+export type CardioMachine = 'TREADMILL' | 'ELLIPTICAL' | 'BIKE' | 'ROWING' | 'ANY'
+export type DayType = 'cardio' | 'strength' | 'rest'
+export type MuscleGroupSplit = 'PUSH' | 'PULL' | 'LEGS' | 'FULL_BODY'
+
+export type DayConfig = {
+  type: DayType
+  cardioMachine?: CardioMachine    // solo cuando type = 'cardio'
+  split?: MuscleGroupSplit          // solo cuando type = 'strength'
+}
+
+// Claves 1–7 = Lun–Dom
+export type WeekSchedule = { [key in 1 | 2 | 3 | 4 | 5 | 6 | 7]: DayConfig }
+
+/** Pre-rellena una semana por defecto según los días disponibles */
+export function getDefaultSchedule(daysPerWeek: number): WeekSchedule {
+  const schedules: Record<number, WeekSchedule> = {
+    3: {
+      1: { type: 'strength' }, 2: { type: 'rest' },
+      3: { type: 'cardio', cardioMachine: 'ANY' }, 4: { type: 'rest' },
+      5: { type: 'strength' }, 6: { type: 'rest' }, 7: { type: 'rest' },
+    },
+    4: {
+      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
+      3: { type: 'rest' }, 4: { type: 'strength' },
+      5: { type: 'rest' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
+    },
+    5: {
+      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
+      3: { type: 'strength' }, 4: { type: 'rest' },
+      5: { type: 'strength' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
+    },
+    6: {
+      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
+      3: { type: 'strength' }, 4: { type: 'cardio', cardioMachine: 'ANY' },
+      5: { type: 'strength' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
+    },
+  }
+  return schedules[daysPerWeek] ?? schedules[4]
+}
+
 export type WizardData = {
   // ── Paso 1: Meta principal
   mainGoal: MainGoal | null
@@ -24,16 +68,16 @@ export type WizardData = {
   raceDistance: 'RACE_5K' | 'RACE_10K' | 'RACE_HALF_MARATHON' | 'RACE_MARATHON' | null
   raceDate: string | null
   targetTime: string | null
-  recentBestTime: string | null         // marca reciente en el formato mm:ss o hh:mm:ss
+  recentBestTime: string | null
 
   // Ciclismo
   cyclingModality: 'ROAD' | 'MTB' | null
   hasPowerMeter: boolean | null
-  ftp: number | null                    // Functional Threshold Power (watts)
+  ftp: number | null
 
   // Natación
   swimStroke: 'FREESTYLE' | 'BACKSTROKE' | 'BREASTSTROKE' | 'BUTTERFLY' | 'MIXED' | null
-  recentSwimTime: string | null         // 100m time
+  recentSwimTime: string | null
 
   // Triatlón
   triathlonDistance: 'SPRINT' | 'OLYMPIC' | 'HALF' | 'FULL' | null
@@ -52,23 +96,26 @@ export type WizardData = {
   heightCm: number | null
   weightKg: number | null
   gender: 'male' | 'female' | null
-  weightGoalKg: number | null           // solo BODY
+  weightGoalKg: number | null
 
   // ── FC y rendimiento
   hrResting: number | null
   hrMax: number | null
-  hrSource: HRSource | null             // 'known' = ingresado, 'estimated' = 220-edad
+  hrSource: HRSource | null
   experienceLevel: ExperienceLevel | null
 
   // ── Disponibilidad (común)
   daysPerWeek: number
   hoursPerSession: number
 
+  // ── Distribución semanal (nuevo)
+  weekSchedule: WeekSchedule | null
+
   // ── Salud (común)
   injuries: string[]
   conditions: string[]
 
-  // ── Equipamiento (fuerza/ciclismo)
+  // ── Equipamiento
   equipment: string[]
 
   // ── Nutrición
@@ -105,6 +152,7 @@ export const INITIAL_DATA: WizardData = {
   experienceLevel: null,
   daysPerWeek: 4,
   hoursPerSession: 1,
+  weekSchedule: null,
   injuries: [],
   conditions: [],
   equipment: [],
@@ -123,13 +171,14 @@ export type StepId =
   | 'physical'
   | 'hr-fitness'
   | 'schedule'
+  | 'day-schedule'
   | 'health'
   | 'generating'
 
 export function getSteps(data: WizardData): StepId[] {
   if (!data.mainGoal) return ['main-goal']
 
-  const common: StepId[] = ['physical', 'hr-fitness', 'schedule', 'health', 'generating']
+  const common: StepId[] = ['physical', 'hr-fitness', 'schedule', 'day-schedule', 'health', 'generating']
 
   if (data.mainGoal === 'SPORT') {
     if (!data.sport) return ['main-goal', 'sport-select']

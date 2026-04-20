@@ -14,6 +14,7 @@ import {
   estimateHRMax,
 } from './formulas'
 import { getTemplate } from './templates'
+import type { WeekSchedule, CardioMachine, DayConfig } from '@/app/onboarding/_types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +38,7 @@ export type GeneratePlanInput = {
   conditions: string[]
   nutritionCommitment: string
   generatedBy?: 'AI' | 'COACH'
+  weekSchedule?: WeekSchedule
 }
 
 type Recommendation = { title: string; text: string }
@@ -104,6 +106,101 @@ async function getAIRecommendations(
   } catch {
     return []
   }
+}
+
+// ---------------------------------------------------------------------------
+// Cardio machine sessions — genera estructura detallada por fase y máquina
+// ---------------------------------------------------------------------------
+
+const MACHINE_NAMES: Record<CardioMachine, string> = {
+  TREADMILL: 'cinta',
+  ELLIPTICAL: 'elíptica',
+  BIKE: 'bici estática',
+  ROWING: 'remo',
+  ANY: 'máquina cardio',
+}
+
+function buildCardioStructure(
+  machine: CardioMachine,
+  durationMin: number,
+  phase: string,
+  hrZones: ReturnType<typeof calculateHRZones>
+): { zoneTarget: string; structure: string } {
+  const m = MACHINE_NAMES[machine] ?? 'máquina cardio'
+  const z1max = hrZones.z1?.max ?? hrZones.z2.min - 5
+  const z2 = `${hrZones.z2.min}–${hrZones.z2.max} bpm`
+  const z3 = `${hrZones.z3.min}–${hrZones.z3.max} bpm`
+  const warm = 5
+  const cool = 5
+  const main = durationMin - warm - cool
+
+  switch (phase) {
+    case 'BASE':
+      return {
+        zoneTarget: 'Z2',
+        structure: `${durationMin} min en ${m} · ${warm} min calentamiento suave · ${main} min Zona 2 (${z2}) ritmo conversacional · ${cool} min vuelta calma`,
+      }
+    case 'DESARROLLO':
+      return {
+        zoneTarget: 'Z2-Z3',
+        structure: `${durationMin} min en ${m} · ${warm} min calentamiento Z1 · ${main - 8} min Z2 continuo (${z2}) · 8 min Z3 progresivo (${z3}) · ${cool} min vuelta calma`,
+      }
+    case 'ESPECIFICO':
+      return {
+        zoneTarget: 'Z2-Z3',
+        structure: `${durationMin} min en ${m} · ${warm} min calentamiento · ${main - 10} min Z2 (${z2}) · 10 min Z3 sostenido (${z3}) · ${cool} min enfriamiento`,
+      }
+    default: // AFINAMIENTO
+      return {
+        zoneTarget: 'Z1-Z2',
+        structure: `${durationMin} min en ${m} · Recuperación activa · No superar ${hrZones.z2.max} bpm · Ritmo muy suave, sin esfuerzo`,
+      }
+  }
+}
+
+function buildScheduledSessions(
+  weekId: string,
+  week: { phase: string },
+  schedule: WeekSchedule,
+  planStart: Date,
+  weekIndex: number,
+  hrZones: ReturnType<typeof calculateHRZones>,
+  hoursPerSession: number
+) {
+  const durationMin = Math.round(hoursPerSession * 60)
+
+  return ([1, 2, 3, 4, 5, 6, 7] as const)
+    .filter((dow) => schedule[dow]?.type !== 'rest')
+    .map((dow) => {
+      const day = schedule[dow] as DayConfig
+      if (day.type === 'cardio') {
+        const cardio = buildCardioStructure(
+          day.cardioMachine ?? 'ANY',
+          durationMin,
+          week.phase,
+          hrZones
+        )
+        return {
+          weekId,
+          dayOfWeek: dow,
+          type: 'OTRO' as const,
+          durationMin,
+          zoneTarget: cardio.zoneTarget,
+          structure: cardio.structure,
+          date: sessionDate(planStart, weekIndex, dow),
+        }
+      }
+      // STRENGTH — ejercicios se asignarán en la siguiente fase
+      return {
+        weekId,
+        dayOfWeek: dow,
+        type: 'FUERZA' as const,
+        durationMin,
+        zoneTarget: null,
+        structure: `Sesión de fuerza ${durationMin} min — Ver ejercicios en el tracker de gym`,
+        date: sessionDate(planStart, weekIndex, dow),
+      }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -243,17 +340,28 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
           })
 
           // Crear todas las sesiones de la semana en un solo INSERT
-          await tx.plannedSession.createMany({
-            data: week.sessions.map((session) => ({
-              weekId: planWeek.id,
-              dayOfWeek: session.dayOfWeek,
-              type: session.type as any,
-              durationMin: session.durationMin,
-              zoneTarget: session.zoneTarget,
-              structure: session.structure,
-              date: sessionDate(planStart, weekIndex, session.dayOfWeek),
-            })),
-          })
+          // Si el usuario definió su horario semanal, usarlo; si no, usar el template
+          const sessionsData = input.weekSchedule
+            ? buildScheduledSessions(
+                planWeek.id,
+                week,
+                input.weekSchedule,
+                planStart,
+                weekIndex,
+                hrZones,
+                input.hoursPerSession
+              )
+            : week.sessions.map((session) => ({
+                weekId: planWeek.id,
+                dayOfWeek: session.dayOfWeek,
+                type: session.type as any,
+                durationMin: session.durationMin,
+                zoneTarget: session.zoneTarget,
+                structure: session.structure,
+                date: sessionDate(planStart, weekIndex, session.dayOfWeek),
+              }))
+
+          await tx.plannedSession.createMany({ data: sessionsData as any })
         }
       }
 

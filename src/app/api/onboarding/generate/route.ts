@@ -201,6 +201,7 @@ export async function POST(req: NextRequest) {
       injuries: data.injuries,
       conditions: data.conditions,
       nutritionCommitment: data.nutritionCommitment ?? 'moderate',
+      weekSchedule: data.weekSchedule ?? undefined,
     })
 
     return NextResponse.json({
