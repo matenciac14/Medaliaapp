@@ -506,8 +506,11 @@ export const BODY_RECOMPOSITION_16W: PlanTemplate = {
 
 export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
   RACE_HALF_MARATHON: HALF_MARATHON_18W,
+  RACE_MARATHON: HALF_MARATHON_18W,        // usa base aeróbica de media hasta tener template propio
   RACE_10K: TEN_K_12W,
   RACE_5K: FIVE_K_8W,
+  RACE_CYCLING: HALF_MARATHON_18W,         // base aeróbica — template ciclismo pendiente
+  RACE_TRIATHLON: HALF_MARATHON_18W,       // base aeróbica — template triatlón pendiente
   BODY_RECOMPOSITION: BODY_RECOMPOSITION_16W,
 }
 

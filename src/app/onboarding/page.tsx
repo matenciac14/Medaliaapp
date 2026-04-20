@@ -927,7 +927,8 @@ export default function OnboardingPage() {
   const currentStepId = steps[stepIndex]
   const totalSteps = steps.length
   const progressPct = Math.min(((stepIndex + 1) / totalSteps) * 100, 100)
-  const isLastDataStep = stepIndex === steps.length - 2 // one before 'generating'
+  // Solo es "último paso de datos" si el siguiente paso es exactamente 'generating'
+  const isLastDataStep = steps[stepIndex + 1] === 'generating'
 
   function nextStep() {
     if (!isStepValid(currentStepId, data)) return
