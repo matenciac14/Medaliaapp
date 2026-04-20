@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit } from '@/lib/rate-limit'
 import { parseUserConfig } from '@/lib/config/user-config'
 import { getAIConfig } from '@/lib/ai/config'
+import { parseAIProfile, buildChatSystemPrompt } from '@/lib/ai/profile'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -68,11 +69,15 @@ export async function POST(req: Request) {
     },
   })
 
-  // Construir system prompt con contexto real del usuario
-  const baseSystemPrompt = buildSystemPrompt(user)
-  const systemPrompt = aiConfig.systemPromptExtra
-    ? `${baseSystemPrompt}\n\n${aiConfig.systemPromptExtra}`
-    : baseSystemPrompt
+  // Leer AI Profile configurado por el admin
+  const sysConfig = await prisma.systemConfig.findUnique({ where: { id: 'singleton' } })
+  const aiProfile = parseAIProfile(sysConfig?.aiProfile)
+  const profilePrompt = buildChatSystemPrompt(aiProfile)
+
+  // Combinar: filosofía del admin + contexto real del atleta
+  const systemPrompt = `${profilePrompt}
+
+${buildAthleteContext(user)}`
 
   // ── Stream de respuesta ───────────────────────────────────────────────────
   const stream = await anthropic.messages.stream({
@@ -133,7 +138,7 @@ export async function POST(req: Request) {
   })
 }
 
-function buildSystemPrompt(user: {
+function buildAthleteContext(user: {
   name?: string | null
   profile?: {
     age?: number | null
@@ -205,44 +210,20 @@ function buildSystemPrompt(user: {
     }
   }
 
-  return `Eres el AI coach personal de ${user?.name ?? 'el atleta'} en Medaliq. Tu rol es exclusivamente coaching deportivo — no eres médico ni nutricionista clínico.
+  return `ATLETA: ${user?.name ?? 'desconocido'}
+- Edad: ${profile?.age ?? '?'} años | Peso: ${profile?.weightKg ?? '?'} kg | Objetivo peso: ${profile?.weightGoalKg ?? 'no definido'} kg
+- Altura: ${profile?.heightCm ?? '?'} cm | FC reposo: ${profile?.hrResting ?? '?'} bpm | FC máx: ${profile?.hrMax ?? '?'} bpm
+- Lesiones: ${profile?.injuries?.join(', ') || 'ninguna'}
+- Condiciones médicas: ${profile?.conditions?.join(', ') || 'ninguna'}
 
-PERFIL DEL ATLETA:
-- Nombre: ${user?.name ?? 'desconocido'}
-- Edad: ${profile?.age ?? 'desconocida'} años
-- Peso: ${profile?.weightKg ?? '?'} kg | Objetivo: ${profile?.weightGoalKg ?? 'sin objetivo definido'} kg
-- Altura: ${profile?.heightCm ?? '?'} cm
-- FC reposo: ${profile?.hrResting ?? '?'} bpm | FC máxima: ${profile?.hrMax ?? '?'} bpm
-- Lesiones activas: ${profile?.injuries?.join(', ') || 'ninguna reportada'}
-- Condiciones médicas: ${profile?.conditions?.join(', ') || 'ninguna reportada'}
+PLAN ACTIVO: ${plan?.name ?? 'Sin plan activo'}${plan ? ` — ${plan.totalWeeks} semanas` : ''}
+${goal ? `OBJETIVO: ${goal.type}${goal.raceDate ? ` | Fecha: ${new Date(goal.raceDate).toLocaleDateString('es-CO')}` : ''}` : ''}
 
-PLAN ACTIVO: ${plan?.name ?? 'Sin plan activo'}
-${plan ? `- Duración: ${plan.totalWeeks} semanas` : ''}
-${goal ? `- Objetivo: ${goal.type} | Fecha objetivo: ${goal.raceDate ? new Date(goal.raceDate).toLocaleDateString('es-CO') : 'sin fecha definida'}` : ''}
+ÚLTIMO CHECK-IN: ${lastCheckIn
+    ? `peso ${lastCheckIn.weightKg ?? '?'}kg, FC reposo ${lastCheckIn.hrResting ?? '?'}bpm, energía ${lastCheckIn.energyLevel ?? '?'}/5, RPE ${lastCheckIn.hardestSessionRpe ?? '?'}/10, dolor: ${lastCheckIn.painFlag ? '⚠️ SÍ' : 'no'}`
+    : 'sin check-ins aún'}
 
-ÚLTIMO CHECK-IN:
-${lastCheckIn
-  ? `- Peso: ${lastCheckIn.weightKg ?? '?'} kg | FC reposo: ${lastCheckIn.hrResting ?? '?'} bpm
-- Sueño: ${lastCheckIn.sleepHours ?? '?'} h | Energía: ${lastCheckIn.energyLevel ?? '?'}/5
-- RPE sesión más dura: ${lastCheckIn.hardestSessionRpe ?? '?'}/10
-- Adherencia dieta: ${lastCheckIn.dietAdherencePct ?? '?'}%
-- Reporte de dolor: ${lastCheckIn.painFlag ? '⚠️ SÍ — tratar con precaución' : 'no'}`
-  : 'Sin check-ins registrados aún — solicitar al atleta que complete su primer check-in'
-}
+${conditionRules.length > 0 ? `RESTRICCIONES OBLIGATORIAS:\n${conditionRules.join('\n')}` : ''}
 
-${conditionRules.length > 0 ? `RESTRICCIONES ESPECÍFICAS OBLIGATORIAS (basadas en el perfil):
-${conditionRules.join('\n')}` : ''}
-
-REGLAS ÉTICAS — CUMPLIMIENTO OBLIGATORIO:
-- NUNCA diagnostiques enfermedades ni recetes medicamentos
-- NUNCA des consejos médicos — solo coaching deportivo
-- Si el atleta menciona dolor agudo, síntomas cardíacos (presión en pecho, mareo severo, falta de aire en reposo), DETÉN la conversación de entrenamiento y di: "Esto debe evaluarlo un médico antes de continuar entrenando"
-- Si el atleta pregunta sobre medicamentos, suplementos de riesgo o procedimientos médicos, redirige: "Consulta con tu médico o nutricionista para ese tema"
-- Respeta SIEMPRE las restricciones de su perfil — no sugieras ejercicios contraindicados para sus lesiones o condiciones
-
-ESTILO DE RESPUESTA:
-- Conciso y directo — no más de 3 párrafos
-- Español latinoamericano, tono de coach cercano (no corporativo)
-- Usa datos reales del perfil cuando sea relevante
-- Si no tienes información suficiente sobre algo que el atleta pregunta, pregunta antes de asumir`
+REGLAS ÉTICAS: No diagnostiques enfermedades. No recetes medicamentos. Ante dolor agudo o síntomas cardíacos di "Esto debe evaluarlo un médico". Redirige preguntas médicas al especialista.`
 }
