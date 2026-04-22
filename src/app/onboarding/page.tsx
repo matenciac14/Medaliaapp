@@ -873,6 +873,13 @@ const MACHINE_OPTIONS: { value: CardioMachine; label: string }[] = [
   { value: 'ANY', label: '⚡ Cualquiera' },
 ]
 
+const SPLIT_OPTIONS: { value: MuscleGroupSplit; label: string; subtext: string }[] = [
+  { value: 'PUSH', label: '🔴 Push', subtext: 'Pecho / Hombros / Tríceps' },
+  { value: 'PULL', label: '🔵 Pull', subtext: 'Espalda / Bíceps' },
+  { value: 'LEGS', label: '🟡 Piernas', subtext: 'Cuádriceps / Glúteos' },
+  { value: 'FULL_BODY', label: '🟢 Full Body', subtext: 'Todos los grupos' },
+]
+
 function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
   const schedule: WeekSchedule = data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek)
 
@@ -911,7 +918,7 @@ function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Parti
                 <div className="flex gap-2 flex-1">
                   <button
                     type="button"
-                    onClick={() => updateDay(dow, { type: 'strength' })}
+                    onClick={() => updateDay(dow, { type: 'strength', split: day.split })}
                     className={cn(
                       'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
                       day.type === 'strength'
@@ -964,6 +971,30 @@ function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Parti
                   </div>
                 </div>
               )}
+
+              {day.type === 'strength' && (
+                <div className="px-4 pb-3">
+                  <p className="text-xs text-gray-400 mb-1.5 ml-11">¿Qué grupo muscular?</p>
+                  <div className="ml-11 flex gap-2 flex-wrap">
+                    {SPLIT_OPTIONS.map(s => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => updateDay(dow, { type: 'strength', split: s.value })}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all flex flex-col items-start',
+                          day.split === s.value
+                            ? 'border-[#1e3a5f] bg-[#1e3a5f]/10 text-[#1e3a5f]'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
+                        )}
+                      >
+                        <span>{s.label}</span>
+                        <span className="text-[10px] opacity-70">{s.subtext}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
@@ -1006,8 +1037,8 @@ function isStepValid(stepId: StepId, data: WizardData): boolean {
     case 'schedule':
       return true
     case 'day-schedule': {
-      if (!data.weekSchedule) return false
-      const activeDays = (Object.values(data.weekSchedule) as DayConfig[]).filter(d => d.type !== 'rest').length
+      const schedule = data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek)
+      const activeDays = (Object.values(schedule) as DayConfig[]).filter(d => d.type !== 'rest').length
       return activeDays === data.daysPerWeek
     }
     case 'health':
@@ -1083,10 +1114,15 @@ export default function OnboardingPage() {
     setError(null)
 
     try {
+      // Guarantee weekSchedule is always set before submitting
+      const submissionData = {
+        ...data,
+        weekSchedule: data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek),
+      }
       const res = await fetch('/api/onboarding/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submissionData),
       })
 
       const json = await res.json()

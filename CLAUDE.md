@@ -20,6 +20,16 @@ SaaS de coaching deportivo con AI para LatAm. Cubre recomposición corporal, met
 - pnpm · bcryptjs
 - Neon (PostgreSQL serverless) — pooler para runtime, direct URL para migraciones
 
+## Stack Mobile (futuro — Fase 16)
+- **React Native + Expo (managed workflow)** — iOS + Android desde un solo codebase TypeScript
+- **EAS Build + EAS Submit** — builds en la nube, publicación automatizada a App Store y Google Play
+- **EAS Update** — OTA updates sin pasar por review de store (cambios JS/UI)
+- **Monorepo pnpm**: `apps/web` (Next.js actual) + `apps/mobile` (Expo) + `packages/shared-types` + `packages/api-client`
+- Dispositivos: `react-native-ble-plx` (HRM Bluetooth), `@react-native-health/health` (HealthKit + Health Connect)
+- Integraciones fitness: Strava OAuth, Garmin Connect API, Polar Flow API
+- Offline-first: `expo-secure-store` para tokens, `AsyncStorage` para sessions de gym pendientes de sync
+- NativeWind (Tailwind en RN) para consistencia visual con web
+
 ## Repositorio
 - GitHub: `git@github.com:matenciac14/Medaliq.git`
 - Branch principal: `main`

@@ -14,7 +14,7 @@ import {
   estimateHRMax,
 } from './formulas'
 import { getTemplate } from './templates'
-import type { WeekSchedule, CardioMachine, DayConfig } from '@/app/onboarding/_types'
+import type { WeekSchedule, CardioMachine, DayConfig, MuscleGroupSplit } from '@/app/onboarding/_types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +39,7 @@ export type GeneratePlanInput = {
   nutritionCommitment: string
   generatedBy?: 'AI' | 'COACH'
   weekSchedule?: WeekSchedule
+  experienceLevel?: string
 }
 
 type Recommendation = { title: string; text: string }
@@ -109,6 +110,183 @@ async function getAIRecommendations(
 }
 
 // ---------------------------------------------------------------------------
+// Gym exercise selection — selección de ejercicios por split y nivel
+// ---------------------------------------------------------------------------
+
+type GymExercise = { id: string; name: string; muscleGroups: string[]; equipment: string }
+
+// Ejercicios seleccionados por split y nivel (nombres que coinciden con el seed)
+const SPLIT_EXERCISES: Record<MuscleGroupSplit, Record<string, string[]>> = {
+  PUSH: {
+    BEGINNER: [
+      'Press declinado con mancuernas',
+      'Elevación lateral con mancuernas',
+      'Push down en polea',
+      'Press Arnold',
+    ],
+    INTERMEDIATE: [
+      'Press plano con barra',
+      'Press Arnold',
+      'Elevación lateral con mancuernas',
+      'Cruces en polea alta',
+      'Push down en polea',
+    ],
+    ADVANCED: [
+      'Press plano con barra',
+      'Press inclinado con barra',
+      'Press Arnold',
+      'Elevación lateral con mancuernas',
+      'Cruces en polea alta',
+      'Press francés',
+    ],
+  },
+  PULL: {
+    BEGINNER: [
+      'Jalón polea alta',
+      'Remo con mancuernas',
+      'Curl martillo con mancuernas',
+      'Elevación frontal con mancuernas',
+    ],
+    INTERMEDIATE: [
+      'Jalón polea alta',
+      'Remo con barra',
+      'Curl martillo con mancuernas',
+      'Curl concentrado con mancuernas',
+      'Pájaros',
+    ],
+    ADVANCED: [
+      'Dominadas',
+      'Remo con barra',
+      'Jalón polea alta',
+      'Curl martillo con mancuernas',
+      'Curl predicador',
+      'Pájaros',
+    ],
+  },
+  LEGS: {
+    BEGINNER: [
+      'Prensa de piernas',
+      'Extensión de rodillas en máquina',
+      'Flexión de rodillas acostado',
+      'Elevación de talones en máquina',
+    ],
+    INTERMEDIATE: [
+      'Sentadilla sumo con barra',
+      'Prensa de piernas',
+      'Flexión de rodillas sentado',
+      'Abducción en máquina',
+      'Elevación de talones en máquina',
+    ],
+    ADVANCED: [
+      'Sentadilla frontal con barra',
+      'Hip thrust con barra',
+      'Peso muerto con barra',
+      'Sentadilla hack en máquina',
+      'Extensión de rodillas en máquina',
+      'Elevación de talones en máquina',
+    ],
+  },
+  FULL_BODY: {
+    BEGINNER: [
+      'Prensa de piernas',
+      'Jalón polea alta',
+      'Press declinado con mancuernas',
+      'Elevación lateral con mancuernas',
+    ],
+    INTERMEDIATE: [
+      'Sentadilla sumo con barra',
+      'Remo con mancuernas',
+      'Press Arnold',
+      'Curl martillo con mancuernas',
+      'Push down en polea',
+    ],
+    ADVANCED: [
+      'Sentadilla frontal con barra',
+      'Dominadas',
+      'Press plano con barra',
+      'Press militar con barra',
+      'Curl martillo con mancuernas',
+      'Push down en polea',
+    ],
+  },
+}
+
+const SPLIT_LABELS: Record<MuscleGroupSplit, string> = {
+  PUSH: 'Push — Pecho, Hombros, Tríceps',
+  PULL: 'Pull — Espalda, Bíceps',
+  LEGS: 'Piernas — Cuádriceps, Glúteos',
+  FULL_BODY: 'Full Body',
+}
+
+function getSetsRepsScheme(phase: string): string {
+  switch (phase) {
+    case 'BASE': return '3×12-15'
+    case 'DESARROLLO': return '4×10-12'
+    case 'ESPECIFICO':
+    case 'ESPECÍFICO': return '4×8-10'
+    default: return '3×10-12' // AFINAMIENTO
+  }
+}
+
+async function fetchExercisesForSchedule(
+  schedule: WeekSchedule,
+  experienceLevel: string
+): Promise<Record<string, GymExercise[]>> {
+  // Collect which splits are used
+  const splitsNeeded = new Set<MuscleGroupSplit>()
+  for (const dow of [1, 2, 3, 4, 5, 6, 7] as const) {
+    const day = schedule[dow]
+    if (day.type === 'strength' && day.split) {
+      splitsNeeded.add(day.split)
+    }
+  }
+  if (splitsNeeded.size === 0) return {}
+
+  const level = (experienceLevel ?? 'INTERMEDIATE').toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+
+  // Fetch all global exercises once
+  const allExercises = await prisma.exercise.findMany({
+    where: { isGlobal: true },
+    select: { id: true, name: true, muscleGroups: true, equipment: true },
+  })
+
+  const result: Record<string, GymExercise[]> = {}
+
+  for (const split of splitsNeeded) {
+    const wantedNames = SPLIT_EXERCISES[split][level] ?? SPLIT_EXERCISES[split]['INTERMEDIATE']
+    // Match by name (case-insensitive, partial)
+    const matched: GymExercise[] = []
+    for (const name of wantedNames) {
+      const found = allExercises.find(
+        e => e.name.toLowerCase().includes(name.toLowerCase()) ||
+             name.toLowerCase().includes(e.name.toLowerCase())
+      )
+      if (found) {
+        matched.push(found as GymExercise)
+      } else {
+        // Fallback: use name directly even if not in DB
+        matched.push({ id: `fallback-${name}`, name, muscleGroups: [], equipment: '' })
+      }
+    }
+    result[split] = matched
+  }
+
+  return result
+}
+
+function buildStrengthStructure(
+  split: MuscleGroupSplit,
+  exercises: GymExercise[],
+  durationMin: number,
+  phase: string
+): string {
+  const scheme = getSetsRepsScheme(phase)
+  const splitLabel = SPLIT_LABELS[split]
+  const lines = exercises.map(e => `${scheme} ${e.name}`)
+  return `${durationMin} min · ${splitLabel}\n${lines.join('\n')}`
+}
+
+// ---------------------------------------------------------------------------
 // Cardio machine sessions — genera estructura detallada por fase y máquina
 // ---------------------------------------------------------------------------
 
@@ -165,7 +343,8 @@ function buildScheduledSessions(
   planStart: Date,
   weekIndex: number,
   hrZones: ReturnType<typeof calculateHRZones>,
-  hoursPerSession: number
+  hoursPerSession: number,
+  gymExercises: Record<string, GymExercise[]> = {}
 ) {
   const durationMin = Math.round(hoursPerSession * 60)
 
@@ -190,14 +369,19 @@ function buildScheduledSessions(
           date: sessionDate(planStart, weekIndex, dow),
         }
       }
-      // STRENGTH — ejercicios se asignarán en la siguiente fase
+      // STRENGTH — usar ejercicios del split si están disponibles
+      const split = day.split as MuscleGroupSplit | undefined
+      const exercises = split ? (gymExercises[split] ?? []) : []
+      const structure = split && exercises.length > 0
+        ? buildStrengthStructure(split, exercises, durationMin, week.phase)
+        : `Sesión de fuerza ${durationMin} min — Ver ejercicios en el tracker de gym`
       return {
         weekId,
         dayOfWeek: dow,
         type: 'FUERZA' as const,
         durationMin,
         zoneTarget: null,
-        structure: `Sesión de fuerza ${durationMin} min — Ver ejercicios en el tracker de gym`,
+        structure,
         date: sessionDate(planStart, weekIndex, dow),
       }
     })
@@ -264,6 +448,17 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
   const recommendations = input.generatedBy === 'COACH'
     ? []
     : await getAIRecommendations(input, hrMax, hrZones)
+
+  // 5b. Pre-fetch gym exercises si hay días de fuerza en el schedule
+  let gymExercises: Record<string, GymExercise[]> = {}
+  if (input.weekSchedule && input.experienceLevel) {
+    try {
+      gymExercises = await fetchExercisesForSchedule(input.weekSchedule, input.experienceLevel)
+    } catch {
+      // No bloquear el plan si falla la consulta de ejercicios
+      gymExercises = {}
+    }
+  }
 
   // 6. Calcular fecha de inicio del plan (hoy)
   const planStart = new Date()
@@ -349,7 +544,8 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
                 planStart,
                 weekIndex,
                 hrZones,
-                input.hoursPerSession
+                input.hoursPerSession,
+                gymExercises
               )
             : week.sessions.map((session) => ({
                 weekId: planWeek.id,
