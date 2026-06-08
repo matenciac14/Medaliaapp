@@ -14,6 +14,7 @@ export default auth((req) => {
   const isPublicRoute =
     PUBLIC_ROUTES.includes(pathname) ||
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/mobile') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/coaches') ||
     pathname.startsWith('/p/')
