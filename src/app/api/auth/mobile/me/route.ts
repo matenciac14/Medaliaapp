@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: mobile.id },
-    select: { id: true, email: true, name: true, role: true, config: true, onboardingCompleted: true },
+    select: { id: true, email: true, name: true, role: true, config: true },
   })
 
   if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     email: user.email,
     name: user.name,
     role: user.role,
-    onboardingCompleted: user.onboardingCompleted,
+    onboardingCompleted: config.onboarding.completed,
     userPlan: config.trial.plan,
   })
 }
