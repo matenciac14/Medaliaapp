@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { prisma } from '@/lib/db/prisma'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export type CheckInData = {
   weightKg?: number
   hrResting?: number
+  hrRestingBaseline?: number  // FC reposo del check-in anterior, para comparación relativa
   sleepHours?: number
   sleepScore?: number
   hardestSessionRpe?: number
@@ -38,8 +40,9 @@ function evaluateRules(
   const adjustments: string[] = []
   let severity: 'ok' | 'warning' | 'critical' = 'ok'
 
-  // FC reposo alta (>10% sobre baseline — usar 55 como baseline por ahora)
-  if (checkIn.hrResting && checkIn.hrResting > 62) {
+  // FC reposo alta: >10% sobre la FC previa del atleta, o >62 si no hay baseline
+  const fcBaseline = checkIn.hrRestingBaseline ?? 62
+  if (checkIn.hrResting && checkIn.hrResting > fcBaseline * 1.10) {
     triggers.push('fc_alta')
     adjustments.push('Reducir intensidad de sesiones de calidad esta semana')
     severity = 'warning'
@@ -130,4 +133,68 @@ export async function evaluateAndAdjust(
   const { triggers, adjustments, severity } = evaluateRules(checkIn, plan)
   const recommendation = await generateRecommendationText(checkIn, plan, triggers, adjustments)
   return { triggers, adjustments, recommendation, severity }
+}
+
+// ---------------------------------------------------------------------------
+// applyPlanAdjustments — modifica PlannedSessions de la semana siguiente
+// ---------------------------------------------------------------------------
+
+/**
+ * Aplica ajustes concretos a las sesiones de la semana siguiente según los triggers.
+ * Se llama desde el checkin route si hay triggers activos y el atleta tiene plan activo.
+ */
+export async function applyPlanAdjustments(
+  planId: string,
+  nextWeekNumber: number,
+  triggers: string[]
+): Promise<void> {
+  if (triggers.length === 0) return
+
+  // Buscar la semana siguiente del plan
+  const nextWeek = await prisma.planWeek.findFirst({
+    where: { planId, weekNumber: nextWeekNumber },
+    include: { sessions: true },
+  })
+  if (!nextWeek || nextWeek.sessions.length === 0) return
+
+  const hasVolumeTrigger = triggers.some(t =>
+    ['energia_baja', 'sueno_bajo', 'fc_alta'].includes(t)
+  )
+  const hasPain = triggers.includes('dolor_activo')
+  const hasRpe = triggers.includes('rpe_excesivo')
+
+  for (const session of nextWeek.sessions) {
+    const updates: Record<string, unknown> = {}
+
+    if (hasPain) {
+      // Marcar todas las sesiones como opcionales con nota
+      updates.coachNote = '[AJUSTE AUTO] Dolor reportado — sesión opcional. Consulta a un médico antes de entrenar.'
+    }
+
+    if (hasVolumeTrigger) {
+      // Reducir duración 20%
+      updates.durationMin = Math.round(session.durationMin * 0.8)
+      const existing = session.coachNote ?? ''
+      const prefix = existing.includes('[AJUSTE AUTO]') ? existing : existing ? existing + ' ' : ''
+      updates.coachNote = prefix + '[AJUSTE AUTO] Volumen reducido 20% por señales de fatiga.'
+    }
+
+    if (hasRpe && session.zoneTarget) {
+      // Bajar una zona (Z4→Z3, Z3→Z2, Z2→Z1)
+      const zoneMap: Record<string, string> = { Z5: 'Z4', Z4: 'Z3', Z3: 'Z2', Z2: 'Z1' }
+      const lowerZone = zoneMap[session.zoneTarget]
+      if (lowerZone) {
+        updates.zoneTarget = lowerZone
+        const existing = (updates.coachNote as string) ?? session.coachNote ?? ''
+        updates.coachNote = (existing ? existing + ' ' : '') + `[AJUSTE AUTO] Zona bajada de ${session.zoneTarget} a ${lowerZone} por RPE elevado.`
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await prisma.plannedSession.update({
+        where: { id: session.id },
+        data: updates,
+      })
+    }
+  }
 }
