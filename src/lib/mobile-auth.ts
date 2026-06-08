@@ -11,7 +11,7 @@ export type MobileTokenPayload = {
 }
 
 function getSecret() {
-  const secret = process.env.AUTH_SECRET
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
   if (!secret) throw new Error('AUTH_SECRET not set')
   return new TextEncoder().encode(secret)
 }
