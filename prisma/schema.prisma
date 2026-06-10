@@ -44,6 +44,14 @@ model User {
 
   // Métricas diarias
   dailyLogs          DailyLog[]
+
+  // Nutrición personalizada
+  foodProfile        FoodProfile?
+  mealPlan           MealPlan?
+  foodLogs           FoodLog[]
+
+  // Invite codes
+  inviteCodes        InviteCode[]  @relation("CoachInvites")
 }
 
 enum UserRole {
@@ -101,6 +109,20 @@ model CoachAthlete {
   @@unique([coachId, athleteId])
 }
 
+// ─── INVITE CODES ───────────────────────────────────────────────────────────
+
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  coachId   String
+  usedBy    String?   // athleteId que lo redimió
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  coach User @relation("CoachInvites", fields: [coachId], references: [id], onDelete: Cascade)
+}
+
 // ─── PERFIL DE SALUD ────────────────────────────────────────────────────────
 
 model HealthProfile {
@@ -120,6 +142,7 @@ model HealthProfile {
   medications    String[]
   sleepHoursAvg  Float?
   sleepScoreAvg  Float?
+  gender         String?   // male | female — afecta cálculo TDEE Mifflin-St Jeor (~166 kcal diferencia)
   // Sport-specific fields
   sport          String?   // RUNNING | CYCLING | SWIMMING | TRIATHLON | FOOTBALL | STRENGTH
   experienceLevel String?  // BEGINNER | INTERMEDIATE | ADVANCED
@@ -187,6 +210,8 @@ model TrainingPlan {
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   goal  Goal?      @relation(fields: [goalId], references: [id])
   weeks PlanWeek[]
+
+  @@index([userId, status])
 }
 
 enum PlanStatus {
@@ -227,10 +252,11 @@ enum Phase {
 }
 
 model PlannedSession {
-  id          String      @id @default(cuid())
+  id          String           @id @default(cuid())
   weekId      String
   dayOfWeek   Int
   type        SessionType
+  intensity   SessionIntensity @default(MODERATE)
   durationMin Int
   zoneTarget  String?
   structure   String?
@@ -240,6 +266,13 @@ model PlannedSession {
 
   week PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
   log  SessionLog?
+}
+
+enum SessionIntensity {
+  HIGH      // INTERVALOS, TIRADA_LARGA, SIMULACRO, TEST
+  MODERATE  // TEMPO, FARTLEK, CICLA, NATACION, FUERZA
+  LOW       // RODAJE_Z2, técnico/ligero
+  REST      // DESCANSO
 }
 
 enum SessionType {
@@ -274,6 +307,8 @@ model SessionLog {
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
+
+  @@index([userId])
 }
 
 // ─── MÉTRICAS DIARIAS ───────────────────────────────────────────────────────
@@ -360,15 +395,17 @@ enum ExerciseCategory {
 
 model WorkoutTemplate {
   id          String  @id @default(cuid())
-  coachId     String
+  coachId     String?  // null = plantilla pública del sistema
   name        String
   description String?
   goal        String? // "HYPERTROPHY", "STRENGTH", "TONING", "FUNCTIONAL"
   level       String? // "BEGINNER", "INTERMEDIATE", "ADVANCED"
-  daysPerWeek Int     @default(6)
+  daysPerWeek Int     @default(3)
+  isPublic    Boolean @default(false) // true = visible para todos los atletas
   isActive    Boolean @default(true)
+  category    String? // "PPL", "FULL_BODY", "UPPER_LOWER", "STRENGTH", "BEGINNER"
 
-  coach       User             @relation("CoachTemplates", fields: [coachId], references: [id])
+  coach       User?            @relation("CoachTemplates", fields: [coachId], references: [id])
   days        WorkoutDay[]
   assignments AssignedWorkout[]
 
@@ -420,7 +457,7 @@ model AssignedWorkout {
   id            String    @id @default(cuid())
   templateId    String
   athleteId     String
-  coachId       String
+  coachId       String?   // null = auto-asignado por el atleta (sin coach)
   startDate     DateTime
   endDate       DateTime?
   weeksDuration Int?
@@ -429,10 +466,12 @@ model AssignedWorkout {
 
   template    WorkoutTemplate @relation(fields: [templateId], references: [id])
   athlete     User            @relation("AthleteAssignments", fields: [athleteId], references: [id])
-  coach       User            @relation("CoachAssignments", fields: [coachId], references: [id])
+  coach       User?           @relation("CoachAssignments", fields: [coachId], references: [id])
   gymSessions GymSession[]
 
   createdAt DateTime @default(now())
+
+  @@index([athleteId, isActive])
 }
 
 model GymSession {
@@ -451,6 +490,8 @@ model GymSession {
   setLogs         SetLog[]
 
   createdAt DateTime @default(now())
+
+  @@index([athleteId, completed])
 }
 
 model SetLog {
@@ -557,4 +598,81 @@ model NutritionPlan {
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── NUTRICIÓN PERSONALIZADA ─────────────────────────────────────────────────
+
+model FoodProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  availableFoods String[]
+  restrictions   String[]
+  mealsPerDay    Int      @default(3)
+  weighsFood     Boolean  @default(false)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MealPlan {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  data        Json     // { hard: DayMeals, easy: DayMeals, rest: DayMeals }
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── LIBRERÍA DE ALIMENTOS ──────────────────────────────────────────────────
+
+model Food {
+  id             String   @id @default(cuid())
+  name           String
+  category       String   // PROTEIN | CARB | FAT | VEGETABLE | FRUIT | DAIRY | LEGUME | NUT_SEED | OTHER
+  // Macronutrientes por 100g
+  kcalPer100g    Float
+  proteinPer100g Float
+  carbsPer100g   Float
+  fatPer100g     Float
+  // Micronutrientes por 100g (clave para atletas)
+  fiberPer100g   Float?   // fibra (g)
+  calciumMg      Float?   // calcio (mg)
+  ironMg         Float?   // hierro (mg)
+  potassiumMg    Float?   // potasio (mg)
+  vitaminCMg     Float?   // vitamina C (mg)
+  magnesiumMg    Float?   // magnesio (mg)
+  sodiumMg       Float?   // sodio (mg)
+  // Porción típica
+  servingG       Float    @default(100) // gramos por porción típica
+  servingLabel   String?               // "1 pechuga mediana", "2 cucharadas", etc.
+  // Meta
+  isVerified     Boolean  @default(true)  // false = enviado por comunidad, pendiente revisión
+  createdBy      String?                  // null = sistema Medaliq
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  foodLogs FoodLog[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+// Registro diario de ingesta — listo para fase de tracking
+model FoodLog {
+  id       String   @id @default(cuid())
+  userId   String
+  foodId   String
+  date     DateTime @db.Date
+  mealType String   // BREAKFAST | LUNCH | DINNER | SNACK | PRE_WORKOUT | POST_WORKOUT
+  grams    Float
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food Food @relation(fields: [foodId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }

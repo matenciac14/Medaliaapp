@@ -21,8 +21,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const validRoles = ['ATHLETE', 'COACH']
-    const userRole = validRoles.includes(role) ? role : 'ATHLETE'
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'El correo no es válido.' }, { status: 400 })
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 })
+    }
+
+    // COACH solo se crea desde admin — el registro público siempre es ATHLETE
+    const userRole = 'ATHLETE'
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -34,12 +43,8 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Config inicial según rol:
-    // - COACH: features.coach = true, onboarding completado
-    // - ATHLETE: todo en false, espera onboarding
-    const initialConfig = userRole === 'COACH'
-      ? { ...COACH_CONFIG, onboarding: { completed: true, completedAt: new Date().toISOString() } }
-      : DEFAULT_USER_CONFIG
+    // Registro público siempre es ATHLETE — espera onboarding para activar features
+    const initialConfig = DEFAULT_USER_CONFIG
 
     await prisma.user.create({
       data: {

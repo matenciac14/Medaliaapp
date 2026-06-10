@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import Anthropic from '@anthropic-ai/sdk'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimitAsync } from '@/lib/rate-limit'
 import { parseUserConfig } from '@/lib/config/user-config'
 import { getAIConfig } from '@/lib/ai/config'
 import { parseAIProfile, buildChatSystemPrompt } from '@/lib/ai/profile'
@@ -13,12 +13,27 @@ export async function POST(req: Request) {
   if (!session?.user?.id) return new Response('Unauthorized', { status: 401 })
 
   const userId = session.user.id
-  const { allowed } = rateLimit(`ai-chat:${userId}`, { limit: 20, windowMs: 60_000 })
+  const { allowed } = await rateLimitAsync(`ai-chat:${userId}`, { limit: 20, windowMs: 60_000 })
   if (!allowed) {
     return Response.json({ error: 'Límite de mensajes alcanzado. Intenta en un minuto.' }, { status: 429 })
   }
 
-  const { messages } = await req.json()
+  const { messages: rawMessages } = await req.json()
+
+  // Validar y sanear el array de mensajes para evitar prompt injection y abuso de costo
+  if (!Array.isArray(rawMessages)) {
+    return Response.json({ error: 'Formato de mensajes inválido.' }, { status: 400 })
+  }
+  const messages = rawMessages
+    .filter((m: { role: string; content: string }) =>
+      m.role === 'user' || m.role === 'assistant'
+    )
+    .slice(-20)  // máximo últimos 20 mensajes
+    .map((m: { role: string; content: string }) => ({
+      role: m.role as 'user' | 'assistant',
+      content: typeof m.content === 'string' ? m.content.slice(0, 4000) : '',
+    }))
+    .filter(m => m.content.length > 0)
   const aiConfig = getAIConfig()
 
   // ── Verificar límite mensual ──────────────────────────────────────────────
@@ -28,6 +43,12 @@ export async function POST(req: Request) {
   })
 
   const config = parseUserConfig(userRecord?.config)
+
+  // Feature flag — solo admin puede activar
+  if (!config.features.aiCoach) {
+    return Response.json({ error: 'El AI Coach no está activado en tu cuenta.' }, { status: 403 })
+  }
+
   const currentMonth = new Date().toISOString().slice(0, 7) // "YYYY-MM"
 
   // Reset del contador si el mes cambió
@@ -84,10 +105,7 @@ ${buildAthleteContext(user)}`
     model: aiConfig.chatModel,
     max_tokens: aiConfig.maxTokensChat,
     system: systemPrompt,
-    messages: messages.map((m: { role: string; content: string }) => ({
-      role: m.role,
-      content: m.content,
-    })),
+    messages,
   })
 
   const newCount = messagesThisMonth + 1

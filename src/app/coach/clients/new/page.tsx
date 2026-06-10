@@ -27,11 +27,6 @@ const GOALS = [
   { value: 'GENERAL_FITNESS', label: 'Condición General' },
 ]
 
-const PLAN_TIERS = [
-  { value: 'free', label: 'Solo seguimiento (Free)' },
-  { value: 'pro', label: 'Acceso completo (Pro)' },
-]
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CreatedAthlete = {
@@ -87,7 +82,6 @@ export default function CreateAthletePage() {
   const [email, setEmail] = useState('')
   const [sport, setSport] = useState('')
   const [goal, setGoal] = useState('')
-  const [planTier, setPlanTier] = useState<'free' | 'pro'>('free')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CreatedAthlete | null>(null)
@@ -106,7 +100,6 @@ export default function CreateAthletePage() {
           email,
           sport: sport || null,
           goal: goal || null,
-          planTier,
         }),
       })
 
@@ -135,7 +128,6 @@ export default function CreateAthletePage() {
     setEmail('')
     setSport('')
     setGoal('')
-    setPlanTier('free')
     setError('')
   }
 
@@ -286,34 +278,6 @@ export default function CreateAthletePage() {
               <option key={g.value} value={g.value}>{g.label}</option>
             ))}
           </select>
-        </div>
-
-        {/* Plan tier */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Acceso inicial</label>
-          <div className="grid grid-cols-2 gap-3">
-            {PLAN_TIERS.map((tier) => (
-              <button
-                key={tier.value}
-                type="button"
-                onClick={() => setPlanTier(tier.value as 'free' | 'pro')}
-                className="py-2.5 px-3 rounded-lg border-2 text-sm font-medium text-left transition-all"
-                style={
-                  planTier === tier.value
-                    ? { borderColor: '#1e3a5f', backgroundColor: '#eff6ff', color: '#1e3a5f' }
-                    : { borderColor: '#e5e7eb', color: '#6b7280' }
-                }
-              >
-                <span className="block font-semibold">{tier.value === 'free' ? 'Free' : 'Pro'}</span>
-                <span className="block text-xs mt-0.5 font-normal opacity-75">{tier.label}</span>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 mt-2">
-            {planTier === 'pro'
-              ? 'Activa plan, check-in, nutrición y progreso desde el primer día.'
-              : 'El atleta accede solo al dashboard básico. Activa funciones después.'}
-          </p>
         </div>
 
         {/* Error message */}

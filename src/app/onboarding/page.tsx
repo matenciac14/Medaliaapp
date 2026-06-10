@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
+import { estimateHRMax, calculateHRZones, calculateTDEE } from '@/lib/plan/formulas'
 import {
   WizardData,
   INITIAL_DATA,
   getSteps,
   StepId,
+  HealthGoal,
   Sport,
+  GymGoal,
   CardioMachine,
   DayType,
   MuscleGroupSplit,
@@ -136,25 +139,104 @@ function StepSubtitle({ children }: { children: React.ReactNode }) {
 // Step components
 // ---------------------------------------------------------------------------
 
+function StepHealthGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  const goals: { value: HealthGoal; icon: string; label: string; subtext: string }[] = [
+    { value: 'WEIGHT_LOSS', icon: '🔥', label: 'Perder peso', subtext: 'Reducir grasa corporal y mejorar tu composición' },
+    { value: 'MUSCLE_GAIN', icon: '💪', label: 'Ganar músculo', subtext: 'Aumentar masa muscular y fuerza' },
+    { value: 'FITNESS', icon: '⚡', label: 'Mejorar mi condición', subtext: 'Más energía, resistencia y bienestar general' },
+    { value: 'RECOMPOSITION', icon: '⚖️', label: 'Recomposición corporal', subtext: 'Bajar grasa y ganar músculo al mismo tiempo' },
+  ]
+  return (
+    <div className="flex flex-col gap-3">
+      <StepTitle>¿Cuál es tu objetivo de salud?</StepTitle>
+      <StepSubtitle>Vamos a personalizar tu plan según lo que más importa para ti.</StepSubtitle>
+      {goals.map((g) => (
+        <SelectCard
+          key={g.value}
+          selected={data.healthGoal === g.value}
+          onClick={() => update({ healthGoal: g.value })}
+          icon={g.icon}
+          label={g.label}
+          subtext={g.subtext}
+        />
+      ))}
+    </div>
+  )
+}
+
+function StepHasSport({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <StepTitle>¿Practicas algún deporte?</StepTitle>
+      <StepSubtitle>Si quieres mejorar tu rendimiento en un deporte, lo incorporamos al plan.</StepSubtitle>
+      <SelectCard
+        selected={data.hasSport === true}
+        onClick={() => update({ hasSport: true, sport: null })}
+        icon="🏅"
+        label="Sí, quiero mejorar en un deporte"
+        subtext="Running, ciclismo, natación, triatlón, fútbol o fuerza"
+      />
+      <SelectCard
+        selected={data.hasSport === false}
+        onClick={() => update({ hasSport: false, sport: null })}
+        icon="🌿"
+        label="No, me enfoco en salud y bienestar"
+        subtext="Plan de entrenamiento general sin deporte específico"
+      />
+    </div>
+  )
+}
+
 function StepMainGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <StepTitle>¿Cuál es tu objetivo?</StepTitle>
       <StepSubtitle>Esto define el tipo de plan que vamos a construir para ti.</StepSubtitle>
       <SelectCard
+        selected={data.mainGoal === 'GYM'}
+        onClick={() => update({ mainGoal: 'GYM', sport: null, bodyGoal: null })}
+        icon="🏋️"
+        label="Gym — ganar músculo o perder grasa"
+        subtext="Rutina de pesas personalizada + guía nutricional"
+      />
+      <SelectCard
+        selected={data.mainGoal === 'BODY'}
+        onClick={() => update({ mainGoal: 'BODY', sport: null, gymGoal: null })}
+        icon="🔥"
+        label="Cambio corporal integral"
+        subtext="Plan mixto cardio + fuerza para recomposición"
+      />
+      <SelectCard
         selected={data.mainGoal === 'SPORT'}
-        onClick={() => update({ mainGoal: 'SPORT', bodyGoal: null })}
+        onClick={() => update({ mainGoal: 'SPORT', bodyGoal: null, gymGoal: null })}
         icon="🏅"
         label="Mejorar en un deporte"
         subtext="Running, ciclismo, natación, triatlón, fútbol o fuerza"
       />
-      <SelectCard
-        selected={data.mainGoal === 'BODY'}
-        onClick={() => update({ mainGoal: 'BODY', sport: null })}
-        icon="💪"
-        label="Cambiar mi cuerpo"
-        subtext="Bajar grasa, ganar músculo o recomposición"
-      />
+    </div>
+  )
+}
+
+function StepGymGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  const goals: { value: GymGoal; icon: string; label: string; subtext: string }[] = [
+    { value: 'MUSCLE_GAIN',    icon: '📈', label: 'Ganar músculo',     subtext: 'Aumentar masa muscular y fuerza' },
+    { value: 'FAT_LOSS',       icon: '🔥', label: 'Perder grasa',      subtext: 'Reducir grasa corporal manteniendo músculo' },
+    { value: 'RECOMPOSITION',  icon: '⚖️', label: 'Ambos a la vez',    subtext: 'Recomposición corporal — bajar grasa y ganar músculo' },
+  ]
+  return (
+    <div className="flex flex-col gap-3">
+      <StepTitle>¿Cuál es tu meta principal?</StepTitle>
+      <StepSubtitle>Esto ajusta tu plan de entrenamiento y tus metas nutricionales.</StepSubtitle>
+      {goals.map((g) => (
+        <SelectCard
+          key={g.value}
+          selected={data.gymGoal === g.value}
+          onClick={() => update({ gymGoal: g.value })}
+          icon={g.icon}
+          label={g.label}
+          subtext={g.subtext}
+        />
+      ))}
     </div>
   )
 }
@@ -218,7 +300,7 @@ function StepBodyGoal({ data, update }: { data: WizardData; update: (d: Partial<
 }
 
 function StepSportDetails({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const sport = data.mainGoal === 'SPORT' ? data.sport : null
+  const sport = data.hasSport ? data.sport : null
 
   // RUNNING
   if (sport === 'RUNNING') {
@@ -560,7 +642,7 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
   return (
     <div className="flex flex-col gap-5">
       <StepTitle>Tus datos físicos</StepTitle>
-      <StepSubtitle>Necesitamos esto para calcular tus zonas de entrenamiento y TDEE.</StepSubtitle>
+      <StepSubtitle>Necesitamos esto para personalizar tu plan de entrenamiento y nutrición.</StepSubtitle>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Edad (años)</Label>
@@ -605,9 +687,9 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
           />
         </div>
       </div>
-      {data.mainGoal === 'BODY' && (
+      {(data.healthGoal === 'WEIGHT_LOSS' || data.healthGoal === 'RECOMPOSITION') && (
         <div>
-          <Label>Peso objetivo (kg) — opcional si ya lo ingresaste</Label>
+          <Label>Peso objetivo (kg) — opcional</Label>
           <Input
             type="number"
             placeholder="65"
@@ -621,7 +703,7 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
 }
 
 function StepHRFitness({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const showHR = data.mainGoal === 'SPORT' && data.sport !== 'STRENGTH'
+  const showHR = data.hasSport === true && data.sport !== 'STRENGTH'
 
   return (
     <div className="flex flex-col gap-5">
@@ -841,17 +923,117 @@ function StepHealth({ data, update }: { data: WizardData; update: (d: Partial<Wi
   )
 }
 
-function StepGenerating() {
+// ---------------------------------------------------------------------------
+// Step — Plan Method (AI vs Template)
+// ---------------------------------------------------------------------------
+
+function StepPlanMethod({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  // Calculamos preview con fórmulas deterministas usando los datos del usuario
+  const age = data.age ?? 25
+  const weightKg = data.weightKg ?? 70
+  const heightCm = data.heightCm ?? 170
+  const gender = data.gender ?? 'male'
+  const daysPerWeek = data.daysPerWeek ?? 4
+  const hrResting = data.hrResting ?? 0
+  const hrMax = data.hrMax ?? (data.hrSource === 'estimated' || !data.hrMax
+    ? estimateHRMax(age)
+    : data.hrMax)
+
+  const tdee = calculateTDEE(weightKg, heightCm, age, gender, daysPerWeek)
+  const zones = calculateHRZones(hrMax, hrResting)
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="text-center">
+        <div className="text-4xl mb-2">📊</div>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Tu perfil calculado</h2>
+        <p className="text-sm text-gray-500 mt-1">Basado en tus datos, esto es lo que sabemos de ti</p>
+      </div>
+
+      {/* Preview calculado */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-blue-50 rounded-xl p-3 text-center">
+          <p className="text-xs text-blue-500 font-medium uppercase tracking-wide">FC Máx.</p>
+          <p className="text-2xl font-bold text-blue-700 mt-0.5">{hrMax}</p>
+          <p className="text-xs text-blue-400">lpm</p>
+        </div>
+        <div className="bg-orange-50 rounded-xl p-3 text-center">
+          <p className="text-xs text-orange-500 font-medium uppercase tracking-wide">TDEE</p>
+          <p className="text-2xl font-bold text-orange-700 mt-0.5">{tdee.toLocaleString()}</p>
+          <p className="text-xs text-orange-400">kcal/día</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-3 text-center">
+          <p className="text-xs text-green-500 font-medium uppercase tracking-wide">Zona 2</p>
+          <p className="text-lg font-bold text-green-700 mt-0.5">{zones.z2.min}–{zones.z2.max}</p>
+          <p className="text-xs text-green-400">lpm base aeróbica</p>
+        </div>
+        <div className="bg-red-50 rounded-xl p-3 text-center">
+          <p className="text-xs text-red-500 font-medium uppercase tracking-wide">Zona 4</p>
+          <p className="text-lg font-bold text-red-700 mt-0.5">{zones.z4.min}–{zones.z4.max}</p>
+          <p className="text-xs text-red-400">lpm umbral</p>
+        </div>
+      </div>
+
+      {/* Elección de método */}
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-semibold text-gray-700">¿Cómo quieres generar tu plan?</p>
+        <button
+          type="button"
+          onClick={() => update({ planMethod: 'AI' })}
+          className={cn(
+            'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
+            data.planMethod === 'AI'
+              ? 'border-[#f97316] bg-[#f97316]/8'
+              : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
+          )}
+        >
+          <span className="text-2xl leading-none mt-0.5">⚡</span>
+          <span className="flex flex-col gap-0.5">
+            <span className={cn('font-semibold text-base', data.planMethod === 'AI' ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
+              Personalizado con AI
+            </span>
+            <span className="text-sm text-gray-500">El coach virtual analiza tu perfil y añade recomendaciones específicas para ti</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => update({ planMethod: 'TEMPLATE' })}
+          className={cn(
+            'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
+            data.planMethod === 'TEMPLATE'
+              ? 'border-[#f97316] bg-[#f97316]/8'
+              : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
+          )}
+        >
+          <span className="text-2xl leading-none mt-0.5">📋</span>
+          <span className="flex flex-col gap-0.5">
+            <span className={cn('font-semibold text-base', data.planMethod === 'TEMPLATE' ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
+              Template estándar
+            </span>
+            <span className="text-sm text-gray-500">Plan periodizado basado en tus zonas de FC y disponibilidad. Instantáneo.</span>
+          </span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function StepGenerating({ planMethod }: { planMethod: 'AI' | 'TEMPLATE' | null }) {
+  const isAI = planMethod === 'AI'
   return (
     <div className="flex flex-col items-center justify-center gap-8 py-12">
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-[#1e3a5f]/10" />
         <div className="absolute inset-0 rounded-full border-4 border-t-[#f97316] animate-spin" />
-        <span className="absolute inset-0 flex items-center justify-center text-2xl">🏅</span>
+        <span className="absolute inset-0 flex items-center justify-center text-2xl">{isAI ? '⚡' : '📋'}</span>
       </div>
       <div className="text-center">
-        <p className="text-lg font-semibold text-[#1e3a5f]">Generando tu plan personalizado...</p>
-        <p className="text-sm text-gray-400 mt-1">Consultando especialistas y calculando zonas</p>
+        <p className="text-lg font-semibold text-[#1e3a5f]">
+          {isAI ? 'Personalizando tu plan con AI...' : 'Construyendo tu plan con fórmulas de rendimiento...'}
+        </p>
+        <p className="text-sm text-gray-400 mt-1">
+          {isAI ? 'Analizando tu perfil y calculando zonas de entrenamiento' : 'Calculando zonas FC, TDEE y periodización semanal'}
+        </p>
       </div>
     </div>
   )
@@ -1009,14 +1191,20 @@ function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Parti
 
 function isStepValid(stepId: StepId, data: WizardData): boolean {
   switch (stepId) {
+    case 'health-goal':
+      return data.healthGoal !== null
+    case 'has-sport':
+      return data.hasSport !== null
     case 'main-goal':
       return data.mainGoal !== null
     case 'sport-select':
       return data.sport !== null
+    case 'gym-goal':
+      return data.gymGoal !== null
     case 'body-goal':
       return data.bodyGoal !== null
     case 'sport-details': {
-      if (data.mainGoal === 'SPORT') {
+      if (data.hasSport) {
         if (data.sport === 'RUNNING') return data.raceDistance !== null
         if (data.sport === 'CYCLING') return data.cyclingModality !== null
         if (data.sport === 'SWIMMING') return data.swimStroke !== null
@@ -1030,7 +1218,7 @@ function isStepValid(stepId: StepId, data: WizardData): boolean {
       return !!(data.age && data.heightCm && data.weightKg && data.gender)
     case 'hr-fitness':
       if (!data.experienceLevel) return false
-      if (data.mainGoal === 'SPORT' && data.sport !== 'STRENGTH') {
+      if (data.hasSport && data.sport !== 'STRENGTH') {
         return data.hrSource !== null && (data.hrSource === 'estimated' || !!data.hrMax)
       }
       return true
@@ -1043,6 +1231,8 @@ function isStepValid(stepId: StepId, data: WizardData): boolean {
     }
     case 'health':
       return data.nutritionCommitment !== null
+    case 'plan-method':
+      return data.planMethod !== null
     case 'generating':
       return true
   }
@@ -1053,15 +1243,19 @@ function isStepValid(stepId: StepId, data: WizardData): boolean {
 // ---------------------------------------------------------------------------
 
 const STEP_LABELS: Record<StepId, string> = {
+  'health-goal': 'Objetivo',
+  'has-sport': 'Deporte',
   'main-goal': 'Objetivo',
-  'sport-select': 'Deporte',
+  'sport-select': 'Tu deporte',
+  'gym-goal': 'Meta gym',
   'body-goal': 'Meta corporal',
   'sport-details': 'Detalles',
   physical: 'Perfil físico',
   'hr-fitness': 'Condición',
   schedule: 'Disponibilidad',
-  'day-schedule': 'Mi semana',
+  'day-schedule': 'Mi semana', // reservado — no activo en flujo principal
   health: 'Salud',
+  'plan-method': 'Tu plan',
   generating: 'Generando',
 }
 
@@ -1114,10 +1308,28 @@ export default function OnboardingPage() {
     setError(null)
 
     try {
-      // Guarantee weekSchedule is always set before submitting
+      // Derive mainGoal from healthGoal + hasSport for API backward compatibility
+      const derivedMainGoal =
+        data.hasSport ? 'SPORT'
+        : data.healthGoal === 'MUSCLE_GAIN' ? 'GYM'
+        : 'BODY'
+      const derivedBodyGoal =
+        data.healthGoal === 'WEIGHT_LOSS' ? 'FAT_LOSS'
+        : data.healthGoal === 'MUSCLE_GAIN' ? 'MUSCLE_GAIN'
+        : data.healthGoal === 'RECOMPOSITION' ? 'RECOMPOSITION'
+        : 'RECOMPOSITION' // FITNESS
+      const derivedGymGoal =
+        data.healthGoal === 'MUSCLE_GAIN' ? 'MUSCLE_GAIN'
+        : data.healthGoal === 'WEIGHT_LOSS' ? 'FAT_LOSS'
+        : 'RECOMPOSITION'
+
       const submissionData = {
         ...data,
+        mainGoal: derivedMainGoal,
+        bodyGoal: data.hasSport ? data.bodyGoal : derivedBodyGoal,
+        gymGoal: data.hasSport ? data.gymGoal : derivedGymGoal,
         weekSchedule: data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek),
+        planMethod: data.planMethod ?? 'AI',
       }
       const res = await fetch('/api/onboarding/generate', {
         method: 'POST',
@@ -1141,8 +1353,11 @@ export default function OnboardingPage() {
   }
 
   const stepContent: Record<StepId, React.ReactNode> = {
+    'health-goal': <StepHealthGoal data={data} update={update} />,
+    'has-sport': <StepHasSport data={data} update={update} />,
     'main-goal': <StepMainGoal data={data} update={update} />,
     'sport-select': <StepSportSelect data={data} update={update} />,
+    'gym-goal': <StepGymGoal data={data} update={update} />,
     'body-goal': <StepBodyGoal data={data} update={update} />,
     'sport-details': <StepSportDetails data={data} update={update} />,
     physical: <StepPhysical data={data} update={update} />,
@@ -1150,7 +1365,8 @@ export default function OnboardingPage() {
     schedule: <StepSchedule data={data} update={update} />,
     'day-schedule': <StepDaySchedule data={data} update={update} />,
     health: <StepHealth data={data} update={update} />,
-    generating: <StepGenerating />,
+    'plan-method': <StepPlanMethod data={data} update={update} />,
+    generating: <StepGenerating planMethod={data.planMethod} />,
   }
 
   const isGeneratingStep = currentStepId === 'generating'

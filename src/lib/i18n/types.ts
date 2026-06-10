@@ -163,6 +163,7 @@ export type Translations = {
       checkin: string
       nutrition: string
       progress: string
+      log: string
       gym: string
       coachPanel: string
       profile: string

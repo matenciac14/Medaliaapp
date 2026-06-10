@@ -512,6 +512,9 @@ export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
   RACE_CYCLING: HALF_MARATHON_18W,         // base aeróbica — template ciclismo pendiente
   RACE_TRIATHLON: HALF_MARATHON_18W,       // base aeróbica — template triatlón pendiente
   BODY_RECOMPOSITION: BODY_RECOMPOSITION_16W,
+  // Fallbacks para goal types sin template propio — evita plan fantasma con 0 sesiones
+  GENERAL_FITNESS: BODY_RECOMPOSITION_16W,
+  WEIGHT_LOSS: BODY_RECOMPOSITION_16W,
 }
 
 export function getTemplate(goalType: string): PlanTemplate | null {

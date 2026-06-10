@@ -22,6 +22,17 @@ export async function POST(req: NextRequest) {
   const userId = session.user.id
   const body: LogSessionBody = await req.json()
 
+  // Verificar ownership si viene plannedSessionId
+  if (body.plannedSessionId) {
+    const planned = await prisma.plannedSession.findFirst({
+      where: { id: body.plannedSessionId, week: { plan: { userId } } },
+      select: { id: true },
+    })
+    if (!planned) {
+      return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+    }
+  }
+
   const log = await prisma.sessionLog.create({
     data: {
       userId,

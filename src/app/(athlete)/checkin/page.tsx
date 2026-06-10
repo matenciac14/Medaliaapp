@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Scale, Heart, Moon, Zap, FileText, AlertTriangle } from 'lucide-react'
-import { mockMetrics } from '@/lib/mock/dashboard-data'
 
 // ——— Tipos ———
 interface CheckInData {
@@ -124,16 +123,14 @@ export default function CheckinPage() {
   const router = useRouter()
   const { data: session } = useSession()
 
-  if ((session?.user as any)?.userPlan === 'FREE') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">📋</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Check-in semanal disponible en Pro</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Registra tu evolución semanal y recibe ajustes automáticos en tu plan con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
-      </div>
-    )
-  }
+  const [prevMetrics, setPrevMetrics] = useState<{ weightKg: number | null; hrResting: number | null }>({ weightKg: null, hrResting: null })
+
+  useEffect(() => {
+    fetch('/api/checkin')
+      .then(r => r.json())
+      .then(d => { if (d.weightKg !== undefined) setPrevMetrics(d) })
+      .catch(() => {})
+  }, [])
 
   // Seccion 1 — cuerpo
   const [weightKg, setWeightKg] = useState<string>('')
@@ -162,6 +159,17 @@ export default function CheckinPage() {
     adjustments: string[]
   } | null>(null)
 
+  if (!(session?.user as any)?.features?.checkin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">📋</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Check-in semanal disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tu evolución semanal y recibe ajustes automáticos en tu plan con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
+
   function handleSubmit() {
     const data: CheckInData = {
       weightKg: weightKg ? Number(weightKg) : undefined,
@@ -174,9 +182,8 @@ export default function CheckinPage() {
       painDescription: hasPain ? painDescription : undefined,
       energyLevel,
       notes: notes || undefined,
-      // Valores previos del mock para comparar
-      previousWeightKg: mockMetrics.weightKg,
-      previousHrResting: mockMetrics.hrResting,
+      previousWeightKg: prevMetrics.weightKg ?? undefined,
+      previousHrResting: prevMetrics.hrResting ?? undefined,
     }
 
     const found = evaluateAlerts(data)
@@ -300,10 +307,11 @@ export default function CheckinPage() {
               </label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.1"
                 value={weightKg}
                 onChange={(e) => setWeightKg(e.target.value)}
-                placeholder={String(mockMetrics.weightKg)}
+                placeholder={prevMetrics.weightKg ? String(prevMetrics.weightKg) : 'ej. 70.5'}
                 className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
               />
             </div>
@@ -316,9 +324,10 @@ export default function CheckinPage() {
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 value={hrResting}
                 onChange={(e) => setHrResting(e.target.value)}
-                placeholder={String(mockMetrics.hrResting)}
+                placeholder={prevMetrics.hrResting ? String(prevMetrics.hrResting) : 'ej. 58'}
                 className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
               />
             </div>
@@ -359,6 +368,7 @@ export default function CheckinPage() {
             </label>
             <input
               type="number"
+              inputMode="numeric"
               min={0}
               max={100}
               value={sleepScore}
@@ -419,7 +429,7 @@ export default function CheckinPage() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setHasPain(false)}
-                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${
+                className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
                   hasPain === false
                     ? 'bg-[#22c55e] border-[#22c55e] text-white'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-[#22c55e]/40'
@@ -429,7 +439,7 @@ export default function CheckinPage() {
               </button>
               <button
                 onClick={() => setHasPain(true)}
-                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${
+                className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
                   hasPain === true
                     ? 'bg-red-500 border-red-500 text-white'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-red-300'
@@ -467,7 +477,7 @@ export default function CheckinPage() {
                 <button
                   key={opt.value}
                   onClick={() => setEnergyLevel(opt.value)}
-                  className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border-2 transition-all ${
+                  className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border-2 transition-all active:scale-95 ${
                     energyLevel === opt.value
                       ? 'border-[#f97316] bg-orange-50'
                       : 'border-gray-200 bg-white hover:border-gray-300'
@@ -509,7 +519,7 @@ export default function CheckinPage() {
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full bg-[#f97316] hover:bg-orange-600 active:bg-orange-700 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-colors shadow-md"
+          className="w-full bg-brand-cta hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md"
         >
           {saving ? 'Guardando...' : '✓ Guardar check-in'}
         </button>

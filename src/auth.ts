@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+import NextAuth, { type Session } from 'next-auth'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
@@ -51,7 +51,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           onboardingCompleted: config.onboarding.completed,
           activated: config.features.plan,
           trialEndsAt: config.trial?.endsAt ?? null,
-          userPlan: config.trial?.plan ?? 'FREE',
+          userPlan: config.trial?.plan ?? 'INACTIVE',
+          features: config.features,
         }
       },
     }),
@@ -64,7 +65,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.onboardingCompleted = (user as any).onboardingCompleted ?? false
         token.activated = (user as any).activated ?? false
         token.trialEndsAt = (user as any).trialEndsAt ?? null
-        token.userPlan = (user as any).userPlan ?? 'FREE'
+        token.userPlan = (user as any).userPlan ?? 'INACTIVE'
+        token.features = (user as any).features ?? {}
       }
       // Refresh from DB on session update
       if (trigger === 'update' && token.id) {
@@ -78,7 +80,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.activated = config.features.plan
             token.onboardingCompleted = config.onboarding.completed
             token.trialEndsAt = config.trial?.endsAt ?? null
-            token.userPlan = config.trial?.plan ?? 'FREE'
+            token.userPlan = config.trial?.plan ?? 'INACTIVE'
+            token.features = config.features
           }
         } catch {
           // silently fail — token retains last known value
@@ -93,7 +96,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.onboardingCompleted = token.onboardingCompleted as boolean
         session.user.activated = token.activated as boolean
         session.user.trialEndsAt = (token.trialEndsAt as string | null) ?? null
-        session.user.userPlan = (token.userPlan as 'TRIAL' | 'FREE' | 'PRO') ?? 'FREE'
+        session.user.userPlan = (token.userPlan as 'TRIAL' | 'PRO' | 'INACTIVE') ?? 'INACTIVE'
+        session.user.features = (token.features as Session['user']['features']) ?? {
+          plan: false, checkin: false, nutrition: false, progress: false,
+          log: false, coach: false, gym: false, aiCoach: false,
+        }
       }
       return session
     },

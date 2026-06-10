@@ -2,14 +2,15 @@ import { prisma } from '@/lib/db/prisma'
 import { parseUserConfig } from '@/lib/config/user-config'
 import { ChangeRoleButton } from './_components/ChangeRoleButton'
 import { PlanSelector } from './_components/PlanSelector'
+import { AICoachToggle } from './_components/AICoachToggle'
 
-type PlanTier = 'FREE' | 'PRO' | 'COACH'
+type PlanTier = 'INACTIVE' | 'PRO' | 'COACH'
 
 function inferPlanTier(role: string, cfg: ReturnType<typeof parseUserConfig>): PlanTier {
   if (role === 'COACH') return 'COACH'
   const f = cfg.features
-  if (f.plan && f.checkin && f.log && f.progress && f.nutrition) return 'PRO'
-  return 'FREE'
+  if (f.plan && f.checkin && f.log && f.progress && f.nutrition && f.gym) return 'PRO'
+  return 'INACTIVE'
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -50,6 +51,7 @@ export default async function AdminUsersPage() {
                 <th className="px-5 py-3 text-left">Onboarding</th>
                 <th className="px-5 py-3 text-left">Deporte / Objetivo</th>
                 <th className="px-5 py-3 text-left">Registrado</th>
+                <th className="px-5 py-3 text-left">AI Coach</th>
                 <th className="px-5 py-3 text-left">Acciones</th>
               </tr>
             </thead>
@@ -86,6 +88,9 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                       {new Date(u.createdAt).toLocaleDateString('es-CO')}
+                    </td>
+                    <td className="px-5 py-3">
+                      <AICoachToggle userId={u.id} enabled={cfg.features.aiCoach ?? false} />
                     </td>
                     <td className="px-5 py-3">
                       <ChangeRoleButton userId={u.id} currentRole={u.role} />

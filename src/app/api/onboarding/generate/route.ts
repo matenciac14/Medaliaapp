@@ -3,6 +3,8 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { generatePlan } from '@/lib/plan/generator'
 import { rateLimit } from '@/lib/rate-limit'
+import { calculateTDEE, calculateMacros, estimateHRMax } from '@/lib/plan/formulas'
+import { parseUserConfig } from '@/lib/config/user-config'
 import type { WizardData } from '@/app/onboarding/_types'
 
 // ---------------------------------------------------------------------------
@@ -39,10 +41,11 @@ function resolveGoalType(data: WizardData): string {
     }
   }
 
+  if (data.mainGoal === 'GYM') {
+    return 'BODY_RECOMPOSITION'
+  }
+
   if (data.mainGoal === 'BODY') {
-    if (data.bodyGoal === 'FAT_LOSS') return 'BODY_RECOMPOSITION'
-    if (data.bodyGoal === 'MUSCLE_GAIN') return 'BODY_RECOMPOSITION'
-    if (data.bodyGoal === 'RECOMPOSITION') return 'BODY_RECOMPOSITION'
     return 'BODY_RECOMPOSITION'
   }
 
@@ -94,6 +97,10 @@ function buildSportDetails(data: WizardData): Record<string, unknown> {
     }
   }
 
+  if (data.mainGoal === 'GYM') {
+    return { gymGoal: data.gymGoal }
+  }
+
   if (data.mainGoal === 'BODY') {
     return {
       bodyGoal: data.bodyGoal,
@@ -132,6 +139,65 @@ export async function POST(req: NextRequest) {
     }
     const userId = session.user.id
 
+    // ── GYM path: solo nutrición + activar trial, sin TrainingPlan ──────────
+    if (data.mainGoal === 'GYM') {
+      const hrMax = estimateHRMax(data.age!)
+      const tdee = calculateTDEE(data.weightKg!, data.heightCm!, data.age!, data.gender ?? 'male', data.daysPerWeek)
+      const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
+
+      await prisma.nutritionPlan.upsert({
+        where: { userId },
+        create: {
+          userId, tdee,
+          targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
+          proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
+        },
+        update: {
+          tdee,
+          targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
+          proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
+        },
+      })
+
+      const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
+      const currentConfig = parseUserConfig(existingUser?.config)
+      const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          config: {
+            ...currentConfig,
+            features: { ...currentConfig.features, plan: false, nutrition: true, progress: true, log: true, checkin: true, gym: true, aiCoach: true },
+            onboarding: { completed: true, completedAt: new Date().toISOString() },
+            sport: { type: 'STRENGTH', goal: 'BODY_RECOMPOSITION' },
+            trial: { plan: 'TRIAL', endsAt: trialEndsAt },
+            ai: { ...currentConfig.ai, monthlyLimit: 999999 },
+          } as object,
+        },
+      })
+
+      // Upsert HealthProfile mínimo para GYM
+      await prisma.healthProfile.upsert({
+        where: { userId },
+        create: {
+          userId, age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
+          weightGoalKg: data.weightGoalKg ?? undefined,
+          gender: data.gender ?? 'male',
+          sport: 'GYM', sportDetails: { gymGoal: data.gymGoal } as object,
+          dataSources: {} as object,
+        },
+        update: {
+          age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
+          weightGoalKg: data.weightGoalKg ?? undefined,
+          gender: data.gender ?? 'male',
+          sport: 'GYM', sportDetails: { gymGoal: data.gymGoal } as object,
+        },
+      })
+
+      return NextResponse.json({ success: true, isB2B: false, planId: null })
+    }
+
     const goalType = resolveGoalType(data)
     const sportDetails = buildSportDetails(data)
 
@@ -150,6 +216,7 @@ export async function POST(req: NextRequest) {
         heightCm: data.heightCm,
         weightKg: data.weightKg,
         weightGoalKg: data.weightGoalKg ?? undefined,
+        gender: data.gender ?? 'male',
         hrResting: data.hrResting ?? undefined,
         hrMax: data.hrMax ?? undefined,
         ftp: data.ftp ?? undefined,
@@ -168,6 +235,7 @@ export async function POST(req: NextRequest) {
         heightCm: data.heightCm,
         weightKg: data.weightKg,
         weightGoalKg: data.weightGoalKg ?? undefined,
+        gender: data.gender ?? 'male',
         hrResting: data.hrResting ?? undefined,
         hrMax: data.hrMax ?? undefined,
         ftp: data.ftp ?? undefined,
@@ -183,10 +251,33 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // B2B: el coach generará el plan manualmente — no crear plan desde onboarding
+    // Solo marcar onboarding completo para que salga de /onboarding y vaya a /pending
+    if (isB2B) {
+      const existingB2B = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
+      const b2bConfig = parseUserConfig(existingB2B?.config)
+      // Mapear al tipo de deporte válido en UserConfig (no usar goalType que es p.ej. 'RACE_HALF_MARATHON')
+      const b2bSportType = data.mainGoal === 'SPORT' ? (data.sport ?? 'GENERAL') :
+                           data.mainGoal === 'GYM' ? 'STRENGTH' : 'GENERAL'
+      const b2bGoal = data.mainGoal === 'SPORT' ? 'RACE' :
+                      data.mainGoal === 'GYM' ? 'BODY_RECOMPOSITION' : 'GENERAL_FITNESS'
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          config: {
+            ...b2bConfig,
+            onboarding: { completed: true, completedAt: new Date().toISOString() },
+            sport: { type: b2bSportType, goal: b2bGoal },
+          } as object,
+        },
+      })
+      return NextResponse.json({ success: true, isB2B: true, planId: null })
+    }
+
     const result = await generatePlan({
       userId,
       goalType,
-      generatedBy: isB2B ? 'COACH' : 'AI',
+      generatedBy: data.planMethod === 'TEMPLATE' ? 'TEMPLATE' : 'AI',
       raceDate: data.raceDate ?? undefined,
       targetTimeSecs: timeStringToSecs(data.targetTime) ?? undefined,
       weightGoalKg: data.weightGoalKg ?? undefined,

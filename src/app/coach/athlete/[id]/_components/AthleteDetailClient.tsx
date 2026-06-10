@@ -37,6 +37,7 @@ export type PlanWeekData = {
     detailText: string | null
     zoneTarget: string | null
     coachNote: string | null
+    intensity: string
   }[]
 }
 
@@ -59,6 +60,9 @@ export type CheckInData = {
   energyLevel: number | null
   dietAdherencePct: number | null
   painFlag: boolean
+  hardestSessionRpe: number | null
+  adjustmentsTriggered: string[]
+  notes: string | null
 }
 
 export type NutritionPlanData = {
@@ -118,7 +122,13 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   OTRO: 'Otro',
 }
 
-const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Gym']
+const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones']
+
+const INTENSITY_SCORE: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1, REST: 0 }
+
+function weekLoadScore(sessions: { intensity: string }[]) {
+  return sessions.reduce((sum, s) => sum + (INTENSITY_SCORE[s.intensity] ?? 2), 0)
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -206,13 +216,35 @@ export default function AthleteDetailClient({
   const [nutritionDraft, setNutritionDraft] = useState<NutritionPlanData>(nutritionPlan)
   const [savingNutrition, setSavingNutrition] = useState(false)
 
+  // Session editor state
+  const [editingSession, setEditingSession] = useState<string | null>(null)
+  const [sessionDraft, setSessionDraft] = useState<{ durationMin: number; type: string; zoneTarget: string; detailText: string }>({
+    durationMin: 60, type: '', zoneTarget: '', detailText: ''
+  })
+  const [savingSession, setSavingSession] = useState(false)
+
+  async function handleSaveSession(sessionId: string) {
+    setSavingSession(true)
+    try {
+      await fetch(`/api/coach/sessions/${sessionId}/edit`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionDraft),
+      })
+      setEditingSession(null)
+      window.location.reload()
+    } finally {
+      setSavingSession(false)
+    }
+  }
+
   // Gym tab state
   const [gymLogs, setGymLogs] = useState<GymExerciseLog[]>([])
   const [gymLoading, setGymLoading] = useState(false)
   const [gymLoaded, setGymLoaded] = useState(false)
 
   useEffect(() => {
-    if (activeTab !== 'Gym' || gymLoaded) return
+    if (activeTab !== 'Sesiones' || gymLoaded) return
     setGymLoading(true)
     fetch(`/api/coach/gym/athlete/${athleteId}/logs`)
       .then((r) => r.json())
@@ -461,7 +493,9 @@ export default function AthleteDetailClient({
                     <th className="pb-2 font-medium">Sueño</th>
                     <th className="pb-2 font-medium">Energía</th>
                     <th className="pb-2 font-medium">Adherencia</th>
+                    <th className="pb-2 font-medium">RPE</th>
                     <th className="pb-2 font-medium">Dolor</th>
+                    <th className="pb-2 font-medium">Ajustes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -474,10 +508,26 @@ export default function AthleteDetailClient({
                       <td className="py-2.5 text-gray-600">{c.energyLevel != null ? `${c.energyLevel}/10` : '—'}</td>
                       <td className="py-2.5 text-gray-600">{c.dietAdherencePct != null ? `${c.dietAdherencePct}%` : '—'}</td>
                       <td className="py-2.5">
+                        {c.hardestSessionRpe != null ? (
+                          <span className={c.hardestSessionRpe >= 8 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
+                            {c.hardestSessionRpe}/10
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="py-2.5">
                         {c.painFlag ? (
                           <span className="text-red-600 font-medium">Sí</span>
                         ) : (
                           <span className="text-green-600">No</span>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        {c.adjustmentsTriggered.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                            {c.adjustmentsTriggered.length} ajuste{c.adjustmentsTriggered.length > 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
                         )}
                       </td>
                     </tr>
@@ -486,6 +536,43 @@ export default function AthleteDetailClient({
               </table>
             )}
           </div>
+
+          {/* Log de ajustes automáticos */}
+          {checkInsSorted.some((c) => c.adjustmentsTriggered.length > 0) && (
+            <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5">
+              <h2 className="font-semibold text-indigo-900 mb-3">Log de ajustes automáticos</h2>
+              <p className="text-xs text-indigo-600 mb-4">
+                El sistema ajustó el plan en base a los check-ins del atleta:
+              </p>
+              <ul className="space-y-3">
+                {checkInsSorted
+                  .filter((c) => c.adjustmentsTriggered.length > 0)
+                  .map((c) => (
+                    <li key={c.id} className="bg-white rounded-lg p-3 border border-indigo-100">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-semibold text-indigo-700">Semana {c.weekNumber}</span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(c.recordedAt).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {c.adjustmentsTriggered.map((adj, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 rounded-full text-xs bg-indigo-100 text-indigo-800"
+                          >
+                            {adj}
+                          </span>
+                        ))}
+                      </div>
+                      {c.notes && (
+                        <p className="text-xs text-gray-500 mt-2 italic">&quot;{c.notes}&quot;</p>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -593,54 +680,152 @@ export default function AthleteDetailClient({
               )}
             </div>
           ) : (
-            activePlan.weeks.map((week) => (
+            activePlan.weeks.map((week, idx) => {
+              const load = weekLoadScore(week.sessions)
+              const prevLoad = idx > 0 ? weekLoadScore(activePlan.weeks[idx - 1].sessions) : null
+              const overload = prevLoad !== null && prevLoad > 0 && (load - prevLoad) / prevLoad > 0.20
+              return (
               <div key={week.weekNumber} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <h2 className="font-semibold mb-1" style={{ color: '#1e3a5f' }}>
-                  {week.phase} — semana {week.weekNumber}
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h2 className="font-semibold" style={{ color: '#1e3a5f' }}>
+                    {week.phase} — semana {week.weekNumber}
+                  </h2>
                   {week.isRecoveryWeek && (
-                    <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                       Recuperación
                     </span>
                   )}
-                </h2>
+                  <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                    Carga: {load} pts
+                  </span>
+                  {overload && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                      ⚠ +{Math.round(((load - prevLoad!) / prevLoad!) * 100)}% vs sem anterior
+                    </span>
+                  )}
+                </div>
                 {week.focusDescription && (
                   <p className="text-xs text-gray-500 mb-3">{week.focusDescription}</p>
                 )}
                 <div className="space-y-4">
                   {week.sessions.map((session) => (
                     <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#f97316' }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase">
-                          {DAY_NAMES[session.dayOfWeek] ?? `Día ${session.dayOfWeek}`}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {SESSION_TYPE_LABELS[session.type] ?? session.type}
-                        </span>
-                        <span className="text-xs text-gray-400">{session.durationMin} min</span>
-                      </div>
-                      {session.detailText && (
-                        <p className="text-xs text-gray-500 mb-2">{session.detailText}</p>
+                      {editingSession === session.id ? (
+                        // ── Inline editor ──
+                        <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+                          <p className="text-xs font-semibold text-blue-700 mb-2">
+                            Editar — {DAY_NAMES[session.dayOfWeek]}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-1">Tipo</label>
+                              <select
+                                value={sessionDraft.type}
+                                onChange={(e) => setSessionDraft(d => ({ ...d, type: e.target.value }))}
+                                className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                              >
+                                {Object.entries(SESSION_TYPE_LABELS).map(([k, v]) => (
+                                  <option key={k} value={k}>{v}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-1">Duración (min)</label>
+                              <input
+                                type="number"
+                                value={sessionDraft.durationMin}
+                                onChange={(e) => setSessionDraft(d => ({ ...d, durationMin: Number(e.target.value) }))}
+                                className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Zona objetivo</label>
+                            <input
+                              type="text"
+                              value={sessionDraft.zoneTarget}
+                              onChange={(e) => setSessionDraft(d => ({ ...d, zoneTarget: e.target.value }))}
+                              placeholder="ej. Z2, Z3-4, 75-85% FCmax"
+                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Descripción</label>
+                            <textarea
+                              rows={2}
+                              value={sessionDraft.detailText}
+                              onChange={(e) => setSessionDraft(d => ({ ...d, detailText: e.target.value }))}
+                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => setEditingSession(null)}
+                              className="flex-1 text-xs border border-gray-200 rounded-lg py-1.5 text-gray-500 hover:bg-gray-100 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleSaveSession(session.id)}
+                              disabled={savingSession}
+                              className="flex-1 text-xs text-white rounded-lg py-1.5 font-medium disabled:opacity-50 transition-opacity hover:opacity-90"
+                              style={{ backgroundColor: '#1e3a5f' }}
+                            >
+                              {savingSession ? 'Guardando...' : 'Guardar cambios'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // ── View mode ──
+                        <>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-semibold text-gray-400 uppercase">
+                              {DAY_NAMES[session.dayOfWeek] ?? `Día ${session.dayOfWeek}`}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {SESSION_TYPE_LABELS[session.type] ?? session.type}
+                            </span>
+                            <span className="text-xs text-gray-400">{session.durationMin} min</span>
+                            <button
+                              onClick={() => {
+                                setSessionDraft({
+                                  durationMin: session.durationMin,
+                                  type: session.type,
+                                  zoneTarget: session.zoneTarget ?? '',
+                                  detailText: session.detailText ?? '',
+                                })
+                                setEditingSession(session.id)
+                              }}
+                              className="ml-auto text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                          {session.detailText && (
+                            <p className="text-xs text-gray-500 mb-2">{session.detailText}</p>
+                          )}
+                          {session.zoneTarget && (
+                            <p className="text-xs text-blue-600 mb-2">Zona: {session.zoneTarget}</p>
+                          )}
+                          <div className="flex gap-2 items-start">
+                            <textarea
+                              rows={2}
+                              placeholder="Nota del coach..."
+                              value={notes[session.id] ?? ''}
+                              onChange={(e) => handleNoteChange(session.id, e.target.value)}
+                              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-700 placeholder-gray-300"
+                            />
+                            <button
+                              onClick={() => handleSaveNote(session.id)}
+                              disabled={savingNotes[session.id]}
+                              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                              style={{ backgroundColor: savedNotes[session.id] ? '#16a34a' : '#1e3a5f' }}
+                            >
+                              {savingNotes[session.id] ? '...' : savedNotes[session.id] ? '✓ Guardado' : 'Guardar'}
+                            </button>
+                          </div>
+                        </>
                       )}
-                      {session.zoneTarget && (
-                        <p className="text-xs text-blue-600 mb-2">Zona: {session.zoneTarget}</p>
-                      )}
-                      <div className="flex gap-2 items-start">
-                        <textarea
-                          rows={2}
-                          placeholder="Nota del coach..."
-                          value={notes[session.id] ?? ''}
-                          onChange={(e) => handleNoteChange(session.id, e.target.value)}
-                          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-700 placeholder-gray-300"
-                        />
-                        <button
-                          onClick={() => handleSaveNote(session.id)}
-                          disabled={savingNotes[session.id]}
-                          className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                          style={{ backgroundColor: savedNotes[session.id] ? '#16a34a' : '#1e3a5f' }}
-                        >
-                          {savingNotes[session.id] ? '...' : savedNotes[session.id] ? '✓ Guardado' : 'Guardar'}
-                        </button>
-                      </div>
                     </div>
                   ))}
                   {week.sessions.length === 0 && (
@@ -648,7 +833,7 @@ export default function AthleteDetailClient({
                   )}
                 </div>
               </div>
-            ))
+            )})
           )}
         </div>
       )}
@@ -869,7 +1054,7 @@ export default function AthleteDetailClient({
       )}
 
       {/* ── Tab: Gym ──────────────────────────────────────────────────────────── */}
-      {activeTab === 'Gym' && (
+      {activeTab === 'Sesiones' && (
         <div className="space-y-5">
           {gymLoading && (
             <div className="text-center py-16 text-gray-400 text-sm">Cargando logs de gym...</div>

@@ -61,10 +61,10 @@ export default async function AdminAIPage() {
             </div>
             <div className="px-6 py-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-800">Límite mensual — Free</p>
-                <p className="text-xs text-gray-400 mt-0.5">AI_MONTHLY_LIMIT_FREE</p>
+                <p className="text-sm font-medium text-gray-800">Límite mensual — Inactive</p>
+                <p className="text-xs text-gray-400 mt-0.5">AI_MONTHLY_LIMIT_INACTIVE</p>
               </div>
-              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.monthlyLimitFree} msgs/mes</span>
+              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.monthlyLimitInactive} msgs/mes</span>
             </div>
           </div>
         </div>

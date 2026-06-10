@@ -1,18 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getMobileUser } from '@/lib/mobile-auth'
 
 function jsToOurDow(jsDay: number): number {
   return jsDay === 0 ? 7 : jsDay
 }
 
-export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  const athleteId = mobile?.id ?? (await auth())?.user?.id
+  if (!athleteId) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
-
-  const athleteId = session.user.id
   const todayDow = jsToOurDow(new Date().getDay())
 
   // Check today's planned session type
@@ -122,7 +122,15 @@ export async function GET() {
         description: we.exercise.description,
         tips: we.exercise.tips,
       },
+      previousLogs: (previousSession?.setLogs ?? [])
+        .filter(sl => sl.workoutExerciseId === we.id)
+        .map(sl => ({
+          setNumber: sl.setNumber,
+          weightKg: sl.weightKg,
+          repsCompleted: sl.repsCompleted,
+        })),
     })),
+    // Flat array kept for web session page compatibility
     previousLogs: previousSession?.setLogs ?? [],
     plannedSession,
   })

@@ -29,7 +29,7 @@ export default auth((req) => {
     const role = (session.user as any).role
     const activated = (session.user as any).activated ?? false
     const trialEndsAt = (session.user as any).trialEndsAt as string | null
-    const userPlan = ((session.user as any).userPlan as string) ?? 'FREE'
+    const userPlan = ((session.user as any).userPlan as string) ?? 'INACTIVE'
 
     // Redirige a onboarding si no lo completó
     if (!onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !isPublicRoute) {

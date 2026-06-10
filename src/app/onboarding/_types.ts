@@ -3,7 +3,8 @@
 // Diseñado para soportar múltiples deportes y futuras integraciones
 // ---------------------------------------------------------------------------
 
-export type MainGoal = 'SPORT' | 'BODY'
+export type MainGoal = 'SPORT' | 'BODY' | 'GYM'
+export type HealthGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION'
 export type Sport = 'RUNNING' | 'CYCLING' | 'SWIMMING' | 'TRIATHLON' | 'FOOTBALL' | 'STRENGTH'
 export type BodyGoal = 'FAT_LOSS' | 'MUSCLE_GAIN' | 'RECOMPOSITION'
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
@@ -53,15 +54,26 @@ export function getDefaultSchedule(daysPerWeek: number): WeekSchedule {
   return schedules[daysPerWeek] ?? schedules[4]
 }
 
+export type GymGoal = 'MUSCLE_GAIN' | 'FAT_LOSS' | 'RECOMPOSITION'
+
 export type WizardData = {
-  // ── Paso 1: Meta principal
+  // ── Paso 1: Objetivo de salud (nuevo flujo)
+  healthGoal: HealthGoal | null
+
+  // ── Paso 2: ¿Practica un deporte?
+  hasSport: boolean | null
+
+  // ── Meta principal (derivada de healthGoal + hasSport antes de enviar a API)
   mainGoal: MainGoal | null
 
-  // ── Paso 2a: Deporte (si mainGoal = SPORT)
+  // ── Paso deporte (si hasSport = true)
   sport: Sport | null
 
   // ── Paso 2b: Objetivo corporal (si mainGoal = BODY)
   bodyGoal: BodyGoal | null
+
+  // ── Paso 2c: Objetivo gym (si mainGoal = GYM)
+  gymGoal: GymGoal | null
 
   // ── Detalles de deporte
   // Running
@@ -120,12 +132,18 @@ export type WizardData = {
 
   // ── Nutrición
   nutritionCommitment: 'strict' | 'moderate' | 'flexible' | null
+
+  // ── Método de generación del plan
+  planMethod: 'AI' | 'TEMPLATE' | null
 }
 
 export const INITIAL_DATA: WizardData = {
+  healthGoal: null,
+  hasSport: null,
   mainGoal: null,
   sport: null,
   bodyGoal: null,
+  gymGoal: null,
   raceDistance: null,
   raceDate: null,
   targetTime: null,
@@ -157,6 +175,7 @@ export const INITIAL_DATA: WizardData = {
   conditions: [],
   equipment: [],
   nutritionCommitment: null,
+  planMethod: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -164,27 +183,38 @@ export const INITIAL_DATA: WizardData = {
 // ---------------------------------------------------------------------------
 
 export type StepId =
+  | 'health-goal'
+  | 'has-sport'
   | 'main-goal'
   | 'sport-select'
   | 'body-goal'
+  | 'gym-goal'
   | 'sport-details'
   | 'physical'
   | 'hr-fitness'
   | 'schedule'
   | 'day-schedule'
   | 'health'
+  | 'plan-method'
   | 'generating'
 
 export function getSteps(data: WizardData): StepId[] {
-  if (!data.mainGoal) return ['main-goal']
+  if (!data.healthGoal) return ['health-goal']
+  if (data.hasSport === null) return ['health-goal', 'has-sport']
 
-  const common: StepId[] = ['physical', 'hr-fitness', 'schedule', 'day-schedule', 'health', 'generating']
+  const common: StepId[] = ['physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating']
 
-  if (data.mainGoal === 'SPORT') {
-    if (!data.sport) return ['main-goal', 'sport-select']
-    return ['main-goal', 'sport-select', 'sport-details', ...common]
+  if (data.hasSport) {
+    if (!data.sport) return ['health-goal', 'has-sport', 'sport-select']
+    return ['health-goal', 'has-sport', 'sport-select', 'sport-details', ...common]
   }
 
-  // BODY
-  return ['main-goal', 'body-goal', 'sport-details', ...common]
+  // Sin deporte — plan de salud puro
+  if (data.healthGoal === 'MUSCLE_GAIN') {
+    // Flujo gym simplificado: datos físicos básicos → plan-method → generar
+    return ['health-goal', 'has-sport', 'physical', 'plan-method', 'generating']
+  }
+
+  // Pérdida de peso, condición, recomposición → plan corporal completo
+  return ['health-goal', 'has-sport', ...common]
 }

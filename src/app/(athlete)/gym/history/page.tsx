@@ -29,7 +29,7 @@ export default async function GymHistoryPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  if ((session.user as any).userPlan === 'FREE') {
+  if (!(session.user as any).features?.gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
@@ -126,6 +126,9 @@ export default async function GymHistoryPage() {
 
             const exerciseList = Object.values(exerciseGroups)
             const completedSets = gs.setLogs.filter((sl) => sl.completed).length
+            const sessionVolume = gs.setLogs
+              .filter((sl) => sl.completed)
+              .reduce((acc, sl) => acc + (sl.weightKg ?? 0) * (sl.repsCompleted ?? 0), 0)
 
             return (
               <details key={gs.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden group">
@@ -159,6 +162,12 @@ export default async function GymHistoryPage() {
                     {gs.rpe != null && (
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${rpeColor(gs.rpe)}`}>
                         RPE {gs.rpe}
+                      </span>
+                    )}
+                    {sessionVolume > 0 && (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-[#f97316]">
+                        <Zap size={11} />
+                        {Math.round(sessionVolume).toLocaleString()}kg
                       </span>
                     )}
                     <span className="text-xs text-gray-400">{completedSets} series</span>
@@ -238,26 +247,41 @@ export default async function GymHistoryPage() {
       )}
 
       {/* Stats summary */}
-      {sessions.length > 0 && (
-        <div className="bg-[#1e3a5f]/5 border border-[#1e3a5f]/15 rounded-xl p-4 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xl font-bold text-[#1e3a5f]">{sessions.length}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Sesiones</p>
+      {sessions.length > 0 && (() => {
+        const totalVolume = sessions.reduce((acc, s) =>
+          acc + s.setLogs
+            .filter((sl) => sl.completed)
+            .reduce((a, sl) => a + (sl.weightKg ?? 0) * (sl.repsCompleted ?? 0), 0),
+        0)
+        return (
+          <div className="bg-[#1e3a5f]/5 border border-[#1e3a5f]/15 rounded-xl p-4 grid grid-cols-4 gap-3 text-center">
+            <div>
+              <p className="text-xl font-bold text-[#1e3a5f]">{sessions.length}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Sesiones</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-[#1e3a5f]">
+                {sessions.filter((s) => s.completed).length}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Completadas</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-[#1e3a5f]">
+                {sessions.reduce((acc, s) => acc + s.setLogs.filter((sl) => sl.completed).length, 0)}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Series totales</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-[#f97316]">
+                {totalVolume > 1000
+                  ? `${(totalVolume / 1000).toFixed(1)}t`
+                  : Math.round(totalVolume).toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Volumen total</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xl font-bold text-[#1e3a5f]">
-              {sessions.filter((s) => s.completed).length}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">Completadas</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-[#1e3a5f]">
-              {sessions.reduce((acc, s) => acc + s.setLogs.filter((sl) => sl.completed).length, 0)}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">Series totales</p>
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

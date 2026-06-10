@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
@@ -12,10 +12,23 @@ export async function GET(
   }
 
   const { id: athleteId } = await params
+  const url = new URL(req.url)
+  const limitParam = parseInt(url.searchParams.get('limit') ?? '60')
+  const limit = Math.min(Math.max(limitParam, 1), 200) // entre 1 y 200
+
+  // Verificar que el coach tiene relación con este atleta
+  const relation = await prisma.coachAthlete.findFirst({
+    where: { coachId: session.user.id, athleteId },
+    select: { id: true },
+  })
+  if (!relation) {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+  }
 
   const sessions = await prisma.gymSession.findMany({
     where: { athleteId, completed: true },
     orderBy: { date: 'asc' },
+    take: limit,
     include: {
       setLogs: {
         include: {

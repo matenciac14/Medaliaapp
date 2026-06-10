@@ -12,6 +12,8 @@ export default async function CoachDashboardPage() {
 
   const coachId = session.user.id
 
+  const now = new Date()
+
   // ── Fetch atletas reales ──────────────────────────────────────────────────
   const coachRelations = await prisma.coachAthlete.findMany({
     where: { coachId },
@@ -24,14 +26,29 @@ export default async function CoachDashboardPage() {
             take: 1,
             include: {
               weeks: {
-                take: 1,
                 orderBy: { weekNumber: 'asc' },
+                include: {
+                  sessions: {
+                    where: { date: { lte: now } },
+                    include: {
+                      log: { select: { id: true } },
+                    },
+                  },
+                },
               },
             },
           },
           checkIns: {
             orderBy: { recordedAt: 'desc' },
-            take: 1,
+            take: 2,
+            select: {
+              recordedAt: true,
+              weightKg: true,
+              hrResting: true,
+              hardestSessionRpe: true,
+              adjustmentsTriggered: true,
+              weekNumber: true,
+            },
           },
           goals: {
             where: { status: 'ACTIVE' },
@@ -45,7 +62,8 @@ export default async function CoachDashboardPage() {
   // ── Mapear al tipo Athlete que espera AthleteTabs ─────────────────────────
   const athletesFromDB = coachRelations.map(({ athlete }) => {
     const plan        = athlete.trainingPlans[0] ?? null
-    const lastCheckIn = athlete.checkIns[0] ?? null
+    const lastCheckIn  = athlete.checkIns[0] ?? null
+    const prevCheckIn  = athlete.checkIns[1] ?? null
 
     const daysSince = lastCheckIn
       ? Math.floor(
@@ -62,6 +80,26 @@ export default async function CoachDashboardPage() {
         )
       : 0
 
+    // Adherencia real: sesiones pasadas con log / total sesiones pasadas
+    const allPastSessions = plan?.weeks.flatMap((w) => w.sessions) ?? []
+    const completedCount  = allPastSessions.filter((s) => s.log !== null).length
+    const adherencePct    = allPastSessions.length > 0
+      ? Math.round((completedCount / allPastSessions.length) * 100)
+      : 0
+
+    // Fase de la semana actual, no siempre semana 1
+    const currentPlanWeek = plan?.weeks.find((w) => w.weekNumber === currentWeek)
+      ?? plan?.weeks[plan.weeks.length - 1]
+
+    // ── Compute alert flags ──────────────────────────────────────────────────
+    const weightDrop = (lastCheckIn?.weightKg && prevCheckIn?.weightKg)
+      ? prevCheckIn.weightKg - lastCheckIn.weightKg
+      : 0
+    const highRpe       = (lastCheckIn?.hardestSessionRpe ?? 0) >= 8
+    const weightAlert   = weightDrop > 0.75 // > 750g en una semana
+    const noCheckinAlert = daysSince >= 7
+    const adjustments   = lastCheckIn?.adjustmentsTriggered ?? []
+
     return {
       id:                 athlete.id,
       name:               athlete.name ?? 'Atleta',
@@ -69,14 +107,22 @@ export default async function CoachDashboardPage() {
       goal:               athlete.goals[0]?.type ?? 'GENERAL_FITNESS',
       currentWeek,
       totalWeeks:         plan?.totalWeeks ?? 0,
-      phase:              (plan?.weeks[0]?.phase as string) ?? 'BASE',
+      phase:              (currentPlanWeek?.phase as string) ?? 'BASE',
       lastCheckInDaysAgo: daysSince,
       weightKg:           lastCheckIn?.weightKg ?? athlete.profile?.weightKg ?? 0,
       weightGoalKg:       athlete.profile?.weightGoalKg ?? 0,
       hrResting:          lastCheckIn?.hrResting ?? athlete.profile?.hrResting ?? 0,
-      adherencePct:       75, // calcular real después
-      alerts:             lastCheckIn?.adjustmentsTriggered ?? [],
+      adherencePct,
+      alerts:             adjustments,
       planStatus:         plan?.status ?? 'SIN PLAN',
+      // nuevos flags para feed de alertas
+      alertFlags: {
+        noCheckin:    noCheckinAlert,
+        highRpe,
+        weightDrop:   weightAlert,
+        weightDropKg: weightDrop,
+        adjustments,
+      },
     }
   })
 
@@ -127,9 +173,72 @@ export default async function CoachDashboardPage() {
             <MetricCard label="Check-ins pendientes" value={pendingCheckIns}  color="#f97316" />
             <MetricCard label="Alertas activas"      value={totalAlerts}      color="#dc2626" />
           </div>
+          <AlertsFeed athletes={athletes} />
           <AthleteTabs athletes={athletes} />
         </>
       )}
+    </div>
+  )
+}
+
+type AlertFlag = {
+  noCheckin: boolean
+  highRpe: boolean
+  weightDrop: boolean
+  weightDropKg: number
+  adjustments: string[]
+}
+
+function AlertsFeed({ athletes }: { athletes: { id: string; name: string; alertFlags: AlertFlag }[] }) {
+  type AlertItem = { athleteId: string; name: string; type: string; message: string; color: string }
+  const items: AlertItem[] = []
+
+  for (const a of athletes) {
+    const f = a.alertFlags
+    if (f.noCheckin) {
+      items.push({ athleteId: a.id, name: a.name, type: 'sin-checkin', message: 'Sin check-in hace +7 días', color: '#dc2626' })
+    }
+    if (f.highRpe) {
+      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'RPE ≥ 8 en última sesión dura', color: '#f97316' })
+    }
+    if (f.weightDrop) {
+      items.push({ athleteId: a.id, name: a.name, type: 'peso', message: `Bajó ${f.weightDropKg.toFixed(1)} kg esta semana`, color: '#eab308' })
+    }
+    if (f.adjustments.length > 0) {
+      items.push({ athleteId: a.id, name: a.name, type: 'ajuste', message: `Plan auto-ajustado: ${f.adjustments.join(', ')}`, color: '#6366f1' })
+    }
+  }
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+        <h2 className="font-semibold text-gray-900 text-sm">Alertas que requieren atención</h2>
+        <span className="ml-auto text-xs text-gray-400">{items.length} activas</span>
+      </div>
+      <ul className="divide-y divide-gray-50">
+        {items.map((item, i) => (
+          <li key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: item.color }}
+            />
+            <a href={`/coach/athlete/${item.athleteId}`} className="flex-1 min-w-0">
+              <span className="font-medium text-gray-900 text-sm">{item.name}</span>
+              <span className="text-gray-400 mx-2">·</span>
+              <span className="text-gray-600 text-sm">{item.message}</span>
+            </a>
+            <a
+              href={`/coach/athlete/${item.athleteId}`}
+              className="text-xs text-blue-600 hover:underline flex-shrink-0"
+            >
+              Ver →
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+
+// Map session type → intensity bucket for kcal calc
+function typeToIntensity(type: string | null): 'HIGH' | 'MODERATE' | 'LOW' | null {
+  if (!type) return null
+  if (['FARTLEK', 'TIRADA_LARGA'].includes(type)) return 'HIGH'
+  if (['RODAJE_Z2', 'CICLA', 'NATACION', 'FUERZA'].includes(type)) return 'MODERATE'
+  return 'LOW'
+}
 
 function getCurrentWeekNumber(startDate: Date): number {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000
@@ -31,10 +40,10 @@ export async function GET(req: NextRequest) {
   const weekAgo = new Date(today)
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const [user, activePlan, lastCheckIn, lastLog] = await Promise.all([
+  const [user, activePlan, lastCheckIn, lastLog, nutritionPlan] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, config: true, profile: { select: { weightKg: true, hrResting: true } } },
+      select: { name: true, config: true, profile: { select: { weightKg: true, hrResting: true, weightGoalKg: true, sleepHoursAvg: true } } },
     }),
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
@@ -53,13 +62,14 @@ export async function GET(req: NextRequest) {
     prisma.weeklyCheckIn.findFirst({
       where: { userId },
       orderBy: { recordedAt: 'desc' },
-      select: { recordedAt: true, weightKg: true, energyLevel: true },
+      select: { recordedAt: true, weightKg: true, sleepHours: true, energyLevel: true },
     }),
     prisma.sessionLog.findFirst({
       where: { userId },
       orderBy: { completedAt: 'desc' },
       select: { completedAt: true },
     }),
+    prisma.nutritionPlan.findUnique({ where: { userId } }),
   ])
 
   // Today's planned session
@@ -80,16 +90,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Weekly stats
+  // Weekly stats + 7-day strip
   let completedCount = 0
   let totalTraining = 0
   let planData = null
+  // dayIndex 0=Mon … 6=Sun  |  our DOW 1=Mon … 7=Sun
+  const weekSessions: { dayIndex: number; type: string | null; done: boolean; isToday: boolean }[] =
+    Array.from({ length: 7 }, (_, i) => ({ dayIndex: i, type: null, done: false, isToday: i + 1 === todayDow }))
+
   if (activePlan) {
     const currentWeek = getCurrentWeekNumber(activePlan.startDate)
     const week = activePlan.weeks.find(w => w.weekNumber === currentWeek)
     if (week) {
       totalTraining = week.sessions.length
       completedCount = week.sessions.filter(s => s.log).length
+      // Map each session into the 7-day array (includes DESCANSO from all sessions)
+      for (const s of week.sessions) {
+        const idx = s.dayOfWeek - 1  // convert 1-7 → 0-6
+        if (idx >= 0 && idx < 7) {
+          weekSessions[idx].type = s.type
+          weekSessions[idx].done = !!s.log
+        }
+      }
     }
     planData = {
       name: activePlan.name,
@@ -98,6 +120,20 @@ export async function GET(req: NextRequest) {
       phase: activePlan.weeks.find(w => w.weekNumber === getCurrentWeekNumber(activePlan.startDate))?.phase ?? 'BASE',
     }
   }
+
+  // Kcal target for today
+  const intensity = typeToIntensity(todaySession?.type ?? null)
+  const kcalTarget = nutritionPlan
+    ? getDailyNutritionTarget(intensity, {
+        targetKcalHard: nutritionPlan.targetKcalHard,
+        targetKcalEasy: nutritionPlan.targetKcalEasy,
+        targetKcalRest: nutritionPlan.targetKcalRest,
+        proteinG: nutritionPlan.proteinG,
+        carbsHardG: nutritionPlan.carbsHardG,
+        carbsEasyG: nutritionPlan.carbsEasyG,
+        fatG: nutritionPlan.fatG,
+      }).kcal
+    : null
 
   // Check-in pending (más de 7 días sin hacer)
   const checkinPending = !lastCheckIn || lastCheckIn.recordedAt < weekAgo
@@ -113,9 +149,12 @@ export async function GET(req: NextRequest) {
     planData,
     metrics: {
       weightKg: lastCheckIn?.weightKg ?? user?.profile?.weightKg ?? null,
+      weightGoalKg: user?.profile?.weightGoalKg ?? null,
       hrResting: user?.profile?.hrResting ?? null,
-      sleepHours: null,
+      sleepHours: lastCheckIn?.sleepHours ?? user?.profile?.sleepHoursAvg ?? null,
     },
+    weekSessions,
+    kcalTarget,
     completedCount,
     totalTraining,
     checkinPending,

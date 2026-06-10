@@ -3,12 +3,16 @@ import { prisma } from '@/lib/db/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { parseUserConfig } from '@/lib/config/user-config'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(_req: Request) {
   const session = await auth()
   if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await rateLimitAsync(`nutrition-generate:${session.user.id}`, { limit: 3, windowMs: 60 * 60_000 }) // 3/hora
+  if (!allowed) return Response.json({ error: 'Límite de generaciones alcanzado. Intenta más tarde.' }, { status: 429 })
 
   const userId = session.user.id
 
@@ -27,7 +31,7 @@ export async function POST(_req: Request) {
   const goal = user.goals[0]
 
   // Calcular TDEE con fórmulas
-  const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, 'male', 5)
+  const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)
   const macros = calculateMacros(tdee, profile.weightKg, !!profile.weightGoalKg)
 
   // Usar AI para generar notas personalizadas

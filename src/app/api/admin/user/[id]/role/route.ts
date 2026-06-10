@@ -7,9 +7,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
-
-  if (!session?.user || (session.user as any).role !== 'ADMIN') {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Verificar rol en DB, no en JWT (consistente con otros endpoints de admin)
+  const admin = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  })
+  if (admin?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { id } = await params

@@ -68,6 +68,25 @@ type SetState = {
 // exerciseId -> setIndex (0-based) -> SetState
 type SetsMap = Record<string, SetState[]>
 
+// ─── Session Timer ───────────────────────────────────────────────────────────
+
+function useSessionTimer() {
+  const startRef = useRef<number>(Date.now())
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const minutes = Math.floor(elapsed / 60)
+  const seconds = elapsed % 60
+  const display = `${minutes}:${String(seconds).padStart(2, '0')}`
+  return { display, minutes }
+}
+
 // ─── Rest Timer ──────────────────────────────────────────────────────────────
 
 function RestTimer({ seconds, onDone }: { seconds: number; onDone: () => void }) {
@@ -116,13 +135,15 @@ function CompleteModal({
   onSubmit,
   onClose,
   loading,
+  defaultDuration,
 }: {
   onSubmit: (rpe: number, durationMin: number, notes: string) => void
   onClose: () => void
   loading: boolean
+  defaultDuration: number
 }) {
   const [rpe, setRpe] = useState(7)
-  const [durationMin, setDurationMin] = useState(60)
+  const [durationMin, setDurationMin] = useState(defaultDuration)
   const [notes, setNotes] = useState('')
 
   return (
@@ -218,7 +239,7 @@ export default function GymSessionPage() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  if ((authSession?.user as any)?.userPlan === 'FREE') {
+  if (!(authSession?.user as any)?.features?.gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
@@ -229,6 +250,8 @@ export default function GymSessionPage() {
     )
   }
   const [error, setError] = useState<string | null>(null)
+
+  const { display: timerDisplay, minutes: elapsedMinutes } = useSessionTimer()
 
   // sets state: workoutExercise.id -> array of SetState
   const [setsMap, setSetsMap] = useState<SetsMap>({})
@@ -435,7 +458,7 @@ export default function GymSessionPage() {
   const { workoutDay, exercises } = sessionData
 
   return (
-    <div className="px-4 py-6 md:px-8 max-w-3xl mx-auto pb-32 md:pb-8 space-y-5">
+    <div className="px-4 py-6 md:px-8 max-w-3xl mx-auto pb-40 md:pb-8 space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -459,8 +482,8 @@ export default function GymSessionPage() {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-[#1e3a5f]">{completedSets}</p>
-          <p className="text-xs text-gray-500">de {totalSets} series</p>
+          <p className="text-2xl font-bold text-[#f97316] tabular-nums">{timerDisplay}</p>
+          <p className="text-xs text-gray-500">{completedSets}/{totalSets} series</p>
         </div>
       </div>
 
@@ -672,8 +695,24 @@ export default function GymSessionPage() {
         </div>
       )}
 
-      {/* Finish button */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:relative p-4 md:p-0 bg-white md:bg-transparent border-t border-gray-200 md:border-0 md:pt-2">
+      {/* Finish button — mobile: fixed above bottom nav; desktop: inline */}
+      <div
+        className="fixed left-0 right-0 px-4 pt-3 bg-white border-t border-gray-200 md:hidden"
+        style={{ bottom: 0, paddingBottom: 'calc(env(safe-area-inset-bottom) + 3.5rem)' }}
+      >
+        <button
+          onClick={() => setShowModal(true)}
+          disabled={!canFinish}
+          className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${
+            canFinish
+              ? 'bg-[#f97316] hover:bg-orange-600 text-white shadow-md'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {canFinish ? '🏁 Finalizar sesión' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
+        </button>
+      </div>
+      <div className="hidden md:block pt-2">
         <button
           onClick={() => setShowModal(true)}
           disabled={!canFinish}
@@ -693,6 +732,7 @@ export default function GymSessionPage() {
           onSubmit={handleComplete}
           onClose={() => setShowModal(false)}
           loading={submitting}
+          defaultDuration={elapsedMinutes > 0 ? elapsedMinutes : 60}
         />
       )}
     </div>

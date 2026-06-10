@@ -9,10 +9,10 @@ interface Props {
 }
 
 export function ActivateButton({ userId, isActive = false }: Props) {
-  const [loading, setLoading] = useState<'PRO' | 'COACH' | 'FREE' | null>(null)
+  const [loading, setLoading] = useState<'PRO' | 'COACH' | 'INACTIVE' | null>(null)
   const router = useRouter()
 
-  async function callPlan(plan: 'PRO' | 'COACH' | 'FREE') {
+  async function callPlan(plan: 'PRO' | 'COACH' | 'INACTIVE') {
     setLoading(plan)
     try {
       const res = await fetch(`/api/admin/users/${userId}/plan`, {
@@ -32,10 +32,10 @@ export function ActivateButton({ userId, isActive = false }: Props) {
     return (
       <button
         disabled={loading !== null}
-        onClick={() => callPlan('FREE')}
+        onClick={() => callPlan('INACTIVE')}
         className="px-2.5 py-1 text-xs font-medium rounded-md bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors border border-red-200"
       >
-        {loading === 'FREE' ? '...' : 'Desactivar'}
+        {loading === 'INACTIVE' ? '...' : 'Desactivar'}
       </button>
     )
   }

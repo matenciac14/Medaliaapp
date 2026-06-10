@@ -37,7 +37,7 @@ export type GeneratePlanInput = {
   injuries: string[]
   conditions: string[]
   nutritionCommitment: string
-  generatedBy?: 'AI' | 'COACH'
+  generatedBy?: 'AI' | 'COACH' | 'TEMPLATE'
   weekSchedule?: WeekSchedule
   experienceLevel?: string
 }
@@ -218,6 +218,29 @@ const SPLIT_LABELS: Record<MuscleGroupSplit, string> = {
   FULL_BODY: 'Full Body',
 }
 
+function getSessionIntensity(type: string): 'HIGH' | 'MODERATE' | 'LOW' | 'REST' {
+  switch (type) {
+    case 'INTERVALOS':
+    case 'TIRADA_LARGA':
+    case 'SIMULACRO':
+    case 'TEST':
+      return 'HIGH'
+    case 'TEMPO':
+    case 'FARTLEK':
+    case 'CICLA':
+    case 'NATACION':
+    case 'FUERZA':
+    case 'OTRO':
+      return 'MODERATE'
+    case 'RODAJE_Z2':
+      return 'LOW'
+    case 'DESCANSO':
+      return 'REST'
+    default:
+      return 'MODERATE'
+  }
+}
+
 function getSetsRepsScheme(phase: string): string {
   switch (phase) {
     case 'BASE': return '3×12-15'
@@ -363,6 +386,7 @@ function buildScheduledSessions(
           weekId,
           dayOfWeek: dow,
           type: 'OTRO' as const,
+          intensity: getSessionIntensity('OTRO') as any,
           durationMin,
           zoneTarget: cardio.zoneTarget,
           structure: cardio.structure,
@@ -379,40 +403,13 @@ function buildScheduledSessions(
         weekId,
         dayOfWeek: dow,
         type: 'FUERZA' as const,
+        intensity: getSessionIntensity('FUERZA') as any,
         durationMin,
         zoneTarget: null,
         structure,
         date: sessionDate(planStart, weekIndex, dow),
       }
     })
-}
-
-// ---------------------------------------------------------------------------
-// Mock data para cuando la BD no está conectada
-// ---------------------------------------------------------------------------
-
-function buildMockResult(input: GeneratePlanInput): GeneratePlanResult {
-  const hrMax = input.hrMax && input.hrMax > 100 ? input.hrMax : estimateHRMax(input.age)
-  const zones = calculateHRZones(hrMax, input.hrResting ?? 0)
-  const tdee = calculateTDEE(
-    input.weightKg,
-    input.heightCm,
-    input.age,
-    input.gender ?? 'male',
-    input.daysPerWeek
-  )
-  return {
-    planId: `mock-${Date.now()}`,
-    recommendations: [
-      {
-        title: 'Plan generado (modo demo)',
-        text: 'La base de datos no está conectada. Este es un resultado de prueba.',
-      },
-    ],
-    hrZones: zones,
-    hrMax,
-    tdee,
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -444,8 +441,8 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
   const hasWeightGoal = !!input.weightGoalKg
   const macros = calculateMacros(tdee, input.weightKg, hasWeightGoal)
 
-  // 5. Llamar a AI para personalizar textos (solo si es B2C, no coach)
-  const recommendations = input.generatedBy === 'COACH'
+  // 5. Llamar a AI para personalizar textos (solo si es B2C y no eligió TEMPLATE)
+  const recommendations = (input.generatedBy === 'COACH' || input.generatedBy === 'TEMPLATE')
     ? []
     : await getAIRecommendations(input, hrMax, hrZones)
 
@@ -551,6 +548,7 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
                 weekId: planWeek.id,
                 dayOfWeek: session.dayOfWeek,
                 type: session.type as any,
+                intensity: getSessionIntensity(session.type) as any,
                 durationMin: session.durationMin,
                 zoneTarget: session.zoneTarget,
                 structure: session.structure,
@@ -610,6 +608,8 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
           nutrition: true,
           progress: true,
           log: true,
+          gym: true,
+          aiCoach: true,
         } : {}),
       },
       onboarding: {
@@ -627,7 +627,7 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
         goal: sportGoal,
       },
       trial: {
-        plan: isB2C ? ('TRIAL' as const) : (currentConfig.trial?.plan ?? 'FREE' as const),
+        plan: isB2C ? ('TRIAL' as const) : (currentConfig.trial?.plan ?? 'INACTIVE' as const),
         endsAt: trialEndsAt,
       },
       ai: {
@@ -648,12 +648,7 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
       tdee,
     }
   } catch (dbError) {
-    // BD no conectada o error de escritura — devolver datos sin planId real
-    console.error('[generatePlan] DB error, falling back to mock:', dbError)
-    const mockResult = buildMockResult(input)
-    return {
-      ...mockResult,
-      recommendations: recommendations.length > 0 ? recommendations : mockResult.recommendations,
-    }
+    console.error('[generatePlan] DB error:', dbError)
+    throw dbError
   }
 }

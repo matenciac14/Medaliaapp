@@ -105,7 +105,7 @@ export const es: Translations = {
     pricing: {
       title: 'Precios simples',
       subtitle: 'Sin sorpresas. Cancela cuando quieras.',
-      freeLabel: 'Free',
+      freeLabel: 'Gratis',
       freePeriod: 'para siempre',
       proLabel: 'Pro',
       proPeriod: 'por mes',
@@ -155,11 +155,12 @@ export const es: Translations = {
   },
   app: {
     sidebar: {
-      dashboard: 'Dashboard',
+      dashboard: 'Inicio',
       plan: 'Mi Plan',
       checkin: 'Check-in',
       nutrition: 'Nutrición',
       progress: 'Progreso',
+      log: 'Registros',
       gym: 'Gym',
       coachPanel: 'Panel Coach',
       profile: 'Mi perfil',
@@ -169,7 +170,7 @@ export const es: Translations = {
       myProfile: 'Mi perfil',
       createAthlete: 'Crear asesorado',
       logout: 'Salir',
-      overview: 'Overview',
+      overview: 'Resumen',
       users: 'Usuarios',
       coaches: 'Coaches',
       subscriptions: 'Suscripciones',

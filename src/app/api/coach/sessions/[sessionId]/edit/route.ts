@@ -12,7 +12,7 @@ export async function PATCH(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.id || (session.user as any).role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { sessionId } = await params
   const body = await req.json()
@@ -48,4 +48,31 @@ export async function PATCH(
   })
 
   return NextResponse.json({ ok: true, session: updated })
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id || (session.user as any).role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { sessionId } = await params
+
+  const plannedSession = await prisma.plannedSession.findUnique({
+    where: { id: sessionId },
+    include: { week: { include: { plan: { select: { userId: true } } } } },
+  })
+
+  if (!plannedSession) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const athleteId = plannedSession.week.plan.userId
+  const relation = await prisma.coachAthlete.findUnique({
+    where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
+  })
+  if (!relation) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  await prisma.plannedSession.delete({ where: { id: sessionId } })
+
+  return NextResponse.json({ ok: true })
 }

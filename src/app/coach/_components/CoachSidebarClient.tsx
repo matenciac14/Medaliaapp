@@ -69,7 +69,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
         </nav>
 
         <div className="px-4 pb-4">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white/60 hover:text-white text-sm py-2 px-3 rounded-lg hover:bg-white/10 transition-colors">
+          <Link href="/coach/dashboard" className="flex items-center gap-2 text-white/60 hover:text-white text-sm py-2 px-3 rounded-lg hover:bg-white/10 transition-colors">
             <span>←</span><span>Mi dashboard</span>
           </Link>
         </div>
@@ -107,30 +107,42 @@ export default function CoachSidebarClient({ coachName }: Props) {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-end z-20">
-        <Link href="/coach/dashboard" className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors', isActive('/coach/dashboard') ? 'text-[#f97316]' : 'text-gray-500')}>
-          <Users size={20} />
-          {s.myAthletes}
-        </Link>
-        <Link href="/coach/gym" className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors', isActive('/coach/gym') ? 'text-[#f97316]' : 'text-gray-500')}>
-          <Dumbbell size={20} />
-          {s.gym}
-        </Link>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-end z-20 pb-safe">
+        {([
+          { href: '/coach/dashboard', label: s.myAthletes, icon: Users },
+          { href: '/coach/gym',       label: s.gym,        icon: Dumbbell },
+        ] as const).map(({ href, label, icon: Icon }) => {
+          const active = isActive(href)
+          return (
+            <Link key={href} href={href} className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 min-h-[52px] text-[10px] font-medium transition-colors', active ? 'text-[#f97316]' : 'text-gray-400')}>
+              <div className={cn('w-12 h-7 rounded-full flex items-center justify-center transition-colors', active ? 'nav-pill-active' : '')}>
+                <Icon size={20} />
+              </div>
+              {label}
+            </Link>
+          )
+        })}
         {/* Center action — Crear asesorado */}
-        <Link href="/coach/clients/new" className="flex-1 flex flex-col items-center pb-2">
-          <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-md -mt-5 text-white" style={{ backgroundColor: '#f97316' }}>
+        <Link href="/coach/clients/new" className="flex-1 flex flex-col items-center pb-2.5">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-md -mt-5 text-white bg-brand-cta">
             <Plus size={22} />
           </div>
           <span className="text-[10px] font-medium text-gray-500 mt-0.5">{s.newAthlete}</span>
         </Link>
-        <Link href="/coach/profile" className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors', isActive('/coach/profile') ? 'text-[#f97316]' : 'text-gray-500')}>
-          <Globe size={20} />
-          {s.myProfile}
-        </Link>
-        <Link href="/coach/settings" className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors', isActive('/coach/settings') ? 'text-[#f97316]' : 'text-gray-500')}>
-          <Settings size={20} />
-          {s.settings}
-        </Link>
+        {([
+          { href: '/coach/profile',  label: s.myProfile, icon: Globe },
+          { href: '/coach/settings', label: s.settings,  icon: Settings },
+        ] as const).map(({ href, label, icon: Icon }) => {
+          const active = isActive(href)
+          return (
+            <Link key={href} href={href} className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 min-h-[52px] text-[10px] font-medium transition-colors', active ? 'text-[#f97316]' : 'text-gray-400')}>
+              <div className={cn('w-12 h-7 rounded-full flex items-center justify-center transition-colors', active ? 'nav-pill-active' : '')}>
+                <Icon size={20} />
+              </div>
+              {label}
+            </Link>
+          )
+        })}
       </nav>
     </>
   )

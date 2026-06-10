@@ -107,7 +107,7 @@ function TrendBadge({
   )
 }
 
-function VerticalBarChart<T extends { week: number }>({
+function LineChart<T extends { week: number }>({
   data,
   getValue,
   color,
@@ -124,51 +124,87 @@ function VerticalBarChart<T extends { week: number }>({
   minVal: number
   maxVal: number
 }) {
-  const CHART_H = 120
+  const W = 600
+  const H = 120
+  const PAD_X = 8
+  const PAD_Y = 12
   const range = maxVal - minVal || 1
+  const n = data.length
+
+  function toX(i: number) {
+    return n <= 1 ? W / 2 : PAD_X + (i / (n - 1)) * (W - PAD_X * 2)
+  }
+  function toY(val: number) {
+    return PAD_Y + (1 - (val - minVal) / range) * (H - PAD_Y * 2)
+  }
+
+  const points = data.map((d, i) => ({ x: toX(i), y: toY(getValue(d)), val: getValue(d), week: d.week }))
+  const polyline = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  const areaPath = n > 1
+    ? `M${points[0].x.toFixed(1)},${H} ` +
+      points.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
+      ` L${points[n - 1].x.toFixed(1)},${H} Z`
+    : ''
+
+  const goalY = goalLine !== undefined ? toY(goalLine) : null
 
   return (
-    <div className="relative">
-      {goalLine !== undefined && (
-        <div
-          className="absolute left-0 right-8 flex items-center gap-1 z-10 pointer-events-none"
-          style={{ bottom: `${Math.round(((goalLine - minVal) / range) * CHART_H) + 24}px` }}
-        >
-          <div className="flex-1 border-t-2 border-dashed border-[#16a34a]/70" />
-          <span className="text-[9px] font-semibold text-[#16a34a] whitespace-nowrap">
-            Meta {goalLine}{unit}
-          </span>
-        </div>
-      )}
-
-      <div className="flex items-end gap-1 overflow-x-auto" style={{ height: `${CHART_H}px` }}>
-        {data.map((d) => {
-          const val = getValue(d)
-          const barH = Math.max(4, Math.round(((val - minVal) / range) * CHART_H))
-          return (
-            <div
-              key={d.week}
-              title={`Sem ${d.week}: ${val}${unit}`}
-              className="flex flex-col items-center flex-1 min-w-[22px] group cursor-default"
-              style={{ height: `${CHART_H}px`, justifyContent: 'flex-end' }}
-            >
-              <span className="text-[9px] font-semibold text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity mb-0.5">
-                {val}{unit}
-              </span>
-              <div
-                className="w-full rounded-t-sm"
-                style={{ height: `${barH}px`, backgroundColor: color, opacity: 0.88 }}
-              />
-            </div>
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }} overflow="visible">
+        {/* área bajo la curva */}
+        {areaPath && (
+          <path d={areaPath} fill={color} fillOpacity={0.08} />
+        )}
+        {/* línea de meta */}
+        {goalY !== null && (
+          <g>
+            <line
+              x1={PAD_X} y1={goalY} x2={W - PAD_X} y2={goalY}
+              stroke="#16a34a" strokeWidth={1.5} strokeDasharray="5,4" opacity={0.7}
+            />
+            <text x={W - PAD_X + 4} y={goalY + 4} fontSize={9} fill="#16a34a" fontWeight="600">
+              Meta
+            </text>
+          </g>
+        )}
+        {/* línea principal */}
+        {n > 1 && (
+          <polyline
+            points={polyline}
+            fill="none"
+            stroke={color}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        )}
+        {/* puntos */}
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={5} fill="white" stroke={color} strokeWidth={2} />
+            <title>{`Sem ${p.week}: ${p.val}${unit}`}</title>
+          </g>
+        ))}
+        {/* etiquetas inicio y fin */}
+        {n > 0 && (
+          <>
+            <text x={points[0].x} y={points[0].y - 8} textAnchor="middle" fontSize={10} fill={color} fontWeight="700">
+              {points[0].val}{unit}
+            </text>
+            {n > 1 && (
+              <text x={points[n-1].x} y={points[n-1].y - 8} textAnchor="middle" fontSize={10} fill={color} fontWeight="700">
+                {points[n-1].val}{unit}
+              </text>
+            )}
+          </>
+        )}
+      </svg>
+      {/* eje X — semanas */}
+      <div className="flex justify-between mt-1 px-1">
+        {data.map((d, i) => (
+          (i === 0 || i === Math.floor((n - 1) / 2) || i === n - 1) && (
+            <span key={d.week} className="text-[9px] text-gray-400">S{d.week}</span>
           )
-        })}
-      </div>
-
-      <div className="flex gap-1 mt-1 overflow-x-auto">
-        {data.map((d) => (
-          <div key={d.week} className="flex-1 min-w-[22px] text-center">
-            <span className="text-[9px] text-gray-400">S{d.week}</span>
-          </div>
         ))}
       </div>
     </div>
@@ -355,7 +391,7 @@ export default function ProgressClient({
           </span>
         </div>
 
-        <VerticalBarChart
+        <LineChart
           data={weightData}
           getValue={(d) => d.kg}
           color="#1e3a5f"
@@ -393,7 +429,7 @@ export default function ProgressClient({
           </span>
         </div>
 
-        <VerticalBarChart
+        <LineChart
           data={hrData}
           getValue={(d) => d.bpm}
           color="#dc2626"
@@ -431,15 +467,55 @@ export default function ProgressClient({
 
       {/* Benchmarks */}
       <SectionCard title="Benchmarks de Rendimiento">
-        <div className="overflow-x-auto">
+        {/* Mobile: cards */}
+        <div className="sm:hidden space-y-3">
+          {[
+            {
+              label: 'Tiempo 5k estimado',
+              start: estimate5k(hrStart),
+              end: estimate5k(hrEnd),
+              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
+            },
+            {
+              label: 'Pace Z2',
+              start: estimatePaceZ2(hrStart),
+              end: estimatePaceZ2(hrEnd),
+              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
+            },
+            {
+              label: 'Peso vs objetivo',
+              start: `${weightStart} kg`,
+              end: `${weightEnd} kg`,
+              status: weightEnd <= weightGoal ? 'logrado' : 'pendiente',
+            },
+            {
+              label: 'FC Reposo',
+              start: `${hrStart} bpm`,
+              end: `${hrEnd} bpm`,
+              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
+            },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{row.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{row.start} → <span className="font-semibold text-gray-700">{row.end}</span></p>
+              </div>
+              {row.status === 'mejorando' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a] shrink-0">Mejorando</span>}
+              {row.status === 'igual' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 shrink-0">Sin cambio</span>}
+              {row.status === 'empeorando' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626] shrink-0">Empeorando</span>}
+              {row.status === 'logrado' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a] shrink-0">Logrado</span>}
+              {row.status === 'pendiente' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316] shrink-0">Pendiente</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
                 {['Métrica', 'Inicio', 'Actual', 'Estado'].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left py-2 pr-4 last:pr-0 text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                  >
+                  <th key={h} className="text-left py-2 pr-4 last:pr-0 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     {h}
                   </th>
                 ))}
@@ -451,9 +527,9 @@ export default function ProgressClient({
                 <td className="py-3 pr-4 text-gray-500">{estimate5k(hrStart)}</td>
                 <td className="py-3 pr-4 font-semibold text-gray-900">{estimate5k(hrEnd)}</td>
                 <td className="py-3">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">
-                    Mejorando
-                  </span>
+                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
+                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
+                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
                 </td>
               </tr>
               <tr>
@@ -461,9 +537,9 @@ export default function ProgressClient({
                 <td className="py-3 pr-4 text-gray-500">{estimatePaceZ2(hrStart)}</td>
                 <td className="py-3 pr-4 font-semibold text-gray-900">{estimatePaceZ2(hrEnd)}</td>
                 <td className="py-3">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">
-                    Mejorando
-                  </span>
+                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
+                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
+                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
                 </td>
               </tr>
               <tr>
@@ -471,15 +547,9 @@ export default function ProgressClient({
                 <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>
                 <td className="py-3 pr-4 font-semibold text-gray-900">{weightEnd} kg</td>
                 <td className="py-3">
-                  {weightEnd <= weightGoal ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">
-                      Logrado
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316]">
-                      Pendiente
-                    </span>
-                  )}
+                  {weightEnd <= weightGoal
+                    ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Logrado</span>
+                    : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316]">Pendiente</span>}
                 </td>
               </tr>
               <tr>
@@ -487,9 +557,9 @@ export default function ProgressClient({
                 <td className="py-3 pr-4 text-gray-500">{hrStart} bpm</td>
                 <td className="py-3 pr-4 font-semibold text-gray-900">{hrEnd} bpm</td>
                 <td className="py-3">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">
-                    Mejorando
-                  </span>
+                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
+                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
+                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
                 </td>
               </tr>
             </tbody>

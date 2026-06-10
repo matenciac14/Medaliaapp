@@ -4,11 +4,11 @@ import { ChevronRight, LayoutDashboard, Users, UserCheck, CreditCard, Settings, 
 const SECTIONS = [
   {
     icon: LayoutDashboard,
-    title: 'Overview — KPIs',
+    title: 'Resumen — KPIs',
     href: '/admin',
     color: '#1e3a5f',
     items: [
-      { q: '¿Qué métricas muestra el Overview?', a: 'Usuarios totales, atletas activos, coaches registrados, nuevos esta semana, nuevos este mes y onboardings completados. Todos son datos en tiempo real de la DB.' },
+      { q: '¿Qué métricas muestra el Resumen?', a: 'Usuarios totales, atletas activos, coaches registrados, nuevos esta semana, nuevos este mes y onboardings completados. Todos son datos en tiempo real de la DB.' },
       { q: '¿Con qué frecuencia se actualiza?', a: 'Cada vez que cargas la página — no hay polling automático. Refresca para ver datos actualizados.' },
     ],
   },

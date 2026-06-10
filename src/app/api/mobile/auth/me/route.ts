@@ -23,5 +23,6 @@ export async function GET(req: NextRequest) {
     role: user.role,
     onboardingCompleted: config.onboarding.completed,
     userPlan: config.trial.plan,
+    features: config.features,
   })
 }

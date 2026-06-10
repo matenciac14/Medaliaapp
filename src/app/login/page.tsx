@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -31,7 +32,11 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    const code = searchParams.get('code')
+    const callbackUrl = code
+      ? `/join/${code}`
+      : searchParams.get('callbackUrl') ?? '/dashboard'
+    router.push(callbackUrl)
   }
 
   async function handleGoogle() {

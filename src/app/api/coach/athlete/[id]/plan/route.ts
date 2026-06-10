@@ -45,7 +45,7 @@ export async function POST(
     age: profile?.age ?? 30,
     heightCm: profile?.heightCm ?? 170,
     weightKg: profile?.weightKg ?? 70,
-    gender: 'male' as const,
+    gender: (profile?.gender ?? 'male') as 'male' | 'female',
     hrResting: profile?.hrResting ?? undefined,
     hrMax: profile?.hrMax ?? undefined,
     injuries: (profile?.injuries as string[]) ?? [],

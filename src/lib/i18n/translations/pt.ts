@@ -155,11 +155,12 @@ export const pt: Translations = {
   },
   app: {
     sidebar: {
-      dashboard: 'Dashboard',
+      dashboard: 'Início',
       plan: 'Meu Plano',
       checkin: 'Check-in',
       nutrition: 'Nutrição',
       progress: 'Progresso',
+      log: 'Registros',
       gym: 'Gym',
       coachPanel: 'Painel Coach',
       profile: 'Meu perfil',

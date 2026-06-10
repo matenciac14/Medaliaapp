@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { parseUserConfig } from '@/lib/config/user-config'
-import { evaluateAndAdjust } from '@/lib/plan/adjustments'
+import { evaluateAndAdjust, applyPlanAdjustments } from '@/lib/plan/adjustments'
+import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 
 interface CheckInBody {
   weightKg?: number
@@ -51,6 +52,22 @@ function getISOWeekNumber(): number {
   return Math.ceil(((now.getTime() - start.getTime()) / msPerWeek) + 1)
 }
 
+export async function GET(_req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const last = await prisma.weeklyCheckIn.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { recordedAt: 'desc' },
+    select: { weightKg: true, hrResting: true },
+  })
+
+  return NextResponse.json({
+    weightKg: last?.weightKg ?? null,
+    hrResting: last?.hrResting ?? null,
+  })
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -65,7 +82,7 @@ export async function POST(req: NextRequest) {
 
   const activePlan = await prisma.trainingPlan.findFirst({
     where: { userId, status: 'ACTIVE' },
-    include: { weeks: { orderBy: { weekNumber: 'asc' }, take: 1 } },
+    include: { weeks: { orderBy: { weekNumber: 'asc' } } },
   })
 
   if (activePlan) {
@@ -76,14 +93,18 @@ export async function POST(req: NextRequest) {
 
   const alerts = evaluateAlerts(body)
 
-  // Obtener contexto del plan para el motor de ajuste
+  // Obtener contexto del plan para el motor de ajuste — usar la semana actual, no la primera
+  const currentWeekNum = activePlan ? getCurrentWeekNumber(activePlan.startDate) : 1
+  const currentWeekData = activePlan?.weeks.find((w) => w.weekNumber === currentWeekNum)
+    ?? activePlan?.weeks[activePlan.weeks.length - 1]
+
   const planContext = activePlan
     ? {
-        currentWeek: getCurrentWeekNumber(activePlan.startDate),
+        currentWeek: currentWeekNum,
         totalWeeks: activePlan.totalWeeks,
-        phase: activePlan.weeks[0]?.phase ?? 'BASE',
-        weeklyVolumeKm: activePlan.weeks[0]?.volumeKm ?? undefined,
-        isRecoveryWeek: activePlan.weeks[0]?.isRecoveryWeek ?? false,
+        phase: currentWeekData?.phase ?? 'BASE',
+        weeklyVolumeKm: currentWeekData?.volumeKm ?? undefined,
+        isRecoveryWeek: currentWeekData?.isRecoveryWeek ?? false,
       }
     : { currentWeek: 1, totalWeeks: 18, phase: 'BASE' }
 
@@ -92,6 +113,7 @@ export async function POST(req: NextRequest) {
     {
       weightKg: body.weightKg,
       hrResting: body.hrResting,
+      hrRestingBaseline: body.previousHrResting ?? undefined,
       sleepHours: body.sleepHours,
       sleepScore: body.sleepScore,
       hardestSessionRpe: body.hardestRpe,
@@ -122,6 +144,58 @@ export async function POST(req: NextRequest) {
     update: { ...checkInData },
     create: { userId, weekNumber, ...checkInData },
   })
+
+  // Aplicar ajustes reales al plan de la semana siguiente si hay triggers
+  if (adjustmentResult.triggers.length > 0 && activePlan) {
+    const nextWeekNum = currentWeekNum + 1
+    if (nextWeekNum <= activePlan.totalWeeks) {
+      applyPlanAdjustments(activePlan.id, nextWeekNum, adjustmentResult.triggers).catch((err) =>
+        console.error('[checkin] applyPlanAdjustments error:', err)
+      )
+    }
+  }
+
+  // Si el usuario reportó peso, sincronizar con HealthProfile y recalcular TDEE/macros
+  if (body.weightKg) {
+    const profile = await prisma.healthProfile.findUnique({
+      where: { userId },
+      select: { weightKg: true, heightCm: true, age: true, gender: true },
+    })
+
+    if (profile?.heightCm && profile?.age) {
+      const prevWeight = profile.weightKg ?? body.weightKg
+      const weightChanged = Math.abs(body.weightKg - prevWeight) >= 0.5 // actualizar si cambió ≥0.5kg
+
+      if (weightChanged) {
+        // Actualizar peso en perfil
+        await prisma.healthProfile.update({
+          where: { userId },
+          data: { weightKg: body.weightKg },
+        })
+
+        // Recalcular TDEE y macros con el nuevo peso
+        const nutritionPlan = await prisma.nutritionPlan.findUnique({ where: { userId } })
+        if (nutritionPlan) {
+          const tdee = calculateTDEE(body.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)
+          const hasWeightGoal = body.weightKg > (body.weightKg - 2) // heurística simple
+          const macros = calculateMacros(tdee, body.weightKg, hasWeightGoal)
+          await prisma.nutritionPlan.update({
+            where: { userId },
+            data: {
+              tdee,
+              targetKcalHard: macros.hard.kcal,
+              targetKcalEasy: macros.easy.kcal,
+              targetKcalRest: macros.rest.kcal,
+              proteinG: macros.hard.protein,
+              carbsHardG: macros.hard.carbs,
+              carbsEasyG: macros.easy.carbs,
+              fatG: macros.hard.fat,
+            },
+          })
+        }
+      }
+    }
+  }
 
   // Si es el primer check-in, activar features.progress
   const checkInCount = await prisma.weeklyCheckIn.count({ where: { userId } })

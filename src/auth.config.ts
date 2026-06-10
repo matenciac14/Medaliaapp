@@ -25,7 +25,8 @@ export const authConfig: NextAuthConfig = {
         token.onboardingCompleted = (user as any).onboardingCompleted ?? false
         token.activated = (user as any).activated ?? false
         token.trialEndsAt = (user as any).trialEndsAt ?? null
-        token.userPlan = (user as any).userPlan ?? 'FREE'
+        token.userPlan = (user as any).userPlan ?? 'INACTIVE'
+        token.features = (user as any).features ?? {}
       }
       return token
     },
@@ -36,7 +37,11 @@ export const authConfig: NextAuthConfig = {
         session.user.onboardingCompleted = token.onboardingCompleted as boolean
         session.user.activated = token.activated as boolean
         session.user.trialEndsAt = (token.trialEndsAt as string | null) ?? null
-        session.user.userPlan = (token.userPlan as 'TRIAL' | 'FREE' | 'PRO') ?? 'FREE'
+        session.user.userPlan = (token.userPlan as 'TRIAL' | 'PRO' | 'INACTIVE') ?? 'INACTIVE'
+        session.user.features = (token.features as any) ?? {
+          plan: false, checkin: false, nutrition: false, progress: false,
+          log: false, coach: false, gym: false, aiCoach: false,
+        }
       }
       return session
     },

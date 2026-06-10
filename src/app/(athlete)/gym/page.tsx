@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
+import PublicTemplates from './_components/PublicTemplates'
 
 // 0 = Sunday in JS Date.getDay(), but we use 1=Mon..7=Sun
 function jsToOurDow(jsDay: number): number {
@@ -33,11 +34,11 @@ function getWeekBounds() {
 
 const DOW_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-export default async function GymPage() {
+export default async function GymPage({ searchParams }: { searchParams: Promise<{ completed?: string }> }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  if ((session.user as any).userPlan === 'FREE') {
+  if (!(session.user as any).features?.gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
@@ -49,6 +50,24 @@ export default async function GymPage() {
   }
 
   const athleteId = session.user.id
+  const { completed: completedParam } = await searchParams
+  const justCompleted = completedParam === '1'
+
+  // Si viene de completar sesión, cargar resumen de la última sesión
+  const lastSession = justCompleted
+    ? await prisma.gymSession.findFirst({
+        where: { athleteId, completed: true },
+        orderBy: { date: 'desc' },
+        select: {
+          rpe: true,
+          durationMin: true,
+          setLogs: {
+            where: { completed: true },
+            select: { weightKg: true, repsCompleted: true },
+          },
+        },
+      })
+    : null
 
   // Check today's planned session type
   const todayStart = new Date()
@@ -87,18 +106,16 @@ export default async function GymPage() {
   })
 
   if (!assigned) {
+    // Mostrar plantillas públicas para auto-asignación
+    const publicTemplates = await prisma.workoutTemplate.findMany({
+      where: { isPublic: true, isActive: true },
+      include: { days: { select: { isRestDay: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#1e3a5f] mb-6">Rutina gym</h1>
-        <div className="bg-white border border-gray-200 rounded-xl p-10 flex flex-col items-center text-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-            <Dumbbell size={32} className="text-gray-400" />
-          </div>
-          <div>
-            <p className="text-gray-700 font-medium text-lg">Sin rutina asignada</p>
-            <p className="text-gray-500 text-sm mt-1">Tu coach aún no te ha asignado una rutina</p>
-          </div>
-        </div>
+        <PublicTemplates templates={publicTemplates} />
       </div>
     )
   }
@@ -119,14 +136,61 @@ export default async function GymPage() {
 
   const completedDows = new Set(weekSessions.filter((s) => s.completed).map((s) => s.dayOfWeek))
 
+  // Calcular resumen de la última sesión
+  const lastSessionVolume = lastSession
+    ? lastSession.setLogs.reduce((acc, sl) => {
+        const kg = sl.weightKg ?? 0
+        const reps = sl.repsCompleted ?? 0
+        return acc + kg * reps
+      }, 0)
+    : 0
+
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+
+      {/* Banner post-sesión */}
+      {justCompleted && lastSession && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">🏁</span>
+            <div>
+              <p className="font-bold text-green-800">¡Sesión completada!</p>
+              <p className="text-xs text-green-600">Buen trabajo — aquí está tu resumen</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {lastSession.durationMin && (
+              <div className="bg-white rounded-xl p-3 text-center border border-green-100">
+                <p className="text-xl font-bold text-[#1e3a5f]">{lastSession.durationMin}</p>
+                <p className="text-xs text-gray-500 mt-0.5">minutos</p>
+              </div>
+            )}
+            <div className="bg-white rounded-xl p-3 text-center border border-green-100">
+              <p className="text-xl font-bold text-[#1e3a5f]">{lastSession.setLogs.length}</p>
+              <p className="text-xs text-gray-500 mt-0.5">series</p>
+            </div>
+            {lastSessionVolume > 0 && (
+              <div className="bg-white rounded-xl p-3 text-center border border-green-100">
+                <p className="text-xl font-bold text-[#f97316]">{Math.round(lastSessionVolume).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-0.5">kg levantados</p>
+              </div>
+            )}
+            {lastSession.rpe != null && (
+              <div className="bg-white rounded-xl p-3 text-center border border-green-100">
+                <p className="text-xl font-bold text-[#1e3a5f]">{lastSession.rpe}<span className="text-sm font-normal text-gray-400">/10</span></p>
+                <p className="text-xs text-gray-500 mt-0.5">RPE</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1e3a5f]">Rutina gym</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Coach: {assigned.coach.name ?? 'Tu coach'} · desde {formatDate(assigned.startDate)}
+            {assigned.coach ? `Coach: ${assigned.coach.name ?? 'Tu coach'} · ` : ''}desde {formatDate(assigned.startDate)}
           </p>
         </div>
         <Link
@@ -171,7 +235,7 @@ export default async function GymPage() {
       )}
 
       {/* Template info */}
-      <div className="bg-[#1e3a5f] text-white rounded-xl p-5">
+      <div className="bg-brand-hero text-white rounded-xl p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-1">Plan activo</p>
@@ -230,7 +294,7 @@ export default async function GymPage() {
             <div className="px-5 py-4 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/gym/session"
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#f97316] hover:bg-orange-600 text-white font-semibold text-sm px-4 py-3 rounded-lg transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-cta hover:opacity-90 active:opacity-80 text-white font-semibold text-sm px-4 py-3 rounded-lg transition-opacity"
               >
                 <Clock size={16} />
                 Comenzar sesión de hoy

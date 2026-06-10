@@ -117,6 +117,7 @@ export default async function AthleteDetailPage({
             detailText: s.detailText,
             zoneTarget: s.zoneTarget,
             coachNote: s.coachNote,
+            intensity: (s as any).intensity ?? 'MODERATE',
           })),
         })),
       }
@@ -132,6 +133,9 @@ export default async function AthleteDetailPage({
     energyLevel: c.energyLevel,
     dietAdherencePct: c.dietAdherencePct,
     painFlag: c.painFlag,
+    hardestSessionRpe: c.hardestSessionRpe,
+    adjustmentsTriggered: c.adjustmentsTriggered,
+    notes: c.notes,
   }))
 
   const nutritionPlanData = nutritionPlan

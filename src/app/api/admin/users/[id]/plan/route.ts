@@ -25,7 +25,7 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const { plan } = await req.json() // 'FREE' | 'PRO' | 'COACH'
+  const { plan } = await req.json() // 'INACTIVE' | 'PRO' | 'COACH'
 
   let config: typeof DEFAULT_USER_CONFIG
   let role: 'ATHLETE' | 'COACH'
@@ -34,10 +34,10 @@ export async function PATCH(
     config = COACH_CONFIG
     role = 'COACH'
   } else if (plan === 'PRO') {
-    config = { ...FULL_ATHLETE_CONFIG, features: { ...FULL_ATHLETE_CONFIG.features, gym: false } }
+    config = FULL_ATHLETE_CONFIG
     role = 'ATHLETE'
   } else {
-    // FREE
+    // INACTIVE
     config = DEFAULT_USER_CONFIG
     role = 'ATHLETE'
   }

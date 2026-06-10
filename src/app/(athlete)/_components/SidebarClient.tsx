@@ -9,7 +9,7 @@ import {
   Apple,
   TrendingUp,
   ClipboardCheck,
-  Users,
+  ClipboardList,
   LogOut,
   Dumbbell,
   UserCircle,
@@ -37,21 +37,19 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck,  show: features.checkin },
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: features.nutrition },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: features.progress },
+    { href: '/log',       label: s.log,         icon: ClipboardList,   show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: features.gym },
-    { href: '/coach',     label: s.coachPanel,  icon: Users,           show: features.coach },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
-    { href: '/help',      label: s.help,        icon: HelpCircle,      show: true },
   ].filter((l) => l.show)
 
-  // Mobile: gym tiene prioridad sobre nutrición
+  // Mobile: 5 tabs fijos — las páginas manejan paywall internamente
   const mobileNavLinks = [
-    { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard, show: true },
-    { href: '/plan',      label: s.plan,        icon: CalendarDays,    show: features.plan },
-    { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: features.gym },
-    { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck,  show: features.checkin },
-    { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: features.progress },
-    { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: features.nutrition },
-  ].filter((l) => l.show).slice(0, 5)
+    { href: '/dashboard', label: s.dashboard, icon: LayoutDashboard },
+    { href: '/plan',      label: s.plan,       icon: CalendarDays },
+    { href: '/gym',       label: s.gym,        icon: Dumbbell },
+    { href: '/checkin',   label: s.checkin,    icon: ClipboardCheck },
+    { href: '/profile',   label: s.profile,    icon: UserCircle },
+  ]
 
   function isActive(href: string) {
     return href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
@@ -75,7 +73,7 @@ export default function SidebarClient({ user, config }: Props) {
               href={href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive(href) ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                isActive(href) ? 'bg-white/20 text-white font-semibold' : 'text-white/65 hover:bg-white/10 hover:text-white'
               )}
             >
               <Icon size={18} />
@@ -126,20 +124,23 @@ export default function SidebarClient({ user, config }: Props) {
       </header>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
-        {mobileNavLinks.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              'flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
-              isActive(href) ? 'text-[#f97316]' : 'text-gray-500'
-            )}
-          >
-            <Icon size={20} />
-            {label}
-          </Link>
-        ))}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20 pb-safe">
+        {mobileNavLinks.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors',
+                active ? 'text-[#1e3a5f]' : 'text-gray-400'
+              )}
+            >
+              <Icon size={22} strokeWidth={2} />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
     </>
   )

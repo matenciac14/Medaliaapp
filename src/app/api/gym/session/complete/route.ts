@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getMobileUser } from '@/lib/mobile-auth'
 
 type SetPayload = {
   workoutExerciseId: string
@@ -11,12 +12,11 @@ type SetPayload = {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const mobile = await getMobileUser(req)
+  const athleteId = mobile?.id ?? (await auth())?.user?.id
+  if (!athleteId) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
-
-  const athleteId = session.user.id
 
   let body: {
     assignedWorkoutId: string
@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     rpe?: number
     durationMin?: number
     notes?: string
-    sets: SetPayload[]
+    sets?: SetPayload[]
+    setLogs?: SetPayload[]
   }
 
   try {
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  const { assignedWorkoutId, dayOfWeek, rpe, durationMin, notes, sets } = body
+  const { assignedWorkoutId, dayOfWeek, rpe, durationMin, notes } = body
+  const sets = body.sets ?? body.setLogs ?? []
 
   if (!assignedWorkoutId || !dayOfWeek || !Array.isArray(sets)) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })

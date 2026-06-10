@@ -4,7 +4,7 @@ import { ChevronRight, LayoutDashboard, CalendarDays, ClipboardCheck, Apple, Tre
 const SECTIONS = [
   {
     icon: LayoutDashboard,
-    title: 'Dashboard',
+    title: 'Inicio',
     href: '/dashboard',
     color: '#1e3a5f',
     items: [

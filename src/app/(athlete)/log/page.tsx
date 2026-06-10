@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { X, CheckCircle2, Clock, MapPin, Heart, FileText } from 'lucide-react'
-import { mockTodaySession } from '@/lib/mock/dashboard-data'
 
 const SESSION_LABELS: Record<string, string> = {
   RODAJE_Z2: 'Rodaje Z2',
@@ -52,12 +51,21 @@ function getRpeTrackStyle(rpe: number): string {
 
 const RUNNING_TYPES = ['RODAJE_Z2', 'FARTLEK', 'TIRADA_LARGA', 'CICLA']
 
-export default function LogPage() {
+function LogContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const sessionId     = searchParams.get('sessionId') ?? ''
+  const sessionType   = searchParams.get('type') ?? 'RODAJE_Z2'
+  const sessionDuration = searchParams.get('duration') ?? '45'
+  const sessionZone   = searchParams.get('zone') ?? 'Z2'
+  const sessionDetail = searchParams.get('detail')
+    ? decodeURIComponent(searchParams.get('detail')!)
+    : ''
 
   const [completed, setCompleted] = useState<boolean | null>(null)
   const [rpe, setRpe] = useState(5)
-  const [durationMin, setDurationMin] = useState<string>(String(mockTodaySession.durationMin))
+  const [durationMin, setDurationMin] = useState<string>(sessionDuration)
   const [distanceKm, setDistanceKm] = useState<string>('')
   const [hrAvg, setHrAvg] = useState<string>('')
   const [notes, setNotes] = useState('')
@@ -65,7 +73,13 @@ export default function LogPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const isRunning = RUNNING_TYPES.includes(mockTodaySession.type)
+  useEffect(() => {
+    if (!sessionId) router.replace('/dashboard')
+  }, [sessionId, router])
+
+  if (!sessionId) return null
+
+  const isRunning = RUNNING_TYPES.includes(sessionType)
 
   async function handleSave() {
     setSaving(true)
@@ -74,7 +88,7 @@ export default function LogPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          plannedSessionId: 'session-demo',
+          plannedSessionId: sessionId,
           completed,
           rpe: completed ? rpe : undefined,
           durationMin: completed ? Number(durationMin) : undefined,
@@ -126,19 +140,19 @@ export default function LogPage() {
 
         {/* Card sesion planificada */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-[#1e3a5f] px-5 py-4 flex items-center gap-3">
-            <span className="text-2xl">{SESSION_ICONS[mockTodaySession.type] ?? '🏅'}</span>
+          <div className="bg-brand-hero px-5 py-4 flex items-center gap-3">
+            <span className="text-3xl">{SESSION_ICONS[sessionType] ?? '🏅'}</span>
             <div>
-              <p className="text-white font-semibold">
-                {SESSION_LABELS[mockTodaySession.type] ?? mockTodaySession.type}
+              <p className="text-white font-bold">
+                {SESSION_LABELS[sessionType] ?? sessionType}
               </p>
               <p className="text-white/70 text-sm">
-                {mockTodaySession.durationMin} min · Zona {mockTodaySession.zoneTarget}
+                {durationMin} min · Zona {sessionZone}
               </p>
             </div>
           </div>
           <div className="px-5 py-3">
-            <p className="text-sm text-gray-600">{mockTodaySession.detailText}</p>
+            <p className="text-sm text-gray-600">{sessionDetail}</p>
           </div>
         </div>
 
@@ -148,23 +162,23 @@ export default function LogPage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setCompleted(true)}
-              className={`py-3 rounded-xl font-semibold text-sm border-2 transition-all ${
+              className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
                 completed === true
                   ? 'bg-[#22c55e] border-[#22c55e] text-white'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-[#22c55e]/50'
               }`}
             >
-              Si
+              Sí, la completé
             </button>
             <button
               onClick={() => setCompleted(false)}
-              className={`py-3 rounded-xl font-semibold text-sm border-2 transition-all ${
+              className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
                 completed === false
                   ? 'bg-red-500 border-red-500 text-white'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-red-300'
               }`}
             >
-              No
+              No la hice
             </button>
           </div>
         </div>
@@ -247,6 +261,7 @@ export default function LogPage() {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     value={durationMin}
                     onChange={(e) => setDurationMin(e.target.value)}
                     placeholder="45"
@@ -262,6 +277,7 @@ export default function LogPage() {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     value={hrAvg}
                     onChange={(e) => setHrAvg(e.target.value)}
                     placeholder="Opcional"
@@ -279,6 +295,7 @@ export default function LogPage() {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     value={distanceKm}
                     onChange={(e) => setDistanceKm(e.target.value)}
@@ -308,7 +325,7 @@ export default function LogPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-[#f97316] hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-colors shadow-sm"
+              className="w-full bg-brand-cta hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-sm"
             >
               {saving ? 'Guardando...' : 'Guardar sesion'}
             </button>
@@ -316,5 +333,17 @@ export default function LogPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Cargando sesión...</p>
+      </div>
+    }>
+      <LogContent />
+    </Suspense>
   )
 }

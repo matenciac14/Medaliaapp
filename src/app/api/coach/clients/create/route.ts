@@ -28,13 +28,11 @@ export async function POST(req: NextRequest) {
       email,
       sport,
       goal,
-      planTier,
     } = body as {
       name: string
       email: string
       sport: string | null
       goal: string | null
-      planTier?: 'free' | 'pro'
     }
 
     if (!name || !email) {
@@ -56,17 +54,15 @@ export async function POST(req: NextRequest) {
     const tempPassword = generateTempPassword()
     const hashedPassword = await bcrypt.hash(tempPassword, 12)
 
-    // Build features based on selected tier
-    const isPro = planTier === 'pro'
     const athleteConfig = {
       ...DEFAULT_USER_CONFIG,
       features: {
         ...DEFAULT_USER_CONFIG.features,
-        plan: isPro,
-        checkin: isPro,
-        nutrition: isPro,
-        progress: isPro,
-        log: isPro,
+        plan: false,       // coach activa explícitamente desde Tab Resumen
+        checkin: false,
+        nutrition: false,
+        progress: false,
+        log: false,
         coach: false,
         gym: false,
       },

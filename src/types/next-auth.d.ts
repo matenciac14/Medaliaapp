@@ -8,7 +8,17 @@ declare module 'next-auth' {
       onboardingCompleted: boolean
       activated: boolean
       trialEndsAt: string | null
-      userPlan: 'TRIAL' | 'FREE' | 'PRO'
+      userPlan: 'TRIAL' | 'PRO' | 'INACTIVE'
+      features: {
+        plan: boolean
+        checkin: boolean
+        nutrition: boolean
+        progress: boolean
+        log: boolean
+        coach: boolean
+        gym: boolean
+        aiCoach: boolean
+      }
       name?: string | null
       email?: string | null
       image?: string | null
@@ -20,7 +30,17 @@ declare module 'next-auth' {
     onboardingCompleted?: boolean
     activated?: boolean
     trialEndsAt?: string | null
-    userPlan?: 'TRIAL' | 'FREE' | 'PRO'
+    userPlan?: 'TRIAL' | 'PRO' | 'INACTIVE'
+    features?: {
+      plan: boolean
+      checkin: boolean
+      nutrition: boolean
+      progress: boolean
+      log: boolean
+      coach: boolean
+      gym: boolean
+      aiCoach: boolean
+    }
   }
 }
 
@@ -31,6 +51,16 @@ declare module 'next-auth/jwt' {
     onboardingCompleted?: boolean
     activated?: boolean
     trialEndsAt?: string | null
-    userPlan?: 'TRIAL' | 'FREE' | 'PRO'
+    userPlan?: 'TRIAL' | 'PRO' | 'INACTIVE'
+    features?: {
+      plan: boolean
+      checkin: boolean
+      nutrition: boolean
+      progress: boolean
+      log: boolean
+      coach: boolean
+      gym: boolean
+      aiCoach: boolean
+    }
   }
 }

@@ -1,7 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
-import { mockPlan, mockWeeks } from '@/lib/mock/dashboard-data'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -10,8 +9,8 @@ export default async function PlanPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  // Feature gating — Free users no tienen plan
-  if (session.user.userPlan === 'FREE') {
+  // Feature gating — usuarios sin plan activo
+  if (!session.user.features?.plan) {
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
@@ -34,27 +33,8 @@ export default async function PlanPage() {
 
   const userId = session.user.id
 
-  let plan: PlanClientPlan = {
-    name: mockPlan.name,
-    currentWeek: mockPlan.currentWeek,
-    totalWeeks: mockPlan.totalWeeks,
-    startDate: mockPlan.startDate,
-  }
-
-  let weeks: PlanClientWeek[] = mockWeeks.map((w) => ({
-    weekNumber: w.weekNumber,
-    phase: w.phase,
-    volumeKm: w.volumeKm,
-    isRecoveryWeek: w.isRecoveryWeek,
-    hasTest: w.hasTest,
-    focusDescription: w.focusDescription,
-    sessions: w.sessions.map((s) => ({
-      day: s.day,
-      type: s.type,
-      label: s.label,
-      done: s.done,
-    })),
-  }))
+  let plan: PlanClientPlan | null = null
+  let weeks: PlanClientWeek[] = []
 
   try {
     const activePlan = await prisma.trainingPlan.findFirst({
@@ -94,15 +74,40 @@ export default async function PlanPage() {
         hasTest: w.sessions.some((s) => s.type === 'TEST' || s.type === 'SIMULACRO'),
         focusDescription: w.focusDescription ?? '',
         sessions: w.sessions.map((s) => ({
+          id: s.id,
           day: DAY_LABELS[s.dayOfWeek] ?? String(s.dayOfWeek),
           type: s.type,
           label: s.detailText?.slice(0, 40) ?? s.type,
           done: !!s.log,
+          durationMin: s.durationMin,
+          zoneTarget: s.zoneTarget ?? 'Z2',
+          detailText: s.detailText ?? '',
         })),
       }))
     }
-  } catch {
-    // Fallback silencioso — se usan los mock values ya asignados
+  } catch (err) {
+    console.error('[plan] Error cargando plan:', err)
+  }
+
+  if (!plan) {
+    return (
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="text-5xl mb-4">📅</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Sin plan activo</h2>
+          <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
+            Aún no tienes un plan de entrenamiento. Completa el onboarding o contacta a tu coach para generarlo.
+          </p>
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            Volver al dashboard
+          </a>
+        </div>
+      </div>
+    )
   }
 
   return <PlanClient plan={plan} weeks={weeks} />

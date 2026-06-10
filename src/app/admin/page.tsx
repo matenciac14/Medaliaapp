@@ -50,7 +50,7 @@ export default async function AdminOverviewPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Resumen</h1>
         <p className="text-sm text-gray-500 mt-1">Métricas generales de la plataforma Medaliq</p>
       </div>
 

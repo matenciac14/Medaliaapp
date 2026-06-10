@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         role: user.role,
         onboardingCompleted,
         userPlan: config.trial.plan,
+        features: config.features,
       },
     })
   } catch (err) {

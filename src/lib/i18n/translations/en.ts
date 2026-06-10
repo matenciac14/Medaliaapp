@@ -160,6 +160,7 @@ export const en: Translations = {
       checkin: 'Check-in',
       nutrition: 'Nutrition',
       progress: 'Progress',
+      log: 'Log',
       gym: 'Gym',
       coachPanel: 'Coach Panel',
       profile: 'My profile',

@@ -2,13 +2,15 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type Role = 'ATHLETE' | 'COACH'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteCode = searchParams.get('code')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -48,8 +50,10 @@ export default function RegisterPage() {
     }
 
     // Auto-login después de registro
-    // Coach va directo a su dashboard, atleta al onboarding
-    const callbackUrl = role === 'COACH' ? '/coach/dashboard' : '/onboarding'
+    // Si hay invite code, volver a /join/[code] para que el sistema lo redima
+    const callbackUrl = inviteCode
+      ? `/join/${inviteCode}`
+      : role === 'COACH' ? '/coach/dashboard' : '/onboarding'
     await signIn('credentials', {
       email,
       password,

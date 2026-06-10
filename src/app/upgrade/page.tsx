@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import DowngradeButton from './_components/DowngradeButton'
 
 export default async function UpgradePage() {
   const session = await auth()
@@ -18,7 +18,7 @@ export default async function UpgradePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
         {/* Free */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 flex flex-col">
-          <p className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">Free</p>
+          <p className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">Gratis</p>
           <p className="text-4xl font-bold text-gray-900 mb-1">$0</p>
           <p className="text-gray-400 text-sm mb-6">Para siempre</p>
           <ul className="text-sm text-gray-600 space-y-2 mb-8 flex-1">
@@ -29,12 +29,7 @@ export default async function UpgradePage() {
             <li className="text-gray-300">✗ AI Coach chat</li>
             <li className="text-gray-300">✗ Gym tracker</li>
           </ul>
-          <Link
-            href="/api/upgrade/downgrade"
-            className="block text-center px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Continuar gratis
-          </Link>
+          <DowngradeButton />
         </div>
 
         {/* Pro */}
@@ -56,13 +51,13 @@ export default async function UpgradePage() {
             <li>✓ Gym tracker completo</li>
             <li>✓ Check-ins semanales</li>
           </ul>
-          <button
-            disabled
-            className="block w-full text-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+          <a
+            href={`mailto:hola@medaliq.com?subject=Quiero%20Pro%20-%20${encodeURIComponent(session.user.email ?? '')}&body=Hola%2C%20quiero%20activar%20el%20plan%20Pro%20de%20Medaliq%20a%20%2415%2Fmes.`}
+            className="block text-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#1e3a5f' }}
           >
-            Suscribirse — próximamente
-          </button>
+            Activar Pro — $15/mes
+          </a>
         </div>
       </div>
 

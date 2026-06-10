@@ -3,10 +3,10 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { parseUserConfig } from '@/lib/config/user-config'
 
-export async function GET() {
+export async function POST() {
   const session = await auth()
   if (!session?.user?.id || session.user.role !== 'ATHLETE') {
-    return NextResponse.redirect(new URL('/login', process.env.NEXTAUTH_URL!))
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
   const existing = await prisma.user.findUnique({
@@ -28,7 +28,7 @@ export async function GET() {
       coach: false,
     },
     trial: {
-      plan: 'FREE' as const,
+      plan: 'INACTIVE' as const,
       endsAt: currentConfig.trial?.endsAt ?? null,
     },
     ai: {
@@ -42,5 +42,5 @@ export async function GET() {
     data: { config: newConfig },
   })
 
-  return NextResponse.redirect(new URL('/dashboard', process.env.NEXTAUTH_URL!))
+  return NextResponse.json({ ok: true })
 }

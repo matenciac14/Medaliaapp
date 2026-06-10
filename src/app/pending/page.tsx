@@ -54,7 +54,7 @@ export default async function PendingPage() {
         {/* Info */}
         <div className="w-full rounded-xl px-4 py-3" style={{ backgroundColor: '#f9731610', border: '1px solid #f9731630' }}>
           <p className="text-xs font-medium" style={{ color: '#f97316' }}>
-            Te avisaremos por email cuando tu cuenta esté activa.
+            Tu coach te notificará directamente cuando tu cuenta esté activa.
           </p>
         </div>
 

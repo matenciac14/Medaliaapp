@@ -1,35 +1,10 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { mockWeeks } from '@/lib/mock/dashboard-data'
 import ProgressClient, {
   type WeightPoint,
   type HrPoint,
   type WeekData,
 } from './_components/ProgressClient'
-
-// Mock fallback arrays (antes hardcodeados en el componente)
-const MOCK_WEIGHT: WeightPoint[] = [
-  { week: 1, kg: 78.0 }, { week: 2, kg: 77.6 }, { week: 3, kg: 77.2 },
-  { week: 4, kg: 76.9 }, { week: 5, kg: 76.5 }, { week: 6, kg: 76.1 },
-  { week: 7, kg: 75.8 }, { week: 8, kg: 75.4 }, { week: 9, kg: 75.1 },
-  { week: 10, kg: 74.8 }, { week: 11, kg: 74.5 }, { week: 12, kg: 74.1 },
-]
-
-const MOCK_HR: HrPoint[] = [
-  { week: 1, bpm: 58 }, { week: 2, bpm: 57 }, { week: 3, bpm: 58 },
-  { week: 4, bpm: 56 }, { week: 5, bpm: 56 }, { week: 6, bpm: 55 },
-  { week: 7, bpm: 55 }, { week: 8, bpm: 54 }, { week: 9, bpm: 54 },
-  { week: 10, bpm: 53 }, { week: 11, bpm: 53 }, { week: 12, bpm: 52 },
-]
-
-const MOCK_WEEKS: WeekData[] = mockWeeks.map((w) => ({
-  weekNumber: w.weekNumber,
-  phase: w.phase,
-  volumeKm: w.volumeKm,
-  adherencePct: 75, // placeholder mock
-}))
-
-const MOCK_WEIGHT_GOAL = 74.0
 
 // Adherencia real: sesiones con log / sesiones planificadas
 function calcAdherencePct(
@@ -45,7 +20,7 @@ export default async function ProgressPage() {
 
   if (!session?.user?.id) return null
 
-  if ((session.user as any).userPlan === 'FREE') {
+  if (!(session.user as any).features?.progress) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">📊</span>
@@ -84,26 +59,29 @@ export default async function ProgressPage() {
   })
 
   // ── Peso del objetivo (perfil) ───────────────────────────────────────────
-  const profile = await prisma.healthProfile.findUnique({
-    where: { userId: session.user.id },
-    select: { weightGoalKg: true },
-  })
+  const [profile, gymSessionsCount] = await Promise.all([
+    prisma.healthProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { weightGoalKg: true },
+    }),
+    prisma.gymSession.count({
+      where: { athleteId: session.user.id, completed: true },
+    }),
+  ])
 
-  const weightGoal = profile?.weightGoalKg ?? MOCK_WEIGHT_GOAL
+  const weightGoal = profile?.weightGoalKg ?? null
 
   // ── Construir arrays de datos ────────────────────────────────────────────
 
-  // Check-ins → weight y hr (solo incluir semanas con datos)
-  const weightFromDB: WeightPoint[] = rawCheckIns
+  const weightCheckins: WeightPoint[] = rawCheckIns
     .filter((c) => c.weightKg !== null)
     .map((c) => ({ week: c.weekNumber, kg: c.weightKg as number }))
 
-  const hrFromDB: HrPoint[] = rawCheckIns
+  const hrCheckins: HrPoint[] = rawCheckIns
     .filter((c) => c.hrResting !== null)
     .map((c) => ({ week: c.weekNumber, bpm: c.hrResting as number }))
 
-  // Semanas del plan → adherencia real por semana
-  const weeksFromDB: WeekData[] = plan
+  const weeks: WeekData[] = plan
     ? plan.weeks.map((w) => ({
         weekNumber: w.weekNumber,
         phase: w.phase as string,
@@ -112,17 +90,37 @@ export default async function ProgressPage() {
       }))
     : []
 
-  // ── Fallback a mock si no hay datos suficientes ──────────────────────────
-  const weightCheckins = weightFromDB.length >= 2 ? weightFromDB : MOCK_WEIGHT
-  const hrCheckins     = hrFromDB.length >= 2     ? hrFromDB     : MOCK_HR
-  const weeks          = weeksFromDB.length > 0   ? weeksFromDB  : MOCK_WEEKS
+  // ── Sin datos: estado vacío honesto ─────────────────────────────────────
+  if (weightCheckins.length === 0 && hrCheckins.length === 0 && weeks.length === 0) {
+    const hasGymSessions = gymSessionsCount > 0
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">{hasGymSessions ? '💪' : '📈'}</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">
+          {hasGymSessions ? `${gymSessionsCount} sesiones de gym completadas` : 'Aún no hay datos de progreso'}
+        </h2>
+        <p className="text-gray-500 text-sm max-w-xs">
+          {hasGymSessions
+            ? 'Haz tu primer check-in semanal para empezar a ver tu evolución de peso y FC aquí.'
+            : 'Haz tu primer check-in semanal y completa sesiones para ver tu evolución aquí.'}
+        </p>
+        <div className="flex gap-3 mt-2 flex-wrap justify-center">
+          <a href="/checkin" className="inline-block rounded-xl bg-[#f97316] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Hacer check-in →</a>
+          {hasGymSessions
+            ? <a href="/gym/history" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver historial gym</a>
+            : <a href="/plan" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver mi plan</a>
+          }
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ProgressClient
       weightCheckins={weightCheckins}
       hrCheckins={hrCheckins}
       weeks={weeks}
-      weightGoal={weightGoal}
+      weightGoal={weightGoal ?? 0}
     />
   )
 }

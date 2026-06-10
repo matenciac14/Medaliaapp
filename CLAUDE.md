@@ -34,6 +34,80 @@ SaaS de coaching deportivo con AI para LatAm. Cubre recomposición corporal, met
 - GitHub: `git@github.com:matenciac14/Medaliq.git`
 - Branch principal: `main`
 
+## Schema — migraciones aplicadas y planificadas
+
+### ✅ APLICADA: `add_session_intensity` (20260604)
+```prisma
+// PlannedSession — campo aplicado en DB
+intensity  SessionIntensity @default(MODERATE)
+
+enum SessionIntensity { HIGH | MODERATE | LOW | REST }
+```
+- generator.ts auto-asigna intensity según SessionType ✅
+- daily-target.ts mapea intensity → kcal+macros del día ✅
+
+### ✅ APLICADA: `add_invite_codes` (20260607)
+```prisma
+model InviteCode {
+  id, code (unique), coachId, usedBy?, usedAt?, expiresAt, createdAt
+}
+```
+- /api/coach/invite persiste código 7 días en DB ✅
+- /api/invite/[code] valida y redime ✅
+- /join/[code] UI client component completo ✅
+
+### Pendiente: `sport_label`
+```prisma
+// PlannedSession — etiqueta libre por deporte
+sportLabel String?   // "Sweet Spot 2×20min", "CSS 400m × 8"
+```
+
+### Migración: `performance_benchmarks`
+```prisma
+model PerformanceBenchmark {
+  id        String   @id @default(cuid())
+  userId    String
+  coachId   String?
+  sport     String   // RUNNING | CYCLING | SWIMMING | STRENGTH
+  metric    String   // 5K_TIME | FTP_WATTS | 1RM_SQUAT | CSS
+  value     Float
+  unit      String   // seconds | watts | kg
+  testedAt  DateTime
+  notes     String?
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+### Migración: `coach_athlete_protocol`
+```prisma
+// CoachAthlete — agrega campos para relación profesional
+coachGoal    String?
+privateNotes String?
+status       AthleteStatus @default(ACTIVE)
+
+enum AthleteStatus { ACTIVE  PAUSED  COMPLETED }
+```
+
+## Training-Nutrition Sync — arquitectura
+
+La nutrición es un espejo del entrenamiento. Lógica en `src/lib/nutrition/daily-target.ts`:
+```
+PlannedSession.intensity → target nutricional del día
+  HIGH     → NutritionPlan.targetKcalHard   + carbsHardG
+  MODERATE → NutritionPlan.targetKcalEasy   + carbsEasyG
+  LOW      → targetKcalEasy - 200           + carbsEasyG - 30
+  REST     → NutritionPlan.targetKcalRest   + carbsEasyG (bajo)
+  (sin sesión) → targetKcalRest
+```
+- Dashboard atleta muestra: sesión del día + kcal objetivo + macros + label de carga
+- Coach ve en Tab Plan: carga semanal total (HIGH=3, MODERATE=2, LOW=1, REST=0)
+- Coach puede ajustar targets por fase del plan desde Tab Nutrición
+
+## Flujos de referencia
+Ver `FLOWS.md` para diagramas completos de todos los flujos del producto.
+
+---
+
 ## Prisma 7 — diferencias críticas
 - Generator: `prisma-client` (no `prisma-client-js`) con `output = "../src/generated/prisma"`
 - Import: `from '../../generated/prisma/client'` (NO `@prisma/client`)
@@ -213,7 +287,8 @@ src/app/
     gym/history/page.tsx
   coach/
     dashboard/page.tsx
-    athlete/[id]/page.tsx   ← 5 tabs: Resumen, Plan, Progreso, Nutrición, Gym
+    athlete/[id]/page.tsx           ← 5 tabs: Resumen, Plan, Progreso, Nutrición, Gym
+    athlete/[id]/plan/build/page.tsx ← constructor visual de planes (página separada)
     gym/page.tsx + exercises + routines/new + routines/[id]/assign
     profile/page.tsx
     clients/new/page.tsx
@@ -252,8 +327,13 @@ src/app/
     coach/programs/
     coach/posts/
     coach/clients/create/
-    coach/athlete/[id]/activate/  ← PATCH: activa atleta B2B
-    coach/athlete/[id]/plan/      ← POST: genera plan sin AI (B2B)
+    coach/athlete/[id]/activate/        ← PATCH: activa atleta B2B
+    coach/athlete/[id]/plan/            ← POST: genera plan sin AI (B2B) — template
+    coach/athlete/[id]/plan/custom/     ← POST: crea plan desde constructor visual
+    coach/athlete/[id]/benchmarks/      ← GET/POST: PerformanceBenchmark del atleta
+    coach/plan/[planId]/sessions/       ← POST: agrega sesión a plan existente
+    coach/plan/[planId]/week/[weekId]/  ← PATCH: edita metadata de semana
+    coach/sessions/[id]/                ← PATCH + DELETE: edita/elimina sesión
     coach/gym/exercises/
     coach/gym/routines/
     coach/gym/routines/[id]/assign/
@@ -278,63 +358,60 @@ src/app/
 
 ### Completado ✅
 - Fase 1: Auth, onboarding, generador plan AI, dashboard atleta, check-in, nutrición, progreso
-- Fase 2: Coach B2B — dashboard, panel atleta 5 tabs, notas coach, vinculación por código
+- Fase 2: Coach B2B — dashboard, panel atleta 5 tabs, notas coach, vinculación por código invite
 - Fase 3: Gym Coach — librería ejercicios, constructor rutinas, tracker sesión, progresión cargas
 - Fase 4: Marketplace — directorio público, perfiles coach, programas, posts
 - Fase 5: Admin — KPIs, gestión usuarios/coaches, activaciones manuales, roadmap
-- Fase 6: Pre-lanzamiento — rate limiting, páginas error, i18n ES/EN/PT, animaciones landing
-- Trial 30 días — middleware, página /upgrade, downgrade a Free
-- Feature gating — paywalls inline en /plan y /nutrition para usuarios Free
-- AI Profile centralizado — admin edita filosofía en /admin/ai, conectado a plan generation y chat
-- Onboarding multi-deporte — 6 deportes + recomposición corporal con campos específicos por deporte
+- Fase 6: Deploy — Vercel, Neon, dominio medaliq.com (Route 53), rate limiting, error pages
+- Fase 9: UX Atleta v2 — dashboard, métricas reales, AI gateado, i18n ES/EN/PT, landing animada
+- Fase 10: Pre-lanzamiento — rate limiting, error pages, beta cerrada, activación manual admin
+- Fase 11 (parcial): Trial 30d, middleware /upgrade, página /upgrade, feature gating inline
+- Fase 17 (parcial): SessionIntensity enum + migración + generator.ts + daily-target.ts + dashboard card
+- AI Profile centralizado — admin edita filosofía en /admin/ai
+- Onboarding multi-deporte — 6 deportes + recomposición corporal con campos específicos
 - HealthProfile extendido — sport, experienceLevel, sportDetails JSON, dataSources JSON
-- Templates fallback — MARATHON/CYCLING/TRIATHLON usan base aeróbica hasta templates propios
 
-### Pendiente inmediato
+**Bugs corregidos (sesión actual):**
+- InviteCode model en DB — código invite ahora persiste y se valida en /join/[code]
+- planTier='pro' ya no bypasea /pending — atleta siempre espera activación del coach
+- gender hardcodeado 'male' corregido en 4 routes de API
+- FC baseline dinámica en check-in (compara vs FC propia del atleta)
+- applyPlanAdjustments() modifica sesiones en DB según triggers del check-in
 
-#### Bloque QA — Registro & Onboarding (URGENTE — antes de cualquier otra cosa)
-- [x] Verificar StepSportDetails para BODY path — muestra peso objetivo + fecha meta ✅
-- [x] Verificar StepHRFitness para BODY y STRENGTH — solo experienceLevel, sin FC ✅
-- [x] B2B post-onboarding: API devuelve isB2B → redirect a `/pending` directamente ✅
-- [x] Gating completo FREE vs TRIAL/PRO: paywalls en /checkin, /progress, /gym, /gym/history, /gym/session ✅
-- [x] AICoachChat: monthlyLimit=0 bloquea (FREE), 999999=ilimitado (Trial), >0=Pro con límite ✅
-- [x] Downgrade route: desactiva plan, checkin, nutrition, progress, gym, coach features ✅
-- [ ] Definir comportamiento Google OAuth para registro de COACH (¿permitir o bloquear?)
-- [ ] Test E2E: registro ATHLETE B2C → onboarding RUNNING → plan generado → dashboard
-- [ ] Test E2E: onboarding todos los deportes (6 deportes + BODY)
-- [ ] Test E2E: registro COACH → coach/dashboard sin pasar por onboarding
-- [ ] Test E2E: flujo B2B completo (coach crea atleta → /pending → activación → plan visible)
-- [ ] Verificar plan no queda vacío (PlanWeeks + PlannedSessions creadas en DB)
+**Features nuevas (sesión actual):**
+- Feed de alertas del coach: sin check-in >7d, RPE ≥8, pérdida de peso, ajustes automáticos
+- Editor de sesión inline en Tab Plan: tipo, duración, zona, descripción + API PATCH /api/coach/sessions/[id]
+- Log de ajustes automáticos en Tab Resumen: qué cambió, cuándo, por qué
 
-#### Bloque B — AI Brain (mejoras)
-- [ ] Templates específicos: MARATHON (20-24s), CYCLING (16s), TRIATHLON (24s), SWIMMING (12s)
-- [ ] `goalNotes` del AIProfile cubrir los nuevos deportes (natación, fútbol, fuerza, ciclismo, triatlón)
-- [ ] Contador de mensajes AI en UI del chat ("X / ∞ mensajes usados este mes")
+### Pendiente — QA Local (prioridad actual)
+- [ ] Test E2E onboarding: CYCLING, SWIMMING, TRIATHLON, FOOTBALL, STRENGTH, BODY
+- [ ] Test E2E flujo B2B completo (coach crea atleta → onboarding → /pending → activa → plan)
+- [ ] Test invite code flow: genera → /join/[code] → registra → vincula → onboarding
+- [ ] Verificar PlanWeeks + PlannedSessions creadas en DB (planes no vacíos)
+- [ ] Test check-in → applyPlanAdjustments → log de ajustes visible en panel coach
+- [ ] Fallback plan de comidas (plantillas estáticas si AI falla)
 
-#### Bloque C — Coach experience
-- [ ] Coach AI Assistant: chat en panel coach con contexto del asesorado
-- [ ] Notificación al coach cuando atleta completa onboarding y queda en /pending
-- [ ] Coach puede editar plan de atleta (sesiones individuales) desde tab Plan
+### Backlog Comercial (post-QA)
+- [ ] Email transaccional (Resend): recordatorio check-in, plan actualizado, trial expirando
+- [ ] Quick-log de sesión desde dashboard (1 click desde card del día)
+- [ ] Gráficas de progreso visuales (curvas de peso, FC, adherencia)
+- [ ] Mensajería simple coach → atleta dentro de la app
+- [ ] Stripe/Wompi: suscripción Pro $15/mes + webhook activa tier
+- [ ] Simplificar onboarding a 5 pasos reales
 
-#### Bloque D — Deploy producción
-- [ ] Conectar repo GitHub `matenciac14/Medaliq` en Vercel
-- [ ] Variables de entorno en Vercel (DATABASE_URL, DIRECT_URL, ANTHROPIC_API_KEY, AUTH_SECRET, etc.)
-- [ ] Google OAuth: credenciales en Google Cloud Console + env vars
-- [ ] Dominio medaliq.com → Vercel (CNAME en Route 53)
-- [ ] Sentry para monitoreo de errores
-- [ ] Uptime Robot para alertas de disponibilidad
+### Constructor Visual (Fase 18 — siguiente sprint)
+- [ ] API POST /api/coach/athlete/[id]/plan/custom (transacción completa)
+- [ ] API POST /api/coach/plan/[planId]/sessions
+- [ ] API PATCH /api/coach/plan/[planId]/week/[weekId]
+- [ ] Página /coach/athlete/[id]/plan/build (full-screen)
+- [ ] Componentes: WeekGrid, SessionCard, SessionModal, WeekNav
+- [ ] "Copiar semana anterior" + "Generar desde template → abrir en builder"
 
-#### Bloque E — Monetización (post-lanzamiento)
-- [ ] Wompi Colombia: suscripción atleta $15/mes
-- [ ] Webhook pago: activa Pro, fallo → Free
-- [ ] Campo `source` en CoachAthlete ('MARKETPLACE' | 'DIRECT')
-- [ ] Facturación mensual coach por asesorados directos
-- [ ] Página gestión de suscripción para el atleta
-
-#### Bloque F — PWA
-- [ ] manifest.json + service worker (offline básico)
-- [ ] Meta tags instalación iOS
-- [ ] Push notifications
+### Benchmarks + Coach Protocol (Fase 19)
+- [ ] Migración DB: PerformanceBenchmark + CoachAthlete.coachGoal/status
+- [ ] API CRUD /api/coach/athlete/[id]/benchmarks
+- [ ] UI coach: registrar test (5K, FTP, 1RM, CSS)
+- [ ] CoachAthlete.status en dashboard coach (filtrar ACTIVE/PAUSED)
 
 ## Modelo de negocio — definitivo
 

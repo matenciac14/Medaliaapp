@@ -5,7 +5,7 @@
  * El sistema lee este objeto para decidir qué mostrar y cómo comportarse.
  * El coach puede modificarlo por atleta. El onboarding lo construye progresivamente.
  */
-export type UserPlan = 'TRIAL' | 'FREE' | 'PRO'
+export type UserPlan = 'TRIAL' | 'PRO' | 'INACTIVE'
 
 export type UserConfig = {
   features: {
@@ -16,6 +16,7 @@ export type UserConfig = {
     log: boolean         // Puede registrar sesiones
     coach: boolean       // Tiene acceso al panel de coach (role COACH)
     gym: boolean         // Tiene rutina de gym asignada
+    aiCoach: boolean     // Acceso al chat con AI Coach — solo admin puede activar
   }
   sport: {
     type: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL' | null
@@ -39,10 +40,10 @@ export type UserConfig = {
   ai: {
     messagesThisMonth: number
     messagesResetAt: string   // "YYYY-MM" — primer día del mes actual
-    monthlyLimit: number      // 100 para Pro, 0 para Free, 999999 para Trial
+    monthlyLimit: number      // 100 para Pro, 0 para Inactive, 999999 para Trial
   }
   trial: {
-    plan: UserPlan          // TRIAL | FREE | PRO
+    plan: UserPlan          // TRIAL | PRO | INACTIVE
     endsAt: string | null   // ISO date — null para B2B (gestionado por coach)
   }
 }
@@ -57,6 +58,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
     log: false,
     coach: false,
     gym: false,
+    aiCoach: false,
   },
   sport: {
     type: null,
@@ -83,7 +85,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
     monthlyLimit: 0,
   },
   trial: {
-    plan: 'FREE',
+    plan: 'INACTIVE',
     endsAt: null,
   },
 }
@@ -98,6 +100,7 @@ export const FULL_ATHLETE_CONFIG: UserConfig = {
     log: true,
     coach: false,
     gym: true,
+    aiCoach: true,
   },
   sport: {
     type: 'RUNNING',
@@ -139,13 +142,14 @@ export const COACH_CONFIG: UserConfig = {
     log: false,
     coach: true,
     gym: false,
+    aiCoach: false,
   },
   sport: { type: null, goal: null },
   plan: { activePlanId: null, currentWeek: 0, totalWeeks: 0, phase: null },
   onboarding: { completed: true, completedAt: '2026-04-18T00:00:00.000Z' },
   preferences: { language: 'es', units: 'metric', notifications: true },
   ai: { messagesThisMonth: 0, messagesResetAt: '', monthlyLimit: 0 },
-  trial: { plan: 'FREE', endsAt: null },
+  trial: { plan: 'INACTIVE', endsAt: null },
 }
 
 /** Helper: parsea el JSON crudo de la DB y hace merge con defaults */
