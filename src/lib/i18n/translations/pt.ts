@@ -162,6 +162,7 @@ export const pt: Translations = {
       progress: 'Progresso',
       log: 'Registros',
       gym: 'Gym',
+      aiCoach: 'AI Coach',
       coachPanel: 'Painel Coach',
       profile: 'Meu perfil',
       help: 'Ajuda',

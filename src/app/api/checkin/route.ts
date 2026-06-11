@@ -11,7 +11,7 @@ interface CheckInBody {
   sleepHours?: number
   sleepScore?: number
   hardestRpe: number
-  adherencePct: number
+  adherencePct?: number
   hasPain: boolean
   painDescription?: string
   energyLevel: number
@@ -33,7 +33,7 @@ function evaluateAlerts(data: CheckInBody): string[] {
     alerts.push('Bajaste mas de 1.2kg esta semana — aumenta 200-300 kcal')
   }
   if (data.adherencePct !== undefined && data.adherencePct < 40) {
-    alerts.push('Adherencia baja — necesitas ajustar la carga del plan?')
+    alerts.push('Adherencia baja — considera ajustar la carga del plan')
   }
 
   return alerts
@@ -91,7 +91,23 @@ export async function POST(req: NextRequest) {
     weekNumber = getISOWeekNumber()
   }
 
-  const alerts = evaluateAlerts(body)
+  // Calcular adherencia real desde sesiones del plan (no depender del cliente)
+  let calculatedAdherence = body.adherencePct ?? 0
+  if (activePlan) {
+    const currentWeekNumForAdherence = getCurrentWeekNumber(activePlan.startDate)
+    const weekSessions = await prisma.plannedSession.findMany({
+      where: {
+        week: { planId: activePlan.id, weekNumber: currentWeekNumForAdherence },
+        type: { not: 'DESCANSO' },
+      },
+      select: { log: { select: { id: true } } },
+    })
+    if (weekSessions.length > 0) {
+      const completed = weekSessions.filter(s => !!s.log).length
+      calculatedAdherence = Math.round((completed / weekSessions.length) * 100)
+    }
+  }
+  const alerts = evaluateAlerts({ ...body, adherencePct: calculatedAdherence })
 
   // Obtener contexto del plan para el motor de ajuste — usar la semana actual, no la primera
   const currentWeekNum = activePlan ? getCurrentWeekNumber(activePlan.startDate) : 1
@@ -117,7 +133,7 @@ export async function POST(req: NextRequest) {
       sleepHours: body.sleepHours,
       sleepScore: body.sleepScore,
       hardestSessionRpe: body.hardestRpe,
-      dietAdherencePct: body.adherencePct,
+      dietAdherencePct: calculatedAdherence,
       painFlag: body.hasPain,
       energyLevel: body.energyLevel,
       notes: body.notes,
@@ -131,7 +147,7 @@ export async function POST(req: NextRequest) {
     sleepHours: body.sleepHours,
     sleepScore: body.sleepScore,
     hardestSessionRpe: body.hardestRpe,
-    dietAdherencePct: body.adherencePct,
+    dietAdherencePct: calculatedAdherence,
     painFlag: body.hasPain,
     energyLevel: body.energyLevel,
     notes: body.notes,

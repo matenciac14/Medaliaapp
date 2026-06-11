@@ -12,7 +12,6 @@ interface CheckInData {
   sleepHours?: number
   sleepScore?: number
   hardestRpe: number
-  adherencePct: number
   hasPain: boolean
   painDescription?: string
   energyLevel: number
@@ -36,10 +35,6 @@ function evaluateAlerts(data: CheckInData): string[] {
   // Perdida de peso agresiva
   if (data.weightKg && data.previousWeightKg && (data.previousWeightKg - data.weightKg) > 1.2) {
     alerts.push('Bajaste mas de 1.2kg esta semana — aumenta 200-300 kcal')
-  }
-  // Adherencia muy baja
-  if (data.adherencePct !== undefined && data.adherencePct < 40) {
-    alerts.push('Adherencia baja — necesitas ajustar la carga del plan?')
   }
   return alerts
 }
@@ -140,7 +135,6 @@ export default function CheckinPage() {
 
   // Seccion 2 — entrenamiento
   const [hardestRpe, setHardestRpe] = useState(5)
-  const [adherencePct, setAdherencePct] = useState(80)
   const [hasPain, setHasPain] = useState<boolean>(false)
   const [painDescription, setPainDescription] = useState('')
 
@@ -177,7 +171,6 @@ export default function CheckinPage() {
       sleepHours,
       sleepScore: sleepScore ? Number(sleepScore) : undefined,
       hardestRpe,
-      adherencePct,
       hasPain,
       painDescription: hasPain ? painDescription : undefined,
       energyLevel,
@@ -208,7 +201,6 @@ export default function CheckinPage() {
           sleepHours,
           sleepScore: sleepScore ? Number(sleepScore) : undefined,
           hardestRpe,
-          adherencePct,
           hasPain,
           painDescription: hasPain ? painDescription : undefined,
           energyLevel,
@@ -394,34 +386,6 @@ export default function CheckinPage() {
             onChange={setHardestRpe}
             label="Sesion mas dura de la semana — RPE"
           />
-
-          {/* Adherencia */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                <Zap size={13} />
-                Adherencia al plan
-              </label>
-              <span className="text-sm font-bold text-[#1e3a5f]">{adherencePct}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={adherencePct}
-              onChange={(e) => setAdherencePct(Number(e.target.value))}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gray-400 [&::-webkit-slider-thumb]:shadow-md"
-              style={{
-                background: `linear-gradient(to right, #ef4444 0%, #eab308 40%, #22c55e 80%, #22c55e 100%) 0 0 / ${adherencePct}% 100% no-repeat, #e5e7eb`,
-              }}
-            />
-            <div className="flex justify-between">
-              <span className="text-[10px] text-gray-400">Ninguna</span>
-              <span className="text-[10px] text-gray-400">Mitad</span>
-              <span className="text-[10px] text-gray-400">Perfecta</span>
-            </div>
-          </div>
 
           {/* Molestia o dolor */}
           <div className="space-y-3">

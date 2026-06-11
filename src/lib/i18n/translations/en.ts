@@ -162,6 +162,7 @@ export const en: Translations = {
       progress: 'Progress',
       log: 'Log',
       gym: 'Gym',
+      aiCoach: 'AI Coach',
       coachPanel: 'Coach Panel',
       profile: 'My profile',
       help: 'Help',

@@ -3,7 +3,6 @@ import { CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
-import AICoachChat from '../_components/AICoachChat'
 import { parseUserConfig } from '@/lib/config/user-config'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
@@ -61,12 +60,12 @@ export default async function DashboardPage() {
   const userId = session.user.id
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlanRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan] = await Promise.all([
+  const [dbUser, activePlanRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
         profile: true,
-        checkIns: { orderBy: { recordedAt: 'desc' }, take: 1 },
+        checkIns: { orderBy: { recordedAt: 'desc' }, take: 10 },
         dailyLogs: { orderBy: { date: 'desc' }, take: 1 },
       },
     }),
@@ -89,6 +88,12 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
+    prisma.sessionLog.findMany({
+      where: { userId },
+      orderBy: { completedAt: 'desc' },
+      take: 60,
+      select: { completedAt: true },
+    }),
   ])
 
   if (!dbUser) redirect('/login')
@@ -209,6 +214,77 @@ export default async function DashboardPage() {
 
   const phaseDisplay = phaseLabel(planData.phase)
 
+  // ── Streak (días consecutivos con sesión completada) ─────────────────────
+  let streakDays = 0
+  const todayStr = new Date()
+  todayStr.setHours(0, 0, 0, 0)
+  const logDateSet = new Set(recentLogs.map((l: { completedAt: Date }) => new Date(l.completedAt).toDateString()))
+  for (let i = 0; i <= 59; i++) {
+    const d = new Date(todayStr)
+    d.setDate(d.getDate() - i)
+    if (logDateSet.has(d.toDateString())) streakDays++
+    else break
+  }
+
+  // ── Hero card 1: Tu Carrera / Tu Objetivo ─────────────────────────────────
+  const raceDate = (profile?.sportDetails as Record<string, unknown> | null)?.raceDate as string | undefined
+  const raceDays = raceDate
+    ? Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000)
+    : null
+  const isRecomp = !!(
+    userConfig.sport?.goal?.includes('BODY') ||
+    activePlan?.name?.toLowerCase().includes('recomp') ||
+    activePlan?.name?.toLowerCase().includes('body')
+  )
+
+  // ── Hero card 2: Meta de peso ──────────────────────────────────────────────
+  const currentWeight = weightKg
+  const targetWeight = profile?.weightGoalKg ?? null
+  const prevCheckIn = dbUser.checkIns[1] ?? null
+  let weeklyWeightChange: number | null = null
+  if (lastCheckIn?.weightKg && prevCheckIn?.weightKg) {
+    const daysDiff = Math.max(1,
+      (new Date(lastCheckIn.recordedAt).getTime() - new Date(prevCheckIn.recordedAt).getTime()) / 86400000
+    )
+    weeklyWeightChange = ((lastCheckIn.weightKg - prevCheckIn.weightKg) / daysDiff) * 7
+  }
+  const oldestCheckInWeight = [...dbUser.checkIns].reverse().find((c: { weightKg: number | null }) => c.weightKg != null)?.weightKg ?? null
+  let weightProgressPct: number | null = null
+  if (currentWeight && targetWeight && oldestCheckInWeight && oldestCheckInWeight !== targetWeight) {
+    weightProgressPct = Math.min(100, Math.max(0,
+      Math.round(((oldestCheckInWeight - currentWeight) / (oldestCheckInWeight - targetWeight)) * 100)
+    ))
+  }
+
+  // ── Hero card 3: Cómo llegás hoy ──────────────────────────────────────────
+  type FormStatus = 'good' | 'moderate' | 'rest'
+  let formStatus: FormStatus = 'good'
+  let formMessage = 'Sin datos de check-in'
+  let formCheckInDate: string | null = null
+  if (lastCheckIn) {
+    const energy = lastCheckIn.energyLevel ?? 3
+    const rpe = lastCheckIn.hardestSessionRpe ?? 5
+    const sleep = (lastCheckIn.sleepHours ?? 7) >= 6.5
+    if (energy >= 4 && rpe <= 7 && sleep) {
+      formStatus = 'good'; formMessage = 'Listo para entrenar fuerte'
+    } else if (energy >= 3 && rpe <= 8) {
+      formStatus = 'moderate'; formMessage = 'Carga moderada recomendada'
+    } else {
+      formStatus = 'rest'; formMessage = 'Prioriza la recuperación hoy'
+    }
+    const daysAgo = Math.floor((Date.now() - new Date(lastCheckIn.recordedAt).getTime()) / 86400000)
+    formCheckInDate = daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
+  }
+
+  // ── Carga semanal (volumen planificado) ────────────────────────────────────
+  const currentPlanWeekData = activePlan?.weeks.find((w: { weekNumber: number }) => w.weekNumber === planData.currentWeek)
+  const prevPlanWeekData = activePlan?.weeks.find((w: { weekNumber: number }) => w.weekNumber === planData.currentWeek - 1)
+  const currentVolume = currentPlanWeekData?.volumeKm ?? null
+  const prevVolume = prevPlanWeekData?.volumeKm ?? null
+  const volumeDeltaPct = currentVolume && prevVolume
+    ? Math.round(((currentVolume - prevVolume) / prevVolume) * 100)
+    : null
+
   // ── Banner trial expirando ────────────────────────────────────────────────
   let trialDaysLeft: number | null = null
   if (userConfig.trial?.plan === 'TRIAL' && userConfig.trial?.endsAt) {
@@ -236,101 +312,215 @@ export default async function DashboardPage() {
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
           {getGreeting()}, {firstName} 👋
         </h1>
-        {/* Mobile: pill semana + trial badge */}
-        <div className="flex items-center gap-2 mt-2 lg:hidden">
-          {activePlan && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold">
-              Semana {planData.currentWeek}/{planData.totalWeeks} · {phaseDisplay}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <p className="text-sm text-gray-500 capitalize">{formatDate()}</p>
+          {streakDays >= 2 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#f97316]">
+              🔥 {streakDays} días · racha activa
             </span>
           )}
           {trialDaysLeft !== null && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">
               {trialDaysLeft}d trial
             </span>
           )}
         </div>
-        {/* Desktop: solo fecha */}
-        <p className="hidden lg:block text-sm text-gray-500 capitalize mt-0.5">{formatDate()}</p>
       </div>
 
-      {/* KPI row — 4 stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Semana */}
-        <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Semana</p>
-          <p className="text-2xl font-black text-gray-900 leading-none tracking-tight">
-            {activePlan ? planData.currentWeek : '—'}
-            {activePlan && <span className="text-base font-semibold text-gray-400"> / {planData.totalWeeks}</span>}
-          </p>
-          {activePlan && (
-            <p className="mt-2.5">
-              <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${PHASE_COLORS[planData.phase] ?? 'bg-gray-100 text-gray-600'}`}>
-                {phaseDisplay}
-              </span>
-            </p>
-          )}
-        </div>
+      {/* Hero cards — 3 stats enfocados en el atleta */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-        {/* Adherencia */}
-        <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Adherencia</p>
-          <p className="text-2xl font-black text-gray-900 leading-none tracking-tight">
-            {totalTraining > 0 ? completedCount : '—'}
-            {totalTraining > 0 && <span className="text-base font-semibold text-gray-400"> / {totalTraining}</span>}
-          </p>
-          {totalTraining > 0 && (
-            <div className="flex gap-1 mt-2.5">
-              {Array.from({ length: totalTraining }, (_, i) => (
-                <div key={i} className={`h-1 flex-1 rounded-full ${i < completedCount ? 'bg-[#22c55e]' : 'bg-gray-100'}`} />
-              ))}
+        {/* Card 1: Tu Carrera (con raceDate) o Tu Objetivo (recomp) */}
+        {isRecomp ? (
+          /* Recomposición corporal */
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex h-full">
+              <div className="w-1 bg-[#22c55e] shrink-0" />
+              <div className="flex-1 px-4 py-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">🎯 Tu Objetivo</p>
+                {currentWeight && targetWeight ? (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-3xl font-black text-[#1e3a5f] leading-none">
+                        ~{weeklyWeightChange
+                          ? Math.max(0, Math.ceil(Math.abs((currentWeight - targetWeight) / (weeklyWeightChange || 0.5)) * 7))
+                          : '—'}
+                      </span>
+                      <span className="text-sm text-gray-400">días</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      para llegar a {targetWeight} kg
+                      {weeklyWeightChange ? ` · ${weeklyWeightChange > 0 ? '+' : ''}${weeklyWeightChange.toFixed(1)} kg/sem` : ''}
+                    </p>
+                    <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
+                      <div className="h-full bg-[#22c55e] rounded-full" style={{ width: `${weightProgressPct ?? 0}%` }} />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] text-gray-400">{weightProgressPct ?? 0}% completado</p>
+                      <Link href="/progress" className="text-[10px] font-semibold text-[#22c55e]">Ver progreso →</Link>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">Define tu meta de peso</p>
+                )}
+              </div>
             </div>
-          )}
-          {totalTraining === 0 && <p className="text-[10px] text-gray-400 mt-2">sin sesiones</p>}
-        </div>
-
-        {/* Kcal hoy */}
-        <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Kcal hoy</p>
-          <p className="text-2xl font-black text-gray-900 leading-none tracking-tight">
-            {dailyNutrition ? dailyNutrition.kcal.toLocaleString('es-CO') : '—'}
-          </p>
-          {dailyNutrition && (
-            <p className="text-[10px] text-gray-400 mt-2 truncate">
-              {dailyNutrition.proteinG}g P · {dailyNutrition.carbsG}g C · {dailyNutrition.fatG}g G
-            </p>
-          )}
-        </div>
-
-        {/* 4to KPI — mobile: siempre Check-in / desktop: AI Coach o Check-in */}
-        <Link href="/checkin" className="sm:hidden bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4 active:scale-[0.98] transition-transform">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Check-in</p>
-          <p className="text-2xl font-black leading-none">
-            {checkinPending
-              ? <span className="text-[#f97316]">Pendiente</span>
-              : <span className="text-[#22c55e]">Al día</span>}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-2">Semana {planData.currentWeek}</p>
-        </Link>
-        {userConfig.features.aiCoach ? (
-          <div className="hidden sm:block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">AI Coach</p>
-            <p className="text-2xl font-black text-gray-900 leading-none tracking-tight">
-              {aiMonthlyLimit >= 999999 ? '∞' : (aiMonthlyLimit - aiMessagesUsed).toString()}
-              {aiMonthlyLimit < 999999 && <span className="text-base font-semibold text-gray-400"> msgs</span>}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-2">disponibles este mes</p>
           </div>
         ) : (
-          <Link href="/checkin" className="hidden sm:block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] px-5 py-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Check-in</p>
-            <p className="text-2xl font-black leading-none">
-              {checkinPending
-                ? <span className="text-[#f97316]">Pendiente</span>
-                : <span className="text-[#22c55e]">Al día</span>}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-2">Semana {planData.currentWeek}</p>
-          </Link>
+          /* Atleta de carrera */
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex h-full">
+              <div className="w-1 bg-[#f97316] shrink-0" />
+              <div className="flex-1 px-4 py-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">🏁 Tu Carrera</p>
+                {raceDays !== null && raceDays > 0 ? (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-3xl font-black text-[#1e3a5f] leading-none">{raceDays}</span>
+                      <span className="text-sm text-gray-400">días</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      para tu {activePlan?.name ?? 'carrera'} · {raceDate
+                        ? new Date(raceDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : ''}
+                    </p>
+                    {activePlan && (
+                      <>
+                        <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
+                          <div className="h-full bg-[#f97316] rounded-full"
+                            style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] text-gray-400">Semana {planData.currentWeek} de {planData.totalWeeks}</p>
+                          <Link href="/plan" className="text-[10px] font-semibold text-[#f97316]">Ver plan →</Link>
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : activePlan ? (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-3xl font-black text-[#1e3a5f] leading-none">{planData.currentWeek}</span>
+                      <span className="text-sm text-gray-400">/ {planData.totalWeeks}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">{activePlan.name}</p>
+                    <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
+                      <div className="h-full bg-[#f97316] rounded-full"
+                        style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] text-gray-400">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold ${PHASE_COLORS[planData.phase] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {phaseDisplay}
+                        </span>
+                      </p>
+                      <Link href="/plan" className="text-[10px] font-semibold text-[#f97316]">Ver plan →</Link>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-2">Sin plan activo</p>
+                )}
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Card 2: Tu Meta de Peso */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex h-full">
+            <div className="w-1 bg-[#3b6fdd] shrink-0" />
+            <div className="flex-1 px-4 py-4">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">⚖️ Tu Meta de Peso</p>
+              {currentWeight && targetWeight ? (
+                <>
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span className="text-3xl font-black text-[#1e3a5f] leading-none">{currentWeight.toFixed(1)}</span>
+                    <span className="text-sm text-gray-400">kg</span>
+                    <span className="text-sm text-gray-300 mx-1">→</span>
+                    <span className="text-lg font-semibold text-[#3b6fdd]">{targetWeight} kg</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-3">
+                    {weeklyWeightChange != null
+                      ? `~${Math.max(0, Math.ceil(Math.abs((currentWeight - targetWeight) / (Math.abs(weeklyWeightChange) || 0.5))))} semanas · ${weeklyWeightChange > 0 ? '+' : ''}${weeklyWeightChange.toFixed(1)} kg/sem`
+                      : 'registra check-ins para ver tendencia'}
+                  </p>
+                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
+                    <div className="h-full bg-[#3b6fdd] rounded-full" style={{ width: `${weightProgressPct ?? 0}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[10px] text-gray-400">{weightProgressPct ?? 0}% completado</p>
+                    <Link href="/progress" className="text-[10px] font-semibold text-[#3b6fdd]">Ver progreso →</Link>
+                  </div>
+                </>
+              ) : currentWeight ? (
+                <>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-3xl font-black text-[#1e3a5f] leading-none">{currentWeight.toFixed(1)}</span>
+                    <span className="text-sm text-gray-400">kg</span>
+                  </div>
+                  <Link href="/progress" className="text-[10px] font-semibold text-[#3b6fdd] mt-3 block">Define tu meta →</Link>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 mt-2">Sin datos de peso</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Cómo llegás hoy */}
+        <Link href="/checkin" className={`rounded-2xl border shadow-sm overflow-hidden block transition-shadow hover:shadow-md
+          ${formStatus === 'good' ? 'bg-green-50 border-green-200' :
+            formStatus === 'moderate' ? 'bg-amber-50 border-amber-200' :
+            'bg-red-50 border-red-200'}`}>
+          <div className="flex h-full">
+            <div className={`w-1 shrink-0
+              ${formStatus === 'good' ? 'bg-[#22c55e]' :
+                formStatus === 'moderate' ? 'bg-amber-500' :
+                'bg-red-500'}`} />
+            <div className="flex-1 px-4 py-4">
+              <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2
+                ${formStatus === 'good' ? 'text-green-600' :
+                  formStatus === 'moderate' ? 'text-amber-600' :
+                  'text-red-600'}`}>
+                ⚡ Cómo llegás hoy
+              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">
+                  {formStatus === 'good' ? '🟢' : formStatus === 'moderate' ? '🟡' : '🔴'}
+                </span>
+                <p className="text-base font-bold text-[#1e3a5f] leading-tight">{formMessage}</p>
+              </div>
+              {lastCheckIn ? (
+                <>
+                  <div className="flex gap-1.5 flex-wrap mt-2">
+                    {lastCheckIn.energyLevel != null && (
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
+                        ${formStatus === 'good' ? 'bg-green-100 text-green-700' :
+                          formStatus === 'moderate' ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'}`}>
+                        Energía {lastCheckIn.energyLevel}/5
+                      </span>
+                    )}
+                    {lastCheckIn.hardestSessionRpe != null && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                        RPE {lastCheckIn.hardestSessionRpe}
+                      </span>
+                    )}
+                    {lastCheckIn.sleepHours != null && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        Sueño {lastCheckIn.sleepHours}h
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2">Actualizar →  · {formCheckInDate}</p>
+                </>
+              ) : (
+                <p className="text-[11px] text-gray-500 mt-2">Hacer check-in →</p>
+              )}
+            </div>
+          </div>
+        </Link>
+
       </div>
 
       {/* Banner trial expirando */}
@@ -427,10 +617,6 @@ export default async function DashboardPage() {
                       ) : (
                         <>
                           <QuickLog sessionId={todaySession.id} initialCompleted={false} />
-                          <Link href={`/log?sessionId=${todaySession.id}&type=${todaySession.type}&duration=${todaySession.durationMin}&zone=${todaySession.zoneTarget}&detail=${encodeURIComponent(todaySession.detailText)}`}
-                            className="text-xs font-medium text-gray-500 hover:text-[#1e3a5f] transition-colors">
-                            Detalle
-                          </Link>
                         </>
                       )}
                     </div>
@@ -490,24 +676,23 @@ export default async function DashboardPage() {
             </Link>
           )}
 
-          {/* AI Coach inline — solo mobile (en desktop va en columna derecha) */}
+          {/* AI Coach link card — solo mobile */}
           {userConfig.features.aiCoach && (
             <div className="lg:hidden">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tu AI Coach</h2>
-              {!profile ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex items-start gap-3">
-                  <AlertCircle size={20} className="text-orange-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-orange-800">Completa tu perfil antes de usar el AI Coach</p>
-                    <p className="text-xs text-orange-600 mt-1">El AI necesita tus datos de salud para darte recomendaciones seguras y personalizadas.</p>
-                    <Link href="/profile" className="inline-block mt-3 text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg">
-                      Completar perfil →
-                    </Link>
+              <Link href="/ai-coach" className="block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 active:scale-[0.98] transition-transform">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">AI Coach</p>
+                    <p className="text-xs text-gray-500">
+                      {aiMonthlyLimit >= 999999
+                        ? 'Mensajes ilimitados este mes'
+                        : `${Math.max(0, aiMonthlyLimit - aiMessagesUsed)} mensajes disponibles`}
+                    </p>
                   </div>
+                  <ChevronRight size={16} className="text-gray-400 shrink-0" />
                 </div>
-              ) : (
-                <AICoachChat initialUsed={aiMessagesUsed} monthlyLimit={aiMonthlyLimit} resetAt={aiResetAt} />
-              )}
+              </Link>
             </div>
           )}
 
@@ -536,54 +721,92 @@ export default async function DashboardPage() {
             </section>
           )}
 
-          {/* ACCESO RÁPIDO — solo mobile, debajo del check-in */}
-          <section className="lg:hidden">
-            <h2 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Acceso rápido</h2>
-            <div className="grid grid-cols-3 gap-3">
-              <Link href="/nutrition" className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 flex flex-col items-start gap-2 active:scale-[0.97] transition-transform">
-                <span className="text-xl">🥗</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-900">Nutrición</p>
-                  {dailyNutrition && <p className="text-[10px] text-gray-400 mt-0.5">{dailyNutrition.kcal.toLocaleString('es-CO')} kcal hoy</p>}
-                </div>
-              </Link>
-              <Link href="/progress" className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 flex flex-col items-start gap-2 active:scale-[0.97] transition-transform">
-                <span className="text-xl">📈</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-900">Progreso</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Semana {planData.currentWeek}</p>
-                </div>
-              </Link>
-              <Link href="/plan" className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 flex flex-col items-start gap-2 active:scale-[0.97] transition-transform">
-                <span className="text-xl">📅</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-900">Mi Plan</p>
-                  {activePlan && <p className="text-[10px] text-gray-400 mt-0.5">Semana {planData.currentWeek}</p>}
-                </div>
-              </Link>
-            </div>
-          </section>
+          {/* Resumen Rápido */}
+          {(lastCheckIn || currentVolume) && (
+            <section>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Resumen Rápido</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                {/* Último Check-in */}
+                {lastCheckIn && (
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Último Check-in</p>
+                      {formCheckInDate && <p className="text-[10px] text-gray-400">{formCheckInDate}</p>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {lastCheckIn.hardestSessionRpe != null && (
+                        <div className="bg-orange-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#f97316] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
+                          <p className="text-[10px] text-gray-500 mt-1">RPE</p>
+                        </div>
+                      )}
+                      {lastCheckIn.energyLevel != null && (
+                        <div className="bg-green-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/5 ★</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Energía</p>
+                        </div>
+                      )}
+                      {lastCheckIn.weightKg != null && (
+                        <div className="bg-blue-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#3b6fdd] leading-none">{lastCheckIn.weightKg} kg</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Peso</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Carga Semanal */}
+                {currentVolume != null && (
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Carga Semanal</p>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-2xl font-black text-[#1e3a5f]">{currentVolume} km</span>
+                      {volumeDeltaPct != null && (
+                        <span className={`text-xs font-semibold ${volumeDeltaPct >= 0 ? 'text-[#22c55e]' : 'text-red-500'}`}>
+                          {volumeDeltaPct >= 0 ? '↑' : '↓'} {Math.abs(volumeDeltaPct)}% vs sem. anterior
+                        </span>
+                      )}
+                    </div>
+                    <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
+                      <div className="h-full bg-[#f97316] rounded-full" style={{ width: `${Math.min(100, Math.round((completedCount / Math.max(totalTraining, 1)) * 100))}%` }} />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {Math.round((completedCount / Math.max(totalTraining, 1)) * 100)}% del objetivo semanal
+                    </p>
+                  </div>
+                )}
+
+              </div>
+            </section>
+          )}
 
         </div>{/* fin columna principal */}
 
-        {/* ── Columna derecha: AI Coach (solo desktop, solo si feature activa) ── */}
+        {/* ── Columna derecha: AI Coach card (solo desktop) ── */}
         {userConfig.features.aiCoach && (
           <div className="hidden lg:block lg:sticky lg:top-8">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tu AI Coach</h2>
-            {!profile ? (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex items-start gap-3">
-                <AlertCircle size={20} className="text-orange-500 shrink-0 mt-0.5" />
+            <Link href="/ai-coach" className="block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
                 <div>
-                  <p className="text-sm font-semibold text-orange-800">Completa tu perfil primero</p>
-                  <p className="text-xs text-orange-600 mt-1">El AI necesita tus datos para darte recomendaciones seguras.</p>
-                  <Link href="/profile" className="inline-block mt-3 text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg">
-                    Completar perfil →
-                  </Link>
+                  <p className="text-sm font-semibold text-gray-900">AI Coach</p>
+                  <p className="text-xs text-gray-400">Powered by Claude</p>
                 </div>
+                <span className="ml-auto w-2 h-2 rounded-full bg-green-400" />
               </div>
-            ) : (
-              <AICoachChat initialUsed={aiMessagesUsed} monthlyLimit={aiMonthlyLimit} resetAt={aiResetAt} />
-            )}
+              <p className="text-sm text-gray-500 mb-4">Tu asistente deportivo. Pregunta sobre tu plan, recuperación o nutrición.</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">
+                  {aiMonthlyLimit >= 999999
+                    ? 'Mensajes ilimitados'
+                    : `${Math.max(0, aiMonthlyLimit - aiMessagesUsed)} msgs disponibles`}
+                </span>
+                <span className="text-xs font-semibold text-[#f97316]">Abrir chat →</span>
+              </div>
+            </Link>
           </div>
         )}
 

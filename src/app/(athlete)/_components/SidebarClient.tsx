@@ -9,11 +9,9 @@ import {
   Apple,
   TrendingUp,
   ClipboardCheck,
-  ClipboardList,
   LogOut,
   Dumbbell,
   UserCircle,
-  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -37,8 +35,9 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck,  show: features.checkin },
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: features.nutrition },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: features.progress },
-    { href: '/log',       label: s.log,         icon: ClipboardList,   show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: features.gym },
+    // AI Coach chat desactivado temporalmente — reactivar cuando se defina la nueva UX de AI proactiva
+    // { href: '/ai-coach',  label: s.aiCoach,     icon: MessageSquare,   show: features.aiCoach },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 

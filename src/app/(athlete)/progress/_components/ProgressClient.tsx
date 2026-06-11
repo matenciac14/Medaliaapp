@@ -46,20 +46,6 @@ function adherenceBarColor(pct: number): string {
   return '#dc2626'
 }
 
-function estimate5k(hrResting: number): string {
-  const total = 27 + (hrResting - 52) * 0.3
-  const mins = Math.floor(total)
-  const secs = Math.round((total - mins) * 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-function estimatePaceZ2(hrResting: number): string {
-  const totalSecs = 330 + (hrResting - 52) * 4
-  const mins = Math.floor(totalSecs / 60)
-  const secs = totalSecs % 60
-  return `${mins}:${secs.toString().padStart(2, '0')} min/km`
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -466,22 +452,10 @@ export default function ProgressClient({
       )}
 
       {/* Benchmarks */}
-      <SectionCard title="Benchmarks de Rendimiento">
+      <SectionCard title="Métricas Clave">
         {/* Mobile: cards */}
         <div className="sm:hidden space-y-3">
           {[
-            {
-              label: 'Tiempo 5k estimado',
-              start: estimate5k(hrStart),
-              end: estimate5k(hrEnd),
-              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
-            },
-            {
-              label: 'Pace Z2',
-              start: estimatePaceZ2(hrStart),
-              end: estimatePaceZ2(hrEnd),
-              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
-            },
             {
               label: 'Peso vs objetivo',
               start: `${weightStart} kg`,
@@ -522,26 +496,6 @@ export default function ProgressClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              <tr>
-                <td className="py-3 pr-4 font-medium text-gray-900">Tiempo 5k estimado</td>
-                <td className="py-3 pr-4 text-gray-500">{estimate5k(hrStart)}</td>
-                <td className="py-3 pr-4 font-semibold text-gray-900">{estimate5k(hrEnd)}</td>
-                <td className="py-3">
-                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
-                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
-                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-3 pr-4 font-medium text-gray-900">Pace Z2</td>
-                <td className="py-3 pr-4 text-gray-500">{estimatePaceZ2(hrStart)}</td>
-                <td className="py-3 pr-4 font-semibold text-gray-900">{estimatePaceZ2(hrEnd)}</td>
-                <td className="py-3">
-                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
-                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
-                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
-                </td>
-              </tr>
               <tr>
                 <td className="py-3 pr-4 font-medium text-gray-900">Peso actual vs objetivo</td>
                 <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>

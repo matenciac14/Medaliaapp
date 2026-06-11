@@ -279,14 +279,6 @@ export default function PlanClient({ plan, weeks }: PlanClientProps) {
                           )}
                           {session.done ? (
                             <CheckCircle2 size={18} className="text-[#22c55e] shrink-0" />
-                          ) : (isCurrentWeek || isPast) && session.type !== 'DESCANSO' ? (
-                            <Link
-                              href={`/log?sessionId=${session.id}&type=${session.type}&duration=${session.durationMin}&zone=${encodeURIComponent(session.zoneTarget)}&detail=${encodeURIComponent(session.detailText)}`}
-                              className="flex items-center gap-1 text-[11px] font-medium text-[#f97316] hover:text-orange-700 transition-colors shrink-0"
-                            >
-                              <Clock size={13} />
-                              Registrar
-                            </Link>
                           ) : null}
                         </div>
                       )

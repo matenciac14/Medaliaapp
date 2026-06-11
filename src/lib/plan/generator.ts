@@ -3,6 +3,9 @@
 // Combina templates + fórmulas + AI (Claude Haiku) + persistencia en BD
 // ---------------------------------------------------------------------------
 
+// TODO: cambiar a true cuando estemos listos para activar recomendaciones AI en onboarding
+const AI_ONBOARDING_ENABLED = false
+
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db/prisma'
 import { parseUserConfig } from '@/lib/config/user-config'
@@ -441,8 +444,9 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
   const hasWeightGoal = !!input.weightGoalKg
   const macros = calculateMacros(tdee, input.weightKg, hasWeightGoal)
 
-  // 5. Llamar a AI para personalizar textos (solo si es B2C y no eligió TEMPLATE)
-  const recommendations = (input.generatedBy === 'COACH' || input.generatedBy === 'TEMPLATE')
+  // 5. Llamar a AI para personalizar textos (solo si es B2C, no TEMPLATE/COACH, y AI habilitada)
+  // Para reactivar: cambiar AI_ONBOARDING_ENABLED = true en la parte superior del archivo
+  const recommendations = (!AI_ONBOARDING_ENABLED || input.generatedBy === 'COACH' || input.generatedBy === 'TEMPLATE')
     ? []
     : await getAIRecommendations(input, hrMax, hrZones)
 

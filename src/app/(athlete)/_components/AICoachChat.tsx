@@ -7,9 +7,10 @@ type Props = {
   initialUsed?: number
   monthlyLimit?: number
   resetAt?: string
+  fullHeight?: boolean
 }
 
-export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt = '' }: Props) {
+export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt = '', fullHeight = false }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -103,7 +104,7 @@ export default function AICoachChat({ initialUsed = 0, monthlyLimit = 0, resetAt
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col" style={{ height: 'min(420px, 60dvh)' }}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col" style={{ height: fullHeight ? '100%' : 'min(420px, 60dvh)' }}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <div

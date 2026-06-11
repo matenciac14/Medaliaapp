@@ -165,6 +165,7 @@ export type Translations = {
       progress: string
       log: string
       gym: string
+      aiCoach: string
       coachPanel: string
       profile: string
       help: string
