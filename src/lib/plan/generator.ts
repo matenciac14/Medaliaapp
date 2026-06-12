@@ -392,7 +392,7 @@ function buildScheduledSessions(
           intensity: getSessionIntensity('OTRO') as any,
           durationMin,
           zoneTarget: cardio.zoneTarget,
-          structure: cardio.structure,
+          detailText: cardio.structure,
           date: sessionDate(planStart, weekIndex, dow),
         }
       }
@@ -409,7 +409,7 @@ function buildScheduledSessions(
         intensity: getSessionIntensity('FUERZA') as any,
         durationMin,
         zoneTarget: null,
-        structure,
+        detailText: structure,
         date: sessionDate(planStart, weekIndex, dow),
       }
     })
@@ -555,7 +555,7 @@ export async function generatePlan(input: GeneratePlanInput): Promise<GeneratePl
                 intensity: getSessionIntensity(session.type) as any,
                 durationMin: session.durationMin,
                 zoneTarget: session.zoneTarget,
-                structure: session.structure,
+                detailText: session.structure,
                 date: sessionDate(planStart, weekIndex, session.dayOfWeek),
               }))
 

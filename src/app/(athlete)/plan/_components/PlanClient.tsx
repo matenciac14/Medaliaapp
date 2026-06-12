@@ -137,12 +137,20 @@ function formatPlanName(name: string): string {
   return PLAN_NAME_MAP[base] ?? base
 }
 
-// Parse a detailText line for zone references (Z1–Z5)
-function parseStructureLine(line: string): { zoneLabel: string | null; color: string; text: string } {
+// Parse a detailText line — supports new format "zone|durationMin|text" and old plain-text format
+function parseStructureBlock(line: string): { zone: string | null; color: string; durationMin: number | null; text: string } {
+  const parts = line.split('|')
+  if (parts.length === 3) {
+    const zone = parts[0].trim().toUpperCase()
+    const durationMin = parseInt(parts[1].trim(), 10) || null
+    const text = parts[2].trim()
+    return { zone, color: ZONE_COLORS[zone] ?? '#9ca3af', durationMin, text }
+  }
+  // Old plain-text format fallback
   const match = line.match(/\b(Z[1-5])\b/i)
-  if (!match) return { zoneLabel: null, color: '#d1d5db', text: line }
+  if (!match) return { zone: null, color: '#d1d5db', durationMin: null, text: line }
   const zone = match[1].toUpperCase()
-  return { zoneLabel: zone, color: ZONE_COLORS[zone] ?? '#9ca3af', text: line }
+  return { zone, color: ZONE_COLORS[zone] ?? '#9ca3af', durationMin: null, text: line }
 }
 
 // ── CalendarStrip ─────────────────────────────────────────────────────
@@ -507,21 +515,26 @@ function SessionDetailCard({ session, isToday }: {
                 </span>
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                 {structureLines.map((line, idx) => {
-                  const { zoneLabel, color, text } = parseStructureLine(line)
+                  const { zone, color, durationMin, text } = parseStructureBlock(line)
                   return (
-                    <div key={idx} className="flex items-start gap-2">
-                      {/* Colored zone indicator */}
-                      <div className="flex items-center gap-1 shrink-0 mt-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                        {zoneLabel && (
-                          <span className="text-[10px] font-bold w-4 leading-none" style={{ color }}>
-                            {zoneLabel}
-                          </span>
-                        )}
+                    <div key={idx} className="flex items-start gap-2.5">
+                      {/* Zone dot + label */}
+                      <div className="flex items-center gap-1 shrink-0 pt-1">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-[10px] font-bold w-5 leading-none" style={{ color }}>
+                          {zone ?? ''}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{text}</p>
+                      {/* Duration */}
+                      {durationMin != null && (
+                        <span className="text-sm font-bold text-gray-800 shrink-0 w-12 pt-px">
+                          {durationMin} min
+                        </span>
+                      )}
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 leading-relaxed flex-1">{text}</p>
                     </div>
                   )
                 })}

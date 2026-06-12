@@ -27,6 +27,39 @@ export type PlanTemplate = {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers de estructura — formato: "zona|durMin|descripcion" por línea, "\n" separador
+// Ejemplo: "Z1|10|Calentamiento\nZ4|18|6×1min Z4\nZ2|12|Vuelta a la calma"
+// ---------------------------------------------------------------------------
+
+function structFartlek(durationMin: number, sets: number): string {
+  const warm = 10, cool = 10, main = Math.max(10, durationMin - warm - cool)
+  return `Z1|${warm}|Calentamiento progresivo\nZ3|${main}|${sets} series 1min Z3 / 2min Z2 recuperación\nZ1|${cool}|Vuelta a la calma aeróbica`
+}
+
+function structTempo(durationMin: number, tempoMin: number): string {
+  const warm = 10, cool = Math.max(5, durationMin - 10 - tempoMin)
+  return `Z2|${warm}|Calentamiento aeróbico\nZ3|${tempoMin}|Tempo continuo — mantener ritmo umbral\nZ2|${cool}|Vuelta a la calma`
+}
+
+function structIntervalos(durationMin: number, reps: number, dist: string, zone = 'Z4'): string {
+  const warm = 10, cool = 10, main = Math.max(10, durationMin - warm - cool)
+  return `Z1|${warm}|Calentamiento\n${zone}|${main}|${reps}×${dist} (rec 90s Z1)\nZ1|${cool}|Vuelta a la calma`
+}
+
+function structSimulacro(durationMin: number, raceDist: string): string {
+  const simMin = 25, warm = 15, cool = Math.max(5, durationMin - warm - simMin)
+  return `Z2|${warm}|Calentamiento progresivo\nZ4|${simMin}|Simulacro ${raceDist} a ritmo objetivo\nZ2|${cool}|Vuelta a la calma`
+}
+
+function structTiradaLarga(durationMin: number, hasProgression = false): string {
+  if (!hasProgression || durationMin < 40) {
+    return `Z2|${durationMin}|Tirada aeróbica Z2 — conversacional todo el tiempo`
+  }
+  const base = durationMin - 10
+  return `Z2|${base}|Tirada larga aeróbica Z2 — conversacional, gel c/40min\nZ3|10|Progresión final si te sientes bien`
+}
+
+// ---------------------------------------------------------------------------
 // HALF_MARATHON_18W
 // Fases: Base (1-4), Desarrollo (5-10), Específico (11-15), Afinamiento (16-18)
 // Estructura: Lun=fuerza, Mar=Z2, Mié=calidad, Jue=cicla Z2, Vie=Z2+fuerza, Sáb=natación, Dom=tirada larga
@@ -38,28 +71,28 @@ const halfMarathonQualityByPhase: Record<string, SessionTemplate> = {
     type: 'FARTLEK',
     durationMin: 40,
     zoneTarget: 'Z2-Z3',
-    structure: 'Fartlek libre: 5min calentamiento Z1, series 1min Z3/1min Z2 × 10, 5min vuelta calma Z1',
+    structure: structFartlek(40, 10),
   },
   DESARROLLO: {
     dayOfWeek: 3,
     type: 'TEMPO',
     durationMin: 50,
     zoneTarget: 'Z3-Z4',
-    structure: 'Rodaje tempo: 10min calentamiento Z2, 25min Z3 continuo, 10min vuelta calma Z2',
+    structure: structTempo(50, 30),
   },
   ESPECIFICO: {
     dayOfWeek: 3,
     type: 'INTERVALOS',
     durationMin: 55,
     zoneTarget: 'Z4',
-    structure: 'Intervalos: 10min calentamiento, 6×1000m Z4 (rec 90s trot Z1), 10min vuelta calma',
+    structure: structIntervalos(55, 6, '1000m'),
   },
   AFINAMIENTO: {
     dayOfWeek: 3,
     type: 'TEMPO',
     durationMin: 40,
     zoneTarget: 'Z3',
-    structure: 'Tempo suave: 10min calentamiento, 20min ritmo carrera objetivo, 10min vuelta calma',
+    structure: structTempo(40, 20),
   },
 }
 
@@ -120,7 +153,7 @@ function buildHalfMarathonWeek(
         type: 'TIRADA_LARGA',
         durationMin: longRunMin,
         zoneTarget: 'Z2',
-        structure: `Tirada larga en Z2. Último 10% a ritmo Z3 si te sientes bien. Nutrición: gel cada 40min.`,
+        structure: structTiradaLarga(longRunMin, longRunMin >= 70),
       },
     ],
   }
@@ -174,9 +207,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 40, zoneTarget: 'N/A', structure: 'Fuerza funcional corredor. Sentadillas, lunges, core.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje suave Z2 conversacional.' },
-        { dayOfWeek: 3, type: 'FARTLEK', durationMin: 40, zoneTarget: 'Z2-Z3', structure: 'Fartlek: 5 series 1min Z3 / 2min Z2.' },
+        { dayOfWeek: 3, type: 'FARTLEK', durationMin: 40, zoneTarget: 'Z2-Z3', structure: structFartlek(40, 5) },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2 + activación muscular.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: 'Tirada larga Z2 sin forzar.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: structTiradaLarga(55) },
       ],
     },
     {
@@ -185,9 +218,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 40, zoneTarget: 'N/A', structure: 'Fuerza: incrementar carga 5-10%.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2 estable.' },
-        { dayOfWeek: 3, type: 'FARTLEK', durationMin: 45, zoneTarget: 'Z2-Z3', structure: 'Fartlek: 6 series 1min Z3 / 2min Z2.' },
+        { dayOfWeek: 3, type: 'FARTLEK', durationMin: 45, zoneTarget: 'Z2-Z3', structure: structFartlek(45, 6) },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2 recuperación.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 65, zoneTarget: 'Z2', structure: 'Tirada larga Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 65, zoneTarget: 'Z2', structure: structTiradaLarga(65) },
       ],
     },
     {
@@ -196,9 +229,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 45, zoneTarget: 'N/A', structure: 'Fuerza completa + isométricos.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 45, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'TEMPO', durationMin: 45, zoneTarget: 'Z3', structure: 'Primer tempo: 10min calentamiento, 20min Z3, 10min vuelta calma.' },
+        { dayOfWeek: 3, type: 'TEMPO', durationMin: 45, zoneTarget: 'Z3', structure: structTempo(45, 25) },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 70, zoneTarget: 'Z2', structure: 'Tirada larga Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 70, zoneTarget: 'Z2', structure: structTiradaLarga(70) },
       ],
     },
     {
@@ -208,7 +241,7 @@ export const TEN_K_12W: PlanTemplate = {
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 30, zoneTarget: 'N/A', structure: 'Fuerza ligera. Movilidad y activación.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z1-Z2', structure: 'Rodaje muy suave Z1-Z2.' },
         { dayOfWeek: 4, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje Z2 corto.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 50, zoneTarget: 'Z2', structure: 'Tirada corta Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 50, zoneTarget: 'Z2', structure: structTiradaLarga(50) },
       ],
     },
 
@@ -219,9 +252,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 45, zoneTarget: 'N/A', structure: 'Fuerza específica corredor.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 50, zoneTarget: 'Z4', structure: '4×1000m Z4 (rec 90s Z1), calentamiento y vuelta calma 10min.' },
+        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 50, zoneTarget: 'Z4', structure: structIntervalos(50, 4, '1000m') },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 75, zoneTarget: 'Z2', structure: 'Tirada larga Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 75, zoneTarget: 'Z2', structure: structTiradaLarga(75, true) },
       ],
     },
     {
@@ -230,9 +263,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 45, zoneTarget: 'N/A', structure: 'Fuerza + pliométricos ligeros.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 45, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 55, zoneTarget: 'Z4', structure: '5×1000m Z4 (rec 90s), calentamiento 10min.' },
+        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 55, zoneTarget: 'Z4', structure: structIntervalos(55, 5, '1000m') },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 80, zoneTarget: 'Z2', structure: 'Tirada larga Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 80, zoneTarget: 'Z2', structure: structTiradaLarga(80, true) },
       ],
     },
     {
@@ -241,9 +274,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 45, zoneTarget: 'N/A', structure: 'Fuerza máxima corredor.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 45, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 60, zoneTarget: 'Z4', structure: '6×1000m Z4 (rec 90s), calentamiento 10min.' },
+        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 60, zoneTarget: 'Z4', structure: structIntervalos(60, 6, '1000m') },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 45, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 85, zoneTarget: 'Z2', structure: 'Tirada larga Z2, últimos 15min a ritmo carrera.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 85, zoneTarget: 'Z2', structure: structTiradaLarga(85, true) },
       ],
     },
     {
@@ -253,7 +286,7 @@ export const TEN_K_12W: PlanTemplate = {
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 30, zoneTarget: 'N/A', structure: 'Fuerza ligera.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z1-Z2', structure: 'Rodaje suave.' },
         { dayOfWeek: 4, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 60, zoneTarget: 'Z2', structure: 'Tirada Z2 corta.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 60, zoneTarget: 'Z2', structure: structTiradaLarga(60) },
       ],
     },
     {
@@ -262,9 +295,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 45, zoneTarget: 'N/A', structure: 'Fuerza + pliométricos.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'SIMULACRO', durationMin: 55, zoneTarget: 'Z4', structure: 'Simulacro 5K a ritmo objetivo 10K. Calentamiento 15min, 5K a fondo, vuelta calma.' },
+        { dayOfWeek: 3, type: 'SIMULACRO', durationMin: 55, zoneTarget: 'Z4', structure: structSimulacro(55, '5K') },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 40, zoneTarget: 'Z2', structure: 'Rodaje Z2 recuperación post-simulacro.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 80, zoneTarget: 'Z2', structure: 'Tirada larga Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 80, zoneTarget: 'Z2', structure: structTiradaLarga(80, true) },
       ],
     },
 
@@ -275,9 +308,9 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 35, zoneTarget: 'N/A', structure: 'Fuerza ligera — activación.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 45, zoneTarget: 'Z4', structure: '4×1000m Z4 (rec 2min). Mantener sensaciones.' },
+        { dayOfWeek: 3, type: 'INTERVALOS', durationMin: 45, zoneTarget: 'Z4', structure: structIntervalos(45, 4, '1000m') },
         { dayOfWeek: 5, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje Z2 corto.' },
-        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 65, zoneTarget: 'Z2', structure: 'Tirada Z2.' },
+        { dayOfWeek: 7, type: 'TIRADA_LARGA', durationMin: 65, zoneTarget: 'Z2', structure: structTiradaLarga(65) },
       ],
     },
     {
@@ -286,7 +319,7 @@ export const TEN_K_12W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 25, zoneTarget: 'N/A', structure: 'Activación muscular ligera.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje Z2 suave.' },
-        { dayOfWeek: 3, type: 'TEMPO', durationMin: 35, zoneTarget: 'Z3', structure: '10min calentamiento, 15min ritmo carrera objetivo, 10min vuelta calma.' },
+        { dayOfWeek: 3, type: 'TEMPO', durationMin: 35, zoneTarget: 'Z3', structure: structTempo(35, 15) },
         { dayOfWeek: 6, type: 'RODAJE_Z2', durationMin: 25, zoneTarget: 'Z1-Z2', structure: 'Trote suave pre-carrera.' },
       ],
     },
@@ -318,8 +351,8 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 35, zoneTarget: 'N/A', structure: 'Fuerza funcional: sentadillas, zancadas, core.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje suave Z2.' },
-        { dayOfWeek: 4, type: 'FARTLEK', durationMin: 35, zoneTarget: 'Z2-Z3', structure: 'Fartlek: 4 series 1min Z3 / 2min Z2.' },
-        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 45, zoneTarget: 'Z2', structure: 'Tirada Z2.' },
+        { dayOfWeek: 4, type: 'FARTLEK', durationMin: 35, zoneTarget: 'Z2-Z3', structure: structFartlek(35, 4) },
+        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 45, zoneTarget: 'Z2', structure: structTiradaLarga(45) },
       ],
     },
     {
@@ -328,8 +361,8 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 35, zoneTarget: 'N/A', structure: 'Fuerza + saltos cortos.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 4, type: 'FARTLEK', durationMin: 40, zoneTarget: 'Z2-Z3', structure: 'Fartlek: 5 series 1min Z3 / 2min Z2.' },
-        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 50, zoneTarget: 'Z2', structure: 'Tirada Z2.' },
+        { dayOfWeek: 4, type: 'FARTLEK', durationMin: 40, zoneTarget: 'Z2-Z3', structure: structFartlek(40, 5) },
+        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 50, zoneTarget: 'Z2', structure: structTiradaLarga(50) },
       ],
     },
     {
@@ -338,8 +371,8 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 40, zoneTarget: 'N/A', structure: 'Fuerza + pliométricos.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 4, type: 'TEMPO', durationMin: 40, zoneTarget: 'Z3', structure: '8min calentamiento, 18min Z3, 8min vuelta calma.' },
-        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: 'Tirada Z2.' },
+        { dayOfWeek: 4, type: 'TEMPO', durationMin: 40, zoneTarget: 'Z3', structure: structTempo(40, 20) },
+        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: structTiradaLarga(55) },
       ],
     },
     {
@@ -359,8 +392,8 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 40, zoneTarget: 'N/A', structure: 'Fuerza potencia.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 45, zoneTarget: 'Z4-Z5', structure: '6×400m Z4-Z5 (rec 90s Z1). Calentamiento 10min.' },
-        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: 'Tirada Z2 con último kilómetro a ritmo objetivo 5K.' },
+        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 45, zoneTarget: 'Z4-Z5', structure: structIntervalos(45, 6, '400m', 'Z4') },
+        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 55, zoneTarget: 'Z2', structure: structTiradaLarga(55) },
       ],
     },
     {
@@ -369,8 +402,8 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 40, zoneTarget: 'N/A', structure: 'Fuerza + pliométricos.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 35, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 50, zoneTarget: 'Z4-Z5', structure: '8×400m Z4-Z5 (rec 90s) o 4×800m Z4 (rec 2min).' },
-        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 60, zoneTarget: 'Z2', structure: 'Tirada Z2.' },
+        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 50, zoneTarget: 'Z4-Z5', structure: structIntervalos(50, 8, '400m', 'Z4') },
+        { dayOfWeek: 6, type: 'TIRADA_LARGA', durationMin: 60, zoneTarget: 'Z2', structure: structTiradaLarga(60) },
       ],
     },
     {
@@ -379,7 +412,7 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'FUERZA', durationMin: 30, zoneTarget: 'N/A', structure: 'Activación ligera.' },
         { dayOfWeek: 2, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje Z2.' },
-        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 40, zoneTarget: 'Z4', structure: '5×400m a ritmo carrera (rec 2min). Mantener sensaciones.' },
+        { dayOfWeek: 4, type: 'INTERVALOS', durationMin: 40, zoneTarget: 'Z4', structure: structIntervalos(40, 5, '400m', 'Z4') },
         { dayOfWeek: 6, type: 'RODAJE_Z2', durationMin: 30, zoneTarget: 'Z2', structure: 'Rodaje suave Z2.' },
       ],
     },
