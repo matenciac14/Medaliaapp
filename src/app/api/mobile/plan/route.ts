@@ -47,7 +47,16 @@ export async function GET(req: NextRequest) {
         dayOfWeek: s.dayOfWeek,
         coachNote: s.coachNote ?? null,
         sportLabel: (s as any).sportLabel ?? null,
+        detailText: (s as any).detailText ?? null,
+        intensity: s.intensity ?? null,
         completed: !!s.log,
+        log: s.log ? {
+          id: s.log.id,
+          durationMin: s.log.durationMin ?? null,
+          rpe: s.log.rpe ?? null,
+          hrAvg: s.log.hrAvg ?? null,
+          notes: s.log.notes ?? null,
+        } : null,
       })),
     })),
   })

@@ -18,6 +18,11 @@ export type PlanClientWeekSession = {
   zoneTarget: string
   detailText: string
   intensity: string | null
+  logId: string | null
+  logDurationMin: number | null
+  logRpe: number | null
+  logHrAvg: number | null
+  logNotes: string | null
 }
 
 export type PlanClientWeek = {
@@ -151,6 +156,261 @@ function parseStructureBlock(line: string): { zone: string | null; color: string
   if (!match) return { zone: null, color: '#d1d5db', durationMin: null, text: line }
   const zone = match[1].toUpperCase()
   return { zone, color: ZONE_COLORS[zone] ?? '#9ca3af', durationMin: null, text: line }
+}
+
+// ── EditModal ─────────────────────────────────────────────────────────
+
+const SESSION_TYPE_OPTIONS = [
+  { value: 'RODAJE_Z2',    label: 'Rodaje Z2' },
+  { value: 'FARTLEK',      label: 'Fartlek' },
+  { value: 'TEMPO',        label: 'Tempo' },
+  { value: 'INTERVALOS',   label: 'Intervalos' },
+  { value: 'TIRADA_LARGA', label: 'Tirada Larga' },
+  { value: 'FUERZA',       label: 'Fuerza' },
+  { value: 'CICLA',        label: 'Cicla' },
+  { value: 'NATACION',     label: 'Natación' },
+  { value: 'SIMULACRO',    label: 'Simulacro' },
+  { value: 'DESCANSO',     label: 'Descanso' },
+  { value: 'OTRO',         label: 'Otro' },
+]
+
+function EditModal({ session, onClose, onSaved }: {
+  session: PlanClientWeekSession
+  onClose: () => void
+  onSaved: (updates: Partial<PlanClientWeekSession>) => void
+}) {
+  const isLogged = !!session.logId
+
+  // Planned session fields
+  const [type, setType]             = useState(session.type)
+  const [durationMin, setDuration]  = useState(String(session.durationMin))
+  const [zoneTarget, setZone]       = useState(session.zoneTarget)
+  const [detailText, setDetail]     = useState(session.detailText)
+
+  // Log fields
+  const [logDuration, setLogDuration] = useState(String(session.logDurationMin ?? ''))
+  const [rpe, setRpe]                 = useState(session.logRpe ?? 0)
+  const [hrAvg, setHrAvg]             = useState(String(session.logHrAvg ?? ''))
+  const [logNotes, setLogNotes]       = useState(session.logNotes ?? '')
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+
+  async function handleSave() {
+    setLoading(true)
+    setError('')
+    try {
+      const sessionUpdates: Record<string, unknown> = {}
+      if (type !== session.type) sessionUpdates.type = type
+      if (parseInt(durationMin) !== session.durationMin) sessionUpdates.durationMin = parseInt(durationMin)
+      if (zoneTarget !== session.zoneTarget) sessionUpdates.zoneTarget = zoneTarget
+      if (detailText !== session.detailText) sessionUpdates.detailText = detailText
+
+      const logUpdates: Record<string, unknown> = {}
+      if (isLogged) {
+        const ld = logDuration ? parseInt(logDuration) : null
+        if (ld !== session.logDurationMin) logUpdates.durationMin = ld
+        const r = rpe > 0 ? rpe : null
+        if (r !== session.logRpe) logUpdates.rpe = r
+        const hr = hrAvg ? parseInt(hrAvg) : null
+        if (hr !== session.logHrAvg) logUpdates.hrAvg = hr
+        if (logNotes.trim() !== (session.logNotes ?? '')) logUpdates.notes = logNotes.trim() || null
+      }
+
+      const [sessionRes, logRes] = await Promise.all([
+        Object.keys(sessionUpdates).length > 0
+          ? fetch(`/api/athlete/sessions/${session.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(sessionUpdates),
+            })
+          : Promise.resolve(null),
+        isLogged && Object.keys(logUpdates).length > 0
+          ? fetch(`/api/log/session/${session.logId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(logUpdates),
+            })
+          : Promise.resolve(null),
+      ])
+
+      if (sessionRes && !sessionRes.ok) { setError('Error al guardar sesión.'); return }
+      if (logRes && !logRes.ok) { setError('Error al guardar registro.'); return }
+
+      // Build merged updates for optimistic state
+      const merged: Partial<PlanClientWeekSession> = {
+        ...sessionUpdates as Partial<PlanClientWeekSession>,
+        ...(isLogged ? {
+          logDurationMin: logUpdates.durationMin as number ?? session.logDurationMin,
+          logRpe:         logUpdates.rpe         as number ?? session.logRpe,
+          logHrAvg:       logUpdates.hrAvg        as number ?? session.logHrAvg,
+          logNotes:       logUpdates.notes        as string ?? session.logNotes,
+        } : {}),
+      }
+      onSaved(merged)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Editar sesión</p>
+              <p className="font-black text-gray-900">{SESSION_LABELS[session.type] ?? session.type}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>
+        </div>
+
+        <div className="p-6 space-y-6">
+
+          {/* ── Sesión planificada ── */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sesión planificada</p>
+
+            {/* Tipo */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600">Tipo de sesión</label>
+              <select
+                value={type}
+                onChange={e => setType(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f] bg-white"
+              >
+                {SESSION_TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Duración + Zona */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">Duración (min)</label>
+                <input
+                  type="number"
+                  value={durationMin}
+                  onChange={e => setDuration(e.target.value)}
+                  min={1}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">Zona objetivo</label>
+                <input
+                  type="text"
+                  value={zoneTarget}
+                  onChange={e => setZone(e.target.value)}
+                  placeholder="Z2, Z3-Z4…"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                />
+              </div>
+            </div>
+
+            {/* Descripción */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600">Descripción / estructura</label>
+              <textarea
+                value={detailText}
+                onChange={e => setDetail(e.target.value)}
+                rows={3}
+                placeholder="Describe la sesión…"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
+              />
+            </div>
+          </div>
+
+          {/* ── Registro ── */}
+          {isLogged && (
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Registro de sesión</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">Duración real (min)</label>
+                  <input
+                    type="number"
+                    value={logDuration}
+                    onChange={e => setLogDuration(e.target.value)}
+                    placeholder={String(session.durationMin)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">FC media (bpm)</label>
+                  <input
+                    type="number"
+                    value={hrAvg}
+                    onChange={e => setHrAvg(e.target.value)}
+                    placeholder="148"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                </div>
+              </div>
+
+              {/* RPE */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-gray-600">RPE — Esfuerzo percibido</p>
+                  <span className="text-base font-black text-[#f97316]">{rpe > 0 ? rpe : '–'}</span>
+                </div>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setRpe(rpe === n ? 0 : n)}
+                      className={cn(
+                        'flex-1 h-8 rounded-lg text-[11px] font-bold border transition-colors',
+                        rpe === n
+                          ? 'bg-[#f97316] border-[#f97316] text-white'
+                          : n < rpe
+                          ? 'bg-orange-50 border-[#f97316] text-[#f97316]'
+                          : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                      )}
+                    >{n}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notas */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">Notas</label>
+                <textarea
+                  value={logNotes}
+                  onChange={e => setLogNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Cómo te sentiste, condiciones…"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
+                />
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="w-full bg-[#1e3a5f] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
+          >
+            {loading ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── CalendarStrip ─────────────────────────────────────────────────────
@@ -436,15 +696,17 @@ function LogModal({ session, onClose, onSuccess }: {
 
 // ── SessionDetailCard ─────────────────────────────────────────────────
 
-function SessionDetailCard({ session, isToday, isLogged, onLogged }: {
+function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
   session: PlanClientWeekSession
   isToday: boolean
   isLogged: boolean
   onLogged: () => void
+  onEdited: (updates: Partial<PlanClientWeekSession>) => void
 }) {
   const router = useRouter()
   const [logDone, setLogDone] = useState(session.done || isLogged)
   const [showModal, setShowModal] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
 
   // Sync if parent's optimistic state arrives after mount (e.g. navigating back to a logged day)
   if (!logDone && isLogged) setLogDone(true)
@@ -555,10 +817,18 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged }: {
           {/* CTA buttons */}
           <div className="flex items-center gap-3 pt-1 border-t border-gray-50">
             {logDone ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
-                <CheckCircle2 size={16} className="text-green-500" />
-                <span className="text-sm font-semibold text-green-700">Sesión completada</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                  <CheckCircle2 size={16} className="text-green-500" />
+                  <span className="text-sm font-semibold text-green-700">Completada</span>
+                </div>
+                <button
+                  onClick={() => setShowEdit(true)}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Editar ✏️
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -568,11 +838,10 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged }: {
                   Registrar sesión →
                 </button>
                 <button
-                  disabled
-                  className="px-4 py-3 border border-gray-200 text-gray-500 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-not-allowed"
-                  title="Próximamente"
+                  onClick={() => setShowEdit(true)}
+                  className="px-4 py-3 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  Editar sesión ✏️
+                  Editar ✏️
                 </button>
               </>
             )}
@@ -590,6 +859,16 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged }: {
           setLogDone(true)
           onLogged()
           router.refresh()
+        }}
+      />
+    )}
+    {showEdit && (
+      <EditModal
+        session={session}
+        onClose={() => setShowEdit(false)}
+        onSaved={(updates) => {
+          setShowEdit(false)
+          onEdited(updates)
         }}
       />
     )}
@@ -823,6 +1102,22 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
     setLoggedIds(prev => new Set(prev).add(sessionId))
   }
 
+  // Optimistic edit overrides — persists changes across navigation without server round-trip
+  const [editedSessions, setEditedSessions] = useState<Map<string, Partial<PlanClientWeekSession>>>(new Map())
+  function applyEdit(sessionId: string, updates: Partial<PlanClientWeekSession>) {
+    setEditedSessions(prev => {
+      const next = new Map(prev)
+      next.set(sessionId, { ...(next.get(sessionId) ?? {}), ...updates })
+      return next
+    })
+  }
+
+  // Merge server data with optimistic edits
+  function mergeSession(s: PlanClientWeekSession): PlanClientWeekSession {
+    const overrides = editedSessions.get(s.id)
+    return overrides ? { ...s, ...overrides } : s
+  }
+
   const isCurrentWeek = selectedWeekNum === plan.currentWeek
   const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? weeks[0]
   const allPhases = [...new Set(weeks.map(w => w.phase))]
@@ -836,7 +1131,10 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   const selDayLabel = `${DAY_SHORT[selectedDow - 1]} ${selDateObj.getDate()}`
   const weekLabel = `Semana ${selectedWeekNum} · ${formatWeekRange(weekMonday)}`
 
-  const selectedSession = week?.sessions.find(s => s.dayOfWeek === selectedDow) ?? null
+  const selectedSession = useMemo(() => {
+    const s = week?.sessions.find(s => s.dayOfWeek === selectedDow) ?? null
+    return s ? mergeSession(s) : null
+  }, [week, selectedDow, editedSessions])
 
   // KPI — combina done del servidor + loggedIds optimista
   const completedCount = week?.sessions.filter(s => (s.done || loggedIds.has(s.id)) && s.type !== 'DESCANSO').length ?? 0
@@ -925,6 +1223,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
               isToday={isCurrentWeek && selectedDow === todayDow}
               isLogged={loggedIds.has(selectedSession.id)}
               onLogged={() => markLogged(selectedSession.id)}
+              onEdited={(updates) => { applyEdit(selectedSession.id, updates); router.refresh() }}
             />
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">

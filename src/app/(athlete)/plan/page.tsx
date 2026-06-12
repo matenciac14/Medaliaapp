@@ -140,6 +140,11 @@ export default async function PlanPage() {
           zoneTarget: s.zoneTarget ?? '',
           detailText: s.detailText ?? '',
           intensity: (s.intensity as string) ?? null,
+          logId: s.log?.id ?? null,
+          logDurationMin: s.log?.durationMin ?? null,
+          logRpe: s.log?.rpe ?? null,
+          logHrAvg: s.log?.hrAvg ?? null,
+          logNotes: s.log?.notes ?? null,
         })),
       }))
     }
