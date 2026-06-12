@@ -155,7 +155,7 @@ function parseStructureBlock(line: string): { zone: string | null; color: string
 
 // ── CalendarStrip ─────────────────────────────────────────────────────
 
-function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining }: {
+function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining, loggedIds }: {
   week: PlanClientWeek
   weekMonday: Date
   selectedDow: number
@@ -164,6 +164,7 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
   onSelect: (dow: number) => void
   completedCount: number
   totalTraining: number
+  loggedIds: Set<string>
 }) {
   const [todayActive, setTodayActive] = useState(false)
   const pct = totalTraining > 0 ? (completedCount / totalTraining) * 100 : 0
@@ -182,7 +183,7 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
           const isToday = isCurrentWeek && dow === todayDow
           const isSelected = dow === selectedDow
           const isRest = !session || session.type === 'DESCANSO'
-          const isDone = session?.done ?? false
+          const isDone = (session?.done || (session ? loggedIds.has(session.id) : false)) ?? false
 
           const cardBg = isToday && isSelected && todayActive
             ? 'bg-[#ea580c] active:bg-[#d4520b]'
@@ -280,20 +281,24 @@ function LogModal({ session, onClose, onSuccess }: {
 
   async function handleSubmit() {
     if (completed === null) { setError('¿Completaste la sesión?'); return }
+    // "No la hice" — acknowledge without creating a log entry
+    if (!completed) { onSuccess(); return }
     setLoading(true)
     setError('')
     try {
-      await fetch('/api/log/session', {
+      const res = await fetch('/api/log/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plannedSessionId: session.id,
+          completed: true,
           durationMin: actualDuration ? parseInt(actualDuration) : undefined,
           rpe: rpe > 0 ? rpe : undefined,
           hrAvg: hrAvg ? parseInt(hrAvg) : undefined,
           notes: notes.trim() || undefined,
         }),
       })
+      if (!res.ok) { setError('No se pudo guardar. Intenta de nuevo.'); return }
       onSuccess()
     } finally {
       setLoading(false)
@@ -431,13 +436,18 @@ function LogModal({ session, onClose, onSuccess }: {
 
 // ── SessionDetailCard ─────────────────────────────────────────────────
 
-function SessionDetailCard({ session, isToday }: {
+function SessionDetailCard({ session, isToday, isLogged, onLogged }: {
   session: PlanClientWeekSession
   isToday: boolean
+  isLogged: boolean
+  onLogged: () => void
 }) {
   const router = useRouter()
-  const [logDone, setLogDone] = useState(session.done)
+  const [logDone, setLogDone] = useState(session.done || isLogged)
   const [showModal, setShowModal] = useState(false)
+
+  // Sync if parent's optimistic state arrives after mount (e.g. navigating back to a logged day)
+  if (!logDone && isLogged) setLogDone(true)
 
   if (session.type === 'DESCANSO') {
     return (
@@ -578,6 +588,7 @@ function SessionDetailCard({ session, isToday }: {
         onSuccess={() => {
           setShowModal(false)
           setLogDone(true)
+          onLogged()
           router.refresh()
         }}
       />
@@ -806,6 +817,11 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
 
   const [selectedWeekNum, setSelectedWeekNum] = useState(plan.currentWeek)
   const [selectedDow, setSelectedDow] = useState(todayDow)
+  // Optimistic logged state — persists across day/week navigation within this session
+  const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set())
+  function markLogged(sessionId: string) {
+    setLoggedIds(prev => new Set(prev).add(sessionId))
+  }
 
   const isCurrentWeek = selectedWeekNum === plan.currentWeek
   const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? weeks[0]
@@ -822,8 +838,8 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
 
   const selectedSession = week?.sessions.find(s => s.dayOfWeek === selectedDow) ?? null
 
-  // KPI
-  const completedCount = week?.sessions.filter(s => s.done && s.type !== 'DESCANSO').length ?? 0
+  // KPI — combina done del servidor + loggedIds optimista
+  const completedCount = week?.sessions.filter(s => (s.done || loggedIds.has(s.id)) && s.type !== 'DESCANSO').length ?? 0
   const totalTraining  = week?.sessions.filter(s => s.type !== 'DESCANSO').length ?? 0
   const adherencePct   = totalTraining > 0 ? Math.round((completedCount / totalTraining) * 100) : 0
 
@@ -890,6 +906,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
           onSelect={setSelectedDow}
           completedCount={completedCount}
           totalTraining={totalTraining}
+          loggedIds={loggedIds}
         />
       )}
 
@@ -906,6 +923,8 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             <SessionDetailCard
               session={selectedSession}
               isToday={isCurrentWeek && selectedDow === todayDow}
+              isLogged={loggedIds.has(selectedSession.id)}
+              onLogged={() => markLogged(selectedSession.id)}
             />
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
