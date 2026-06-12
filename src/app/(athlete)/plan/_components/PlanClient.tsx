@@ -1,44 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Phase = 'TODAS' | 'BASE' | 'DESARROLLO' | 'ESPECÍFICO' | 'AFINAMIENTO'
-
-const PHASES: Phase[] = ['TODAS', 'BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO']
-
-const PHASE_COLORS: Record<string, string> = {
-  BASE: 'bg-blue-100 text-blue-700 border-blue-200',
-  DESARROLLO: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  'ESPECÍFICO': 'bg-orange-100 text-orange-700 border-orange-200',
-  ESPECIFICO: 'bg-orange-100 text-orange-700 border-orange-200',
-  AFINAMIENTO: 'bg-green-100 text-green-700 border-green-200',
-}
-
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃',
-  FARTLEK: '🏃',
-  TIRADA_LARGA: '🏃',
-  CICLA: '🚴',
-  NATACION: '🏊',
-  FUERZA: '💪',
-  DESCANSO: '😴',
-}
-
-const SESSION_LABELS: Record<string, string> = {
-  RODAJE_Z2: 'Rodaje Z2',
-  FARTLEK: 'Fartlek',
-  TIRADA_LARGA: 'Tirada larga',
-  CICLA: 'Cicla',
-  NATACION: 'Natación',
-  FUERZA: 'Fuerza',
-  DESCANSO: 'Descanso activo',
-}
+// ── Types ─────────────────────────────────────────────────────────────
 
 export type PlanClientWeekSession = {
   id: string
+  dayOfWeek: number
   day: string
   type: string
   label: string
@@ -46,6 +17,7 @@ export type PlanClientWeekSession = {
   durationMin: number
   zoneTarget: string
   detailText: string
+  intensity: string | null
 }
 
 export type PlanClientWeek = {
@@ -62,295 +34,910 @@ export type PlanClientPlan = {
   name: string
   currentWeek: number
   totalWeeks: number
-  startDate: string // 'YYYY-MM-DD'
+  startDate: string
 }
 
 interface PlanClientProps {
   plan: PlanClientPlan
   weeks: PlanClientWeek[]
+  nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null
+  weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null
 }
 
-function getWeekStartDate(startDate: string, weekNumber: number): string {
-  const start = new Date(startDate)
-  start.setDate(start.getDate() + (weekNumber - 1) * 7)
-  return start.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+// ── Constants ─────────────────────────────────────────────────────────
+
+const SESSION_ICONS: Record<string, string> = {
+  RODAJE_Z2: '🏃', FARTLEK: '🏃', TIRADA_LARGA: '🏃', TEMPO: '🏃',
+  INTERVALOS: '⚡', SIMULACRO: '🏁', TEST: '📊',
+  CICLA: '🚴', NATACION: '🏊', FUERZA: '💪', DESCANSO: '😴', OTRO: '🏅',
 }
 
-function getWeekEndDate(startDate: string, weekNumber: number): string {
-  const end = new Date(startDate)
-  end.setDate(end.getDate() + (weekNumber - 1) * 7 + 6)
-  return end.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+const SESSION_LABELS: Record<string, string> = {
+  RODAJE_Z2: 'Rodaje Z2', FARTLEK: 'Fartlek', TIRADA_LARGA: 'Tirada Larga',
+  TEMPO: 'Tempo', INTERVALOS: 'Intervalos', SIMULACRO: 'Simulacro', TEST: 'Test',
+  CICLA: 'Cicla', NATACION: 'Natación', FUERZA: 'Fuerza', DESCANSO: 'Descanso', OTRO: 'Entrenamiento',
 }
 
-// Mapea fase DB (sin tilde) a label de UI
-function phaseDisplayLabel(phase: string): string {
-  if (phase === 'ESPECIFICO') return 'ESPECÍFICO'
-  return phase
+const PLAN_NAME_MAP: Record<string, string> = {
+  // GoalType values (generator.ts format)
+  RACE_HALF_MARATHON: 'Media Maratón', RACE_MARATHON: 'Maratón',
+  RACE_10K: '10K', RACE_5K: '5K',
+  RACE_CYCLING: 'Ciclismo', RACE_TRIATHLON: 'Triatlón',
+  BODY_RECOMPOSITION: 'Recomposición Corporal',
+  WEIGHT_LOSS: 'Pérdida de Peso', GENERAL_FITNESS: 'Fitness General',
+  // Template name aliases
+  HALF_MARATHON_18W: 'Media Maratón', TEN_K_12W: '10K',
+  FIVE_K_8W: '5K', BODY_RECOMPOSITION_16W: 'Recomposición Corporal',
 }
 
-// Normaliza fase para comparación con el filtro de UI
-function normalizePhase(phase: string): string {
-  if (phase === 'ESPECIFICO') return 'ESPECÍFICO'
-  return phase
+const INTENSITY_BADGE: Record<string, { bg: string; label: string }> = {
+  HIGH:     { bg: 'bg-orange-50 text-orange-600 border-orange-100', label: '🔥 ALTA intensidad' },
+  MODERATE: { bg: 'bg-amber-50 text-amber-600 border-amber-100',    label: '💪 MODERADA'        },
+  LOW:      { bg: 'bg-green-50 text-green-700 border-green-100',    label: '🌿 BAJA intensidad' },
+  REST:     { bg: 'bg-gray-100 text-gray-500 border-gray-200',      label: '😴 Descanso'        },
 }
 
-export default function PlanClient({ plan, weeks }: PlanClientProps) {
-  const [activePhase, setActivePhase] = useState<Phase>('TODAS')
-  const [expandedWeek, setExpandedWeek] = useState<number | null>(plan.currentWeek)
+const ZONE_COLORS: Record<string, string> = {
+  Z1: '#22c55e', Z2: '#3b82f6', Z3: '#eab308', Z4: '#f97316', Z5: '#ef4444',
+}
 
-  const filteredWeeks =
-    activePhase === 'TODAS'
-      ? weeks
-      : weeks.filter((w) => normalizePhase(w.phase) === activePhase)
+const PHASES_ORDER = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
+const PHASE_DISPLAY: Record<string, string> = {
+  BASE: 'BASE', DESARROLLO: 'DESARRO', ESPECIFICO: 'ESPECÍF.', AFINAMIENTO: 'AFIN.',
+}
+const PHASE_DISPLAY_GYM: Record<string, string> = {
+  BASE: 'ADAPT.', DESARROLLO: 'VOLUMEN', ESPECIFICO: 'INTENS.', AFINAMIENTO: 'PICO',
+}
 
-  const toggleWeek = (weekNumber: number) => {
-    setExpandedWeek(expandedWeek === weekNumber ? null : weekNumber)
+const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function getIntensityKey(type: string, intensityField: string | null): string {
+  if (intensityField) return intensityField
+  // Fallback mirrors generator.ts getSessionIntensity()
+  if (['INTERVALOS', 'TIRADA_LARGA', 'SIMULACRO', 'TEST'].includes(type)) return 'HIGH'
+  if (['TEMPO', 'FARTLEK', 'CICLA', 'NATACION', 'FUERZA', 'OTRO'].includes(type)) return 'MODERATE'
+  if (type === 'RODAJE_Z2') return 'LOW'
+  if (type === 'DESCANSO') return 'REST'
+  return 'MODERATE'
+}
+
+function getWeekMonday(currentWeekNum: number, activeWeekNum: number): Date {
+  const today = new Date()
+  const todayDow = today.getDay() === 0 ? 7 : today.getDay()
+  const thisMonday = new Date(today)
+  thisMonday.setDate(today.getDate() - (todayDow - 1))
+  thisMonday.setHours(0, 0, 0, 0)
+  const monday = new Date(thisMonday)
+  monday.setDate(thisMonday.getDate() + (activeWeekNum - currentWeekNum) * 7)
+  return monday
+}
+
+function formatWeekRange(monday: Date): string {
+  const sun = new Date(monday); sun.setDate(monday.getDate() + 6)
+  if (monday.getMonth() === sun.getMonth()) {
+    return `${monday.getDate()}–${sun.getDate()} ${MONTHS[monday.getMonth()]}`
   }
+  return `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]}`
+}
 
-  // Calcula fechas de inicio/fin del plan para mostrar en header
-  const planEndDate = (() => {
-    const end = new Date(plan.startDate)
-    end.setDate(end.getDate() + plan.totalWeeks * 7 - 1)
-    return end.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
-  })()
-  const planStartFormatted = new Date(plan.startDate).toLocaleDateString('es-CO', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+function formatVolume(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} h`
+  return `${h} h ${m}`
+}
 
-  const todayDayIndex = new Date().getDay() // 0=Dom,1=Lun...
-  const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+function formatPlanName(name: string): string {
+  // Strip date suffix ("Plan X — 11/6/2026" → "Plan X") then strip "Plan " prefix
+  const base = name.split(' — ')[0].split(' - ')[0].replace(/^Plan\s+/i, '').trim()
+  return PLAN_NAME_MAP[base] ?? base
+}
+
+// Parse a detailText line for zone references (Z1–Z5)
+function parseStructureLine(line: string): { zoneLabel: string | null; color: string; text: string } {
+  const match = line.match(/\b(Z[1-5])\b/i)
+  if (!match) return { zoneLabel: null, color: '#d1d5db', text: line }
+  const zone = match[1].toUpperCase()
+  return { zoneLabel: zone, color: ZONE_COLORS[zone] ?? '#9ca3af', text: line }
+}
+
+// ── CalendarStrip ─────────────────────────────────────────────────────
+
+function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining }: {
+  week: PlanClientWeek
+  weekMonday: Date
+  selectedDow: number
+  todayDow: number
+  isCurrentWeek: boolean
+  onSelect: (dow: number) => void
+  completedCount: number
+  totalTraining: number
+}) {
+  const [todayActive, setTodayActive] = useState(false)
+  const pct = totalTraining > 0 ? (completedCount / totalTraining) * 100 : 0
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto">
-
-      {/* Back */}
-      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-5 transition-colors">
-        <span>←</span> Volver al inicio
-      </Link>
-
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{plan.name}</h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-          <span>{planStartFormatted} — {planEndDate}</span>
-          <span className="hidden sm:inline">·</span>
-          <span className="font-medium text-[#1e3a5f]">
-            Semana {plan.currentWeek} de {plan.totalWeeks}
-          </span>
-        </div>
-        {/* Barra progreso general */}
-        <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden max-w-md">
-          <div
-            className="h-full bg-[#f97316] rounded-full"
-            style={{ width: `${((plan.currentWeek - 1) / plan.totalWeeks) * 100}%` }}
-          />
-        </div>
-        <p className="text-xs text-gray-400 mt-1">
-          {plan.currentWeek - 1} semanas completadas
-        </p>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+      <div className="h-1 bg-gray-100">
+        <div className="h-full bg-green-400 transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
 
-      {/* Tabs fases */}
-      <div className="flex gap-2 flex-wrap mb-6">
-        {PHASES.map((phase) => (
-          <button
-            key={phase}
-            onClick={() => setActivePhase(phase)}
-            className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium border transition-all',
-              activePhase === phase
-                ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-[#1e3a5f]/30 hover:text-[#1e3a5f]'
-            )}
-          >
-            {phase.charAt(0) + phase.slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-7 divide-x divide-gray-50">
+        {Array.from({ length: 7 }, (_, i) => {
+          const dow = i + 1
+          const session = week.sessions.find(s => s.dayOfWeek === dow)
+          const dateObj = new Date(weekMonday.getTime() + i * 86400000)
+          const isToday = isCurrentWeek && dow === todayDow
+          const isSelected = dow === selectedDow
+          const isRest = !session || session.type === 'DESCANSO'
+          const isDone = session?.done ?? false
 
-      {/* Grid de semanas */}
-      <div className="space-y-3">
-        {filteredWeeks.map((week) => {
-          const isCurrentWeek = week.weekNumber === plan.currentWeek
-          const isPast = week.weekNumber < plan.currentWeek
-          const isExpanded = expandedWeek === week.weekNumber
+          const cardBg = isToday && isSelected && todayActive
+            ? 'bg-[#ea580c] active:bg-[#d4520b]'
+            : isToday && isSelected
+            ? 'bg-[#f97316] active:bg-[#ea580c]'
+            : isToday
+            ? 'bg-orange-50 ring-1 ring-inset ring-[#f97316]/30 active:bg-[#f97316]'
+            : isSelected ? 'bg-[#1e3a5f] hover:bg-[#243f6a] active:bg-[#243f6a]'
+            : isDone ? 'bg-green-50/60 hover:bg-gray-100 active:bg-gray-100'
+            : 'bg-white hover:bg-gray-100 active:bg-gray-100'
 
           return (
-            <div
-              key={week.weekNumber}
-              className={cn(
-                'bg-white rounded-2xl border shadow-sm overflow-hidden transition-all',
-                isCurrentWeek ? 'border-[#f97316] shadow-orange-100' : 'border-gray-200',
-                isPast && !isCurrentWeek ? 'opacity-60' : ''
-              )}
+            <button
+              key={dow}
+              onClick={() => { if (isToday) setTodayActive(true); else setTodayActive(false); onSelect(dow) }}
+              className={cn('flex flex-col items-center py-4 px-1 transition-colors text-center relative group', cardBg)}
             >
-              {/* Card header */}
-              <button
-                onClick={() => toggleWeek(week.weekNumber)}
-                className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-gray-50/50 transition-colors"
-              >
-                {/* Número de semana */}
-                <div
-                  className={cn(
-                    'w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0',
-                    isCurrentWeek
-                      ? 'bg-[#f97316] text-white'
-                      : isPast
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-[#1e3a5f]/10 text-[#1e3a5f]'
-                  )}
-                >
-                  {week.weekNumber}
-                </div>
+              {isToday && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316] rounded-b" />
+              )}
+              <span className={cn('text-xs font-semibold mb-1',
+                isToday && isSelected ? 'text-white font-bold' :
+                isToday ? 'text-[#f97316] font-bold group-active:text-white' :
+                isSelected ? 'text-blue-200' :
+                'text-gray-400'
+              )}>
+                {DAY_SHORT[i]}
+              </span>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getWeekStartDate(plan.startDate, week.weekNumber)} – {getWeekEndDate(plan.startDate, week.weekNumber)}
-                    </p>
-                    <span
+              <div className="flex items-center gap-1 mb-2">
+                <span className={cn('text-xl font-black leading-none',
+                  isToday && isSelected ? 'text-white' :
+                  isToday ? 'text-[#f97316] group-active:text-white' :
+                  isSelected ? 'text-white' :
+                  isRest ? 'text-gray-300' :
+                  isDone ? 'text-green-600' :
+                  'text-gray-800'
+                )}>
+                  {dateObj.getDate()}
+                </span>
+                {isToday && (
+                  <span className="text-[9px] font-bold bg-[#f97316] text-white px-1.5 py-0.5 rounded-full leading-none">
+                    HOY
+                  </span>
+                )}
+              </div>
+
+              <span className="text-base mb-1.5">
+                {isDone && !isRest
+                  ? <CheckCircle2 size={18} className="text-green-500 mx-auto" />
+                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : '📅')}
+              </span>
+
+              <span className={cn('text-xs font-semibold leading-tight px-0.5',
+                isToday && isSelected ? 'text-white' :
+                isToday ? 'text-gray-700 group-active:text-white' :
+                isSelected ? 'text-white' :
+                isRest ? 'text-gray-400' : 'text-gray-700'
+              )}>
+                {isRest ? 'Descanso' : (SESSION_LABELS[session?.type ?? ''] ?? session?.type ?? '—')}
+              </span>
+
+              {!isRest && session && (
+                <span className={cn('text-[10px] mt-0.5',
+                  isToday && isSelected ? 'text-white/80' :
+                  isToday ? 'text-gray-400 group-active:text-white/80' :
+                  isSelected ? 'text-blue-200' : 'text-gray-400'
+                )}>
+                  {session.durationMin} min
+                  {session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== 'N/A' ? ` · ${session.zoneTarget}` : ''}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── LogModal ──────────────────────────────────────────────────────────
+
+function LogModal({ session, onClose, onSuccess }: {
+  session: PlanClientWeekSession
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [completed, setCompleted] = useState<boolean | null>(null)
+  const [actualDuration, setActualDuration] = useState(String(session.durationMin))
+  const [rpe, setRpe] = useState(0)
+  const [hrAvg, setHrAvg] = useState('')
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit() {
+    if (completed === null) { setError('¿Completaste la sesión?'); return }
+    setLoading(true)
+    setError('')
+    try {
+      await fetch('/api/log/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plannedSessionId: session.id,
+          durationMin: actualDuration ? parseInt(actualDuration) : undefined,
+          rpe: rpe > 0 ? rpe : undefined,
+          hrAvg: hrAvg ? parseInt(hrAvg) : undefined,
+          notes: notes.trim() || undefined,
+        }),
+      })
+      onSuccess()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Registrar sesión</p>
+              <p className="font-black text-gray-900">{session.durationMin} min · {SESSION_LABELS[session.type] ?? session.type}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>
+        </div>
+
+        <div className="p-6 space-y-5">
+
+          {/* ¿Completaste? */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-800">¿Completaste la sesión?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCompleted(true)}
+                className={cn('flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-colors',
+                  completed === true
+                    ? 'bg-green-500 border-green-500 text-white'
+                    : 'border-gray-200 text-gray-700 hover:border-green-300'
+                )}
+              >✓ Sí, la hice</button>
+              <button
+                onClick={() => setCompleted(false)}
+                className={cn('flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-colors',
+                  completed === false
+                    ? 'bg-red-500 border-red-500 text-white'
+                    : 'border-gray-200 text-gray-700 hover:border-red-300'
+                )}
+              >✗ No la hice</button>
+            </div>
+          </div>
+
+          {completed && (
+            <>
+              {/* Datos reales */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">Duración real (min)</label>
+                  <input
+                    type="number"
+                    value={actualDuration}
+                    onChange={e => setActualDuration(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">FC media (bpm)</label>
+                  <input
+                    type="number"
+                    value={hrAvg}
+                    onChange={e => setHrAvg(e.target.value)}
+                    placeholder="148"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                </div>
+              </div>
+
+              {/* RPE */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-800">RPE — Esfuerzo percibido</p>
+                  <span className="text-lg font-black text-[#f97316]">{rpe > 0 ? rpe : '–'}</span>
+                </div>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setRpe(n)}
                       className={cn(
-                        'text-[10px] font-semibold px-2 py-0.5 rounded-full border',
-                        PHASE_COLORS[week.phase] ?? 'bg-gray-100 text-gray-600 border-gray-200'
+                        'flex-1 h-9 rounded-lg text-[11px] font-bold border transition-colors',
+                        rpe === n
+                          ? 'bg-[#f97316] border-[#f97316] text-white'
+                          : n < rpe
+                          ? 'bg-orange-50 border-[#f97316] text-[#f97316]'
+                          : 'border-gray-200 text-gray-400 hover:border-gray-300'
                       )}
                     >
-                      {phaseDisplayLabel(week.phase)}
-                    </span>
-                    {week.isRecoveryWeek && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        Descarga
-                      </span>
-                    )}
-                    {week.hasTest && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-[#f97316] border border-orange-200">
-                        TEST
-                      </span>
-                    )}
-                    {isCurrentWeek && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#f97316] text-white">
-                        Actual
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">{week.focusDescription}</p>
+                      {n}
+                    </button>
+                  ))}
                 </div>
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>Muy fácil</span><span>Máximo</span>
+                </div>
+              </div>
+            </>
+          )}
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-sm font-bold text-gray-900">{week.volumeKm} km</p>
-                    <p className="text-xs text-gray-400">volumen</p>
-                  </div>
-                  {isExpanded ? (
-                    <ChevronUp size={18} className="text-gray-400" />
-                  ) : (
-                    <ChevronDown size={18} className="text-gray-400" />
-                  )}
-                </div>
-              </button>
+          {/* Notas */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-600">Notas (opcional)</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Cómo te sentiste, condiciones, ajustes..."
+              rows={3}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
+            />
+          </div>
 
-              {/* Semana expandida */}
-              {isExpanded && (
-                <div className="border-t border-gray-100">
-                  <div className="divide-y divide-gray-50">
-                    {week.sessions.map((session, idx) => {
-                      const isToday = isCurrentWeek && DAY_LABELS[todayDayIndex] === session.day
-                      return (
-                        <div
-                          key={`${week.weekNumber}-${session.day}-${idx}`}
-                          className={cn(
-                            'flex items-center gap-3 px-5 py-3',
-                            isToday ? 'bg-orange-50/50' : ''
-                          )}
-                        >
-                          <span className="w-7 text-xs font-semibold text-gray-500">{session.day}</span>
-                          <span className="text-xl w-7 text-center">{SESSION_ICONS[session.type] ?? '🏅'}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn('text-sm font-medium truncate', isToday ? 'text-[#1e3a5f]' : 'text-gray-900')}>
-                              {session.label}
-                            </p>
-                            <p className="text-xs text-gray-500">{SESSION_LABELS[session.type] ?? session.type}</p>
-                          </div>
-                          {isToday && (
-                            <span className="text-[10px] font-semibold bg-[#f97316] text-white px-2 py-0.5 rounded-full shrink-0">
-                              Hoy
-                            </span>
-                          )}
-                          {session.done ? (
-                            <CheckCircle2 size={18} className="text-[#22c55e] shrink-0" />
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {/* Volumen mobile */}
-                  <div className="sm:hidden px-5 py-3 bg-gray-50 border-t border-gray-100">
-                    <p className="text-xs text-gray-500">
-                      Volumen total: <span className="font-semibold text-gray-900">{week.volumeKm} km</span>
-                    </p>
-                  </div>
-                </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full bg-[#f97316] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
+          >
+            {loading ? 'Guardando...' : 'Guardar sesión'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── SessionDetailCard ─────────────────────────────────────────────────
+
+function SessionDetailCard({ session, isToday }: {
+  session: PlanClientWeekSession
+  isToday: boolean
+}) {
+  const router = useRouter()
+  const [logDone, setLogDone] = useState(session.done)
+  const [showModal, setShowModal] = useState(false)
+
+  if (session.type === 'DESCANSO') {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
+        <span className="text-4xl">😴</span>
+        <div>
+          <p className="text-lg font-bold text-gray-700">Día de descanso</p>
+          <p className="text-sm text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
+        </div>
+      </div>
+    )
+  }
+
+  const intensityKey = getIntensityKey(session.type, session.intensity)
+  const badge = INTENSITY_BADGE[intensityKey] ?? INTENSITY_BADGE.MODERATE
+  const isGym = session.type === 'FUERZA'
+  const accentColor = isToday
+    ? 'bg-[#f97316]'
+    : logDone ? 'bg-green-400'
+    : isGym ? 'bg-purple-500'
+    : 'bg-[#1e3a5f]'
+  const showZone = session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== '' && session.zoneTarget !== 'N/A'
+  const structureLines = session.detailText ? session.detailText.split('\n').filter(Boolean) : []
+
+  return (
+    <>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex">
+        <div className={cn('w-1.5 shrink-0', accentColor)} />
+        <div className="flex-1 p-6 space-y-4">
+
+          {/* Title */}
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
+            <div className="flex-1">
+              <h3 className="text-2xl font-black text-gray-900 leading-tight">
+                {SESSION_LABELS[session.type] ?? session.type}
+              </h3>
+              <div className="flex items-center gap-2 mt-1.5">
+                {isToday && (
+                  <span className="text-[10px] font-bold bg-[#f97316] text-white px-2 py-0.5 rounded-full">
+                    HOY
+                  </span>
+                )}
+                {logDone && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600">
+                    <CheckCircle2 size={11} /> Completada
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
+              {session.durationMin} min
+            </span>
+            {showZone && !isGym && (
+              <span className="text-sm font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">
+                Zona {session.zoneTarget}
+              </span>
+            )}
+            <span className={cn('text-sm font-semibold px-3 py-1.5 rounded-full border', badge.bg)}>
+              {badge.label}
+            </span>
+          </div>
+
+          {/* Structure / Exercises */}
+          {structureLines.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {isGym ? 'Ejercicios' : 'Estructura'}
+                </span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+              <div className="space-y-2">
+                {structureLines.map((line, idx) => {
+                  const { zoneLabel, color, text } = parseStructureLine(line)
+                  return (
+                    <div key={idx} className="flex items-start gap-2">
+                      {/* Colored zone indicator */}
+                      <div className="flex items-center gap-1 shrink-0 mt-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                        {zoneLabel && (
+                          <span className="text-[10px] font-bold w-4 leading-none" style={{ color }}>
+                            {zoneLabel}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{text}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* CTA buttons */}
+          <div className="flex items-center gap-3 pt-1 border-t border-gray-50">
+            {logDone ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle2 size={16} className="text-green-500" />
+                <span className="text-sm font-semibold text-green-700">Sesión completada</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#f97316] hover:opacity-90 text-white text-sm font-bold px-5 py-3 rounded-xl transition-opacity"
+                >
+                  Registrar sesión →
+                </button>
+                <button
+                  disabled
+                  className="px-4 py-3 border border-gray-200 text-gray-500 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-not-allowed"
+                  title="Próximamente"
+                >
+                  Editar sesión ✏️
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {showModal && (
+      <LogModal
+        session={session}
+        onClose={() => setShowModal(false)}
+        onSuccess={() => {
+          setShowModal(false)
+          setLogDone(true)
+          router.refresh()
+        }}
+      />
+    )}
+    </>
+  )
+}
+
+// ── NutritionCard ─────────────────────────────────────────────────────
+
+function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } }) {
+  const macros = [
+    { label: 'Proteína', value: nt.proteinG, colorVal: 'text-blue-600',   bg: 'bg-blue-50'   },
+    { label: 'Carbos',   value: nt.carbsG,   colorVal: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Grasas',   value: nt.fatG,     colorVal: 'text-green-600',  bg: 'bg-green-50'  },
+  ]
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-2 h-2 rounded-full bg-green-400" />
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          Plan nutricional del día
+        </span>
+      </div>
+      <div className="flex items-end gap-5">
+        <div className="shrink-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-4xl font-black text-[#f97316] leading-none">
+              {nt.kcal.toLocaleString('es')}
+            </span>
+            <span className="text-sm font-medium text-gray-400">kcal</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">{nt.label}</p>
+        </div>
+        <div className="flex gap-3 flex-1">
+          {macros.map(m => (
+            <div key={m.label} className={cn('flex-1 rounded-xl px-3 py-2.5 text-center', m.bg)}>
+              <p className="text-[10px] text-gray-500 mb-1">{m.label}</p>
+              <p className={cn('text-lg font-black', m.colorVal)}>{m.value} g</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── KPICards ──────────────────────────────────────────────────────────
+
+function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
+  completed: number; total: number; volumeLabel: string; adherencePct: number; isGym: boolean
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[
+        { label: 'Completadas',               value: `${completed} / ${total}`, sub: 'sesiones',    accent: false },
+        { label: isGym ? 'Vol. entren.' : 'Volumen', value: volumeLabel,        sub: 'esta semana', accent: false },
+        { label: 'Adherencia',                value: `${adherencePct}%`,        sub: 'meta: 80%',  accent: true  },
+      ].map((kpi, i) => (
+        <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">{kpi.label}</p>
+          <p className={cn('text-2xl font-black leading-none',
+            kpi.accent ? 'text-[#f97316]' : 'text-gray-900'
+          )}>
+            {kpi.value}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-1.5">{kpi.sub}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── PhaseBar ──────────────────────────────────────────────────────────
+
+function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, isGymPlan }: {
+  allPhases: string[]; currentPhase: string; currentWeekNum: number; totalWeeks: number; weeks: PlanClientWeek[]; isGymPlan?: boolean
+}) {
+  const display = PHASES_ORDER.filter(p => allPhases.includes(p))
+  if (display.length === 0) return null
+  const pct = Math.round((currentWeekNum / totalWeeks) * 100)
+
+  // Week count per phase for proportional pill widths
+  const phaseCounts = display.map(phase => ({
+    phase,
+    count: weeks.filter(w => w.phase === phase).length || 1,
+  }))
+
+  // Determine index of active phase to classify past vs future
+  const activeIdx = display.indexOf(currentPhase)
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-bold text-gray-900">Progreso del plan</span>
+        <span className="text-xs text-gray-400">Sem. {currentWeekNum}/{totalWeeks} · {pct}%</span>
+      </div>
+      <div className="flex gap-1.5">
+        {phaseCounts.map(({ phase, count }, idx) => {
+          const isActive = idx === activeIdx
+          const isDone   = idx < activeIdx
+          return (
+            <div
+              key={phase}
+              style={{ flex: count }}
+              className={cn(
+                'rounded-lg py-2 text-center transition-all min-w-0',
+                isActive ? 'bg-[#1e3a5f] text-white' :
+                isDone   ? 'bg-green-100 text-green-700' :
+                           'bg-gray-100 text-gray-400'
               )}
+            >
+              <span className="text-[10px] font-bold truncate block px-1">
+                {isDone ? '✓ ' : ''}{(isGymPlan ? PHASE_DISPLAY_GYM : PHASE_DISPLAY)[phase] ?? phase}
+              </span>
             </div>
           )
         })}
       </div>
+    </div>
+  )
+}
 
-      {/* Leyenda */}
-      <div className="mt-8 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">Leyenda</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sesiones</p>
-            <div className="space-y-1.5">
-              {Object.entries(SESSION_ICONS).map(([key, icon]) => (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="text-base">{icon}</span>
-                  <span className="text-xs text-gray-600">{SESSION_LABELS[key]}</span>
-                </div>
-              ))}
-            </div>
+// ── AdherenceChart ────────────────────────────────────────────────────
+
+function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow }: {
+  weeks: PlanClientWeek[]; currentWeekNum: number; totalWeeks: number; todayDow: number
+}) {
+  // Always show 5 slots: up to 2 before current + current + up to 2 after
+  const startWeek = Math.max(1, Math.min(currentWeekNum - 2, totalWeeks - 4))
+  const slots = Array.from({ length: 5 }, (_, i) => {
+    const weekNum = startWeek + i
+    if (weekNum > totalWeeks) return null
+    const weekData = weeks.find(w => w.weekNumber === weekNum)
+    const isFuture  = weekNum > currentWeekNum
+    const isCurrent = weekNum === currentWeekNum
+    if (!weekData || isFuture) return { weekNum, pct: 0, isCurrent, isFuture: true }
+    // For the current week only count sessions up to today — future days of the week don't penalize
+    const sessions = isCurrent
+      ? weekData.sessions.filter(s => s.dayOfWeek <= todayDow)
+      : weekData.sessions
+    const t = sessions.filter(s => s.type !== 'DESCANSO').length
+    const c = sessions.filter(s => s.done && s.type !== 'DESCANSO').length
+    return { weekNum, pct: t > 0 ? (c / t) * 100 : 0, isCurrent, isFuture: false }
+  }).filter(Boolean) as { weekNum: number; pct: number; isCurrent: boolean; isFuture: boolean }[]
+
+  if (slots.length === 0) return null
+
+  const pastSlots = slots.filter(s => !s.isFuture)
+  const avgPct = pastSlots.length > 0
+    ? Math.round(pastSlots.reduce((sum, s) => sum + s.pct, 0) / pastSlots.length)
+    : 0
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-bold text-gray-900">Adherencia semanal</span>
+        <span className="text-xs text-gray-400">Promedio {avgPct}%</span>
+      </div>
+      <div className="flex items-end gap-2 h-14">
+        {slots.map(({ weekNum, pct, isCurrent, isFuture }) => (
+          <div key={weekNum} className="flex-1 flex flex-col items-center gap-1">
+            <div
+              className="w-full rounded-md transition-all duration-500"
+              style={{
+                height: isFuture ? '4px' : pct === 0 ? '3px' : `${Math.max(8, pct * 0.52)}px`,
+                backgroundColor: isFuture ? '#e5e7eb' : pct === 0 ? '#d1d5db' : isCurrent ? '#f97316' : '#3b82f6',
+              }}
+            />
+            <span className="text-[9px] text-gray-400">S{weekNum}</span>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Fases</p>
-            <div className="space-y-1.5">
-              {Object.entries(PHASE_COLORS).filter(([k]) => k !== 'ESPECIFICO').map(([phase, cls]) => (
-                <span
-                  key={phase}
-                  className={cn('inline-block text-xs font-semibold px-2 py-0.5 rounded-full border mr-1 mb-1', cls)}
-                >
-                  {phase}
-                </span>
-              ))}
-            </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── BodyCompositionCard ───────────────────────────────────────────────
+
+function BodyCompositionCard({ weightData }: {
+  weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null
+}) {
+  if (!weightData?.currentKg) return null
+  const { currentKg, goalKg, progressPct, weeklyChange } = weightData
+  const delta = goalKg ? Math.round((currentKg - goalKg) * 10) / 10 : null
+  const isOnTrack = delta !== null && delta < 0 && weeklyChange !== null && weeklyChange < 0
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-bold text-gray-900">Composición corporal</span>
+        {isOnTrack && (
+          <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+            ↓ {Math.abs(weeklyChange!)} kg/sem · ritmo ideal
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="text-2xl font-black text-gray-900">{currentKg} kg</span>
+        {goalKg && <span className="text-sm text-gray-400">→ meta {goalKg} kg</span>}
+      </div>
+
+      {goalKg && (
+        <p className="text-[10px] text-gray-400 mt-1">
+          🎯 Meta: {goalKg} kg
+          {delta !== null && (
+            <span className="text-gray-500 ml-1">· {delta > 0 ? '+' : ''}{delta} kg restantes</span>
+          )}
+          {weeklyChange !== null && weeklyChange < 0 && (
+            <span className="text-green-600 ml-1 font-medium">· ✓ vas bien</span>
+          )}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── PlanClient ────────────────────────────────────────────────────────
+
+export default function PlanClient({ plan, weeks, nutritionTarget, weightData }: PlanClientProps) {
+  const todayDow = useMemo(() => {
+    const d = new Date().getDay()
+    return d === 0 ? 7 : d
+  }, [])
+
+  const [selectedWeekNum, setSelectedWeekNum] = useState(plan.currentWeek)
+  const [selectedDow, setSelectedDow] = useState(todayDow)
+
+  const isCurrentWeek = selectedWeekNum === plan.currentWeek
+  const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? weeks[0]
+  const allPhases = [...new Set(weeks.map(w => w.phase))]
+
+  const weekMonday = useMemo(
+    () => getWeekMonday(plan.currentWeek, selectedWeekNum),
+    [plan.currentWeek, selectedWeekNum]
+  )
+
+  const selDateObj = new Date(weekMonday.getTime() + (selectedDow - 1) * 86400000)
+  const selDayLabel = `${DAY_SHORT[selectedDow - 1]} ${selDateObj.getDate()}`
+  const weekLabel = `Semana ${selectedWeekNum} · ${formatWeekRange(weekMonday)}`
+
+  const selectedSession = week?.sessions.find(s => s.dayOfWeek === selectedDow) ?? null
+
+  // KPI
+  const completedCount = week?.sessions.filter(s => s.done && s.type !== 'DESCANSO').length ?? 0
+  const totalTraining  = week?.sessions.filter(s => s.type !== 'DESCANSO').length ?? 0
+  const adherencePct   = totalTraining > 0 ? Math.round((completedCount / totalTraining) * 100) : 0
+
+  // Volume & gym detection
+  const isGym = plan.name.toLowerCase().includes('recomp')
+    || plan.name.toLowerCase().includes('body')
+    || plan.name.toLowerCase().includes('fuerza')
+    || ((week?.sessions.filter(s => s.type === 'FUERZA').length ?? 0) >
+        (week?.sessions.filter(s => s.type !== 'FUERZA' && s.type !== 'DESCANSO').length ?? 0))
+
+  const volumeLabel = isGym
+    ? formatVolume(week?.sessions.filter(s => s.done && s.type !== 'DESCANSO').reduce((sum, s) => sum + s.durationMin, 0) ?? 0)
+    : `${week?.volumeKm ?? 0} km`
+
+  const realCurrentPhase = weeks.find(w => w.weekNumber === plan.currentWeek)?.phase ?? (week?.phase ?? 'BASE')
+
+  return (
+    <div className="px-4 py-6 md:px-8 max-w-7xl mx-auto">
+
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
+            Mi Plan de Entrenamiento
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">Plan {formatPlanName(plan.name)} · {plan.totalWeeks} semanas</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
+              disabled={selectedWeekNum <= 1}
+              className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft size={16} className="text-gray-500" />
+            </button>
+            <span className="px-4 text-sm font-semibold text-gray-700 whitespace-nowrap">
+              {weekLabel}
+            </span>
+            <button
+              onClick={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
+              disabled={selectedWeekNum >= plan.totalWeeks}
+              className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight size={16} className="text-gray-500" />
+            </button>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Indicadores</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Descarga</span>
-                <span className="text-xs text-gray-600">Semana de recuperación</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-[#f97316] border border-orange-200">TEST</span>
-                <span className="text-xs text-gray-600">Benchmark de rendimiento</span>
+
+          <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
+            {realCurrentPhase} · Semana {plan.currentWeek}/{plan.totalWeeks}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Calendar Strip ── */}
+      {week && (
+        <CalendarStrip
+          week={week}
+          weekMonday={weekMonday}
+          selectedDow={selectedDow}
+          todayDow={todayDow}
+          isCurrentWeek={isCurrentWeek}
+          onSelect={setSelectedDow}
+          completedCount={completedCount}
+          totalTraining={totalTraining}
+        />
+      )}
+
+      {/* ── Two-column layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        {/* Left (3/5) */}
+        <div className="lg:col-span-3 space-y-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Sesión seleccionada — {selDayLabel}
+          </p>
+
+          {selectedSession ? (
+            <SessionDetailCard
+              session={selectedSession}
+              isToday={isCurrentWeek && selectedDow === todayDow}
+            />
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
+              <span className="text-4xl">😴</span>
+              <div>
+                <p className="text-lg font-bold text-gray-700">Día de descanso</p>
+                <p className="text-sm text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
               </div>
             </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Estado</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-[#22c55e]" />
-                <span className="text-xs text-gray-600">Sesión completada</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-[#f97316]" />
-                <span className="text-xs text-gray-600">Pendiente de registrar</span>
-              </div>
-            </div>
-          </div>
+          )}
+
+          {nutritionTarget && <NutritionCard nt={nutritionTarget} />}
+        </div>
+
+        {/* Right (2/5) */}
+        <div className="lg:col-span-2 space-y-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Semana en números
+          </p>
+
+          <KPICards
+            completed={completedCount}
+            total={totalTraining}
+            volumeLabel={volumeLabel}
+            adherencePct={adherencePct}
+            isGym={isGym}
+          />
+
+          <PhaseBar
+            allPhases={allPhases}
+            currentPhase={realCurrentPhase}
+            currentWeekNum={plan.currentWeek}
+            totalWeeks={plan.totalWeeks}
+            weeks={weeks}
+            isGymPlan={isGym}
+          />
+
+          <AdherenceChart
+            weeks={weeks}
+            currentWeekNum={plan.currentWeek}
+            totalWeeks={plan.totalWeeks}
+            todayDow={todayDow}
+          />
+
+          <BodyCompositionCard weightData={weightData} />
         </div>
       </div>
     </div>
