@@ -20,34 +20,16 @@ export {
 import type { UserConfig, UserPlan } from '@/lib/config/user-config'
 
 // ---------------------------------------------------------------------------
-// Estado de cuenta — determina TRIAL / PRO / INACTIVE sin leer la DB
+// Estado de cuenta — FREE | PRO
 // ---------------------------------------------------------------------------
 
-export type AccountStatus = 'TRIAL_ACTIVE' | 'TRIAL_EXPIRED' | 'PRO' | 'INACTIVE'
+export type AccountStatus = 'FREE' | 'PRO'
 
 /**
- * Determina el estado real de la cuenta a partir del JWT/config.
- * No hace llamadas externas — pura lógica de fechas.
+ * Determina el estado de la cuenta a partir del plan del usuario.
  */
-export function getAccountStatus(
-  userPlan: UserPlan,
-  trialEndsAt: string | null,
-  now: Date = new Date()
-): AccountStatus {
-  if (userPlan === 'PRO') return 'PRO'
-  if (userPlan === 'INACTIVE') return 'INACTIVE'
-  // TRIAL
-  if (!trialEndsAt) return 'TRIAL_ACTIVE'
-  return new Date(trialEndsAt) >= now ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED'
-}
-
-/**
- * Devuelve cuántos días quedan de trial. Negativo = ya expiró.
- */
-export function trialDaysRemaining(trialEndsAt: string | null, now: Date = new Date()): number {
-  if (!trialEndsAt) return 0
-  const diff = new Date(trialEndsAt).getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+export function getAccountStatus(userPlan: UserPlan): AccountStatus {
+  return userPlan === 'PRO' ? 'PRO' : 'FREE'
 }
 
 // ---------------------------------------------------------------------------

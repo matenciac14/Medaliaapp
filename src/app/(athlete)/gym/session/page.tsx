@@ -231,6 +231,14 @@ function parseTargetReps(scheme: string): number | null {
   return isNaN(n) ? null : n
 }
 
+// ─── Superset Styles ─────────────────────────────────────────────────────────
+
+const SUPERSET_STYLES: Record<string, { hexColor: string; bgClass: string; textClass: string; label: string }> = {
+  SUPERSET: { hexColor: '#a78bfa', bgClass: 'bg-purple-50', textClass: 'text-purple-700', label: 'Superset' },
+  BISERIE:  { hexColor: '#818cf8', bgClass: 'bg-indigo-50', textClass: 'text-indigo-700', label: 'Biserie'  },
+  DROPSET:  { hexColor: '#fb7185', bgClass: 'bg-rose-50',   textClass: 'text-rose-500',   label: 'Drop Set' },
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GymSessionPage() {
@@ -239,13 +247,13 @@ export default function GymSessionPage() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  if (!(authSession?.user as any)?.features?.gym) {
+  if (!authSession?.user?.features?.gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
       </div>
     )
   }
@@ -457,6 +465,21 @@ export default function GymSessionPage() {
 
   const { workoutDay, exercises } = sessionData
 
+  // Compute superset pairs for bracket rendering
+  const supersetInfo = new Map<string, { isFirst: boolean; setType: string }>()
+  for (const ex of exercises) {
+    if (ex.supersetWith && !supersetInfo.has(ex.id)) {
+      supersetInfo.set(ex.id, { isFirst: true, setType: ex.setType })
+      if (!supersetInfo.has(ex.supersetWith)) {
+        supersetInfo.set(ex.supersetWith, { isFirst: false, setType: ex.setType })
+      }
+    }
+    if (!supersetInfo.has(ex.id)) {
+      const initiator = exercises.find((e) => e.supersetWith === ex.id)
+      if (initiator) supersetInfo.set(ex.id, { isFirst: false, setType: initiator.setType })
+    }
+  }
+
   return (
     <div className="px-4 py-6 md:px-8 max-w-3xl mx-auto pb-40 md:pb-8 space-y-5">
       {/* Header */}
@@ -525,13 +548,23 @@ export default function GymSessionPage() {
               return !isNaN(reps) && reps >= targetReps
             })
 
+          const ssInfo = supersetInfo.get(we.id)
+          const ssStyle = ssInfo ? (SUPERSET_STYLES[ssInfo.setType] ?? SUPERSET_STYLES.SUPERSET) : null
+
           return (
             <div
               key={we.id}
               className={`bg-white border rounded-xl overflow-hidden transition-colors ${
                 allDone ? 'border-green-200' : 'border-gray-200'
               }`}
+              style={ssInfo && ssStyle ? { borderLeftWidth: 4, borderLeftColor: ssStyle.hexColor } : undefined}
             >
+              {/* Superset label */}
+              {ssInfo?.isFirst && ssStyle && (
+                <div className={`px-4 py-1.5 flex items-center gap-1.5 border-b border-gray-100 ${ssStyle.bgClass}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${ssStyle.textClass}`}>↕ {ssStyle.label}</span>
+                </div>
+              )}
               {/* Exercise header */}
               <button
                 onClick={() => toggleExpanded(we.id)}

@@ -538,16 +538,25 @@ export const BODY_RECOMPOSITION_16W: PlanTemplate = {
 // ---------------------------------------------------------------------------
 
 export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
+  // Running — templates propios
+  RACE_5K:            FIVE_K_8W,
+  RACE_10K:           TEN_K_12W,
   RACE_HALF_MARATHON: HALF_MARATHON_18W,
-  RACE_MARATHON: HALF_MARATHON_18W,        // usa base aeróbica de media hasta tener template propio
-  RACE_10K: TEN_K_12W,
-  RACE_5K: FIVE_K_8W,
-  RACE_CYCLING: HALF_MARATHON_18W,         // base aeróbica — template ciclismo pendiente
-  RACE_TRIATHLON: HALF_MARATHON_18W,       // base aeróbica — template triatlón pendiente
+  RACE_MARATHON:      HALF_MARATHON_18W,        // base aeróbica — template maratón pendiente
+
+  // Deportes con fallback razonable hasta tener template propio
+  RACE_CYCLING:       HALF_MARATHON_18W,         // aeróbico periodizado — template ciclismo pendiente
+  RACE_TRIATHLON:     HALF_MARATHON_18W,         // base aeróbica multideporte — template triatlón pendiente
+  RACE_SWIMMING:      TEN_K_12W,                 // volumen aeróbico 12W — template natación pendiente
+  FOOTBALL_GPP:       BODY_RECOMPOSITION_16W,    // fuerza + acondicionamiento — template fútbol pendiente
+  STRENGTH_TRAINING:  BODY_RECOMPOSITION_16W,    // base hipertrofia/fuerza — template fuerza pendiente
+
+  // Composición corporal
   BODY_RECOMPOSITION: BODY_RECOMPOSITION_16W,
-  // Fallbacks para goal types sin template propio — evita plan fantasma con 0 sesiones
-  GENERAL_FITNESS: BODY_RECOMPOSITION_16W,
-  WEIGHT_LOSS: BODY_RECOMPOSITION_16W,
+
+  // Fallbacks genéricos
+  GENERAL_FITNESS:    BODY_RECOMPOSITION_16W,
+  WEIGHT_LOSS:        BODY_RECOMPOSITION_16W,
 }
 
 export function getTemplate(goalType: string): PlanTemplate | null {

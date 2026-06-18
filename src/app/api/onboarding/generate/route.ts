@@ -1,123 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { generatePlan } from '@/lib/plan/generator'
-import { rateLimit } from '@/lib/rate-limit'
-import { calculateTDEE, calculateMacros, estimateHRMax } from '@/lib/plan/formulas'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { rateLimitAsync } from '@/lib/rate-limit'
+import { completeOnboardingUseCase } from '@/domain/onboarding/complete-onboarding.use-case'
+import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
+import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import { AnthropicService } from '@/infrastructure/ai/anthropic.service'
 import type { WizardData } from '@/app/onboarding/_types'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function timeStringToSecs(timeStr: string | null): number | null {
-  if (!timeStr) return null
-  const parts = timeStr.split(':').map(Number)
-  if (parts.some(isNaN)) return null
-  if (parts.length === 2) return parts[0] * 60 + parts[1]
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-  return null
-}
-
-/**
- * Mapea WizardData al goalType que usa el generator/templates.
- */
-function resolveGoalType(data: WizardData): string {
-  if (data.mainGoal === 'SPORT') {
-    switch (data.sport) {
-      case 'RUNNING':
-        return data.raceDistance ?? 'RACE_HALF_MARATHON'
-      case 'CYCLING':
-        return 'RACE_CYCLING'
-      case 'TRIATHLON':
-        return 'RACE_TRIATHLON'
-      case 'SWIMMING':
-      case 'FOOTBALL':
-      case 'STRENGTH':
-        return 'BODY_RECOMPOSITION' // fallback hasta tener templates específicos
-      default:
-        return 'GENERAL_FITNESS'
-    }
-  }
-
-  if (data.mainGoal === 'GYM') {
-    return 'BODY_RECOMPOSITION'
-  }
-
-  if (data.mainGoal === 'BODY') {
-    return 'BODY_RECOMPOSITION'
-  }
-
-  return 'GENERAL_FITNESS'
-}
-
-/**
- * Construye el objeto sportDetails para guardar en HealthProfile.sportDetails
- */
-function buildSportDetails(data: WizardData): Record<string, unknown> {
-  if (data.mainGoal === 'SPORT') {
-    switch (data.sport) {
-      case 'RUNNING':
-        return {
-          raceDistance: data.raceDistance,
-          raceDate: data.raceDate,
-          targetTime: data.targetTime,
-          recentBestTime: data.recentBestTime,
-        }
-      case 'CYCLING':
-        return {
-          cyclingModality: data.cyclingModality,
-          hasPowerMeter: data.hasPowerMeter,
-          ftp: data.ftp,
-          raceDate: data.raceDate,
-        }
-      case 'SWIMMING':
-        return {
-          swimStroke: data.swimStroke,
-          recentSwimTime: data.recentSwimTime,
-          raceDate: data.raceDate,
-        }
-      case 'TRIATHLON':
-        return {
-          triathlonDistance: data.triathlonDistance,
-          weakestSegment: data.weakestSegment,
-          raceDate: data.raceDate,
-        }
-      case 'FOOTBALL':
-        return {
-          footballPosition: data.footballPosition,
-          competitionLevel: data.competitionLevel,
-          seasonPhase: data.seasonPhase,
-        }
-      case 'STRENGTH':
-        return {
-          strengthStyle: data.strengthStyle,
-        }
-    }
-  }
-
-  if (data.mainGoal === 'GYM') {
-    return { gymGoal: data.gymGoal }
-  }
-
-  if (data.mainGoal === 'BODY') {
-    return {
-      bodyGoal: data.bodyGoal,
-      targetDate: data.raceDate,
-    }
-  }
-
-  return {}
-}
-
-// ---------------------------------------------------------------------------
-// API Route
-// ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
-  const { allowed } = rateLimit(`onboarding:${ip}`, { limit: 3, windowMs: 60_000 })
+  const { allowed } = await rateLimitAsync(`onboarding:${ip}`, { limit: 3, windowMs: 60_000 })
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429 })
   }
@@ -125,191 +19,26 @@ export async function POST(req: NextRequest) {
   try {
     const data: WizardData = await req.json()
 
-    // Validación mínima
     if (!data.age || !data.weightKg || !data.heightCm) {
-      return NextResponse.json(
-        { error: 'Faltan datos del perfil (edad, peso o talla).' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Faltan datos del perfil (edad, peso o talla).' }, { status: 400 })
     }
 
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }
-    const userId = session.user.id
 
-    // ── GYM path: solo nutrición + activar trial, sin TrainingPlan ──────────
-    if (data.mainGoal === 'GYM') {
-      const hrMax = estimateHRMax(data.age!)
-      const tdee = calculateTDEE(data.weightKg!, data.heightCm!, data.age!, data.gender ?? 'male', data.daysPerWeek)
-      const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
-
-      await prisma.nutritionPlan.upsert({
-        where: { userId },
-        create: {
-          userId, tdee,
-          targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
-          proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
-        },
-        update: {
-          tdee,
-          targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
-          proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
-        },
-      })
-
-      const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
-      const currentConfig = parseUserConfig(existingUser?.config)
-      const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          config: {
-            ...currentConfig,
-            features: { ...currentConfig.features, plan: false, nutrition: true, progress: true, log: true, checkin: true, gym: true, aiCoach: true },
-            onboarding: { completed: true, completedAt: new Date().toISOString() },
-            sport: { type: 'STRENGTH', goal: 'BODY_RECOMPOSITION' },
-            trial: { plan: 'TRIAL', endsAt: trialEndsAt },
-            ai: { ...currentConfig.ai, monthlyLimit: 999999 },
-          } as object,
-        },
-      })
-
-      // Upsert HealthProfile mínimo para GYM
-      await prisma.healthProfile.upsert({
-        where: { userId },
-        create: {
-          userId, age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
-          weightGoalKg: data.weightGoalKg ?? undefined,
-          gender: data.gender ?? 'male',
-          sport: 'GYM', sportDetails: { gymGoal: data.gymGoal } as object,
-          dataSources: {} as object,
-        },
-        update: {
-          age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
-          weightGoalKg: data.weightGoalKg ?? undefined,
-          gender: data.gender ?? 'male',
-          sport: 'GYM', sportDetails: { gymGoal: data.gymGoal } as object,
-        },
-      })
-
-      return NextResponse.json({ success: true, isB2B: false, planId: null })
-    }
-
-    const goalType = resolveGoalType(data)
-    const sportDetails = buildSportDetails(data)
-
-    // Detectar si el atleta pertenece a un coach (B2B) para no activar trial automáticamente
-    const coachRelation = await prisma.coachAthlete.findFirst({
-      where: { athleteId: userId },
-    })
-    const isB2B = !!coachRelation
-
-    // Upsert HealthProfile con todos los datos del onboarding
-    await prisma.healthProfile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        age: data.age,
-        heightCm: data.heightCm,
-        weightKg: data.weightKg,
-        weightGoalKg: data.weightGoalKg ?? undefined,
-        gender: data.gender ?? 'male',
-        hrResting: data.hrResting ?? undefined,
-        hrMax: data.hrMax ?? undefined,
-        ftp: data.ftp ?? undefined,
-        injuries: data.injuries,
-        conditions: data.conditions,
-        sport: data.mainGoal === 'SPORT' ? (data.sport ?? undefined) : 'STRENGTH',
-        experienceLevel: data.experienceLevel ?? undefined,
-        sportDetails: sportDetails as object,
-        dataSources: {
-          hrMax: { source: data.hrSource === 'known' ? 'manual' : 'estimated', updatedAt: new Date().toISOString() },
-          ...(data.ftp ? { ftp: { source: 'manual', updatedAt: new Date().toISOString() } } : {}),
-        } as object,
-      },
-      update: {
-        age: data.age,
-        heightCm: data.heightCm,
-        weightKg: data.weightKg,
-        weightGoalKg: data.weightGoalKg ?? undefined,
-        gender: data.gender ?? 'male',
-        hrResting: data.hrResting ?? undefined,
-        hrMax: data.hrMax ?? undefined,
-        ftp: data.ftp ?? undefined,
-        injuries: data.injuries,
-        conditions: data.conditions,
-        sport: data.mainGoal === 'SPORT' ? (data.sport ?? undefined) : 'STRENGTH',
-        experienceLevel: data.experienceLevel ?? undefined,
-        sportDetails: sportDetails as object,
-        dataSources: {
-          hrMax: { source: data.hrSource === 'known' ? 'manual' : 'estimated', updatedAt: new Date().toISOString() },
-          ...(data.ftp ? { ftp: { source: 'manual', updatedAt: new Date().toISOString() } } : {}),
-        } as object,
-      },
+    const result = await completeOnboardingUseCase(data, session.user.id, {
+      db: prisma as any,
+      planRepo: new PrismaPlanRepository(),
+      aiService: new AnthropicService(),
+      healthProfileRepo: new PrismaHealthProfileRepository(),
+      userRepo: new PrismaUserRepository(),
     })
 
-    // B2B: el coach generará el plan manualmente — no crear plan desde onboarding
-    // Solo marcar onboarding completo para que salga de /onboarding y vaya a /pending
-    if (isB2B) {
-      const existingB2B = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
-      const b2bConfig = parseUserConfig(existingB2B?.config)
-      // Mapear al tipo de deporte válido en UserConfig (no usar goalType que es p.ej. 'RACE_HALF_MARATHON')
-      const b2bSportType = data.mainGoal === 'SPORT' ? (data.sport ?? 'GENERAL') :
-                           data.mainGoal === 'GYM' ? 'STRENGTH' : 'GENERAL'
-      const b2bGoal = data.mainGoal === 'SPORT' ? 'RACE' :
-                      data.mainGoal === 'GYM' ? 'BODY_RECOMPOSITION' : 'GENERAL_FITNESS'
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          config: {
-            ...b2bConfig,
-            onboarding: { completed: true, completedAt: new Date().toISOString() },
-            sport: { type: b2bSportType, goal: b2bGoal },
-          } as object,
-        },
-      })
-      return NextResponse.json({ success: true, isB2B: true, planId: null })
-    }
-
-    const result = await generatePlan({
-      userId,
-      goalType,
-      generatedBy: data.planMethod === 'TEMPLATE' ? 'TEMPLATE' : 'AI',
-      raceDate: data.raceDate ?? undefined,
-      targetTimeSecs: timeStringToSecs(data.targetTime) ?? undefined,
-      weightGoalKg: data.weightGoalKg ?? undefined,
-      age: data.age,
-      heightCm: data.heightCm,
-      weightKg: data.weightKg,
-      gender: data.gender ?? 'male',
-      hrResting: data.hrResting ?? undefined,
-      hrMax: data.hrMax ?? undefined,
-      daysPerWeek: data.daysPerWeek,
-      hoursPerSession: data.hoursPerSession,
-      injuries: data.injuries,
-      conditions: data.conditions,
-      nutritionCommitment: data.nutritionCommitment ?? 'moderate',
-      weekSchedule: data.weekSchedule ?? undefined,
-      experienceLevel: data.experienceLevel ?? undefined,
-    })
-
-    return NextResponse.json({
-      success: true,
-      isB2B,
-      planId: result.planId,
-      recommendations: result.recommendations,
-      hrZones: result.hrZones,
-      hrMax: result.hrMax,
-      tdee: result.tdee,
-    })
+    return NextResponse.json({ success: true, ...result })
   } catch (error) {
     console.error('[onboarding/generate] Error:', error)
-    return NextResponse.json(
-      { error: 'Error generando el plan. Intenta de nuevo.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error generando el plan. Intenta de nuevo.' }, { status: 500 })
   }
 }

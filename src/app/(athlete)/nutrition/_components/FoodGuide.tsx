@@ -141,6 +141,9 @@ function FoodCard({ food, proteinTarget, carbsTarget, fatTarget, kcalTarget }: {
       </button>
 
       {/* Expanded: detalle completo */}
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+      >
       {expanded && (
         <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 space-y-3">
           {/* Tabla macros por 100g vs porción */}
@@ -204,6 +207,7 @@ function FoodCard({ food, proteinTarget, carbsTarget, fatTarget, kcalTarget }: {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

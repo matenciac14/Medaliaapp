@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     name: user.name,
     role: user.role,
     onboardingCompleted: config.onboarding.completed,
-    userPlan: config.trial.plan,
+    userPlan: getUserPlan(config.features),
     features: config.features,
   })
 }

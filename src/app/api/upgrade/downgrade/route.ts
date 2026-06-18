@@ -19,17 +19,8 @@ export async function POST() {
     ...currentConfig,
     features: {
       ...currentConfig.features,
-      plan: false,
-      checkin: false,
-      nutrition: false,
-      progress: false,
-      gym: false,
-      log: true,        // log manual disponible en Free
-      coach: false,
-    },
-    trial: {
-      plan: 'INACTIVE' as const,
-      endsAt: currentConfig.trial?.endsAt ?? null,
+      aiPlan: false,
+      aiCoach: false,
     },
     ai: {
       ...currentConfig.ai,

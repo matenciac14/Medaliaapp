@@ -1,15 +1,10 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-
-function typeToIntensity(type: string | null): 'HIGH' | 'MODERATE' | 'LOW' | null {
-  if (!type) return null
-  if (['FARTLEK', 'TIRADA_LARGA'].includes(type)) return 'HIGH'
-  if (['RODAJE_Z2', 'CICLA', 'NATACION', 'FUERZA'].includes(type)) return 'MODERATE'
-  return 'LOW'
-}
+import { getSessionIntensity } from '@/lib/plan/intensity'
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -18,20 +13,29 @@ export default async function PlanPage() {
   if (!session?.user?.id) redirect('/login')
 
   if (!session.user.features?.plan) {
+    // GYM user with assigned workout → redirect to gym module
+    const gymRoutine = await prisma.assignedWorkout.findFirst({
+      where: { athleteId: session.user.id, isActive: true },
+      select: { id: true },
+    })
+    if (gymRoutine) redirect('/gym')
+
+    // Sin plan activo — modo libre + CTA para generar plan con IA
+    const isPro = session.user.userPlan === 'PRO'
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="text-5xl mb-4">📅</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Plan de entrenamiento</h2>
+          <div className="text-5xl mb-4">🎯</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Estás en modo libre</h2>
           <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            El plan adaptativo con periodización y sesiones semanales está disponible en el plan Pro.
+            Podés registrar tus entrenamientos sin un plan estructurado. Si querés que la IA te genere un plan periodizado según tu deporte y metas, activá el plan Pro.
           </p>
           <a
-            href="/upgrade"
+            href={isPro ? '/new-goal' : '/upgrade'}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#1e3a5f' }}
           >
-            Ver planes → Pro $15/mes
+            {isPro ? 'Generar plan con IA →' : 'Activar plan Pro → $15/mes'}
           </a>
         </div>
       </div>
@@ -46,9 +50,10 @@ export default async function PlanPage() {
   let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
 
   try {
-    const [activePlanData, nutritionPlanData, profileData, checkIns] = await Promise.all([
-      prisma.trainingPlan.findFirst({
+    const [activePlansData, nutritionPlanData, profileData, checkIns] = await Promise.all([
+      prisma.trainingPlan.findMany({
         where: { userId, status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
         include: {
           weeks: {
             orderBy: { weekNumber: 'asc' },
@@ -74,6 +79,24 @@ export default async function PlanPage() {
       }),
     ])
 
+    // Seleccionar el plan con más logs; desactivar duplicados en background
+    let activePlanData = activePlansData[0] ?? null
+    if (activePlansData.length > 1) {
+      let bestLogCount = -1
+      for (const p of activePlansData) {
+        const logCount = p.weeks.flatMap(w => w.sessions).filter(s => s.log).length
+        if (logCount > bestLogCount) { bestLogCount = logCount; activePlanData = p }
+      }
+      const winnerIds = new Set([activePlanData?.id])
+      const loserIds = activePlansData.filter(p => !winnerIds.has(p.id)).map(p => p.id)
+      if (loserIds.length > 0) {
+        await prisma.trainingPlan.updateMany({
+          where: { id: { in: loserIds } },
+          data: { status: PlanStatus.COMPLETED },
+        }).catch(() => {})
+      }
+    }
+
     if (activePlanData) {
       const now = new Date()
       const start = new Date(activePlanData.startDate)
@@ -84,7 +107,8 @@ export default async function PlanPage() {
       const todayDow = now.getDay() === 0 ? 7 : now.getDay() // 1=Mon..7=Sun
       const currentWeekData = activePlanData.weeks.find(w => w.weekNumber === currentWeek)
       const todaySession = currentWeekData?.sessions.find(s => s.dayOfWeek === todayDow)
-      const todayIntensity = typeToIntensity(todaySession?.type ?? null)
+      // Prefer stored intensity field (set by generator.ts); fall back to derived value
+      const todayIntensity = (todaySession?.intensity as 'HIGH' | 'MODERATE' | 'LOW' | null) ?? (todaySession?.type ? getSessionIntensity(todaySession.type) : null)
 
       if (nutritionPlanData) {
         const nt = getDailyNutritionTarget(todayIntensity, {
@@ -132,7 +156,7 @@ export default async function PlanPage() {
         sessions: w.sessions.map((s) => ({
           id: s.id,
           dayOfWeek: s.dayOfWeek,
-          day: DAY_LABELS[s.dayOfWeek] ?? String(s.dayOfWeek),
+          day: DAY_LABELS[s.dayOfWeek % 7] ?? String(s.dayOfWeek),
           type: s.type,
           label: s.detailText?.slice(0, 40) ?? s.type,
           done: !!s.log,
@@ -159,14 +183,14 @@ export default async function PlanPage() {
           <div className="text-5xl mb-4">📅</div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Sin plan activo</h2>
           <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            Aún no tienes un plan de entrenamiento. Completa el onboarding o contacta a tu coach para generarlo.
+            Elige tu próxima meta y la IA genera un plan periodizado en segundos.
           </p>
           <a
-            href="/dashboard"
+            href="/new-goal"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
+            style={{ backgroundColor: '#f97316' }}
           >
-            Volver al dashboard
+            Generar mi plan →
           </a>
         </div>
       </div>

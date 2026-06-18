@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
-
-function jsToOurDow(jsDay: number): number {
-  return jsDay === 0 ? 7 : jsDay
-}
-
-type DayType = 'hard' | 'easy' | 'rest'
-
-function getDayType(sessionType: string | null, hasGymToday: boolean): DayType {
-  if (!sessionType && !hasGymToday) return 'easy'
-  if (sessionType === 'DESCANSO') return 'rest'
-  if (sessionType && ['FARTLEK', 'TIRADA_LARGA', 'NATACION', 'FUERZA', 'INTERVALOS', 'TEMPO'].includes(sessionType)) return 'hard'
-  if (hasGymToday) return 'hard'
-  return 'easy'
-}
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { intensityToDayType } from '@/lib/nutrition/day-type'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -22,19 +11,27 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
   const todayDow = jsToOurDow(new Date().getDay())
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Fetch plan first to compute current week — avoid date-based query (timezone-sensitive)
+  const activePlan = await prisma.trainingPlan.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, startDate: true, totalWeeks: true },
+  })
+  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   const [nutritionPlan, mealPlan, todaySession, gymToday] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
-    prisma.plannedSession.findFirst({
-      where: {
-        week: { plan: { userId, status: 'ACTIVE' } },
-        date: { gte: today, lt: tomorrow },
-      },
-      select: { type: true },
-    }),
+    activePlan && currentWeek
+      ? prisma.plannedSession.findFirst({
+          where: {
+            week: { planId: activePlan.id, weekNumber: currentWeek },
+            dayOfWeek: todayDow,
+          },
+          select: { type: true, intensity: true },
+        })
+      : Promise.resolve(null),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
       select: {
@@ -51,7 +48,8 @@ export async function GET(req: NextRequest) {
   ])
 
   const hasGymToday = !!(gymToday?.template.days[0] && !gymToday.template.days[0].isRestDay)
-  const dayType = getDayType(todaySession?.type ?? null, hasGymToday)
+  const sessionIntensity = todaySession?.intensity ?? (hasGymToday ? 'HIGH' : null)
+  const dayType = intensityToDayType(sessionIntensity)
 
   if (!nutritionPlan) {
     return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null })

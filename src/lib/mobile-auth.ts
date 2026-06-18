@@ -7,7 +7,7 @@ export type MobileTokenPayload = {
   name: string
   role: string
   onboardingCompleted: boolean
-  userPlan: string
+  userPlan: 'FREE' | 'PRO'
 }
 
 function getSecret() {

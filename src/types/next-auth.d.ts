@@ -7,8 +7,7 @@ declare module 'next-auth' {
       role: string
       onboardingCompleted: boolean
       activated: boolean
-      trialEndsAt: string | null
-      userPlan: 'TRIAL' | 'PRO' | 'INACTIVE'
+      userPlan: 'FREE' | 'PRO'
       features: {
         plan: boolean
         checkin: boolean
@@ -17,6 +16,7 @@ declare module 'next-auth' {
         log: boolean
         coach: boolean
         gym: boolean
+        aiPlan: boolean
         aiCoach: boolean
       }
       name?: string | null
@@ -29,8 +29,7 @@ declare module 'next-auth' {
     role?: string
     onboardingCompleted?: boolean
     activated?: boolean
-    trialEndsAt?: string | null
-    userPlan?: 'TRIAL' | 'PRO' | 'INACTIVE'
+    userPlan?: 'FREE' | 'PRO'
     features?: {
       plan: boolean
       checkin: boolean
@@ -39,6 +38,7 @@ declare module 'next-auth' {
       log: boolean
       coach: boolean
       gym: boolean
+      aiPlan: boolean
       aiCoach: boolean
     }
   }
@@ -50,8 +50,7 @@ declare module 'next-auth/jwt' {
     role?: string
     onboardingCompleted?: boolean
     activated?: boolean
-    trialEndsAt?: string | null
-    userPlan?: 'TRIAL' | 'PRO' | 'INACTIVE'
+    userPlan?: 'FREE' | 'PRO'
     features?: {
       plan: boolean
       checkin: boolean
@@ -60,6 +59,7 @@ declare module 'next-auth/jwt' {
       log: boolean
       coach: boolean
       gym: boolean
+      aiPlan: boolean
       aiCoach: boolean
     }
   }

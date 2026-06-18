@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       name: user.name ?? '',
       role: user.role,
       onboardingCompleted,
-      userPlan: config.trial.plan,
+      userPlan: getUserPlan(config.features),
     })
 
     return NextResponse.json({
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         role: user.role,
         onboardingCompleted,
-        userPlan: config.trial.plan,
+        userPlan: getUserPlan(config.features),
         features: config.features,
       },
     })

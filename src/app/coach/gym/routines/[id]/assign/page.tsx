@@ -11,7 +11,7 @@ interface Props {
 export default async function AssignRoutinePage({ params }: Props) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     redirect('/dashboard')
   }
 

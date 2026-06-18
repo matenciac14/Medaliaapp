@@ -1,536 +1,162 @@
-'use client'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+import { redirect } from 'next/navigation'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+import CheckInClient, { type PrevMetrics, type CheckInState } from './_components/CheckInClient'
+import type { WeekSession } from './_components/SessionsPanel'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { Scale, Heart, Moon, Zap, FileText, AlertTriangle } from 'lucide-react'
+export default async function CheckinPage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
 
-// ——— Tipos ———
-interface CheckInData {
-  weightKg?: number
-  hrResting?: number
-  sleepHours?: number
-  sleepScore?: number
-  hardestRpe: number
-  hasPain: boolean
-  painDescription?: string
-  energyLevel: number
-  notes?: string
-  // Para motor de alertas
-  previousWeightKg?: number
-  previousHrResting?: number
-}
+  const userId = session.user.id
+  const hasNutrition = session.user.features?.nutrition ?? false
 
-// ——— Motor de alertas ———
-function evaluateAlerts(data: CheckInData): string[] {
-  const alerts: string[] = []
-  // FC reposo elevada
-  if (data.hrResting && data.previousHrResting && data.hrResting > data.previousHrResting * 1.10) {
-    alerts.push('FC reposo elevada — considera un dia extra de descanso')
-  }
-  // Sleep score bajo
-  if (data.sleepScore && data.sleepScore < 70) {
-    alerts.push('Sleep score bajo — revisa tus habitos de sueno')
-  }
-  // Perdida de peso agresiva
-  if (data.weightKg && data.previousWeightKg && (data.previousWeightKg - data.weightKg) > 1.2) {
-    alerts.push('Bajaste mas de 1.2kg esta semana — aumenta 200-300 kcal')
-  }
-  return alerts
-}
+  // Día de la semana en zona horaria Colombia (UTC-5)
+  const nowInBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }))
+  const dayOfWeek = nowInBogota.getDay() // 0=Dom, 1=Lun … 5=Vie, 6=Sáb
+  // Lun-Jue = "temprano" — mostrar resumen semana pasada + banner orientador
+  const isEarlyInWeek = dayOfWeek >= 1 && dayOfWeek <= 4
 
-// ——— Componente slider RPE ———
-function RpeSlider({
-  value,
-  onChange,
-  label,
-}: {
-  value: number
-  onChange: (v: number) => void
-  label: string
-}) {
-  const RPE_LABELS: Record<number, string> = {
-    1: 'Muy facil', 2: 'Muy facil', 3: 'Facil',
-    4: 'Algo facil', 5: 'Moderado', 6: 'Algo duro',
-    7: 'Duro', 8: 'Muy duro', 9: 'Casi maximo', 10: 'Maximo',
-  }
+  // Fetch en paralelo: plan activo + check-ins
+  const [activePlan, checkIns] = await Promise.all([
+    prisma.trainingPlan.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        weeks: {
+          include: {
+            sessions: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                type: true,
+                durationMin: true,
+                log: { select: { id: true } },
+              },
+            },
+          },
+          orderBy: { weekNumber: 'asc' },
+        },
+      },
+    }),
+    // Últimos 2 check-ins (esta semana + semana pasada)
+    prisma.weeklyCheckIn.findMany({
+      where: { userId },
+      orderBy: { recordedAt: 'desc' },
+      take: 2,
+      select: {
+        weekNumber: true,
+        recordedAt: true,
+        adjustmentsTriggered: true,
+        weightKg: true,
+        hrResting: true,
+        sleepHours: true,
+        energyLevel: true,
+        hardestSessionRpe: true,
+        sleepScore: true,
+        stressLevel: true,
+        motivationLevel: true,
+        painLevel: true,
+        nutritionAdherencePct: true,
+      },
+    }),
+  ])
 
-  function getRpeColor(rpe: number): string {
-    if (rpe <= 3) return '#22c55e'
-    if (rpe <= 6) return '#eab308'
-    if (rpe <= 8) return '#f97316'
-    return '#ef4444'
-  }
+  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : 0
 
-  function getRpeTrackStyle(rpe: number): string {
-    const pct = ((rpe - 1) / 9) * 100
-    return `linear-gradient(to right, #22c55e 0%, #eab308 30%, #f97316 60%, #ef4444 100%) 0 0 / ${pct}% 100% no-repeat, #e5e7eb`
-  }
+  const thisWeekCheckIn = checkIns.find((c) => c.weekNumber === currentWeek) ?? null
+  const lastWeekCheckIn = checkIns.find((c) => c.weekNumber === currentWeek - 1) ?? null
 
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold text-gray-700">{label}</p>
-      <div className="text-center">
-        <span
-          className="text-4xl font-black tabular-nums"
-          style={{ color: getRpeColor(value) }}
-        >
-          {value}
-        </span>
-      </div>
-      <div className="pt-1">
-        <input
-          type="range"
-          min={1}
-          max={10}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gray-400 [&::-webkit-slider-thumb]:shadow-md"
-          style={{ background: getRpeTrackStyle(value) }}
-        />
-        <div className="flex justify-between mt-1">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-            <span key={n} className="text-[10px] text-gray-400 w-4 text-center">{n}</span>
-          ))}
-        </div>
-      </div>
-      <p
-        className="text-center text-sm font-semibold"
-        style={{ color: getRpeColor(value) }}
-      >
-        {RPE_LABELS[value]}
-      </p>
-    </div>
-  )
-}
+  // Estado del check-in:
+  // 'submitted' → ya envió esta semana
+  // 'early'     → Lun-Jue, aún no envió → mostrar resumen semana pasada + banner
+  // 'open'      → Vie-Dom, aún no envió → formulario directo
+  const checkInState: CheckInState =
+    thisWeekCheckIn ? 'submitted' :
+    isEarlyInWeek   ? 'early'     :
+    'open'
 
-// ——— Opciones de energia ———
-const ENERGY_OPTIONS = [
-  { value: 1, emoji: '😴', label: 'Muy baja', sublabel: '1-2' },
-  { value: 3, emoji: '😔', label: 'Baja', sublabel: '3-4' },
-  { value: 5, emoji: '😐', label: 'Normal', sublabel: '5-6' },
-  { value: 7, emoji: '😊', label: 'Buena', sublabel: '7-8' },
-  { value: 9, emoji: '🔥', label: 'Excelente', sublabel: '9-10' },
-]
+  // Sesiones de la semana actual
+  let weekSessions: WeekSession[] = []
+  let weekLabel = '5 minutos para ajustar tu plan'
+  let weekAdherence = { completed: 0, total: 0 }
 
-// ——— Page ———
-export default function CheckinPage() {
-  const router = useRouter()
-  const { data: session } = useSession()
+  if (activePlan) {
+    const weekData = activePlan.weeks.find((w) => w.weekNumber === currentWeek)
+      ?? activePlan.weeks[activePlan.weeks.length - 1]
 
-  const [prevMetrics, setPrevMetrics] = useState<{ weightKg: number | null; hrResting: number | null }>({ weightKg: null, hrResting: null })
+    if (weekData) {
+      weekSessions = weekData.sessions.map((s) => ({
+        id: s.id,
+        dayOfWeek: s.dayOfWeek,
+        type: s.type as string,
+        durationMin: s.durationMin,
+        completed: !!s.log,
+      }))
 
-  useEffect(() => {
-    fetch('/api/checkin')
-      .then(r => r.json())
-      .then(d => { if (d.weightKg !== undefined) setPrevMetrics(d) })
-      .catch(() => {})
-  }, [])
-
-  // Seccion 1 — cuerpo
-  const [weightKg, setWeightKg] = useState<string>('')
-  const [hrResting, setHrResting] = useState<string>('')
-  const [sleepHours, setSleepHours] = useState(7)
-  const [sleepScore, setSleepScore] = useState<string>('')
-
-  // Seccion 2 — entrenamiento
-  const [hardestRpe, setHardestRpe] = useState(5)
-  const [hasPain, setHasPain] = useState<boolean>(false)
-  const [painDescription, setPainDescription] = useState('')
-
-  // Seccion 3 — energia
-  const [energyLevel, setEnergyLevel] = useState<number>(5)
-  const [notes, setNotes] = useState('')
-
-  // Estado guardado / alertas
-  const [alerts, setAlerts] = useState<string[]>([])
-  const [showAlertModal, setShowAlertModal] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [adjustment, setAdjustment] = useState<{
-    severity: 'ok' | 'warning' | 'critical'
-    recommendation: string
-    adjustments: string[]
-  } | null>(null)
-
-  if (!(session?.user as any)?.features?.checkin) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">📋</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Check-in semanal disponible en Pro</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Registra tu evolución semanal y recibe ajustes automáticos en tu plan con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
-      </div>
-    )
-  }
-
-  function handleSubmit() {
-    const data: CheckInData = {
-      weightKg: weightKg ? Number(weightKg) : undefined,
-      hrResting: hrResting ? Number(hrResting) : undefined,
-      sleepHours,
-      sleepScore: sleepScore ? Number(sleepScore) : undefined,
-      hardestRpe,
-      hasPain,
-      painDescription: hasPain ? painDescription : undefined,
-      energyLevel,
-      notes: notes || undefined,
-      previousWeightKg: prevMetrics.weightKg ?? undefined,
-      previousHrResting: prevMetrics.hrResting ?? undefined,
-    }
-
-    const found = evaluateAlerts(data)
-    if (found.length > 0) {
-      setAlerts(found)
-      setShowAlertModal(true)
-    } else {
-      doSave(data)
-    }
-  }
-
-  async function doSave(data?: CheckInData) {
-    setSaving(true)
-    setShowAlertModal(false)
-    try {
-      const res = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data ?? {
-          weightKg: weightKg ? Number(weightKg) : undefined,
-          hrResting: hrResting ? Number(hrResting) : undefined,
-          sleepHours,
-          sleepScore: sleepScore ? Number(sleepScore) : undefined,
-          hardestRpe,
-          hasPain,
-          painDescription: hasPain ? painDescription : undefined,
-          energyLevel,
-          notes: notes || undefined,
-        }),
-      })
-      const json = await res.json()
-      if (json.adjustment) {
-        setAdjustment(json.adjustment)
+      const trainingSessions = weekSessions.filter((s) => s.type !== 'DESCANSO')
+      weekAdherence = {
+        completed: trainingSessions.filter((s) => s.completed).length,
+        total: trainingSessions.length,
       }
-      setSaved(true)
-    } finally {
-      setSaving(false)
+
+      const start = weekData.startDate
+      const end = weekData.endDate
+      const fmt = (d: Date) =>
+        d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+      weekLabel = `Semana ${weekData.weekNumber} · ${fmt(start)} – ${fmt(end)}`
     }
   }
 
-  if (saved) {
-    const bannerStyles = {
-      ok: {
-        wrapper: 'bg-green-50 border border-green-200',
-        title: 'text-green-800',
-        text: 'text-green-700',
-        icon: '✅',
-        label: '¡Semana perfecta!',
-      },
-      warning: {
-        wrapper: 'bg-yellow-50 border border-yellow-200',
-        title: 'text-yellow-800',
-        text: 'text-yellow-700',
-        icon: '⚠️',
-        label: 'Ajuste recomendado',
-      },
-      critical: {
-        wrapper: 'bg-red-50 border border-red-200',
-        title: 'text-red-800',
-        text: 'text-red-700',
-        icon: '🚨',
-        label: 'Atención requerida',
-      },
-    }
-    const severity = adjustment?.severity ?? 'ok'
-    const style = bannerStyles[severity]
+  // Referencia al check-in anterior (para deltas en el form)
+  const prevCheckIn = thisWeekCheckIn ?? lastWeekCheckIn
 
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 max-w-sm w-full text-center space-y-4">
-          <div className="text-5xl">✅</div>
-          <h2 className="text-xl font-bold text-gray-900">Check-in guardado</h2>
+  const prevSleepScore = prevCheckIn?.sleepScore
+    ? Math.round(prevCheckIn.sleepScore / 10)
+    : null
 
-          {adjustment && (
-            <div className={`rounded-xl p-4 text-left space-y-1 ${style.wrapper}`}>
-              <p className={`text-sm font-bold flex items-center gap-2 ${style.title}`}>
-                <span>{style.icon}</span>
-                {style.label}
-              </p>
-              <p className={`text-sm ${style.text}`}>{adjustment.recommendation}</p>
-            </div>
-          )}
+  const prevNutritionAdherence = prevCheckIn?.nutritionAdherencePct
+    ? Math.round(prevCheckIn.nutritionAdherencePct / 10)
+    : null
 
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold py-3 rounded-xl transition-colors"
-          >
-            Volver al dashboard
-          </button>
-        </div>
-      </div>
-    )
+  const prevMetrics: PrevMetrics = {
+    weightKg:          prevCheckIn?.weightKg ?? null,
+    hrResting:         prevCheckIn?.hrResting ?? null,
+    sleepHours:        prevCheckIn?.sleepHours ?? null,
+    energyLevel:       prevCheckIn?.energyLevel ?? null,
+    hardestSessionRpe: prevCheckIn?.hardestSessionRpe ?? null,
+    prevSleepScore,
+    stressLevel:       prevCheckIn?.stressLevel ?? null,
+    motivationLevel:   prevCheckIn?.motivationLevel ?? null,
+    painLevel:         prevCheckIn?.painLevel ?? null,
+    prevNutritionAdherence,
   }
+
+  // Datos semana pasada para la pantalla 'early'
+  const lastWeekSummary = lastWeekCheckIn
+    ? {
+        weightKg:          lastWeekCheckIn.weightKg,
+        sleepHours:        lastWeekCheckIn.sleepHours,
+        energyLevel:       lastWeekCheckIn.energyLevel,
+        stressLevel:       lastWeekCheckIn.stressLevel,
+        motivationLevel:   lastWeekCheckIn.motivationLevel,
+        adjustmentsTriggered: lastWeekCheckIn.adjustmentsTriggered,
+        recordedAt:        lastWeekCheckIn.recordedAt,
+      }
+    : null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-4">
-
-        {/* Header */}
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold text-gray-900">Check-in semanal</h1>
-          <p className="text-sm text-gray-400">5 minutos para ajustar tu plan de la próxima semana</p>
-        </div>
-
-        {/* ——— Seccion 1: Tu cuerpo ——— */}
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center">
-              <Scale size={14} className="text-[#1e3a5f]" />
-            </div>
-            <h2 className="text-sm font-bold text-gray-900">Tu cuerpo esta semana</h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* Peso */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                <Scale size={13} />
-                Peso (kg)
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
-                placeholder={prevMetrics.weightKg ? String(prevMetrics.weightKg) : 'ej. 70.5'}
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
-              />
-            </div>
-
-            {/* FC reposo */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                <Heart size={13} />
-                FC reposo (bpm)
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={hrResting}
-                onChange={(e) => setHrResting(e.target.value)}
-                placeholder={prevMetrics.hrResting ? String(prevMetrics.hrResting) : 'ej. 58'}
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
-              />
-            </div>
-          </div>
-
-          {/* Sleep hours slider */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                <Moon size={13} />
-                Horas de sueno promedio
-              </label>
-              <span className="text-sm font-bold text-[#1e3a5f]">{sleepHours}h</span>
-            </div>
-            <input
-              type="range"
-              min={4}
-              max={10}
-              step={0.5}
-              value={sleepHours}
-              onChange={(e) => setSleepHours(Number(e.target.value))}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gray-200 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1e3a5f] [&::-webkit-slider-thumb]:shadow-md"
-              style={{
-                background: `linear-gradient(to right, #1e3a5f 0%, #1e3a5f ${((sleepHours - 4) / 6) * 100}%, #e5e7eb ${((sleepHours - 4) / 6) * 100}%, #e5e7eb 100%)`,
-              }}
-            />
-            <div className="flex justify-between">
-              <span className="text-[10px] text-gray-400">4h</span>
-              <span className="text-[10px] text-gray-400">7h</span>
-              <span className="text-[10px] text-gray-400">10h</span>
-            </div>
-          </div>
-
-          {/* Sleep score */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-gray-500">
-              Sleep score (0-100) — Garmin / wearable
-            </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              value={sleepScore}
-              onChange={(e) => setSleepScore(e.target.value)}
-              placeholder="Opcional"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
-            />
-          </div>
-        </section>
-
-        {/* ——— Seccion 2: Entrenamiento ——— */}
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#f97316]/10 flex items-center justify-center">
-              <Zap size={14} className="text-[#f97316]" />
-            </div>
-            <h2 className="text-sm font-bold text-gray-900">Tu entrenamiento</h2>
-          </div>
-
-          {/* RPE sesion mas dura */}
-          <RpeSlider
-            value={hardestRpe}
-            onChange={setHardestRpe}
-            label="Sesion mas dura de la semana — RPE"
-          />
-
-          {/* Molestia o dolor */}
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-gray-700">Tuviste alguna molestia o dolor?</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setHasPain(false)}
-                className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
-                  hasPain === false
-                    ? 'bg-[#22c55e] border-[#22c55e] text-white'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-[#22c55e]/40'
-                }`}
-              >
-                No
-              </button>
-              <button
-                onClick={() => setHasPain(true)}
-                className={`py-3.5 rounded-xl font-semibold text-sm border-2 transition-all active:scale-95 ${
-                  hasPain === true
-                    ? 'bg-red-500 border-red-500 text-white'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-red-300'
-                }`}
-              >
-                Si
-              </button>
-            </div>
-            {hasPain && (
-              <textarea
-                value={painDescription}
-                onChange={(e) => setPainDescription(e.target.value)}
-                placeholder="Donde y que tipo de molestia? (rodilla derecha, tension muscular, etc.)"
-                rows={3}
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
-              />
-            )}
-          </div>
-        </section>
-
-        {/* ——— Seccion 3: Energia ——— */}
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
-              <Heart size={14} className="text-green-600" />
-            </div>
-            <h2 className="text-sm font-bold text-gray-900">Tu energía</h2>
-          </div>
-
-          {/* Cards energia */}
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-700">Energia general esta semana</p>
-            <div className="grid grid-cols-5 gap-1.5">
-              {ENERGY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setEnergyLevel(opt.value)}
-                  className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border-2 transition-all active:scale-95 ${
-                    energyLevel === opt.value
-                      ? 'border-[#f97316] bg-orange-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-xl">{opt.emoji}</span>
-                  <span className={`text-[9px] font-semibold text-center leading-tight ${
-                    energyLevel === opt.value ? 'text-[#f97316]' : 'text-gray-500'
-                  }`}>
-                    {opt.label}
-                  </span>
-                  <span className={`text-[8px] ${
-                    energyLevel === opt.value ? 'text-[#f97316]/70' : 'text-gray-400'
-                  }`}>
-                    {opt.sublabel}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notas libres */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <FileText size={14} />
-              Algo que tu coach deba saber?
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Viaje, estres laboral, cambio de dieta, lesion vieja..."
-              rows={3}
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]"
-            />
-          </div>
-        </section>
-
-        {/* Boton guardar */}
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="w-full bg-brand-cta hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md"
-        >
-          {saving ? 'Guardando...' : '✓ Guardar check-in'}
-        </button>
-      </div>
-
-      {/* ——— Modal de alertas ——— */}
-      {showAlertModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            {/* Banner amarillo */}
-            <div className="bg-yellow-50 border-b border-yellow-200 px-5 py-4 flex items-start gap-3">
-              <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-yellow-800">Atenciones detectadas</p>
-                <p className="text-xs text-yellow-700 mt-0.5">Revisa estos puntos antes de guardar</p>
-              </div>
-            </div>
-
-            {/* Lista de alertas */}
-            <div className="px-5 py-4 space-y-2">
-              {alerts.map((alert, i) => (
-                <div key={i} className="flex items-start gap-2.5 bg-yellow-50 rounded-xl px-3 py-2.5">
-                  <span className="text-base shrink-0">⚠️</span>
-                  <p className="text-sm text-yellow-900">{alert}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Botones */}
-            <div className="px-5 pb-5 grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setShowAlertModal(false)}
-                className="py-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Revisar datos
-              </button>
-              <button
-                onClick={() => doSave()}
-                disabled={saving}
-                className="py-3 rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#162d4a] disabled:opacity-50 transition-colors"
-              >
-                {saving ? 'Guardando...' : 'Entendido, guardar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <CheckInClient
+      weekSessions={weekSessions}
+      prevMetrics={prevMetrics}
+      weekLabel={weekLabel}
+      hasNutrition={hasNutrition}
+      weekAdherence={weekAdherence}
+      checkInState={checkInState}
+      submittedAt={thisWeekCheckIn?.recordedAt ?? null}
+      submittedTriggers={thisWeekCheckIn?.adjustmentsTriggered ?? []}
+      lastWeekSummary={lastWeekSummary}
+    />
   )
 }

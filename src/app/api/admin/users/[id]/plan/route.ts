@@ -25,7 +25,7 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const { plan } = await req.json() // 'INACTIVE' | 'PRO' | 'COACH'
+  const { plan } = await req.json() // 'FREE' | 'PRO' | 'COACH'
 
   let config: typeof DEFAULT_USER_CONFIG
   let role: 'ATHLETE' | 'COACH'

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   const userId = mobile.id
   const body = await req.json()
-  const { sessionId, completed, actualDurationMin, rpe, hrAvg, notes } = body
+  const { sessionId, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes } = body
 
   if (!sessionId) return NextResponse.json({ error: 'sessionId requerido' }, { status: 400 })
 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       rpe: rpe ?? null,
       hrAvg: hrAvg ?? null,
       durationMin: actualDurationMin ?? null,
+      distanceKm: distanceKm ?? null,
       notes: notes ?? null,
     },
   })

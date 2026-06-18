@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { jsToOurDow } from '@/lib/core/date-utils'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 
-function jsToOurDow(jsDay: number): number {
-  return jsDay === 0 ? 7 : jsDay
-}
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)

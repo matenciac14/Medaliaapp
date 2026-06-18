@@ -52,6 +52,9 @@ model User {
 
   // Invite codes
   inviteCodes        InviteCode[]  @relation("CoachInvites")
+
+  // Benchmarks de rendimiento
+  benchmarks         PerformanceBenchmark[]
 }
 
 enum UserRole {
@@ -98,15 +101,21 @@ model VerificationToken {
 // ─── COACH <> ATHLETE ───────────────────────────────────────────────────────
 
 model CoachAthlete {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   coachId   String
   athleteId String
-  createdAt DateTime @default(now())
+  status    AthleteStatus  @default(ACTIVE)
+  createdAt DateTime       @default(now())
 
   coach   User @relation("CoachRelation", fields: [coachId], references: [id])
   athlete User @relation("AthleteRelation", fields: [athleteId], references: [id])
 
   @@unique([coachId, athleteId])
+}
+
+enum AthleteStatus {
+  ACTIVE
+  PAUSED
 }
 
 // ─── INVITE CODES ───────────────────────────────────────────────────────────
@@ -180,6 +189,9 @@ enum GoalType {
   RACE_MARATHON
   RACE_TRIATHLON
   RACE_CYCLING
+  RACE_SWIMMING
+  FOOTBALL_GPP
+  STRENGTH_TRAINING
   BODY_RECOMPOSITION
   WEIGHT_LOSS
   GENERAL_FITNESS
@@ -266,6 +278,8 @@ model PlannedSession {
 
   week PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
   log  SessionLog?
+
+  @@index([weekId])
 }
 
 enum SessionIntensity {
@@ -343,14 +357,20 @@ model WeeklyCheckIn {
   sleepScore           Float?
   hardestSessionRpe    Int?
   dietAdherencePct     Int?
+  painLevel            Int?     // 1-10: intensidad de dolor/molestia. painFlag derivado: painLevel >= 5
   painFlag             Boolean  @default(false)
-  energyLevel          Int?
+  painDescription      String?  // descripción libre de la molestia/lesión reportada
+  energyLevel          Int?     // 1-10 (normalizado desde ambas plataformas)
+  stressLevel          Int?     // 1-10
+  motivationLevel      Int?     // 1-10
+  nutritionAdherencePct Int?    // 0-100: % adherencia al plan de comida (subjetivo)
   notes                String?
   adjustmentsTriggered String[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, weekNumber])
+  @@index([userId])
 }
 
 // ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
@@ -675,4 +695,23 @@ model FoodLog {
   createdAt DateTime @default(now())
 
   @@index([userId, date])
+}
+
+model PerformanceBenchmark {
+  id        String   @id @default(cuid())
+  userId    String
+  coachId   String?
+  sport     String   // RUNNING | CYCLING | SWIMMING | STRENGTH | TRIATHLON
+  metric    String   // 5K_TIME | 10K_TIME | HALF_MARATHON_TIME | MARATHON_TIME | FTP_WATTS | CSS_PACE | 1RM_SQUAT | 1RM_DEADLIFT | 1RM_BENCH | VO2MAX
+  value     Float
+  unit      String   // seconds | watts | kg | ml_kg_min
+  testedAt  DateTime
+  notes     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, sport])
+  @@index([userId, metric, testedAt])
 }

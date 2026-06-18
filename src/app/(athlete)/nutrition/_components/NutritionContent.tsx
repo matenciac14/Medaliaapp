@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Flame, Check, Moon } from 'lucide-react'
 
 type Meal = {
   time: string
@@ -45,10 +46,10 @@ type NutritionPlanTargets = {
 
 type DayType = 'hard' | 'easy' | 'rest'
 
-const DAY_TABS: { key: DayType; label: string; emoji: string }[] = [
-  { key: 'hard', label: 'Día duro', emoji: '🔥' },
-  { key: 'easy', label: 'Día fácil', emoji: '✅' },
-  { key: 'rest', label: 'Descanso', emoji: '😴' },
+const DAY_TABS: { key: DayType; label: string; Icon: React.ElementType; color: string }[] = [
+  { key: 'hard', label: 'Día duro',  Icon: Flame, color: '#f97316' },
+  { key: 'easy', label: 'Día fácil', Icon: Check, color: '#16a34a' },
+  { key: 'rest', label: 'Descanso',  Icon: Moon,  color: '#6b7280' },
 ]
 
 const MEAL_ICONS: Record<string, string> = {
@@ -70,6 +71,12 @@ interface Props {
 
 export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType }: Props) {
   const [activeTab, setActiveTab] = useState<DayType>(todayDayType)
+  const [barsReady, setBarsReady] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setBarsReady(true), 80)
+    return () => clearTimeout(t)
+  }, [])
 
   const dayData = mealPlan[activeTab]
   const targets = {
@@ -89,18 +96,19 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {DAY_TABS.map(tab => (
+        {DAY_TABS.map(({ key, label, Icon, color }) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeTab === tab.key
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-1.5 ${
+              activeTab === key
                 ? 'bg-[#1e3a5f] text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab.emoji} {tab.label}
-            {tab.key === todayDayType && activeTab !== tab.key && (
+            <Icon size={13} color={activeTab === key ? 'white' : color} strokeWidth={2.5} />
+            {label}
+            {key === todayDayType && activeTab !== key && (
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
             )}
           </button>
@@ -145,8 +153,8 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
               </div>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-white/80 rounded-full"
-                  style={{ width: `${Math.min((bar.value / bar.max) * 100, 100)}%` }}
+                  className="h-full bg-white/80 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: barsReady ? `${Math.min((bar.value / bar.max) * 100, 100)}%` : '0%' }}
                 />
               </div>
             </div>
@@ -178,7 +186,7 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
                   <div className="flex gap-3 mt-2.5 flex-wrap">
                     <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">P {meal.protein}g</span>
                     <span className="text-xs text-yellow-600 font-medium bg-yellow-50 px-2 py-0.5 rounded-full">C {meal.carbs}g</span>
-                    <span className="text-xs text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full">G {meal.fat}g</span>
+                    <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">G {meal.fat}g</span>
                   </div>
                 </div>
               </div>

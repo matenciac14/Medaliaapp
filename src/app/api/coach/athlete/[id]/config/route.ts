@@ -4,7 +4,7 @@ import { parseUserConfig } from '@/lib/config/user-config'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

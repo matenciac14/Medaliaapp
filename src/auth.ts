@@ -4,7 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -50,8 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           onboardingCompleted: config.onboarding.completed,
           activated: config.features.plan,
-          trialEndsAt: config.trial?.endsAt ?? null,
-          userPlan: config.trial?.plan ?? 'INACTIVE',
+          userPlan: getUserPlan(config.features),
           features: config.features,
         }
       },
@@ -64,8 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = (user as any).role
         token.onboardingCompleted = (user as any).onboardingCompleted ?? false
         token.activated = (user as any).activated ?? false
-        token.trialEndsAt = (user as any).trialEndsAt ?? null
-        token.userPlan = (user as any).userPlan ?? 'INACTIVE'
+        token.userPlan = (user as any).userPlan ?? 'FREE'
         token.features = (user as any).features ?? {}
       }
       // Refresh from DB on session update
@@ -79,8 +77,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const config = parseUserConfig(dbUser.config)
             token.activated = config.features.plan
             token.onboardingCompleted = config.onboarding.completed
-            token.trialEndsAt = config.trial?.endsAt ?? null
-            token.userPlan = config.trial?.plan ?? 'INACTIVE'
+            token.userPlan = getUserPlan(config.features)
             token.features = config.features
           }
         } catch {
@@ -95,11 +92,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = token.role as string
         session.user.onboardingCompleted = token.onboardingCompleted as boolean
         session.user.activated = token.activated as boolean
-        session.user.trialEndsAt = (token.trialEndsAt as string | null) ?? null
-        session.user.userPlan = (token.userPlan as 'TRIAL' | 'PRO' | 'INACTIVE') ?? 'INACTIVE'
+        session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
         session.user.features = (token.features as Session['user']['features']) ?? {
-          plan: false, checkin: false, nutrition: false, progress: false,
-          log: false, coach: false, gym: false, aiCoach: false,
+          plan: true, checkin: true, nutrition: true, progress: true,
+          log: true, coach: false, gym: true, aiPlan: false, aiCoach: false,
         }
       }
       return session

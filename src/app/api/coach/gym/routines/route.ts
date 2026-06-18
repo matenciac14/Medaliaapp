@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 export async function GET(_req: NextRequest) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
@@ -61,7 +61,7 @@ interface CreateRoutineBody {
 export async function POST(req: NextRequest) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 

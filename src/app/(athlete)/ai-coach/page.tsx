@@ -18,7 +18,33 @@ export default async function AICoachPage() {
   if (!dbUser) redirect('/login')
 
   const userConfig = parseUserConfig(dbUser.config)
-  if (!userConfig.features.aiCoach) redirect('/dashboard')
+
+  if (!userConfig.features.aiCoach) {
+    return (
+      <div className="flex flex-col items-center justify-center px-4 py-16 max-w-sm mx-auto text-center gap-6">
+        <div className="w-16 h-16 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-xl font-bold">AI</div>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">AI Coach — Plan Pro</h1>
+          <p className="text-sm text-gray-500">
+            Accede a tu asistente deportivo personalizado. Pregunta sobre tu plan, recuperación, nutrición y más.
+          </p>
+        </div>
+        <ul className="w-full text-left space-y-2 text-sm text-gray-600">
+          {['100 mensajes por mes', 'Respuestas basadas en tu plan real', 'Contexto de tus check-ins y progreso', 'Powered by Claude (Anthropic)'].map(f => (
+            <li key={f} className="flex items-center gap-2"><span className="text-green-500">✓</span>{f}</li>
+          ))}
+        </ul>
+        <Link
+          href="/upgrade"
+          className="w-full py-4 rounded-2xl text-white font-bold text-sm text-center transition-opacity hover:opacity-90"
+          style={{ backgroundColor: '#f97316' }}
+        >
+          Activar plan Pro — $15/mes →
+        </Link>
+        <Link href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">← Volver al inicio</Link>
+      </div>
+    )
+  }
 
   const currentMonth = new Date().toISOString().slice(0, 7)
   const aiMessagesUsed = userConfig.ai.messagesResetAt === currentMonth

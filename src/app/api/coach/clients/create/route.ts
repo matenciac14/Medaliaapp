@@ -15,7 +15,7 @@ function generateTempPassword(length = 8): string {
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

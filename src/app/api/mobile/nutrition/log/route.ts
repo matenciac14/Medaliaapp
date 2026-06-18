@@ -1,0 +1,59 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db/prisma'
+import { getMobileUser } from '@/lib/mobile-auth'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate-food-log'
+
+export async function GET(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const userId = mobile.id
+  const dateParam = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
+  const dayStart = new Date(`${dateParam}T00:00:00.000Z`)
+  const dayEnd   = new Date(`${dateParam}T23:59:59.999Z`)
+
+  const activePlan = await prisma.trainingPlan.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, startDate: true, totalWeeks: true },
+  })
+  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
+
+  const [logs, nutritionPlan, todaySession] = await Promise.all([
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: dayStart, lte: dayEnd } },
+      include: { food: { select: { name: true, category: true, servingG: true, servingLabel: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.nutritionPlan.findUnique({ where: { userId } }),
+    activePlan && currentWeek
+      ? prisma.plannedSession.findFirst({
+          where: { week: { planId: activePlan.id, weekNumber: currentWeek }, date: { gte: dayStart, lte: dayEnd } },
+          select: { intensity: true },
+        })
+      : Promise.resolve(null),
+  ])
+
+  return NextResponse.json(buildFoodLogResponse(logs, nutritionPlan, todaySession?.intensity, dateParam))
+}
+
+export async function POST(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const userId = mobile.id
+  const parsed = parseFoodLogPost(await req.json())
+  if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
+
+  const { foodId, gramsNum, mealType, logDate } = parsed
+  const food = await prisma.food.findUnique({ where: { id: foodId }, select: { id: true } })
+  if (!food) return NextResponse.json({ error: 'Alimento no encontrado' }, { status: 404 })
+
+  const log = await prisma.foodLog.create({
+    data: { userId, foodId, grams: gramsNum, mealType, date: logDate },
+    include: { food: { select: { name: true, category: true, servingG: true, servingLabel: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } } },
+  })
+
+  return NextResponse.json({ ...log, ...calcMacros(log.grams, log.food) }, { status: 201 })
+}

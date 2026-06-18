@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import Anthropic from '@anthropic-ai/sdk'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { allowed } = rateLimit(`food-scan:${session.user.id}`, { limit: 20, windowMs: 60 * 60_000 }) // 20/hora
+  const { allowed } = await rateLimitAsync(`food-scan:${session.user.id}`, { limit: 20, windowMs: 60 * 60_000 }) // 20/hora
   if (!allowed) return NextResponse.json({ error: 'Límite de escaneos alcanzado. Intenta más tarde.' }, { status: 429 })
 
   const { image, mimeType } = await req.json()
@@ -47,36 +47,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Imagen demasiado grande. Máximo 5MB.' }, { status: 400 })
   }
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mimeType ?? 'image/jpeg',
-              data: image,
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType ?? 'image/jpeg',
+                data: image,
+              },
             },
-          },
-          {
-            type: 'text',
-            text: 'Extrae los datos nutricionales de esta etiqueta y devuelve el JSON.',
-          },
-        ],
-      },
-    ],
-  })
+            {
+              type: 'text',
+              text: 'Extrae los datos nutricionales de esta etiqueta y devuelve el JSON.',
+            },
+          ],
+        },
+      ],
+    })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
-
-  // Strip markdown code blocks if present
-  const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
-
-  const data = JSON.parse(cleaned)
-  return NextResponse.json(data)
+    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+    const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+    const data = JSON.parse(cleaned)
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error('[foods/scan] AI error:', err)
+    return NextResponse.json(
+      { error: 'No se pudo procesar la imagen. Intenta con otra foto o agrega el alimento manualmente.' },
+      { status: 422 }
+    )
+  }
 }

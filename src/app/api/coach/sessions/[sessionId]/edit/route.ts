@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getSessionIntensity } from '@/lib/plan/intensity'
 
 const VALID_TYPES = [
   'RODAJE_Z2', 'FARTLEK', 'TEMPO', 'INTERVALOS', 'TIRADA_LARGA',
@@ -12,7 +13,7 @@ export async function PATCH(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.id || session.user.role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { sessionId } = await params
   const body = await req.json()
@@ -33,7 +34,10 @@ export async function PATCH(
 
   // Build update data — only allow specific fields
   const data: Record<string, unknown> = {}
-  if (body.type && VALID_TYPES.includes(body.type)) data.type = body.type
+  if (body.type && VALID_TYPES.includes(body.type)) {
+    data.type = body.type
+    data.intensity = getSessionIntensity(body.type)
+  }
   if (typeof body.durationMin === 'number' && body.durationMin > 0) data.durationMin = body.durationMin
   if (typeof body.detailText === 'string') data.detailText = body.detailText.trim() || null
   if (typeof body.zoneTarget === 'string') data.zoneTarget = body.zoneTarget.trim() || null
@@ -55,7 +59,7 @@ export async function DELETE(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.id || session.user.role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { sessionId } = await params
 

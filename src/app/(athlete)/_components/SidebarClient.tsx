@@ -32,10 +32,10 @@ export default function SidebarClient({ user, config }: Props) {
   const allNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard, show: true },
     { href: '/plan',      label: s.plan,        icon: CalendarDays,    show: features.plan },
-    { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck,  show: features.checkin },
-    { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: features.nutrition },
-    { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: features.progress },
-    { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: features.gym },
+    { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck,  show: true },
+    { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
+    { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
+    { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
     // AI Coach chat desactivado temporalmente — reactivar cuando se defina la nueva UX de AI proactiva
     // { href: '/ai-coach',  label: s.aiCoach,     icon: MessageSquare,   show: features.aiCoach },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
@@ -66,19 +66,27 @@ export default function SidebarClient({ user, config }: Props) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {allNavLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive(href) ? 'bg-white/20 text-white font-semibold' : 'text-white/65 hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          ))}
+          {allNavLinks.map(({ href, label, icon: Icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                  active
+                    ? 'bg-white/15 text-white font-semibold'
+                    : 'text-white/65 hover:bg-white/10 hover:text-white hover:translate-x-0.5'
+                )}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#f97316]" />
+                )}
+                <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
@@ -131,11 +139,14 @@ export default function SidebarClient({ user, config }: Props) {
               key={href}
               href={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors',
-                active ? 'text-[#1e3a5f]' : 'text-gray-400'
+                'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors relative',
+                active ? 'text-[#1e3a5f]' : 'text-gray-400 hover:text-gray-600'
               )}
             >
-              <Icon size={22} strokeWidth={2} />
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#f97316]" />
+              )}
+              <Icon size={22} strokeWidth={active ? 2.5 : 2} />
               {label}
             </Link>
           )

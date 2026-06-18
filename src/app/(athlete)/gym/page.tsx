@@ -1,14 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
+import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
 import PublicTemplates from './_components/PublicTemplates'
+import WeekNavBar from '../_components/WeekNavBar'
 
 // 0 = Sunday in JS Date.getDay(), but we use 1=Mon..7=Sun
-function jsToOurDow(jsDay: number): number {
-  return jsDay === 0 ? 7 : jsDay
-}
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-CO', {
@@ -18,13 +17,15 @@ function formatDate(date: Date) {
   })
 }
 
-// Returns the start of this week (Monday) and end (Sunday)
-function getWeekBounds() {
+const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+
+// Returns the start of a week (Monday) and end (Sunday), offset by N weeks
+function getWeekBounds(offsetWeeks = 0) {
   const now = new Date()
   const dow = now.getDay() // 0=Sun
   const diffToMon = (dow === 0 ? -6 : 1 - dow)
   const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMon)
+  monday.setDate(now.getDate() + diffToMon + offsetWeeks * 7)
   monday.setHours(0, 0, 0, 0)
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
@@ -32,26 +33,27 @@ function getWeekBounds() {
   return { monday, sunday }
 }
 
+function formatWeekRange(monday: Date): string {
+  const sun = new Date(monday)
+  sun.setDate(monday.getDate() + 6)
+  if (monday.getMonth() === sun.getMonth()) {
+    return `${monday.getDate()}–${sun.getDate()} ${MONTHS[monday.getMonth()]}`
+  }
+  return `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]}`
+}
+
 const DOW_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-export default async function GymPage({ searchParams }: { searchParams: Promise<{ completed?: string }> }) {
+export default async function GymPage({ searchParams }: { searchParams: Promise<{ completed?: string; weekOffset?: string; selectedDow?: string }> }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  if (!(session.user as any).features?.gym) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">🏋️</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym, sigue la progresión de cargas y accede a rutinas asignadas por tu coach.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
-      </div>
-    )
-  }
-
   const athleteId = session.user.id
-  const { completed: completedParam } = await searchParams
+  const { completed: completedParam, weekOffset: weekOffsetParam, selectedDow: selectedDowParam } = await searchParams
   const justCompleted = completedParam === '1'
+  const weekOffset = parseInt(weekOffsetParam ?? '0') || 0
+  const isCurrentWeek = weekOffset === 0
+  const selectedDow = parseInt(selectedDowParam ?? '0') || 0
 
   // Si viene de completar sesión, cargar resumen de la última sesión
   const lastSession = justCompleted
@@ -95,7 +97,12 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         include: {
           days: {
             include: {
-              exercises: true,
+              exercises: {
+                include: {
+                  exercise: { select: { name: true, muscleGroups: true } },
+                },
+                orderBy: { order: 'asc' },
+              },
             },
           },
         },
@@ -123,8 +130,18 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   const todayDow = jsToOurDow(new Date().getDay())
   const todayWorkoutDay = assigned.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
 
-  // Weekly adherence: sessions logged this week
-  const { monday, sunday } = getWeekBounds()
+  // Weekly adherence: sessions logged for the selected week
+  const { monday, sunday } = getWeekBounds(weekOffset)
+  const weekRangeLabel = formatWeekRange(monday)
+
+  // Compute calendar date number for each DOW (1=Mon…7=Sun)
+  const weekDates: Record<number, number> = {}
+  for (let dow = 1; dow <= 7; dow++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + (dow - 1))
+    weekDates[dow] = d.getDate()
+  }
+
   const weekSessions = await prisma.gymSession.findMany({
     where: {
       athleteId,
@@ -135,6 +152,80 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   })
 
   const completedDows = new Set(weekSessions.filter((s) => s.completed).map((s) => s.dayOfWeek))
+
+  // Detalle de la sesión seleccionada (SetLog reales)
+  let selectedSession: {
+    id: string
+    durationMin: number | null
+    rpe: number | null
+    notes: string | null
+    completed: boolean
+    setLogs: {
+      setNumber: number
+      weightKg: number | null
+      repsCompleted: number | null
+      completed: boolean
+      workoutExercise: {
+        id: string
+        sets: number
+        repsScheme: string
+        order: number
+        exercise: { name: string }
+      }
+    }[]
+  } | null = null
+
+  if (selectedDow >= 1 && selectedDow <= 7) {
+    const selDayStart = new Date(monday)
+    selDayStart.setDate(monday.getDate() + (selectedDow - 1))
+    selDayStart.setHours(0, 0, 0, 0)
+    const selDayEnd = new Date(selDayStart)
+    selDayEnd.setDate(selDayStart.getDate() + 1)
+
+    selectedSession = await prisma.gymSession.findFirst({
+      where: {
+        athleteId,
+        assignedWorkoutId: assigned.id,
+        dayOfWeek: selectedDow,
+        date: { gte: selDayStart, lt: selDayEnd },
+      },
+      include: {
+        setLogs: {
+          include: {
+            workoutExercise: {
+              include: {
+                exercise: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: [{ workoutExerciseId: 'asc' }, { setNumber: 'asc' }],
+        },
+      },
+    })
+  }
+
+  // Agrupar SetLogs por ejercicio para el panel de detalle
+  type ExerciseDetail = {
+    name: string
+    sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[]
+  }
+  const selectedExerciseDetail: ExerciseDetail[] = []
+  if (selectedSession?.setLogs.length) {
+    const map = new Map<string, ExerciseDetail>()
+    for (const log of selectedSession.setLogs) {
+      const key = log.workoutExercise.id
+      if (!map.has(key)) {
+        map.set(key, { name: log.workoutExercise.exercise.name, sets: [] })
+      }
+      map.get(key)!.sets.push({
+        setNumber: log.setNumber,
+        weightKg: log.weightKg,
+        repsCompleted: log.repsCompleted,
+        completed: log.completed,
+      })
+    }
+    selectedExerciseDetail.push(...map.values())
+  }
 
   // Calcular resumen de la última sesión
   const lastSessionVolume = lastSession
@@ -313,54 +404,189 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
 
       {/* Weekly adherence */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Esta semana</h2>
-          <span className="text-xs text-gray-500">{completedDows.size}/{assigned.template.days.filter(d => !d.isRestDay).length} sesiones</span>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          {/* Progress bar */}
-          <div className="h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
-            {(() => {
-              const total = assigned.template.days.filter(d => !d.isRestDay).length
-              const done = completedDows.size
-              return (
-                <div
-                  className="h-full bg-green-500 rounded-full transition-all"
-                  style={{ width: total > 0 ? `${(done / total) * 100}%` : '0%' }}
-                />
-              )
-            })()}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Esta semana</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{weekRangeLabel} · {completedDows.size}/{assigned.template.days.filter(d => !d.isRestDay).length} sesiones</p>
           </div>
-          {/* Days grid */}
-          <div className="grid grid-cols-7 gap-1">
+          <WeekNavBar
+            weekLabel={weekRangeLabel}
+            weekOffset={weekOffset}
+            canGoPrev={true}
+            canGoNext={true}
+          />
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          {/* Progress bar */}
+          {(() => {
+            const total = assigned.template.days.filter(d => !d.isRestDay).length
+            const done = completedDows.size
+            return (
+              <div className="h-1 bg-gray-100">
+                <div className="h-full bg-green-400 transition-all duration-500" style={{ width: total > 0 ? `${(done / total) * 100}%` : '0%' }} />
+              </div>
+            )
+          })()}
+          {/* CalendarStrip — mismo estilo que Mi Plan, celdas clickeables */}
+          <div className="grid grid-cols-7 divide-x divide-gray-50">
             {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
               const workoutDay = assigned.template.days.find((d) => d.dayOfWeek === dow)
-              const isToday = dow === todayDow
+              const isToday = isCurrentWeek && dow === todayDow
               const isCompleted = completedDows.has(dow)
-              const isRest = workoutDay?.isRestDay ?? true
+              const isSelected = selectedDow === dow
+              const isRest = workoutDay?.isRestDay ?? !workoutDay
               const hasSession = !!workoutDay && !isRest
 
+              // href: toggle selección del día preservando weekOffset
+              const params = new URLSearchParams()
+              if (weekOffset !== 0) params.set('weekOffset', String(weekOffset))
+              if (!isSelected) params.set('selectedDow', String(dow))
+              const cellHref = `/gym${params.toString() ? `?${params.toString()}` : ''}`
+
+              const cellBg = isSelected
+                ? 'bg-[#1e3a5f]'
+                : isCompleted && !isRest
+                ? 'bg-green-50/60'
+                : isToday
+                ? 'bg-orange-50'
+                : 'bg-white'
+
               return (
-                <div
+                <Link
                   key={dow}
-                  className={`flex flex-col items-center gap-1.5 p-2 rounded-xl ${
-                    isToday ? 'bg-[#1e3a5f]/5 ring-2 ring-[#1e3a5f]/20' : ''
-                  }`}
+                  href={cellHref}
+                  className={`relative flex flex-col items-center py-4 px-1 text-center transition-colors hover:bg-gray-50 ${cellBg}`}
                 >
-                  <span className={`text-[11px] font-semibold ${isToday ? 'text-[#1e3a5f]' : 'text-gray-400'}`}>
+                  {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316]" />}
+                  <span className={`text-[10px] font-semibold mb-1 ${
+                    isSelected ? 'text-white/70' : isToday ? 'text-[#f97316] font-bold' : 'text-gray-400'
+                  }`}>
                     {DOW_LABELS[dow]}
                   </span>
-                  <span className="text-lg leading-none">
-                    {isCompleted ? '✅' : isRest ? '😴' : hasSession ? '💪' : '—'}
+                  <div className="flex items-center gap-0.5 mb-1.5">
+                    <span className={`text-xl font-black leading-none ${
+                      isSelected ? 'text-white' : isToday ? 'text-[#f97316]' : isRest ? 'text-gray-300' : isCompleted ? 'text-green-600' : 'text-gray-800'
+                    }`}>
+                      {weekDates[dow]}
+                    </span>
+                    {isToday && !isSelected && (
+                      <span className="text-[8px] font-bold bg-[#f97316] text-white px-1 py-0.5 rounded-full leading-none ml-0.5">
+                        HOY
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-base mb-1">
+                    {isCompleted && !isRest
+                      ? <CheckCircle2 size={18} className={isSelected ? 'text-white mx-auto' : 'text-green-500 mx-auto'} />
+                      : isRest ? '😴' : hasSession ? '💪' : '—'}
                   </span>
-                  <span className={`text-[9px] text-center leading-tight ${isToday ? 'text-[#1e3a5f] font-medium' : 'text-gray-400'}`}>
-                    {isRest ? 'Descanso' : workoutDay?.muscleGroups?.[0] ?? ''}
+                  <span className={`text-[10px] font-semibold leading-tight px-0.5 ${
+                    isSelected ? 'text-white/80' : isToday ? 'text-gray-700' : isRest ? 'text-gray-400' : 'text-gray-700'
+                  }`}>
+                    {isRest ? 'Descanso' : workoutDay?.muscleGroups?.[0] ?? '—'}
                   </span>
-                </div>
+                </Link>
               )
             })}
           </div>
         </div>
+
+        {/* Panel de detalle del día seleccionado */}
+        {selectedDow >= 1 && selectedDow <= 7 && (() => {
+          const workoutDay = assigned.template.days.find(d => d.dayOfWeek === selectedDow)
+          const isRest = workoutDay?.isRestDay ?? !workoutDay
+          const dayDateNum = weekDates[selectedDow]
+          const dayLabel = `${DOW_LABELS[selectedDow]} ${dayDateNum} · ${workoutDay?.label ?? 'Sin sesión'}`
+
+          if (isRest) {
+            return (
+              <div className="mt-3 bg-white border border-gray-200 rounded-xl p-5 flex items-center gap-3">
+                <span className="text-2xl">😴</span>
+                <div>
+                  <p className="font-semibold text-gray-700">{DOW_LABELS[selectedDow]} {dayDateNum} — Descanso</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Recuperación activa. Sin sesión planificada.</p>
+                </div>
+              </div>
+            )
+          }
+
+          // Sesión completada — mostrar datos reales
+          if (selectedSession?.completed && selectedExerciseDetail.length > 0) {
+            return (
+              <div className="mt-3 bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sesión completada</p>
+                    <p className="font-bold text-[#1e3a5f] mt-0.5">{dayLabel}</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-right shrink-0">
+                    {selectedSession.durationMin && (
+                      <div>
+                        <p className="text-lg font-black text-[#1e3a5f]">{selectedSession.durationMin}</p>
+                        <p className="text-[10px] text-gray-400">min</p>
+                      </div>
+                    )}
+                    {selectedSession.rpe && (
+                      <div>
+                        <p className="text-lg font-black text-[#f97316]">{selectedSession.rpe}<span className="text-sm font-normal text-gray-400">/10</span></p>
+                        <p className="text-[10px] text-gray-400">RPE</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {selectedExerciseDetail.map((ex, i) => (
+                    <div key={i} className="px-5 py-3.5">
+                      <p className="text-sm font-semibold text-gray-900 mb-2">{ex.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {ex.sets.map((s) => (
+                          <div key={s.setNumber} className={`text-xs px-2.5 py-1.5 rounded-lg font-medium ${
+                            s.completed ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-50 text-gray-400'
+                          }`}>
+                            {s.weightKg != null && s.repsCompleted != null
+                              ? `${s.weightKg}kg × ${s.repsCompleted}`
+                              : s.repsCompleted != null
+                              ? `${s.repsCompleted} reps`
+                              : `Serie ${s.setNumber}`}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedSession.notes && (
+                  <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+                    <p className="text-xs text-gray-500 italic">{selectedSession.notes}</p>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Sesión no realizada o futura — mostrar plantilla planificada
+          if (workoutDay && !workoutDay.isRestDay) {
+            return (
+              <div className="mt-3 bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    {selectedSession && !selectedSession.completed ? 'Sesión no completada' : 'Planificado'}
+                  </p>
+                  <p className="font-bold text-[#1e3a5f] mt-0.5">{dayLabel}</p>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {workoutDay.exercises.map((ex) => (
+                    <div key={ex.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-gray-800">{ex.exercise.name}</p>
+                      <p className="text-xs text-gray-400 shrink-0">{ex.sets} × {ex.repsScheme}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          return null
+        })()}
       </section>
 
       {/* Full weekly plan */}
@@ -369,7 +595,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
           {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
             const workoutDay = assigned.template.days.find((d) => d.dayOfWeek === dow)
-            const isToday = dow === todayDow
+            const isToday = isCurrentWeek && dow === todayDow
             const isCompleted = completedDows.has(dow)
 
             return (
@@ -377,10 +603,11 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 key={dow}
                 className={`flex items-center gap-3 px-4 py-3.5 ${isToday ? 'bg-[#1e3a5f]/3' : ''}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+                <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center shrink-0 leading-none ${
                   isToday ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {DOW_LABELS[dow]}
+                  <span className="text-[9px] font-semibold">{DOW_LABELS[dow]}</span>
+                  <span className="text-sm font-bold">{weekDates[dow]}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   {workoutDay ? (
@@ -399,7 +626,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 {isCompleted && (
                   <CheckCircle2 size={18} className="text-green-500 shrink-0" />
                 )}
-                {isToday && !isCompleted && workoutDay && !workoutDay.isRestDay && (
+                {isCurrentWeek && isToday && !isCompleted && workoutDay && !workoutDay.isRestDay && (
                   <Link
                     href="/gym/session"
                     className="text-xs font-semibold text-[#f97316] shrink-0"

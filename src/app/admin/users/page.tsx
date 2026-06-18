@@ -4,13 +4,12 @@ import { ChangeRoleButton } from './_components/ChangeRoleButton'
 import { PlanSelector } from './_components/PlanSelector'
 import { AICoachToggle } from './_components/AICoachToggle'
 
-type PlanTier = 'INACTIVE' | 'PRO' | 'COACH'
+type PlanTier = 'FREE' | 'PRO' | 'COACH'
 
 function inferPlanTier(role: string, cfg: ReturnType<typeof parseUserConfig>): PlanTier {
   if (role === 'COACH') return 'COACH'
-  const f = cfg.features
-  if (f.plan && f.checkin && f.log && f.progress && f.nutrition && f.gym) return 'PRO'
-  return 'INACTIVE'
+  if (cfg.features.aiPlan || cfg.features.aiCoach) return 'PRO'
+  return 'FREE'
 }
 
 const ROLE_BADGE: Record<string, string> = {

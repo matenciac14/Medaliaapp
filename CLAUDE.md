@@ -9,6 +9,38 @@
 
 **NO pushear a producción sin autorización explícita de Miguel.**
 
+## Convención de slugs en rutas dinámicas — OBLIGATORIO
+
+Next.js exige que todos los segmentos dinámicos dentro de una misma ruta padre usen **el mismo nombre de slug**. Mezclar `[id]` y `[planId]` bajo `api/coach/plan/` rompe el build.
+
+**Slugs canónicos por entidad — usar siempre estos nombres:**
+
+| Entidad | Slug |
+|---------|------|
+| TrainingPlan | `[planId]` |
+| PlannedSession / CoachSession | `[sessionId]` |
+| Atleta / Usuario genérico | `[id]` (solo en `athlete/[id]/` o `users/[id]/`) |
+| Ejercicio de gym | `[id]` (solo en `exercises/[id]/`) |
+| Rutina de gym | `[id]` (solo en `routines/[id]/`) |
+| Semana del plan | `[weekId]` |
+
+**Regla de oro:** antes de crear una nueva ruta bajo un path dinámico existente, revisar con `Glob` los siblings para verificar que el slug coincide. Si hay conflicto, renombrar el nuevo para que iguale al existente.
+
+## Skills — decisión autónoma del agente
+
+El agente evalúa cada tarea y decide qué skills cargar. No espera instrucción explícita.
+
+**Skills disponibles y cuándo son relevantes:**
+
+- `react-native-architecture` — cualquier tarea que toque MEDALIQ-MOBILE, Expo, React Native, NativeWind, SecureStore, EAS
+- `prisma-development` — schema, migrations, queries, transacciones, relaciones en DB
+- `feature-dev` — features nuevas con impacto en múltiples capas (web + mobile + API)
+- `frontend-design` — pantallas nuevas, rediseños, componentes UI
+- `code-review` — antes de mergear cambios, validación de implementación
+- `simplify` — deuda técnica, campos muertos, código duplicado
+
+**Regla de oro**: si la tarea afecta mobile → `react-native-architecture`. Si toca la DB → `prisma-development`. Ambos pueden activarse juntos si la tarea toca las dos capas.
+
 ## Qué es
 SaaS de coaching deportivo con AI para LatAm. Cubre recomposición corporal, metas de carrera (cualquier deporte) y entrenadores con atletas. El "cerebro" es un AI coach que hace intake personalizado por deporte, genera planes periodizados y los ajusta según datos reales.
 
@@ -154,13 +186,32 @@ type UserConfig = {
 Archivo principal: `src/app/onboarding/page.tsx` (self-contained, sin imports de _steps/)
 Tipos: `src/app/onboarding/_types.ts` — WizardData, INITIAL_DATA, getSteps(), StepId
 
-### Flujo de pasos (dinámico según selección):
-```
-SPORT path:
-  main-goal → sport-select → sport-details → physical → hr-fitness → schedule → health → generating
+### Campos de routing (WizardData)
+- `healthGoal: HealthGoal` — `'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION' | 'FREE'`
+- `hasSport: boolean` — si practica un deporte actualmente
+- `mainGoal: MainGoal` — **derivado** en `handleGenerate()` antes de enviar a la API, no elegido directamente por el usuario
 
-BODY path:
-  main-goal → body-goal → sport-details → physical → hr-fitness → schedule → health → generating
+### Flujo de pasos `getSteps(data)` — dinámico según selección:
+```
+FREE:
+  health-goal → physical → generating
+
+Con deporte (hasSport=true):
+  health-goal → has-sport → sport-select → sport-details → physical → hr-fitness → schedule → health → plan-method → generating
+
+Sin deporte + MUSCLE_GAIN:
+  health-goal → has-sport → physical → plan-method → generating
+
+Sin deporte + (WEIGHT_LOSS | FITNESS | RECOMPOSITION):
+  health-goal → has-sport → physical → hr-fitness → schedule → health → plan-method → generating
+```
+
+### Derivación de mainGoal en handleGenerate():
+```ts
+healthGoal='FREE'          → mainGoal='FREE'
+hasSport=true              → mainGoal='SPORT'
+MUSCLE_GAIN sin deporte    → mainGoal='GYM'
+otros sin deporte          → mainGoal='BODY'
 ```
 
 ### Detalles por deporte (sport-details):
@@ -172,11 +223,10 @@ BODY path:
 | TRIATHLON | triathlonDistance + weakestSegment | raceDate |
 | FOOTBALL | footballPosition + competitionLevel | seasonPhase |
 | STRENGTH | strengthStyle | — |
-| BODY | — (todo opcional) | weightGoalKg, targetDate |
 
 ### FC (step hr-fitness):
 - Deportes aeróbicos (RUNNING, CYCLING, SWIMMING, TRIATHLON): pide hrSource (known/estimated) + hrMax
-- STRENGTH y BODY: solo pide experienceLevel, sin FC
+- STRENGTH: solo pide experienceLevel, sin FC
 
 ### Regla crítica isLastDataStep:
 ```js
@@ -322,7 +372,7 @@ src/app/
     upgrade/downgrade/      ← GET: downgrade a Free
     coach/invite/
     coach/join/
-    coach/plan/[id]/approve/
+    coach/plan/[planId]/approve/
     coach/profile/
     coach/programs/
     coach/posts/
@@ -429,7 +479,87 @@ src/app/
 | 51 a 100 | $5/asesorado activo/mes + AI assistant gratis |
 | +100 | $3/asesorado activo/mes + AI assistant gratis |
 
-## Lógica de negocio
+## Arquitectura — Hexagonal (Ports & Adapters)
+
+Todo código **nuevo** sigue esta estructura. El código existente en `src/lib/` no se toca — solo se migra cuando hay una razón funcional (bug, refactor solicitado).
+
+### Capas y responsabilidades
+
+```
+src/
+  domain/                        ← lógica de negocio PURA
+    plan/
+      generate-plan.use-case.ts  ← orquesta generación (nueva lógica va aquí)
+      adjust-plan.use-case.ts    ← ajustes por check-in
+      plan.types.ts              ← TrainingPlan, PlanWeek, PlannedSession (tipos de dominio)
+    checkin/
+      process-checkin.use-case.ts
+      checkin.types.ts
+    nutrition/
+      calculate-targets.use-case.ts
+    athlete/
+      athlete.types.ts
+    ports/                       ← interfaces (contratos que la infra debe cumplir)
+      plan.repository.ts         ← IPlanRepository { findById, create, update }
+      athlete.repository.ts      ← IAthleteRepository
+      ai.service.ts              ← IAIService { generateRecommendations, chat }
+      notification.service.ts    ← INotificationService { send }
+
+  infrastructure/                ← implementaciones de los ports
+    db/
+      prisma-plan.repository.ts  ← implements IPlanRepository con Prisma
+      prisma-athlete.repository.ts
+    ai/
+      anthropic.service.ts       ← implements IAIService con Claude API
+    email/
+      resend.service.ts          ← implements INotificationService (futuro)
+
+  lib/                           ← utilidades puras existentes — NO TOCAR
+    plan/formulas.ts             ← ya cumple: funciones puras sin side effects
+    plan/templates.ts
+    plan/generator.ts            ← legado: migrar gradualmente a domain/plan/
+    ai/profile.ts
+    config/user-config.ts
+    nutrition/daily-target.ts
+
+  app/                           ← capa de entrega (Next.js)
+    api/                         ← rutas DELGADAS: auth → validate → use case → respond
+                                    Si una ruta supera 40 líneas, la lógica va al dominio
+    (athlete)/                   ← UI: Server Components para data, Client para interacción
+    coach/
+    admin/
+```
+
+### Reglas de capas — OBLIGATORIO para código nuevo
+1. `domain/` nunca importa de `infrastructure/`, `app/`, Prisma, ni Next.js
+2. `app/api/` nunca escribe lógica de negocio — solo llama use cases
+3. Use cases reciben ports como parámetros (inyección de dependencias simple)
+4. Errores se lanzan desde el dominio, se capturan en la ruta
+5. Un use case = un archivo = una responsabilidad
+
+### Ejemplo de ruta correcta (< 25 líneas)
+```ts
+// app/api/plan/generate/route.ts
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user) return unauthorized()
+
+  const body = await req.json()
+  const validated = GeneratePlanSchema.safeParse(body)
+  if (!validated.success) return badRequest(validated.error)
+
+  const result = await generatePlanUseCase({
+    input: validated.data,
+    athleteId: session.user.id,
+    planRepo: new PrismaPlanRepository(),
+    aiService: new AnthropicService(),
+  })
+
+  return NextResponse.json(result)
+}
+```
+
+## Lógica de negocio existente (legado — no tocar sin razón)
 - `src/lib/plan/formulas.ts` — Karvonen HR zones, Mifflin-St Jeor TDEE, Riegel race time
 - `src/lib/plan/templates.ts` — 4 templates base, índice con fallbacks para deportes sin template
 - `src/lib/plan/generator.ts` — selecciona template, llama Haiku (solo B2C), guarda en DB

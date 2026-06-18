@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { parseAIProfile } from '@/lib/ai/profile'
@@ -31,5 +32,7 @@ export async function PATCH(req: NextRequest) {
     update: { aiProfile: newProfile },
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(revalidateTag as any)('system-config')
   return NextResponse.json({ success: true })
 }

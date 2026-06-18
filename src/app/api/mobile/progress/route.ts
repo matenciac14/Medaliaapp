@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },

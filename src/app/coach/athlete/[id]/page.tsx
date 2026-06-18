@@ -117,7 +117,7 @@ export default async function AthleteDetailPage({
             detailText: s.detailText,
             zoneTarget: s.zoneTarget,
             coachNote: s.coachNote,
-            intensity: (s as any).intensity ?? 'MODERATE',
+            intensity: s.intensity ?? 'MODERATE',
           })),
         })),
       }
@@ -131,6 +131,9 @@ export default async function AthleteDetailPage({
     hrResting: c.hrResting,
     sleepScore: c.sleepScore,
     energyLevel: c.energyLevel,
+    stressLevel: c.stressLevel ?? null,
+    motivationLevel: c.motivationLevel ?? null,
+    painLevel: c.painLevel ?? null,
     dietAdherencePct: c.dietAdherencePct,
     painFlag: c.painFlag,
     hardestSessionRpe: c.hardestSessionRpe,
@@ -160,6 +163,7 @@ export default async function AthleteDetailPage({
       recentCheckIns={checkInsData}
       nutritionPlan={nutritionPlanData}
       initialFeatures={initialFeatures}
+      initialStatus={(coachRelation.status as 'ACTIVE' | 'PAUSED') ?? 'ACTIVE'}
     />
   )
 }

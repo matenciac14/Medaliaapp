@@ -19,7 +19,7 @@ export default function PendingPoller() {
   }, [update])
 
   useEffect(() => {
-    if ((session?.user as any)?.activated) {
+    if (session?.user?.activated) {
       router.replace('/dashboard')
     }
   }, [session, router])

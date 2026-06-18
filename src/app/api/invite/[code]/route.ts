@@ -51,7 +51,7 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
   }
-  if ((session.user as any).role !== 'ATHLETE') {
+  if (session.user.role !== 'ATHLETE') {
     return NextResponse.json({ error: 'Solo atletas pueden usar este enlace.' }, { status: 403 })
   }
 

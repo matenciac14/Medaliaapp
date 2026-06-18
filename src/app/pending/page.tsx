@@ -1,5 +1,6 @@
 import { auth, signOut } from '@/auth'
 import { redirect } from 'next/navigation'
+import { prisma } from '@/lib/db/prisma'
 import PendingPoller from './_components/PendingPoller'
 
 export const metadata = {
@@ -10,10 +11,16 @@ export default async function PendingPage() {
   const session = await auth()
 
   if (!session?.user) redirect('/login')
-  if ((session.user as any).activated) redirect('/dashboard')
+  if (session.user.activated) redirect('/dashboard')
 
   const email = session.user.email ?? ''
   const name = session.user.name ?? null
+
+  const coachRelation = await prisma.coachAthlete.findFirst({
+    where: { athleteId: session.user.id },
+    select: { coach: { select: { name: true } } },
+  })
+  const coachName = coachRelation?.coach?.name ?? null
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
@@ -53,9 +60,15 @@ export default async function PendingPage() {
 
         {/* Info */}
         <div className="w-full rounded-xl px-4 py-3" style={{ backgroundColor: '#f9731610', border: '1px solid #f9731630' }}>
-          <p className="text-xs font-medium" style={{ color: '#f97316' }}>
-            Tu coach te notificará directamente cuando tu cuenta esté activa.
-          </p>
+          {coachName ? (
+            <p className="text-xs font-medium" style={{ color: '#f97316' }}>
+              Tu coach <span className="font-bold">{coachName}</span> activará tu cuenta en breve y te notificará directamente.
+            </p>
+          ) : (
+            <p className="text-xs font-medium" style={{ color: '#f97316' }}>
+              Tu coach te notificará directamente cuando tu cuenta esté activa.
+            </p>
+          )}
         </div>
 
         {/* Poller — redirige automáticamente cuando se activa */}

@@ -50,7 +50,7 @@ function adherenceBarColor(pct: number): string {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden card-hover">
       <div className="px-5 py-3 border-b border-gray-100">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
       </div>

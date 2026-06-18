@@ -993,8 +993,8 @@ function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, 
 
 // ── AdherenceChart ────────────────────────────────────────────────────
 
-function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow }: {
-  weeks: PlanClientWeek[]; currentWeekNum: number; totalWeeks: number; todayDow: number
+function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds }: {
+  weeks: PlanClientWeek[]; currentWeekNum: number; totalWeeks: number; todayDow: number; loggedIds: Set<string>
 }) {
   // Always show 5 slots: up to 2 before current + current + up to 2 after
   const startWeek = Math.max(1, Math.min(currentWeekNum - 2, totalWeeks - 4))
@@ -1010,7 +1010,7 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow }: {
       ? weekData.sessions.filter(s => s.dayOfWeek <= todayDow)
       : weekData.sessions
     const t = sessions.filter(s => s.type !== 'DESCANSO').length
-    const c = sessions.filter(s => s.done && s.type !== 'DESCANSO').length
+    const c = sessions.filter(s => (s.done || (isCurrent && loggedIds.has(s.id))) && s.type !== 'DESCANSO').length
     return { weekNum, pct: t > 0 ? (c / t) * 100 : 0, isCurrent, isFuture: false }
   }).filter(Boolean) as { weekNum: number; pct: number; isCurrent: boolean; isFuture: boolean }[]
 
@@ -1149,7 +1149,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
         (week?.sessions.filter(s => s.type !== 'FUERZA' && s.type !== 'DESCANSO').length ?? 0))
 
   const volumeLabel = isGym
-    ? formatVolume(week?.sessions.filter(s => s.done && s.type !== 'DESCANSO').reduce((sum, s) => sum + s.durationMin, 0) ?? 0)
+    ? formatVolume(week?.sessions.filter(s => (s.done || loggedIds.has(s.id)) && s.type !== 'DESCANSO').reduce((sum, s) => sum + s.durationMin, 0) ?? 0)
     : `${week?.volumeKm ?? 0} km`
 
   const realCurrentPhase = weeks.find(w => w.weekNumber === plan.currentWeek)?.phase ?? (week?.phase ?? 'BASE')
@@ -1219,11 +1219,12 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
 
           {selectedSession ? (
             <SessionDetailCard
+              key={selectedSession.id}
               session={selectedSession}
               isToday={isCurrentWeek && selectedDow === todayDow}
               isLogged={loggedIds.has(selectedSession.id)}
               onLogged={() => markLogged(selectedSession.id)}
-              onEdited={(updates) => { applyEdit(selectedSession.id, updates); router.refresh() }}
+              onEdited={(updates) => { applyEdit(selectedSession.id, updates) }}
             />
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
@@ -1266,6 +1267,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             currentWeekNum={plan.currentWeek}
             totalWeeks={plan.totalWeeks}
             todayDow={todayDow}
+            loggedIds={loggedIds}
           />
 
           <BodyCompositionCard weightData={weightData} />

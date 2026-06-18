@@ -2,21 +2,18 @@ import Link from 'next/link'
 import { CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import { parseUserConfig } from '@/lib/config/user-config'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
+import WeekNavBar from '../_components/WeekNavBar'
+import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
+import { jsToOurDow, jsToWeekIdx } from '@/lib/core/date-utils'
 
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃',
-  FARTLEK: '🏃',
-  TIRADA_LARGA: '🏃',
-  CICLA: '🚴',
-  NATACION: '🏊',
-  FUERZA: '💪',
-  DESCANSO: '😴',
-}
+// Mon-first week labels (idx 0=Mon … 6=Sun)
+const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -43,24 +40,16 @@ function formatDate() {
   })
 }
 
-// Lunes=0 … Domingo=6 (semana laboral LatAm)
-const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-// JS: 0=Dom,1=Lun…6=Sáb → convertir a índice Lun-Dom
-function jsToWeekIdx(jsDay: number) {
-  return jsDay === 0 ? 6 : jsDay - 1
-}
-// 1=Lun…7=Dom (para WorkoutDay.dayOfWeek)
-function jsToOurDow(jsDay: number) {
-  return jsDay === 0 ? 7 : jsDay
-}
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ weekOffset?: string }> }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
   const userId = session.user.id
+  const { weekOffset: weekOffsetParam } = await searchParams
+  const rawWeekOffset = parseInt(weekOffsetParam ?? '0') || 0
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlanRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -69,8 +58,9 @@ export default async function DashboardPage() {
         dailyLogs: { orderBy: { date: 'desc' }, take: 1 },
       },
     }),
-    prisma.trainingPlan.findFirst({
+    prisma.trainingPlan.findMany({
       where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
@@ -98,6 +88,82 @@ export default async function DashboardPage() {
 
   if (!dbUser) redirect('/login')
 
+  // ── Seleccionar el plan ACTIVE correcto cuando hay duplicados ─────────────
+  let activePlanRaw: (typeof activePlansRaw)[0] | null = activePlansRaw[0] ?? null
+  if (activePlansRaw.length > 1) {
+    let bestLogCount = -1
+    for (const p of activePlansRaw) {
+      const logCount = p.weeks.flatMap(w => w.sessions).filter(s => s.log).length
+      if (logCount > bestLogCount) { bestLogCount = logCount; activePlanRaw = p }
+    }
+    const winnerIds = new Set([activePlanRaw?.id])
+    const loserIds = activePlansRaw.filter(p => !winnerIds.has(p.id)).map(p => p.id)
+    if (loserIds.length > 0) {
+      await prisma.trainingPlan.updateMany({
+        where: { id: { in: loserIds } },
+        data: { status: PlanStatus.COMPLETED },
+      }).catch(() => {})
+    }
+  }
+
+  // ── Lifecycle: detectar plan expirado → RECOVERY / FREE ───────────────────
+  type DashboardMode = 'TRAINING' | 'RECOVERY' | 'FREE'
+  type CompletedPlanInfo = { endDate: Date; name: string; totalWeeks: number; sessionsLogged: number; sessionsTotal: number }
+  let lastCompletedPlanInfo: CompletedPlanInfo | null = null
+
+  if (activePlanRaw) {
+    const now = new Date()
+    const rawWeek = Math.floor((now.getTime() - new Date(activePlanRaw.startDate).getTime()) / 86400000 / 7) + 1
+    if (rawWeek > activePlanRaw.totalWeeks && now > new Date(activePlanRaw.endDate)) {
+      await prisma.trainingPlan.update({
+        where: { id: activePlanRaw.id },
+        data: { status: PlanStatus.COMPLETED },
+      }).catch(() => {})
+      const allSessions = activePlanRaw.weeks.flatMap(w => w.sessions)
+      lastCompletedPlanInfo = {
+        endDate: new Date(activePlanRaw.endDate),
+        name: activePlanRaw.name,
+        totalWeeks: activePlanRaw.totalWeeks,
+        sessionsLogged: allSessions.filter(s => s.log).length,
+        sessionsTotal: allSessions.length,
+      }
+      activePlanRaw = null
+    }
+  }
+
+  const activePlan = activePlanRaw ?? null
+
+  // Si no hay plan activo (o recién expiró), buscar el último COMPLETED en DB
+  if (!activePlan && !lastCompletedPlanInfo) {
+    const raw = await prisma.trainingPlan.findFirst({
+      where: { userId, status: 'COMPLETED' },
+      orderBy: { endDate: 'desc' },
+      select: {
+        endDate: true, name: true, totalWeeks: true,
+        weeks: { select: { sessions: { select: { log: { select: { id: true } } } } } },
+      },
+    })
+    if (raw) {
+      const allSessions = raw.weeks.flatMap(w => w.sessions)
+      lastCompletedPlanInfo = {
+        endDate: new Date(raw.endDate),
+        name: raw.name,
+        totalWeeks: raw.totalWeeks,
+        sessionsLogged: allSessions.filter(s => s.log).length,
+        sessionsTotal: allSessions.length,
+      }
+    }
+  }
+
+  const recoveryDaysSinceEnd = lastCompletedPlanInfo
+    ? Math.floor((Date.now() - lastCompletedPlanInfo.endDate.getTime()) / 86400000)
+    : null
+  const dashboardMode: DashboardMode = activePlan
+    ? 'TRAINING'
+    : lastCompletedPlanInfo && recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 14
+      ? 'RECOVERY'
+      : 'FREE'
+
   const firstName = (dbUser.name ?? dbUser.email ?? 'Atleta').split(' ')[0]
 
   // ── AI chat: límite mensual ────────────────────────────────────────────────
@@ -109,7 +175,6 @@ export default async function DashboardPage() {
   const aiMonthlyLimit = userConfig.ai.monthlyLimit
   const nextMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1))
   const aiResetAt = nextMonth.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
-  const activePlan = activePlanRaw ?? null
   const profile = dbUser.profile
   const lastCheckIn = dbUser.checkIns[0] ?? null
   const lastDailyLog = dbUser.dailyLogs[0] ?? null
@@ -122,7 +187,11 @@ export default async function DashboardPage() {
   // ── Plan y semana actual ───────────────────────────────────────────────────
   let planData = { name: 'Sin plan', totalWeeks: 0, currentWeek: 0, phase: 'BASE' }
   let todaySession: { id: string; type: string; intensity: string; durationMin: number; zoneTarget: string; detailText: string; completed: boolean } | null = null
-  let weekSessionMap: Record<number, { type: string; label: string; done: boolean }> = {}
+  let weekSessionMap: Record<number, { type: string; label: string; done: boolean; durationMin: number; zoneTarget: string; intensity: string }> = {}
+  let currentWeekVolumeKm: number | null = null
+  let weekOffset = 0
+  let selectedWeekNum = 0
+  let isCurrentWeek = true
 
   if (activePlan) {
     const now = new Date()
@@ -130,14 +199,18 @@ export default async function DashboardPage() {
     const rawWeek = Math.floor(diffDays / 7) + 1
     const currentWeek = Math.max(1, Math.min(activePlan.totalWeeks, rawWeek))
 
-    // Si el plan terminó, marcarlo COMPLETED para que no quede en "Semana 18/18" para siempre
-    if (rawWeek > activePlan.totalWeeks && new Date() > new Date(activePlan.endDate)) {
-      prisma.trainingPlan.update({
-        where: { id: activePlan.id },
-        data: { status: 'COMPLETED' },
-      }).catch(() => {}) // fire-and-forget, no bloquear el render
-    }
+    // Offset libre de calendario — solo impedimos ir antes del inicio del plan
+    weekOffset = Math.max(1 - currentWeek, rawWeekOffset)
+    selectedWeekNum = currentWeek + weekOffset
+    isCurrentWeek = weekOffset === 0
+
+    // currentPlanWeek: always the real current week (for todaySession card)
     const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek)
+      ?? activePlan.weeks[activePlan.weeks.length - 1]
+      ?? null
+
+    // selectedPlanWeek: la semana que muestra el strip — null si está fuera del plan
+    const selectedPlanWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
 
     planData = {
       name: activePlan.name,
@@ -146,34 +219,50 @@ export default async function DashboardPage() {
       phase: currentPlanWeek?.phase ?? 'BASE',
     }
 
-    // Sesión de hoy
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
-    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
-    const todayPlanned = await prisma.plannedSession.findFirst({
-      where: { week: { planId: activePlan.id }, date: { gte: todayStart, lte: todayEnd } },
-      include: { log: true },
-    })
-    if (todayPlanned) {
-      todaySession = {
-        id: todayPlanned.id,
-        type: todayPlanned.type,
-        intensity: (todayPlanned as any).intensity ?? 'MODERATE',
-        durationMin: todayPlanned.durationMin,
-        zoneTarget: todayPlanned.zoneTarget ?? 'Z2',
-        detailText: todayPlanned.detailText ?? '',
-        completed: !!todayPlanned.log,
+    // todaySession always from the real current week
+    if (currentPlanWeek) {
+      const todayPlanned = currentPlanWeek.sessions.find(s => s.dayOfWeek === todayDow) ?? null
+      if (todayPlanned && todayPlanned.type !== 'DESCANSO') {
+        todaySession = {
+          id: todayPlanned.id,
+          type: todayPlanned.type,
+          intensity: todayPlanned.intensity ?? 'MODERATE',
+          durationMin: todayPlanned.durationMin,
+          zoneTarget: todayPlanned.zoneTarget ?? 'Z2',
+          detailText: todayPlanned.detailText ?? '',
+          completed: !!todayPlanned.log,
+        }
       }
     }
 
-    // Mapa de sesiones por día de la semana (0=Lun…6=Dom)
-    if (currentPlanWeek) {
-      for (const s of currentPlanWeek.sessions) {
+    // weekSessionMap from selectedPlanWeek (the one the strip shows)
+    if (selectedPlanWeek) {
+      for (const s of selectedPlanWeek.sessions) {
         const idx = jsToWeekIdx(s.dayOfWeek)
         weekSessionMap[idx] = {
           type: s.type,
           label: (s.detailText ?? s.type).slice(0, 28),
           done: !!s.log,
+          durationMin: s.durationMin,
+          zoneTarget: s.zoneTarget ?? '',
+          intensity: s.intensity ?? 'MODERATE',
         }
+      }
+      currentWeekVolumeKm = selectedPlanWeek.volumeKm ?? null
+    }
+  }
+
+  // ── GYM users (no TrainingPlan): fill weekSessionMap from assignedWorkout ──
+  if (!activePlan && assignedWorkout) {
+    for (const day of assignedWorkout.template.days) {
+      const idx = jsToWeekIdx(day.dayOfWeek)
+      weekSessionMap[idx] = {
+        type: day.isRestDay ? 'DESCANSO' : 'FUERZA',
+        label: day.isRestDay ? 'Descanso' : ((day as any).label ?? (day as any).muscleGroups?.[0] ?? 'Gym'),
+        done: false,
+        durationMin: 60,
+        zoneTarget: '',
+        intensity: 'MODERATE',
       }
     }
   }
@@ -199,17 +288,48 @@ export default async function DashboardPage() {
 
   // ── Día actual ────────────────────────────────────────────────────────────
   const todayWeekIdx = jsToWeekIdx(new Date().getDay())
-  const completedCount = Object.values(weekSessionMap).filter(s => s.done).length
-  const totalTraining = Object.keys(weekSessionMap).length
+  const completedCount = Object.values(weekSessionMap).filter(s => s.done && s.type !== 'DESCANSO').length
+  const totalTraining = Object.values(weekSessionMap).filter(s => s.type !== 'DESCANSO').length
+
+  // ── Rango de fechas de la semana actual ────────────────────────────────────
+  // Usamos el lunes calendario real de la semana de hoy (igual que PlanClient.getWeekMonday).
+  // NO usamos startDate del plan + offset: eso daría el límite interno del plan, no el lunes real.
+  const weekStartDate = (() => {
+    const today = new Date()
+    const dow = today.getDay() === 0 ? 7 : today.getDay() // 1=Lun…7=Dom
+    const monday = new Date(today)
+    monday.setHours(0, 0, 0, 0)
+    monday.setDate(today.getDate() - (dow - 1) + weekOffset * 7)
+    return monday
+  })()
+  const weekDateLabel = (() => {
+    const end = new Date(weekStartDate)
+    end.setDate(end.getDate() + 6)
+    const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    const startStr = `${weekStartDate.getDate()} ${MONTHS[weekStartDate.getMonth()]}`
+    const endStr = weekStartDate.getMonth() === end.getMonth()
+      ? `${end.getDate()} ${MONTHS[end.getMonth()]}`
+      : `${end.getDate()} ${MONTHS[end.getMonth()]}`
+    const rangeStr = weekStartDate.getMonth() === end.getMonth()
+      ? `${weekStartDate.getDate()}–${end.getDate()} ${MONTHS[weekStartDate.getMonth()]}`
+      : `${startStr} – ${endStr}`
+    return activePlan ? `Sem. ${selectedWeekNum || planData.currentWeek} · ${rangeStr}` : rangeStr
+  })()
+  // Fecha numérica para cada día del strip (0=Lun…6=Dom)
+  const weekDayDates: Record<number, number> = Object.fromEntries(
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStartDate)
+      d.setDate(d.getDate() + i)
+      return [i, d.getDate()]
+    })
+  )
 
   // ── Check-in semanal pendiente ─────────────────────────────────────────────
   // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
   const checkinWeekNumber = activePlan
     ? planData.currentWeek
     : Math.ceil(((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000))
-  const thisWeekCheckIn = await prisma.weeklyCheckIn.findUnique({
-    where: { userId_weekNumber: { userId, weekNumber: checkinWeekNumber } },
-  })
+  const thisWeekCheckIn = dbUser.checkIns.find(c => c.weekNumber === checkinWeekNumber) ?? null
   const checkinPending = !thisWeekCheckIn
 
   const phaseDisplay = phaseLabel(planData.phase)
@@ -277,25 +397,23 @@ export default async function DashboardPage() {
   }
 
   // ── Carga semanal (volumen planificado) ────────────────────────────────────
-  const currentPlanWeekData = activePlan?.weeks.find((w: { weekNumber: number }) => w.weekNumber === planData.currentWeek)
+  const currentVolume = currentWeekVolumeKm
   const prevPlanWeekData = activePlan?.weeks.find((w: { weekNumber: number }) => w.weekNumber === planData.currentWeek - 1)
-  const currentVolume = currentPlanWeekData?.volumeKm ?? null
   const prevVolume = prevPlanWeekData?.volumeKm ?? null
   const volumeDeltaPct = currentVolume && prevVolume
     ? Math.round(((currentVolume - prevVolume) / prevVolume) * 100)
     : null
 
-  // ── Banner trial expirando ────────────────────────────────────────────────
-  let trialDaysLeft: number | null = null
-  if (userConfig.trial?.plan === 'TRIAL' && userConfig.trial?.endsAt) {
-    const msLeft = new Date(userConfig.trial.endsAt).getTime() - Date.now()
-    const days = Math.ceil(msLeft / 86400000)
-    if (days <= 5 && days > 0) trialDaysLeft = days
-  }
-
-  const SESSION_SHORT: Record<string, string> = {
-    RODAJE_Z2: 'Z2', FARTLEK: 'FK', TIRADA_LARGA: 'TL',
-    CICLA: 'CIC', NATACION: 'NAT', FUERZA: 'FZA', DESCANSO: '·',
+  // ── Adherencia últimas 4 semanas ─────────────────────────────────────────
+  let last4WeeksAdherencePct: number | null = null
+  if (activePlan && activePlan.weeks.length > 0) {
+    const currentWeekIdx = activePlan.weeks.findIndex(w => w.weekNumber === planData.currentWeek)
+    const from = Math.max(0, currentWeekIdx - 3)
+    const last4 = activePlan.weeks.slice(from, currentWeekIdx + 1)
+    const allSessions = last4.flatMap(w => w.sessions).filter(s => s.type !== 'DESCANSO')
+    if (allSessions.length > 0) {
+      last4WeeksAdherencePct = Math.round((allSessions.filter(s => s.log).length / allSessions.length) * 100)
+    }
   }
 
   return (
@@ -319,9 +437,14 @@ export default async function DashboardPage() {
               🔥 {streakDays} días · racha activa
             </span>
           )}
-          {trialDaysLeft !== null && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">
-              {trialDaysLeft}d trial
+          {last4WeeksAdherencePct !== null && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border
+              ${last4WeeksAdherencePct >= 70
+                ? 'bg-green-50 border-green-200/60 text-green-700'
+                : last4WeeksAdherencePct >= 40
+                  ? 'bg-amber-50 border-amber-200/60 text-amber-700'
+                  : 'bg-red-50 border-red-200/60 text-red-700'}`}>
+              {last4WeeksAdherencePct}% adherencia
             </span>
           )}
         </div>
@@ -523,117 +646,179 @@ export default async function DashboardPage() {
 
       </div>
 
-      {/* Banner trial expirando */}
-      {trialDaysLeft !== null && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={16} className="text-amber-600 shrink-0" />
-            <p className="text-sm font-semibold text-amber-800">
-              Tu período de prueba vence en {trialDaysLeft} {trialDaysLeft === 1 ? 'día' : 'días'}
-            </p>
-          </div>
-          <Link href="/upgrade" className="text-xs font-bold bg-amber-600 text-white px-3 py-1.5 rounded-lg shrink-0 hover:bg-amber-700 transition-colors">
-            Activar Pro
-          </Link>
-        </div>
-      )}
-
-      {/* Layout: 2 columnas en desktop si AI Coach activo, columna única si no */}
-      <div className={userConfig.features.aiCoach
-        ? 'lg:grid lg:grid-cols-[1fr_300px] lg:gap-6 lg:items-start space-y-6 lg:space-y-0'
-        : 'space-y-6'
-      }>
+      <div className="space-y-6">
 
         {/* ── Columna principal ── */}
         <div className="space-y-5">
 
-          {/* Esta semana — tarjetas estilo Figma */}
+          {/* Esta semana */}
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Esta semana</h2>
-              <span className="text-xs text-gray-400">{completedCount}/{totalTraining} completadas</span>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Esta semana</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{weekDateLabel}</p>
+              </div>
+              {dashboardMode === 'TRAINING' && (
+                <WeekNavBar
+                  weekLabel={`Sem. ${selectedWeekNum || planData.currentWeek}`}
+                  weekOffset={weekOffset}
+                  canGoPrev={selectedWeekNum > 1}
+                  canGoNext={true}
+                />
+              )}
             </div>
             <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4">
-              {totalTraining > 0 && (
-                <div className="h-1 bg-gray-100 rounded-full mb-3 overflow-hidden">
+
+              {/* ── RECOVERY: banner plan completado ── */}
+              {dashboardMode === 'RECOVERY' && lastCompletedPlanInfo && (
+                <div className="mb-4 p-3 bg-green-50 rounded-xl border border-green-100 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-green-800">🏆 {lastCompletedPlanInfo.name}</p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      {lastCompletedPlanInfo.sessionsLogged}/{lastCompletedPlanInfo.sessionsTotal} sesiones completadas
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-green-600 whitespace-nowrap shrink-0">
+                    Recuperación · día {(recoveryDaysSinceEnd ?? 0) + 1}/14
+                  </span>
+                </div>
+              )}
+
+              {/* ── FREE: CTA nueva meta (si hay plan completado) ── */}
+              {dashboardMode === 'FREE' && lastCompletedPlanInfo && (
+                <div className="mb-4 p-3 bg-[#1e3a5f]/5 rounded-xl border border-[#1e3a5f]/10 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-[#1e3a5f]">¿Lista tu próxima meta?</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Completaste {lastCompletedPlanInfo.name} hace {recoveryDaysSinceEnd} días
+                    </p>
+                  </div>
+                  <Link
+                    href="/new-goal"
+                    className="text-xs font-bold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0"
+                  >
+                    Nueva meta
+                  </Link>
+                </div>
+              )}
+
+              {/* ── TRAINING: barra de progreso ── */}
+              {dashboardMode === 'TRAINING' && totalTraining > 0 && (
+                <div className="h-1 bg-gray-100 rounded-full mb-4 overflow-hidden">
                   <div className="h-full bg-[#22c55e] rounded-full transition-all" style={{ width: `${(completedCount / totalTraining) * 100}%` }} />
                 </div>
               )}
-              <div className="grid grid-cols-7 gap-1.5">
+
+              {/* Strip de días */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-7 sm:overflow-visible">
                 {WEEK_DAYS.map((day, idx) => {
-                  const isToday = idx === todayWeekIdx
+                  // isActuallyToday: solo marca HOY si estamos viendo la semana actual
+                  const isActuallyToday = isCurrentWeek && idx === todayWeekIdx
                   const s = weekSessionMap[idx]
                   const isDone = s?.done
                   const isRest = s?.type === 'DESCANSO'
                   const hasSession = !!s && !isRest
+                  const emoji = SESSION_ICONS[s?.type ?? ''] ?? (isRest ? '😴' : null)
+                  const sessionName = SESSION_NAMES[s?.type ?? ''] ?? null
+
+                  const cardBg = !s
+                    ? isActuallyToday ? 'bg-gray-100 border border-gray-200' : 'bg-gray-50'
+                    : isDone ? 'bg-[#22c55e]'
+                    : isActuallyToday ? 'bg-[#1e3a5f]'
+                    : hasSession ? 'bg-white border border-gray-200'
+                    : 'bg-gray-50'
+
+                  const dayColor = !s
+                    ? isActuallyToday ? 'text-gray-500' : 'text-gray-300'
+                    : isDone || isActuallyToday ? 'text-white/80' : 'text-gray-400'
+
+                  const numColor = !s
+                    ? 'text-gray-300'
+                    : isDone || isActuallyToday ? 'text-white' : 'text-gray-900'
+
                   return (
-                    <div
-                      key={day}
-                      className={`rounded-xl px-1 py-2.5 flex flex-col items-center gap-1 text-center min-h-[60px] justify-center
-                        ${isDone ? 'bg-[#22c55e]' :
-                          isToday && hasSession ? 'bg-[#1e3a5f]' :
-                          isToday ? 'bg-[#1e3a5f]/8 ring-2 ring-[#1e3a5f]/20' :
-                          isRest ? 'bg-gray-50' :
-                          hasSession ? 'bg-gray-100' : 'bg-gray-50'}`}
-                    >
-                      <span className={`text-[11px] font-semibold leading-none
-                        ${isDone || (isToday && hasSession) ? 'text-white' :
-                          isToday ? 'text-[#1e3a5f]' : 'text-gray-500'}`}>
-                        {day}
-                      </span>
-                      {isDone ? (
-                        <CheckCircle2 size={11} className="text-white/90 mt-0.5" />
-                      ) : hasSession ? (
-                        <span className={`text-[8px] font-semibold leading-tight mt-0.5 text-center break-all
-                          ${isToday ? 'text-white/80' : 'text-gray-400'}`}>
-                          {SESSION_SHORT[s.type] ?? s.type.slice(0, 3)}
+                    <div key={day} className={`rounded-2xl flex-shrink-0 w-[104px] sm:w-auto p-3 flex flex-col gap-1 min-h-[120px] ${cardBg}`}>
+                      <div className="flex items-start justify-between gap-1">
+                        <span className={`text-[11px] font-semibold leading-none ${dayColor}`}>{day}</span>
+                        {isDone && <span className="text-white text-xs leading-none">✓</span>}
+                        {isActuallyToday && s && !isDone && (
+                          <span className="text-[8px] font-bold bg-[#f97316] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+                        )}
+                        {isActuallyToday && !s && (
+                          <span className="text-[8px] font-bold bg-gray-400 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+                        )}
+                      </div>
+                      <span className={`text-[22px] font-black leading-none mt-0.5 ${numColor}`}>{weekDayDates[idx]}</span>
+                      {emoji && <span className="text-xl leading-none mt-1">{emoji}</span>}
+                      {sessionName && (
+                        <span className={`text-[11px] font-semibold leading-tight mt-0.5 ${isDone || isActuallyToday ? 'text-white' : isRest ? 'text-gray-400' : 'text-gray-700'}`}>
+                          {sessionName}
                         </span>
-                      ) : (
-                        <span className="text-[10px] text-gray-300 mt-0.5">—</span>
+                      )}
+                      {hasSession && s!.durationMin > 0 && (
+                        <span className={`text-[10px] leading-none ${isDone || isActuallyToday ? 'text-white/70' : 'text-gray-400'}`}>
+                          {s!.durationMin} min{s!.zoneTarget ? ` · ${s!.zoneTarget}` : ''}
+                        </span>
                       )}
                     </div>
                   )
                 })}
               </div>
 
-              {/* Sesión de hoy — callout compacto dentro de la card */}
-              {todaySession && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-xl shrink-0">{SESSION_ICONS[todaySession.type] ?? '🏅'}</span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 leading-tight">
-                          {todaySession.durationMin} min · Zona {todaySession.zoneTarget}
+              {/* ── TRAINING: detalle sesión de hoy — solo si estamos en la semana actual ── */}
+              {dashboardMode === 'TRAINING' && isCurrentWeek && todaySession && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{SESSION_ICONS[todaySession.type] ?? '🏅'}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ')}
                         </p>
-                        <p className="text-xs text-gray-500 truncate capitalize">{todaySession.type.toLowerCase().replace(/_/g, ' ')}</p>
+                        <div className="flex gap-1.5 flex-wrap mt-1">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            {todaySession.durationMin} min
+                          </span>
+                          {todaySession.zoneTarget && todaySession.zoneTarget !== '—' && todaySession.zoneTarget !== '' && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                              Zona {todaySession.zoneTarget}
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
+                            ${todaySession.intensity === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                              todaySession.intensity === 'LOW' ? 'bg-green-100 text-green-700' :
+                              'bg-sky-100 text-sky-700'}`}>
+                            {todaySession.intensity === 'HIGH' ? '🔥 ALTA' :
+                             todaySession.intensity === 'LOW' ? '🌿 BAJA' : '⚡ MODERADA'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       {todaySession.completed ? (
-                        <span className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
-                          <CheckCircle2 size={13} /> Hecha
+                        <span className="flex items-center gap-1 text-[#22c55e] text-sm font-semibold">
+                          <CheckCircle2 size={16} /> Completada
                         </span>
                       ) : (
-                        <>
-                          <QuickLog sessionId={todaySession.id} initialCompleted={false} />
-                        </>
+                        <QuickLog sessionId={todaySession.id} initialCompleted={false} />
                       )}
+                      <Link href="/plan" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] transition-colors whitespace-nowrap">
+                        Ver mi plan →
+                      </Link>
                     </div>
                   </div>
                 </div>
               )}
-              {!activePlan && (
-                <p className="text-xs text-gray-400 mt-3 text-center">Sin plan activo</p>
-              )}
-              {activePlan && !todaySession && (
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
+
+              {/* ── TRAINING: descanso o gym — solo si estamos en la semana actual ── */}
+              {dashboardMode === 'TRAINING' && isCurrentWeek && activePlan && !todaySession && (
+                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
                   <span>😴</span>
-                  <span>{planData.currentWeek >= planData.totalWeeks ? '¡Plan completado! 🏆' : 'Descanso hoy'}</span>
+                  <span>Descanso hoy</span>
                 </div>
               )}
-              {hasGymToday && !todaySession && (
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+              {isCurrentWeek && hasGymToday && !todaySession && (
+                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span>💪</span>
                     <div>
@@ -647,13 +832,37 @@ export default async function DashboardPage() {
                 </div>
               )}
 
-              {activePlan && (
-                <div className="mt-3 flex gap-2 flex-wrap">
+              {/* ── RECOVERY: footer ── */}
+              {dashboardMode === 'RECOVERY' && (
+                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500">Movilidad, caminatas o descanso activo. Sin intensidad.</p>
+                  <Link href="/log" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] whitespace-nowrap">
+                    Registrar →
+                  </Link>
+                </div>
+              )}
+
+              {/* ── FREE: footer ── */}
+              {dashboardMode === 'FREE' && (
+                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500">Entrenamiento libre — sin estructura fija</p>
+                  <Link href="/log" className="text-xs font-semibold text-[#f97316] hover:opacity-80 whitespace-nowrap">
+                    + Registrar sesión
+                  </Link>
+                </div>
+              )}
+
+              {/* ── TRAINING: footer badges ── */}
+              {dashboardMode === 'TRAINING' && activePlan && (
+                <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 flex-wrap items-center">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${PHASE_COLORS[planData.phase] ?? 'bg-gray-100 text-gray-600'}`}>
                     Fase {phaseDisplay}
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
-                    Semana {planData.currentWeek}/{planData.totalWeeks}
+                    Semana {selectedWeekNum || planData.currentWeek}/{planData.totalWeeks}
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                    {completedCount}/{totalTraining} completadas
                   </span>
                 </div>
               )}
@@ -676,25 +885,6 @@ export default async function DashboardPage() {
             </Link>
           )}
 
-          {/* AI Coach link card — solo mobile */}
-          {userConfig.features.aiCoach && (
-            <div className="lg:hidden">
-              <Link href="/ai-coach" className="block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 active:scale-[0.98] transition-transform">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">AI Coach</p>
-                    <p className="text-xs text-gray-500">
-                      {aiMonthlyLimit >= 999999
-                        ? 'Mensajes ilimitados este mes'
-                        : `${Math.max(0, aiMonthlyLimit - aiMessagesUsed)} mensajes disponibles`}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400 shrink-0" />
-                </div>
-              </Link>
-            </div>
-          )}
 
           {/* Card coach real — solo si tiene coach asignado */}
           {coachRelation && (
@@ -784,31 +974,6 @@ export default async function DashboardPage() {
 
         </div>{/* fin columna principal */}
 
-        {/* ── Columna derecha: AI Coach card (solo desktop) ── */}
-        {userConfig.features.aiCoach && (
-          <div className="hidden lg:block lg:sticky lg:top-8">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tu AI Coach</h2>
-            <Link href="/ai-coach" className="block bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">AI Coach</p>
-                  <p className="text-xs text-gray-400">Powered by Claude</p>
-                </div>
-                <span className="ml-auto w-2 h-2 rounded-full bg-green-400" />
-              </div>
-              <p className="text-sm text-gray-500 mb-4">Tu asistente deportivo. Pregunta sobre tu plan, recuperación o nutrición.</p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">
-                  {aiMonthlyLimit >= 999999
-                    ? 'Mensajes ilimitados'
-                    : `${Math.max(0, aiMonthlyLimit - aiMessagesUsed)} msgs disponibles`}
-                </span>
-                <span className="text-xs font-semibold text-[#f97316]">Abrir chat →</span>
-              </div>
-            </Link>
-          </div>
-        )}
 
       </div>{/* fin layout grid */}
       </div>

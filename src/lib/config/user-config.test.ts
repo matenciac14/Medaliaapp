@@ -1,23 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { parseUserConfig, DEFAULT_USER_CONFIG, type UserPlan } from './user-config'
+import { parseUserConfig, DEFAULT_USER_CONFIG, getUserPlan, type UserPlan } from './user-config'
 
 // ---------------------------------------------------------------------------
 // DEFAULT_USER_CONFIG — estado inicial correcto
 // ---------------------------------------------------------------------------
 describe('DEFAULT_USER_CONFIG', () => {
-  it('trial.plan es INACTIVE por defecto', () => {
-    expect(DEFAULT_USER_CONFIG.trial.plan).toBe('INACTIVE')
+  it('plan es true por defecto — todos los usuarios acceden al módulo de plan', () => {
+    expect(DEFAULT_USER_CONFIG.features.plan).toBe(true)
   })
 
-  it('todas las features están en false por defecto', () => {
+  it('features operacionales activadas por defecto', () => {
     const f = DEFAULT_USER_CONFIG.features
-    expect(f.plan).toBe(false)
-    expect(f.checkin).toBe(false)
-    expect(f.nutrition).toBe(false)
-    expect(f.progress).toBe(false)
-    expect(f.log).toBe(false)
-    expect(f.gym).toBe(false)
+    expect(f.plan).toBe(true)
+    expect(f.checkin).toBe(true)
+    expect(f.nutrition).toBe(true)
+    expect(f.progress).toBe(true)
+    expect(f.log).toBe(true)
+    expect(f.gym).toBe(true)
+  })
+
+  it('features de pago desactivadas por defecto', () => {
+    const f = DEFAULT_USER_CONFIG.features
+    expect(f.aiPlan).toBe(false)
     expect(f.aiCoach).toBe(false)
+    expect(f.coach).toBe(false)
   })
 
   it('ai.monthlyLimit es 0 por defecto', () => {
@@ -48,22 +54,15 @@ describe('parseUserConfig', () => {
   })
 
   it('merge parcial de features — defaults conservados', () => {
-    const result = parseUserConfig({ features: { plan: true } })
-    expect(result.features.plan).toBe(true)
-    expect(result.features.checkin).toBe(false) // default preservado
-    expect(result.features.gym).toBe(false)     // default preservado
-    expect(result.features.aiCoach).toBe(false)
-  })
-
-  it('merge parcial de trial', () => {
-    const result = parseUserConfig({ trial: { plan: 'PRO', endsAt: '2026-12-31' } })
-    expect(result.trial.plan).toBe('PRO')
-    expect(result.trial.endsAt).toBe('2026-12-31')
+    const result = parseUserConfig({ features: { aiPlan: true } })
+    expect(result.features.aiPlan).toBe(true)
+    expect(result.features.plan).toBe(true)   // default true preservado
+    expect(result.features.aiCoach).toBe(false) // default false preservado
   })
 
   it('merge parcial de ai — monthlyLimit override', () => {
-    const result = parseUserConfig({ ai: { monthlyLimit: 999999, messagesThisMonth: 5, messagesResetAt: '2026-06' } })
-    expect(result.ai.monthlyLimit).toBe(999999)
+    const result = parseUserConfig({ ai: { monthlyLimit: 100, messagesThisMonth: 5, messagesResetAt: '2026-06' } })
+    expect(result.ai.monthlyLimit).toBe(100)
     expect(result.ai.messagesThisMonth).toBe(5)
   })
 
@@ -86,30 +85,34 @@ describe('parseUserConfig', () => {
 })
 
 // ---------------------------------------------------------------------------
-// UserPlan — solo acepta TRIAL | PRO | INACTIVE (no FREE)
+// getUserPlan — deriva FREE | PRO de features
+// ---------------------------------------------------------------------------
+describe('getUserPlan', () => {
+  it('FREE cuando aiPlan y aiCoach son false', () => {
+    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features })).toBe('FREE')
+  })
+
+  it('PRO cuando aiPlan es true', () => {
+    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiPlan: true })).toBe('PRO')
+  })
+
+  it('PRO cuando aiCoach es true', () => {
+    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiCoach: true })).toBe('PRO')
+  })
+
+  it('PRO cuando ambos son true', () => {
+    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiPlan: true, aiCoach: true })).toBe('PRO')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// UserPlan — solo acepta FREE | PRO
 // ---------------------------------------------------------------------------
 describe('UserPlan — valores válidos', () => {
-  it('acepta TRIAL, PRO e INACTIVE', () => {
-    const planes: UserPlan[] = ['TRIAL', 'PRO', 'INACTIVE']
+  it('acepta FREE y PRO', () => {
+    const planes: UserPlan[] = ['FREE', 'PRO']
     planes.forEach(plan => {
-      const result = parseUserConfig({ trial: { plan, endsAt: null } })
-      expect(result.trial.plan).toBe(plan)
+      expect(['FREE', 'PRO']).toContain(plan)
     })
-  })
-
-  it('TRIAL — atleta en periodo de prueba', () => {
-    const result = parseUserConfig({ trial: { plan: 'TRIAL', endsAt: '2026-07-01' } })
-    expect(result.trial.plan).toBe('TRIAL')
-    expect(result.trial.endsAt).toBe('2026-07-01')
-  })
-
-  it('PRO — atleta con pago activo', () => {
-    const result = parseUserConfig({ trial: { plan: 'PRO', endsAt: null } })
-    expect(result.trial.plan).toBe('PRO')
-  })
-
-  it('INACTIVE — trial expirado sin pago', () => {
-    const result = parseUserConfig({ trial: { plan: 'INACTIVE', endsAt: null } })
-    expect(result.trial.plan).toBe('INACTIVE')
   })
 })
