@@ -13,8 +13,7 @@ export default auth((req) => {
 
   const isPublicRoute =
     PUBLIC_ROUTES.includes(pathname) ||
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/mobile') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/coaches') ||
     pathname.startsWith('/p/')
@@ -28,29 +27,16 @@ export default auth((req) => {
     const onboardingCompleted = (session.user as any).onboardingCompleted ?? true
     const role = (session.user as any).role
     const activated = (session.user as any).activated ?? false
-    const trialEndsAt = (session.user as any).trialEndsAt as string | null
-    const userPlan = ((session.user as any).userPlan as string) ?? 'INACTIVE'
+    const userPlan = ((session.user as any).userPlan as string) ?? 'FREE'
 
     // Redirige a onboarding si no lo completó
     if (!onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !isPublicRoute) {
       return NextResponse.redirect(new URL('/onboarding', nextUrl))
     }
 
-    // Atleta activado pero con trial expirado → /upgrade
-    if (
-      role === 'ATHLETE' &&
-      activated &&
-      userPlan === 'TRIAL' &&
-      trialEndsAt &&
-      new Date(trialEndsAt) < new Date() &&
-      !pathname.startsWith('/upgrade') &&
-      !pathname.startsWith('/api') &&
-      !isPublicRoute
-    ) {
-      return NextResponse.redirect(new URL('/upgrade', nextUrl))
-    }
-
-    // Atleta que completó onboarding pero no fue activado → /pending
+    // Atleta B2B que completó onboarding pero no fue activado por su coach → /pending
+    // activated = features.plan — false solo para atletas B2B creados por coach
+    // B2C siempre tienen features.plan = true (DEFAULT_USER_CONFIG)
     if (
       role === 'ATHLETE' &&
       onboardingCompleted &&

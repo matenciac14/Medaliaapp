@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
-// PATCH /api/coach/plan/[id]/approve
+// PATCH /api/coach/plan/[planId]/approve
 // Updates plan generatedBy to AI_COACH_APPROVED
 // Verifies coach owns the athlete before approving
 
 export async function PATCH(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ planId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { id: planId } = await params
+  const { planId } = await params
   const coachId = session.user.id
 
   try {
@@ -55,14 +55,14 @@ export async function PATCH(
 // POST kept for backwards-compat with older client code
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ planId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { id: planId } = await params
+  const { planId } = await params
   const coachId = session.user.id
 
   try {

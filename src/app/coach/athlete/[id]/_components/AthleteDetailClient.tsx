@@ -58,6 +58,9 @@ export type CheckInData = {
   hrResting: number | null
   sleepScore: number | null
   energyLevel: number | null
+  stressLevel: number | null
+  motivationLevel: number | null
+  painLevel: number | null
   dietAdherencePct: number | null
   painFlag: boolean
   hardestSessionRpe: number | null
@@ -82,6 +85,8 @@ export type InitialFeatures = {
   nutrition: boolean
   progress: boolean
 }
+
+export type AthleteStatus = 'ACTIVE' | 'PAUSED'
 
 // ─── Gym Types ───────────────────────────────────────────────────────────────
 
@@ -122,9 +127,57 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   OTRO: 'Otro',
 }
 
-const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones']
+const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmarks']
 
 const INTENSITY_SCORE: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1, REST: 0 }
+
+// ── Benchmark constants ───────────────────────────────────────────────────────
+
+type BenchmarkItem = {
+  id: string; userId: string; coachId: string | null
+  sport: string; metric: string; value: number; unit: string
+  testedAt: string; notes: string | null; createdAt: string
+}
+
+const SPORT_LABELS: Record<string, string> = {
+  RUNNING: 'Running', CYCLING: 'Ciclismo', SWIMMING: 'Natación',
+  TRIATHLON: 'Triatlón', STRENGTH: 'Fuerza', FOOTBALL: 'Fútbol',
+}
+
+const METRIC_OPTIONS: Record<string, { metric: string; label: string; unit: string }[]> = {
+  RUNNING:   [
+    { metric: '5K_TIME',            label: '5K',            unit: 'seconds' },
+    { metric: '10K_TIME',           label: '10K',           unit: 'seconds' },
+    { metric: 'HALF_MARATHON_TIME', label: 'Media Maratón', unit: 'seconds' },
+    { metric: 'MARATHON_TIME',      label: 'Maratón',       unit: 'seconds' },
+  ],
+  CYCLING:   [{ metric: 'FTP_WATTS', label: 'FTP', unit: 'watts' }],
+  SWIMMING:  [{ metric: 'CSS_PACE',  label: 'CSS Pace (seg/100m)', unit: 'seconds' }],
+  TRIATHLON: [
+    { metric: 'FTP_WATTS', label: 'FTP',          unit: 'watts' },
+    { metric: 'CSS_PACE',  label: 'CSS Pace',     unit: 'seconds' },
+    { metric: '5K_TIME',   label: '5K (carrera)', unit: 'seconds' },
+  ],
+  STRENGTH:  [
+    { metric: '1RM_SQUAT',    label: '1RM Sentadilla',  unit: 'kg' },
+    { metric: '1RM_DEADLIFT', label: '1RM Peso muerto', unit: 'kg' },
+    { metric: '1RM_BENCH',    label: '1RM Press banca', unit: 'kg' },
+  ],
+  FOOTBALL: [],
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  '5K_TIME': '5K', '10K_TIME': '10K', 'HALF_MARATHON_TIME': 'Media Maratón',
+  'MARATHON_TIME': 'Maratón', 'FTP_WATTS': 'FTP', 'CSS_PACE': 'CSS Pace',
+  '1RM_SQUAT': '1RM Sentadilla', '1RM_DEADLIFT': '1RM Peso muerto', '1RM_BENCH': '1RM Press banca',
+}
+
+function parseTimeToSeconds(str: string): number {
+  const parts = str.split(':').map(Number)
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  return Number(str)
+}
 
 function weekLoadScore(sessions: { intensity: string }[]) {
   return sessions.reduce((sum, s) => sum + (INTENSITY_SCORE[s.intensity] ?? 2), 0)
@@ -140,6 +193,7 @@ interface AthleteDetailClientProps {
   recentCheckIns: CheckInData[]
   nutritionPlan: NutritionPlanData
   initialFeatures: InitialFeatures
+  initialStatus: AthleteStatus
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -152,6 +206,7 @@ export default function AthleteDetailClient({
   recentCheckIns,
   nutritionPlan,
   initialFeatures,
+  initialStatus,
 }: AthleteDetailClientProps) {
   const [activeTab, setActiveTab] = useState('Resumen')
 
@@ -204,17 +259,152 @@ export default function AthleteDetailClient({
   async function handleActivate() {
     setActivating(true)
     try {
-      const res = await fetch(`/api/coach/athlete/${athleteId}/activate`, { method: 'PATCH' })
+      const res = await fetch(`/api/coach/athlete/${athleteId}/config`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ features: { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } }) })
       if (res.ok) setActivated(true)
     } finally {
       setActivating(false)
     }
   }
 
+  // Reset password state
+  const [resettingPwd, setResettingPwd] = useState(false)
+  const [newTempPassword, setNewTempPassword] = useState<string | null>(null)
+  const [pwdCopied, setPwdCopied] = useState(false)
+
+  async function handleResetPassword() {
+    setResettingPwd(true)
+    setNewTempPassword(null)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/reset-password`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) setNewTempPassword(data.tempPassword)
+    } finally {
+      setResettingPwd(false)
+    }
+  }
+
+  async function handleCopyPassword() {
+    if (!newTempPassword) return
+    try {
+      await navigator.clipboard.writeText(newTempPassword)
+      setPwdCopied(true)
+      setTimeout(() => setPwdCopied(false), 2000)
+    } catch { /* no-op */ }
+  }
+
+  // ── Athlete status (ACTIVE / PAUSED) ────────────────────────────────────────
+  const [athleteStatus, setAthleteStatus] = useState<AthleteStatus>(initialStatus)
+  const [togglingStatus, setTogglingStatus] = useState(false)
+
+  async function handleToggleStatus() {
+    const next: AthleteStatus = athleteStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'
+    setTogglingStatus(true)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      })
+      if (res.ok) setAthleteStatus(next)
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
+
+  // ── Benchmarks ──────────────────────────────────────────────────────────────
+  const [benchmarks, setBenchmarks] = useState<BenchmarkItem[]>([])
+  const [benchmarksLoading, setBenchmarksLoading] = useState(false)
+  const [showBenchmarkForm, setShowBenchmarkForm] = useState(false)
+  const [benchmarkSport, setBenchmarkSport] = useState('RUNNING')
+  const [benchmarkMetric, setBenchmarkMetric] = useState('5K_TIME')
+  const [benchmarkValueStr, setBenchmarkValueStr] = useState('')
+  const [benchmarkDate, setBenchmarkDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [benchmarkNotes, setBenchmarkNotes] = useState('')
+  const [savingBenchmark, setSavingBenchmark] = useState(false)
+
+  useEffect(() => {
+    setBenchmarksLoading(true)
+    fetch(`/api/coach/athlete/${athleteId}/benchmarks`)
+      .then(r => r.json())
+      .then(d => setBenchmarks(d.benchmarks ?? []))
+      .catch(() => {})
+      .finally(() => setBenchmarksLoading(false))
+  }, [athleteId])
+
+  function formatBenchmarkValue(value: number, unit: string, _metric?: string): string {
+    if (unit === 'seconds') {
+      const h = Math.floor(value / 3600)
+      const m = Math.floor((value % 3600) / 60)
+      const s = Math.round(value % 60)
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+      return `${m}:${String(s).padStart(2,'0')}`
+    }
+    if (unit === 'watts') return `${value} W`
+    if (unit === 'kg') return `${value} kg`
+    return String(value)
+  }
+
+  async function handleAddBenchmark() {
+    const opts = METRIC_OPTIONS[benchmarkSport] ?? []
+    const opt = opts.find(o => o.metric === benchmarkMetric) ?? opts[0]
+    if (!opt || !benchmarkValueStr) return
+    const rawValue = opt.unit === 'seconds' ? parseTimeToSeconds(benchmarkValueStr) : Number(benchmarkValueStr)
+    setSavingBenchmark(true)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/benchmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport: benchmarkSport, metric: opt.metric, value: rawValue, unit: opt.unit, testedAt: benchmarkDate, notes: benchmarkNotes || undefined }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setBenchmarks(prev => [data.benchmark, ...prev])
+        setShowBenchmarkForm(false)
+        setBenchmarkValueStr(''); setBenchmarkNotes('')
+      }
+    } finally {
+      setSavingBenchmark(false)
+    }
+  }
+
+  async function handleDeleteBenchmark(benchmarkId: string) {
+    const res = await fetch(`/api/coach/athlete/${athleteId}/benchmarks`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ benchmarkId }),
+    })
+    if (res.ok) setBenchmarks(prev => prev.filter(b => b.id !== benchmarkId))
+  }
+
   // Nutrition edit state
   const [editingNutrition, setEditingNutrition] = useState(false)
   const [nutritionDraft, setNutritionDraft] = useState<NutritionPlanData>(nutritionPlan)
   const [savingNutrition, setSavingNutrition] = useState(false)
+
+  // Meal plan + food profile (lazy load on tab open)
+  type MealPlanData = { data: unknown; updatedAt: string } | null
+  type FoodProfileData = {
+    availableFoods: string[]
+    restrictions: string[]
+    mealsPerDay: number
+    weighsFood: boolean
+    notes: string | null
+  } | null
+  const [mealPlan, setMealPlan] = useState<MealPlanData>(null)
+  const [foodProfile, setFoodProfile] = useState<FoodProfileData>(null)
+  const [nutritionExtLoaded, setNutritionExtLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Nutrición' || nutritionExtLoaded) return
+    fetch(`/api/coach/athlete/${athleteId}/nutrition`)
+      .then(r => r.json())
+      .then(d => {
+        setMealPlan(d.mealPlan ?? null)
+        setFoodProfile(d.foodProfile ?? null)
+        setNutritionExtLoaded(true)
+      })
+      .catch(() => setNutritionExtLoaded(true))
+  }, [activeTab, nutritionExtLoaded, athleteId])
 
   // Session editor state
   const [editingSession, setEditingSession] = useState<string | null>(null)
@@ -348,24 +538,48 @@ export default function AthleteDetailClient({
     <div className="px-4 py-4 lg:p-6 max-w-4xl mx-auto">
       {/* Back */}
       <Link
-        href="/coach/dashboard"
+        href="/coach/athletes"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
       >
-        ← Volver al panel
+        ← Mis Atletas
       </Link>
 
       {/* Athlete header */}
       <div className="flex items-center gap-3 mb-5">
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
           style={{ backgroundColor: '#1e3a5f' }}
         >
           {initials}
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={
+                athleteStatus === 'ACTIVE'
+                  ? { backgroundColor: '#dcfce7', color: '#15803d' }
+                  : { backgroundColor: '#fef3c7', color: '#92400e' }
+              }
+            >
+              {athleteStatus === 'ACTIVE' ? 'Activo' : 'Pausado'}
+            </span>
+          </div>
           <p className="text-sm text-gray-500">{athlete.email}</p>
         </div>
+        <button
+          onClick={handleToggleStatus}
+          disabled={togglingStatus}
+          className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50"
+          style={
+            athleteStatus === 'ACTIVE'
+              ? { borderColor: '#d1d5db', color: '#6b7280' }
+              : { borderColor: '#1e3a5f', color: '#1e3a5f' }
+          }
+        >
+          {togglingStatus ? '...' : athleteStatus === 'ACTIVE' ? 'Pausar' : 'Reactivar'}
+        </button>
       </div>
 
       {/* Tabs */}
@@ -438,6 +652,36 @@ export default function AthleteDetailClient({
             </div>
           )}
 
+          {/* Reset contraseña */}
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Contraseña del asesorado</p>
+                <p className="text-xs text-gray-500 mt-0.5">Genera una nueva contraseña temporal si el atleta perdió acceso</p>
+              </div>
+              <button
+                onClick={handleResetPassword}
+                disabled={resettingPwd}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {resettingPwd ? 'Generando...' : 'Resetear contraseña'}
+              </button>
+            </div>
+            {newTempPassword && (
+              <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <span className="text-xs text-gray-500 shrink-0">Nueva contraseña:</span>
+                <span className="font-mono font-bold text-sm text-gray-900 flex-1">{newTempPassword}</span>
+                <button
+                  onClick={handleCopyPassword}
+                  className="text-xs font-medium px-2 py-0.5 rounded transition-colors shrink-0"
+                  style={pwdCopied ? { backgroundColor: '#dcfce7', color: '#15803d' } : { backgroundColor: '#f3f4f6', color: '#374151' }}
+                >
+                  {pwdCopied ? '✓ Copiado' : '📋'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Zonas FC */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-semibold text-gray-900 mb-4">Zonas de frecuencia cardíaca</h2>
@@ -492,6 +736,8 @@ export default function AthleteDetailClient({
                     <th className="pb-2 font-medium">FC reposo</th>
                     <th className="pb-2 font-medium">Sueño</th>
                     <th className="pb-2 font-medium">Energía</th>
+                    <th className="pb-2 font-medium">Estrés</th>
+                    <th className="pb-2 font-medium">Motivación</th>
                     <th className="pb-2 font-medium">Adherencia</th>
                     <th className="pb-2 font-medium">RPE</th>
                     <th className="pb-2 font-medium">Dolor</th>
@@ -506,6 +752,20 @@ export default function AthleteDetailClient({
                       <td className="py-2.5 text-gray-600">{c.hrResting != null ? `${c.hrResting} bpm` : '—'}</td>
                       <td className="py-2.5 text-gray-600">{c.sleepScore != null ? `${c.sleepScore}/100` : '—'}</td>
                       <td className="py-2.5 text-gray-600">{c.energyLevel != null ? `${c.energyLevel}/10` : '—'}</td>
+                      <td className="py-2.5">
+                        {c.stressLevel != null ? (
+                          <span className={c.stressLevel >= 7 ? 'text-red-600 font-semibold' : c.stressLevel >= 4 ? 'text-amber-600' : 'text-gray-600'}>
+                            {c.stressLevel}/10
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="py-2.5">
+                        {c.motivationLevel != null ? (
+                          <span className={c.motivationLevel <= 3 ? 'text-red-600 font-semibold' : c.motivationLevel <= 6 ? 'text-amber-600' : 'text-green-600'}>
+                            {c.motivationLevel}/10
+                          </span>
+                        ) : '—'}
+                      </td>
                       <td className="py-2.5 text-gray-600">{c.dietAdherencePct != null ? `${c.dietAdherencePct}%` : '—'}</td>
                       <td className="py-2.5">
                         {c.hardestSessionRpe != null ? (
@@ -515,11 +775,11 @@ export default function AthleteDetailClient({
                         ) : '—'}
                       </td>
                       <td className="py-2.5">
-                        {c.painFlag ? (
-                          <span className="text-red-600 font-medium">Sí</span>
-                        ) : (
-                          <span className="text-green-600">No</span>
-                        )}
+                        {c.painLevel != null ? (
+                          <span className={c.painLevel >= 5 ? 'text-red-600 font-semibold' : c.painLevel >= 3 ? 'text-amber-600' : 'text-gray-600'}>
+                            {c.painLevel}/10
+                          </span>
+                        ) : '—'}
                       </td>
                       <td className="py-2.5">
                         {c.adjustmentsTriggered.length > 0 ? (
@@ -579,8 +839,14 @@ export default function AthleteDetailClient({
       {/* ── Tab: Plan ─────────────────────────────────────────────────────────── */}
       {activeTab === 'Plan' && (
         <div className="space-y-6">
-          {/* Review CTA */}
-          <div className="flex justify-end">
+          {/* Plan CTAs */}
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              href={`/coach/athlete/${athleteId}/plan/build`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              🗓 Constructor visual
+            </Link>
             {activePlan ? (
               <Link
                 href={`/coach/plan/${activePlan.id}/review`}
@@ -860,6 +1126,9 @@ export default function AthleteDetailClient({
                       <th className="pb-2 font-medium">FC reposo</th>
                       <th className="pb-2 font-medium">Sueño</th>
                       <th className="pb-2 font-medium">Energía</th>
+                      <th className="pb-2 font-medium">Estrés</th>
+                      <th className="pb-2 font-medium">Motivación</th>
+                      <th className="pb-2 font-medium">Dolor</th>
                       <th className="pb-2 font-medium">Adherencia</th>
                     </tr>
                   </thead>
@@ -871,6 +1140,27 @@ export default function AthleteDetailClient({
                         <td className="py-2.5 text-gray-600">{c.hrResting ?? '—'}</td>
                         <td className="py-2.5 text-gray-600">{c.sleepScore ?? '—'}</td>
                         <td className="py-2.5 text-gray-600">{c.energyLevel ?? '—'}</td>
+                        <td className="py-2.5">
+                          {c.stressLevel != null ? (
+                            <span className={c.stressLevel >= 7 ? 'text-red-600 font-semibold' : c.stressLevel >= 4 ? 'text-amber-600' : 'text-gray-600'}>
+                              {c.stressLevel}/10
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="py-2.5">
+                          {c.motivationLevel != null ? (
+                            <span className={c.motivationLevel <= 3 ? 'text-red-600 font-semibold' : c.motivationLevel <= 6 ? 'text-amber-600' : 'text-green-600'}>
+                              {c.motivationLevel}/10
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="py-2.5">
+                          {c.painLevel != null ? (
+                            <span className={c.painLevel >= 5 ? 'text-red-600 font-semibold' : c.painLevel >= 3 ? 'text-amber-600' : 'text-gray-600'}>
+                              {c.painLevel}/10
+                            </span>
+                          ) : '—'}
+                        </td>
                         <td className="py-2.5 text-gray-600">
                           {c.dietAdherencePct != null ? `${c.dietAdherencePct}%` : '—'}
                         </td>
@@ -1048,6 +1338,80 @@ export default function AthleteDetailClient({
                   </p>
                 </div>
               )}
+
+              {/* Food Profile */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Perfil alimenticio</h2>
+                  {!nutritionExtLoaded ? (
+                    <p className="text-sm text-gray-400">Cargando...</p>
+                  ) : !foodProfile ? (
+                    <p className="text-sm text-gray-400">El atleta aún no ha configurado sus preferencias alimenticias.</p>
+                  ) : (
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-start gap-2">
+                        <span className="text-gray-500 w-32 shrink-0">Comidas/día</span>
+                        <span className="font-medium text-gray-900">{foodProfile.mealsPerDay}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-gray-500 w-32 shrink-0">Pesa alimentos</span>
+                        <span className="font-medium text-gray-900">{foodProfile.weighsFood ? 'Sí' : 'No'}</span>
+                      </div>
+                      {foodProfile.availableFoods.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-gray-500 w-32 shrink-0">Alimentos</span>
+                          <div className="flex flex-wrap gap-1">
+                            {foodProfile.availableFoods.map(f => (
+                              <span key={f} className="px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700">{f}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {foodProfile.restrictions.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-gray-500 w-32 shrink-0">Restricciones</span>
+                          <div className="flex flex-wrap gap-1">
+                            {foodProfile.restrictions.map(r => (
+                              <span key={r} className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs">{r}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {foodProfile.notes && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-gray-500 w-32 shrink-0">Notas</span>
+                          <span className="text-gray-700">{foodProfile.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Meal Plan existence */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-3">Plan de comidas</h2>
+                  {!nutritionExtLoaded ? (
+                    <p className="text-sm text-gray-400">Cargando...</p>
+                  ) : !mealPlan ? (
+                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <span className="text-2xl">📋</span>
+                      <span>El atleta aún no ha generado un plan de comidas detallado.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-2xl">✅</span>
+                      <div>
+                        <p className="font-medium text-gray-900">Plan generado</p>
+                        <p className="text-gray-400 text-xs">
+                          Actualizado: {new Date(mealPlan.updatedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1157,6 +1521,160 @@ export default function AthleteDetailClient({
                 </div>
               )
             })}
+        </div>
+      )}
+
+      {/* ── Tab: Benchmarks ───────────────────────────────────────────────────── */}
+      {activeTab === 'Benchmarks' && (
+        <div className="space-y-5">
+          {/* Header + add button */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900">Tests de rendimiento</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Registra PBs, FTP, 1RM y otros marcadores del atleta</p>
+            </div>
+            <button
+              onClick={() => setShowBenchmarkForm(!showBenchmarkForm)}
+              className="text-sm font-semibold px-4 py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              {showBenchmarkForm ? 'Cancelar' : '+ Registrar test'}
+            </button>
+          </div>
+
+          {/* Add form */}
+          {showBenchmarkForm && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nuevo benchmark</p>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Sport */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Deporte</label>
+                  <select
+                    value={benchmarkSport}
+                    onChange={e => { setBenchmarkSport(e.target.value); setBenchmarkMetric(METRIC_OPTIONS[e.target.value]?.[0]?.metric ?? '') }}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                  >
+                    {Object.entries(SPORT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+                {/* Metric */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Métrica</label>
+                  <select
+                    value={benchmarkMetric}
+                    onChange={e => setBenchmarkMetric(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                  >
+                    {(METRIC_OPTIONS[benchmarkSport] ?? []).map(m => (
+                      <option key={m.metric} value={m.metric}>{METRIC_LABELS[m.metric] ?? m.metric}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Value */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">
+                    Valor {METRIC_OPTIONS[benchmarkSport]?.find(m => m.metric === benchmarkMetric)?.unit === 'seconds'
+                      ? '(MM:SS o HH:MM:SS)' : METRIC_OPTIONS[benchmarkSport]?.find(m => m.metric === benchmarkMetric)?.unit === 'watts' ? '(vatios)' : '(kg)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={benchmarkValueStr}
+                    onChange={e => setBenchmarkValueStr(e.target.value)}
+                    placeholder={METRIC_OPTIONS[benchmarkSport]?.find(m => m.metric === benchmarkMetric)?.unit === 'seconds' ? '25:30' : '0'}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                  />
+                </div>
+                {/* Date */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5">Fecha del test</label>
+                  <input
+                    type="date"
+                    value={benchmarkDate}
+                    onChange={e => setBenchmarkDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                  />
+                </div>
+              </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Notas (opcional)</label>
+                <input
+                  type="text"
+                  value={benchmarkNotes}
+                  onChange={e => setBenchmarkNotes(e.target.value)}
+                  placeholder="Ej: pista oficial, altitud 1600m"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleAddBenchmark}
+                  disabled={savingBenchmark || !benchmarkValueStr}
+                  className="px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: '#f97316' }}
+                >
+                  {savingBenchmark ? 'Guardando...' : 'Guardar benchmark'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading */}
+          {benchmarksLoading && <div className="text-center py-16 text-gray-400 text-sm">Cargando benchmarks...</div>}
+
+          {/* Empty */}
+          {!benchmarksLoading && benchmarks.length === 0 && (
+            <div className="bg-white border border-gray-100 rounded-xl p-10 text-center shadow-sm">
+              <div className="text-4xl mb-3">📊</div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-1">Sin benchmarks</h2>
+              <p className="text-gray-400 text-sm">Registra los primeros tests del atleta para hacer seguimiento de su rendimiento</p>
+            </div>
+          )}
+
+          {/* Benchmarks grouped by sport */}
+          {!benchmarksLoading && benchmarks.length > 0 && (() => {
+            const grouped: Record<string, BenchmarkItem[]> = {}
+            for (const b of benchmarks) {
+              if (!grouped[b.sport]) grouped[b.sport] = []
+              grouped[b.sport].push(b)
+            }
+            return Object.entries(grouped).map(([sport, items]) => (
+              <div key={sport} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                  <p className="text-sm font-semibold text-gray-700">{SPORT_LABELS[sport] ?? sport}</p>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {items.map(b => (
+                    <div key={b.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {METRIC_LABELS[b.metric] ?? b.metric}
+                          </span>
+                          <span className="text-base font-black text-[#f97316]">
+                            {formatBenchmarkValue(b.value, b.unit, b.metric)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-400">
+                            {new Date(b.testedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          {b.notes && <span className="text-xs text-gray-400">· {b.notes}</span>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteBenchmark(b.id)}
+                        className="text-xs text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          })()}
         </div>
       )}
     </div>
