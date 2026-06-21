@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { jsToOurDow, getWeekMonday, formatWeekRange, buildWeekDateNumbers } from '@/lib/core/date-utils'
+import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
 import { DAY_LABELS } from '@/lib/constants/sessions'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
@@ -109,7 +109,13 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   sunday.setDate(monday.getDate() + 6)
   sunday.setHours(23, 59, 59, 999)
   const weekRangeLabel = formatWeekRange(monday)
-  const weekDates = buildWeekDateNumbers(monday)
+  // Build DOW→dateNumber map (1=Mon … 7=Sun)
+  const weekDates: Record<number, number> = {}
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    weekDates[i + 1] = d.getDate()
+  }
 
   const weekSessions = await prisma.gymSession.findMany({
     where: {
