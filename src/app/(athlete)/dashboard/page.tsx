@@ -9,11 +9,10 @@ import InstallPWABanner from '@/app/_components/InstallPWABanner'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
 import WeekNavBar from '../_components/WeekNavBar'
+import WeekDayStrip from '../_components/WeekDayStrip'
+import { buildWeekDayCells } from '../_components/week-day-cells'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow, jsToWeekIdx } from '@/lib/core/date-utils'
-
-// Mon-first week labels (idx 0=Mon … 6=Sun)
-const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -252,15 +251,40 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
   }
 
-  // ── GYM users (no TrainingPlan): fill weekSessionMap from assignedWorkout ──
+  // ── Gym sessions in weekly calendar ───────────────────────────────────────
+  // gymOverlayMap: days where there's a gym session (used as secondary badge when training also exists)
+  const gymOverlayMap: Record<number, string> = {}
+  if (assignedWorkout) {
+    for (const day of assignedWorkout.template.days) {
+      if (day.isRestDay) continue
+      const idx = jsToWeekIdx(day.dayOfWeek)
+      const gymLabel = day.label ?? day.muscleGroups?.[0] ?? 'Gym'
+      if (activePlan && weekSessionMap[idx]) {
+        // Training session exists on this day → gym shows as secondary overlay
+        gymOverlayMap[idx] = gymLabel
+      } else if (!weekSessionMap[idx]) {
+        // Empty day → gym is the primary session
+        weekSessionMap[idx] = {
+          type: 'FUERZA',
+          label: gymLabel,
+          done: false,
+          durationMin: 60,
+          zoneTarget: '',
+          intensity: 'MODERATE',
+        }
+      }
+    }
+  }
+  // GYM-only users (no training plan): include rest days in the map
   if (!activePlan && assignedWorkout) {
     for (const day of assignedWorkout.template.days) {
+      if (!day.isRestDay) continue
       const idx = jsToWeekIdx(day.dayOfWeek)
       weekSessionMap[idx] = {
-        type: day.isRestDay ? 'DESCANSO' : 'FUERZA',
-        label: day.isRestDay ? 'Descanso' : ((day as any).label ?? (day as any).muscleGroups?.[0] ?? 'Gym'),
+        type: 'DESCANSO',
+        label: 'Descanso',
         done: false,
-        durationMin: 60,
+        durationMin: 0,
         zoneTarget: '',
         intensity: 'MODERATE',
       }
@@ -323,6 +347,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       return [i, d.getDate()]
     })
   )
+
+  // ── Weekly strip cells ────────────────────────────────────────────────────
+  const weekCells = buildWeekDayCells({
+    weekDayDates,
+    sessionMap: weekSessionMap,
+    gymOverlayMap,
+    todayWeekIdx: isCurrentWeek ? todayWeekIdx : -1,
+  })
 
   // ── Check-in semanal pendiente ─────────────────────────────────────────────
   // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
@@ -710,60 +742,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               )}
 
               {/* Strip de días */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-7 sm:overflow-visible">
-                {WEEK_DAYS.map((day, idx) => {
-                  // isActuallyToday: solo marca HOY si estamos viendo la semana actual
-                  const isActuallyToday = isCurrentWeek && idx === todayWeekIdx
-                  const s = weekSessionMap[idx]
-                  const isDone = s?.done
-                  const isRest = s?.type === 'DESCANSO'
-                  const hasSession = !!s && !isRest
-                  const emoji = SESSION_ICONS[s?.type ?? ''] ?? (isRest ? '😴' : null)
-                  const sessionName = SESSION_NAMES[s?.type ?? ''] ?? null
-
-                  const cardBg = !s
-                    ? isActuallyToday ? 'bg-gray-100 border border-gray-200' : 'bg-gray-50'
-                    : isDone ? 'bg-[#22c55e]'
-                    : isActuallyToday ? 'bg-[#1e3a5f]'
-                    : hasSession ? 'bg-white border border-gray-200'
-                    : 'bg-gray-50'
-
-                  const dayColor = !s
-                    ? isActuallyToday ? 'text-gray-500' : 'text-gray-300'
-                    : isDone || isActuallyToday ? 'text-white/80' : 'text-gray-400'
-
-                  const numColor = !s
-                    ? 'text-gray-300'
-                    : isDone || isActuallyToday ? 'text-white' : 'text-gray-900'
-
-                  return (
-                    <div key={day} className={`rounded-2xl flex-shrink-0 w-[104px] sm:w-auto p-3 flex flex-col gap-1 min-h-[120px] ${cardBg}`}>
-                      <div className="flex items-start justify-between gap-1">
-                        <span className={`text-[11px] font-semibold leading-none ${dayColor}`}>{day}</span>
-                        {isDone && <span className="text-white text-xs leading-none">✓</span>}
-                        {isActuallyToday && s && !isDone && (
-                          <span className="text-[8px] font-bold bg-[#f97316] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
-                        )}
-                        {isActuallyToday && !s && (
-                          <span className="text-[8px] font-bold bg-gray-400 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
-                        )}
-                      </div>
-                      <span className={`text-[22px] font-black leading-none mt-0.5 ${numColor}`}>{weekDayDates[idx]}</span>
-                      {emoji && <span className="text-xl leading-none mt-1">{emoji}</span>}
-                      {sessionName && (
-                        <span className={`text-[11px] font-semibold leading-tight mt-0.5 ${isDone || isActuallyToday ? 'text-white' : isRest ? 'text-gray-400' : 'text-gray-700'}`}>
-                          {sessionName}
-                        </span>
-                      )}
-                      {hasSession && s!.durationMin > 0 && (
-                        <span className={`text-[10px] leading-none ${isDone || isActuallyToday ? 'text-white/70' : 'text-gray-400'}`}>
-                          {s!.durationMin} min{s!.zoneTarget ? ` · ${s!.zoneTarget}` : ''}
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              <WeekDayStrip cells={weekCells} variant="cards" />
 
               {/* ── TRAINING: detalle sesión de hoy — solo si estamos en la semana actual ── */}
               {dashboardMode === 'TRAINING' && isCurrentWeek && todaySession && (

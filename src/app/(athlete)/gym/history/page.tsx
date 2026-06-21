@@ -2,11 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-
-
+import { DAY_LABELS } from '@/lib/constants/sessions'
 import { ChevronLeft, CheckCircle2, Dumbbell, Clock, Zap } from 'lucide-react'
-
-const DOW_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-CO', {
@@ -146,7 +143,7 @@ export default async function GymHistoryPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-gray-900 truncate">
-                      {workoutDay?.label ?? `${DOW_LABELS[gs.dayOfWeek]} — Sesión`}
+                      {workoutDay?.label ?? `${DAY_LABELS[gs.dayOfWeek]} — Sesión`}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5 capitalize">{formatDate(gs.date)}</p>
                   </div>

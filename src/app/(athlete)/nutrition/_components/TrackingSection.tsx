@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import LogFoodModal from './LogFoodModal'
+import type { FoodItem } from './types'
 
 type MacroTotals = { kcal: number; proteinG: number; carbsG: number; fatG: number }
 
@@ -14,19 +15,6 @@ type FoodLogEntry = {
   proteinG: number
   carbsG: number
   fatG: number
-}
-
-type FoodItem = {
-  id: string
-  name: string
-  category: string
-  kcalPer100g: number
-  proteinPer100g: number
-  carbsPer100g: number
-  fatPer100g: number
-  servingG: number
-  servingLabel: string | null
-  [key: string]: unknown
 }
 
 type Props = {

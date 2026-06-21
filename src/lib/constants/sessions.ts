@@ -41,3 +41,9 @@ export const DAY_LABELS: Record<number, string> = {
   6: 'Sáb',
   7: 'Dom',
 }
+
+/** Mon-first 0-based array for index access: idx 0=Lun … 6=Dom. */
+export const WEEK_DAYS_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as const
+
+/** Mon-first full names for forms and selects: idx 0=Lunes … 6=Domingo. */
+export const DAY_NAMES_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'] as const

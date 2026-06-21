@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { jsToOurDow, MONTHS } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
-
-const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 
 function formatWeekLabel(startDate: Date, endDate: Date): string {
   if (startDate.getMonth() === endDate.getMonth()) {

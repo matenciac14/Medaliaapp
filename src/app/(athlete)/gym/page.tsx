@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { jsToOurDow, getWeekMonday, formatWeekRange, buildWeekDateNumbers } from '@/lib/core/date-utils'
+import { DAY_LABELS } from '@/lib/constants/sessions'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
 import PublicTemplates from './_components/PublicTemplates'
 import WeekNavBar from '../_components/WeekNavBar'
-
-// 0 = Sunday in JS Date.getDay(), but we use 1=Mon..7=Sun
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-CO', {
@@ -17,32 +16,6 @@ function formatDate(date: Date) {
   })
 }
 
-const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-
-// Returns the start of a week (Monday) and end (Sunday), offset by N weeks
-function getWeekBounds(offsetWeeks = 0) {
-  const now = new Date()
-  const dow = now.getDay() // 0=Sun
-  const diffToMon = (dow === 0 ? -6 : 1 - dow)
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMon + offsetWeeks * 7)
-  monday.setHours(0, 0, 0, 0)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
-  return { monday, sunday }
-}
-
-function formatWeekRange(monday: Date): string {
-  const sun = new Date(monday)
-  sun.setDate(monday.getDate() + 6)
-  if (monday.getMonth() === sun.getMonth()) {
-    return `${monday.getDate()}–${sun.getDate()} ${MONTHS[monday.getMonth()]}`
-  }
-  return `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]}`
-}
-
-const DOW_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 export default async function GymPage({ searchParams }: { searchParams: Promise<{ completed?: string; weekOffset?: string; selectedDow?: string }> }) {
   const session = await auth()
@@ -131,16 +104,12 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   const todayWorkoutDay = assigned.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
 
   // Weekly adherence: sessions logged for the selected week
-  const { monday, sunday } = getWeekBounds(weekOffset)
+  const monday = getWeekMonday(weekOffset)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
   const weekRangeLabel = formatWeekRange(monday)
-
-  // Compute calendar date number for each DOW (1=Mon…7=Sun)
-  const weekDates: Record<number, number> = {}
-  for (let dow = 1; dow <= 7; dow++) {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + (dow - 1))
-    weekDates[dow] = d.getDate()
-  }
+  const weekDates = buildWeekDateNumbers(monday)
 
   const weekSessions = await prisma.gymSession.findMany({
     where: {
@@ -455,13 +424,13 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 <Link
                   key={dow}
                   href={cellHref}
-                  className={`relative flex flex-col items-center py-4 px-1 text-center transition-colors hover:bg-gray-50 ${cellBg}`}
+                  className={`relative flex flex-col items-center py-4 px-1 text-center transition-colors ${cellBg}`}
                 >
                   {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316]" />}
                   <span className={`text-[10px] font-semibold mb-1 ${
                     isSelected ? 'text-white/70' : isToday ? 'text-[#f97316] font-bold' : 'text-gray-400'
                   }`}>
-                    {DOW_LABELS[dow]}
+                    {DAY_LABELS[dow]}
                   </span>
                   <div className="flex items-center gap-0.5 mb-1.5">
                     <span className={`text-xl font-black leading-none ${
@@ -496,14 +465,14 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
           const workoutDay = assigned.template.days.find(d => d.dayOfWeek === selectedDow)
           const isRest = workoutDay?.isRestDay ?? !workoutDay
           const dayDateNum = weekDates[selectedDow]
-          const dayLabel = `${DOW_LABELS[selectedDow]} ${dayDateNum} · ${workoutDay?.label ?? 'Sin sesión'}`
+          const dayLabel = `${DAY_LABELS[selectedDow]} ${dayDateNum} · ${workoutDay?.label ?? 'Sin sesión'}`
 
           if (isRest) {
             return (
               <div className="mt-3 bg-white border border-gray-200 rounded-xl p-5 flex items-center gap-3">
                 <span className="text-2xl">😴</span>
                 <div>
-                  <p className="font-semibold text-gray-700">{DOW_LABELS[selectedDow]} {dayDateNum} — Descanso</p>
+                  <p className="font-semibold text-gray-700">{DAY_LABELS[selectedDow]} {dayDateNum} — Descanso</p>
                   <p className="text-xs text-gray-400 mt-0.5">Recuperación activa. Sin sesión planificada.</p>
                 </div>
               </div>
@@ -565,13 +534,25 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
 
           // Sesión no realizada o futura — mostrar plantilla planificada
           if (workoutDay && !workoutDay.isRestDay) {
+            const isSelectedToday = isCurrentWeek && selectedDow === todayDow
             return (
               <div className="mt-3 bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    {selectedSession && !selectedSession.completed ? 'Sesión no completada' : 'Planificado'}
-                  </p>
-                  <p className="font-bold text-[#1e3a5f] mt-0.5">{dayLabel}</p>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      {selectedSession && !selectedSession.completed ? 'Sesión no completada' : 'Planificado'}
+                    </p>
+                    <p className="font-bold text-[#1e3a5f] mt-0.5">{dayLabel}</p>
+                  </div>
+                  {isSelectedToday && (
+                    <Link
+                      href="/gym/session"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#f97316' }}
+                    >
+                      Iniciar sesión →
+                    </Link>
+                  )}
                 </div>
                 <div className="divide-y divide-gray-50">
                   {workoutDay.exercises.map((ex) => (
@@ -606,7 +587,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center shrink-0 leading-none ${
                   isToday ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  <span className="text-[9px] font-semibold">{DOW_LABELS[dow]}</span>
+                  <span className="text-[9px] font-semibold">{DAY_LABELS[dow]}</span>
                   <span className="text-sm font-bold">{weekDates[dow]}</span>
                 </div>
                 <div className="flex-1 min-w-0">

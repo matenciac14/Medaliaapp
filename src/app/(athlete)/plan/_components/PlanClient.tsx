@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatWeekRange } from '@/lib/core/date-utils'
+import { WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -94,9 +96,6 @@ const PHASE_DISPLAY_GYM: Record<string, string> = {
   BASE: 'ADAPT.', DESARROLLO: 'VOLUMEN', ESPECIFICO: 'INTENS.', AFINAMIENTO: 'PICO',
 }
 
-const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
-
 // ── Helpers ───────────────────────────────────────────────────────────
 
 function getIntensityKey(type: string, intensityField: string | null): string {
@@ -118,14 +117,6 @@ function getWeekMonday(currentWeekNum: number, activeWeekNum: number): Date {
   const monday = new Date(thisMonday)
   monday.setDate(thisMonday.getDate() + (activeWeekNum - currentWeekNum) * 7)
   return monday
-}
-
-function formatWeekRange(monday: Date): string {
-  const sun = new Date(monday); sun.setDate(monday.getDate() + 6)
-  if (monday.getMonth() === sun.getMonth()) {
-    return `${monday.getDate()}–${sun.getDate()} ${MONTHS[monday.getMonth()]}`
-  }
-  return `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]}`
 }
 
 function formatVolume(minutes: number): string {
@@ -470,7 +461,7 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
                 isSelected ? 'text-blue-200' :
                 'text-gray-400'
               )}>
-                {DAY_SHORT[i]}
+                {WEEK_DAYS_SHORT[i]}
               </span>
 
               <div className="flex items-center gap-1 mb-2">
@@ -1119,7 +1110,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   }
 
   const isCurrentWeek = selectedWeekNum === plan.currentWeek
-  const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? weeks[0]
+  const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
   const allPhases = [...new Set(weeks.map(w => w.phase))]
 
   const weekMonday = useMemo(
@@ -1128,7 +1119,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   )
 
   const selDateObj = new Date(weekMonday.getTime() + (selectedDow - 1) * 86400000)
-  const selDayLabel = `${DAY_SHORT[selectedDow - 1]} ${selDateObj.getDate()}`
+  const selDayLabel = `${WEEK_DAYS_SHORT[selectedDow - 1]} ${selDateObj.getDate()}`
   const weekLabel = `Semana ${selectedWeekNum} · ${formatWeekRange(weekMonday)}`
 
   const selectedSession = useMemo(() => {
