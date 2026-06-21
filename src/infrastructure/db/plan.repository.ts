@@ -77,7 +77,6 @@ export class PrismaPlanRepository implements IPlanRepository {
       durationMin: s.durationMin,
       description: s.detailText ?? null,   // DB column: detailText, domain field: description
       coachNotes: s.coachNote ?? null,
-      sportLabel: (s as Record<string, unknown>).sportLabel as string | null ?? null,
       zone: s.zoneTarget ?? null,
       weekNumber,
     }))

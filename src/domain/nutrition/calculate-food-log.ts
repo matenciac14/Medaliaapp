@@ -40,7 +40,7 @@ export function calcNutritionTarget(
   return {
     kcal:     dayType === 'hard' ? nutritionPlan.targetKcalHard : dayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy,
     proteinG: nutritionPlan.proteinG,
-    carbsG:   dayType === 'hard' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG,
+    carbsG:   dayType === 'hard' ? nutritionPlan.carbsHardG : dayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG,
     fatG:     nutritionPlan.fatG,
   }
 }

@@ -3,18 +3,11 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
+import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
-
-type DayType = 'hard' | 'easy' | 'rest'
-
-function getDayType(sessionType: string): DayType {
-  if (sessionType === 'DESCANSO') return 'rest'
-  if (['FARTLEK', 'TIRADA_LARGA', 'NATACION', 'FUERZA', 'INTERVALOS', 'TEMPO'].includes(sessionType)) return 'hard'
-  return 'easy'
-}
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -37,7 +30,7 @@ export default async function NutritionPage() {
           lt: new Date(new Date().setHours(23, 59, 59, 999)),
         },
       },
-      select: { type: true },
+      select: { intensity: true },
     }),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
@@ -69,7 +62,7 @@ export default async function NutritionPage() {
   const hasGymSessionToday = !!gymDayToday && !gymDayToday.isRestDay
 
   const todayDayType: DayType = todaySession
-    ? getDayType(todaySession.type)
+    ? intensityToDayType(todaySession.intensity)
     : hasGymSessionToday
       ? 'hard'
       : 'easy'
@@ -89,7 +82,7 @@ export default async function NutritionPage() {
     ? (todayDayType === 'hard' ? nutritionPlan.targetKcalHard : todayDayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy)
     : 0
   const todayCarbs   = nutritionPlan
-    ? (todayDayType === 'hard' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG)
+    ? (todayDayType === 'hard' ? nutritionPlan.carbsHardG : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG)
     : 0
   const todayProtein = nutritionPlan?.proteinG ?? 0
   const todayFat     = nutritionPlan?.fatG ?? 0
@@ -130,7 +123,7 @@ export default async function NutritionPage() {
               {[
                 { label: 'Calorías', value: todayDayType === 'hard' ? nutritionPlan.targetKcalHard : todayDayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy, unit: 'kcal', color: 'text-[#f97316]' },
                 { label: 'Proteína', value: nutritionPlan.proteinG, unit: 'g', color: 'text-blue-600' },
-                { label: 'Carbohidratos', value: todayDayType === 'hard' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG, unit: 'g', color: 'text-yellow-600' },
+                { label: 'Carbohidratos', value: todayDayType === 'hard' ? nutritionPlan.carbsHardG : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG, unit: 'g', color: 'text-yellow-600' },
                 { label: 'Grasas', value: nutritionPlan.fatG, unit: 'g', color: 'text-green-600' },
               ].map((m) => (
                 <div key={m.label} className="bg-gray-50 rounded-xl p-3">

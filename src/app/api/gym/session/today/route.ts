@@ -59,6 +59,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Sin rutina asignada' }, { status: 404 })
   }
 
+  // Determine if athlete has an active coach (controls override permissions)
+  const coachRelation = await prisma.coachAthlete.findFirst({
+    where: { athleteId, status: 'ACTIVE' },
+    select: { coachId: true },
+  })
+  const hasCoach = !!coachRelation
+
   const plannedSession = plannedToday ?? null
 
   const todayDay = assigned.template.days[0] ?? null
@@ -69,6 +76,7 @@ export async function GET(req: NextRequest) {
       templateName: assigned.template.name,
       dayOfWeek: todayDow,
       isRestDay: true,
+      hasCoach,
       workoutDay: todayDay ?? null,
       exercises: [],
       previousLogs: [],
@@ -95,6 +103,7 @@ export async function GET(req: NextRequest) {
     templateName: assigned.template.name,
     dayOfWeek: todayDow,
     isRestDay: false,
+    hasCoach,
     workoutDay: {
       id: todayDay.id,
       label: todayDay.label,

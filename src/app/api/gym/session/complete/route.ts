@@ -12,16 +12,24 @@ type SetPayload = {
   completed: boolean
 }
 
+type ExerciseOverride = {
+  originalWorkoutExerciseId: string
+  replacedWithExerciseId: string
+  replacedExerciseName: string
+  reason?: string
+}
+
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
   const athleteId = mobile?.id ?? (await auth())?.user?.id
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  let body: { assignedWorkoutId: string; dayOfWeek: number; rpe?: number; durationMin?: number; notes?: string; sets?: SetPayload[]; setLogs?: SetPayload[] }
+  let body: { assignedWorkoutId: string; dayOfWeek: number; rpe?: number; durationMin?: number; notes?: string; sets?: SetPayload[]; setLogs?: SetPayload[]; exerciseOverrides?: ExerciseOverride[] }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
 
   const { assignedWorkoutId, dayOfWeek, rpe, durationMin, notes } = body
   const sets = body.sets ?? body.setLogs ?? []
+  const exerciseOverrides = body.exerciseOverrides ?? null
 
   if (!assignedWorkoutId || !dayOfWeek || !Array.isArray(sets))
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -43,6 +51,7 @@ export async function POST(req: NextRequest) {
       rpe: rpe ?? null,
       notes: notes ?? null,
       completed: true,
+      exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
       setLogs: {
         create: sets.map(s => ({
           workoutExerciseId: s.workoutExerciseId,

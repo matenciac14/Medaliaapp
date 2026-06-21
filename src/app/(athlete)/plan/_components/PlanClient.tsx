@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/core/date-utils'
 import { WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
+import type { CalendarWeek } from '@/domain/calendar/calendar.types'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -406,8 +407,9 @@ function EditModal({ session, onClose, onSaved }: {
 
 // ── CalendarStrip ─────────────────────────────────────────────────────
 
-function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining, loggedIds }: {
-  week: PlanClientWeek
+function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining, loggedIds }: {
+  week: PlanClientWeek | null
+  calendarDays: CalendarWeek['days'] | null
   weekMonday: Date
   selectedDow: number
   todayDow: number
@@ -429,7 +431,10 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
       <div className="grid grid-cols-7 divide-x divide-gray-50">
         {Array.from({ length: 7 }, (_, i) => {
           const dow = i + 1
-          const session = week.sessions.find(s => s.dayOfWeek === dow)
+          const session = week?.sessions.find(s => s.dayOfWeek === dow) ?? null
+          const calDay = calendarDays?.find(d => d.dow === dow) ?? null
+          const gymLabel = calDay?.gym?.label ?? null
+          const gymDone = calDay?.gym?.done ?? false
           const dateObj = new Date(weekMonday.getTime() + i * 86400000)
           const isToday = isCurrentWeek && dow === todayDow
           const isSelected = dow === selectedDow
@@ -485,7 +490,7 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
               <span className="text-base mb-1.5">
                 {isDone && !isRest
                   ? <CheckCircle2 size={18} className="text-green-500 mx-auto" />
-                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : '📅')}
+                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : (gymLabel ? null : '📅'))}
               </span>
 
               <span className={cn('text-xs font-semibold leading-tight px-0.5',
@@ -494,7 +499,7 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
                 isSelected ? 'text-white' :
                 isRest ? 'text-gray-400' : 'text-gray-700'
               )}>
-                {isRest ? 'Descanso' : (SESSION_LABELS[session?.type ?? ''] ?? session?.type ?? '—')}
+                {!session ? (gymLabel ? null : '—') : isRest ? 'Descanso' : (SESSION_LABELS[session.type] ?? session.type)}
               </span>
 
               {!isRest && session && (
@@ -505,6 +510,14 @@ function CalendarStrip({ week, weekMonday, selectedDow, todayDow, isCurrentWeek,
                 )}>
                   {session.durationMin} min
                   {session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== 'N/A' ? ` · ${session.zoneTarget}` : ''}
+                </span>
+              )}
+              {gymLabel && (
+                <span className={cn('text-[8px] font-bold rounded-full px-1 py-0.5 leading-none mt-0.5',
+                  gymDone ? 'bg-green-600 text-white' :
+                  isSelected ? 'bg-purple-700 text-white' : 'text-purple-600 bg-purple-50'
+                )}>
+                  {gymDone ? '✓' : '💪'}{isRest ? ` ${gymLabel}` : ''}
                 </span>
               )}
             </button>
@@ -1113,6 +1126,16 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   const week = weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
   const allPhases = [...new Set(weeks.map(w => w.phase))]
 
+  // Calendar API — fetch unified week data (sport + gym) for any week offset
+  const weekOffset = selectedWeekNum - plan.currentWeek
+  const [calWeek, setCalWeek] = useState<CalendarWeek | null>(null)
+  useEffect(() => {
+    fetch(`/api/athlete/calendar?weekOffset=${weekOffset}`)
+      .then(r => r.json())
+      .then(setCalWeek)
+      .catch(() => {})
+  }, [weekOffset])
+
   const weekMonday = useMemo(
     () => getWeekMonday(plan.currentWeek, selectedWeekNum),
     [plan.currentWeek, selectedWeekNum]
@@ -1170,7 +1193,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
               {weekLabel}
             </span>
             <button
-              onClick={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
+              onClick={() => { setSelectedWeekNum(w => w + 1); setSelectedDow(1) }}
               disabled={selectedWeekNum >= plan.totalWeeks}
               className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
             >
@@ -1185,19 +1208,18 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
       </div>
 
       {/* ── Calendar Strip ── */}
-      {week && (
-        <CalendarStrip
-          week={week}
-          weekMonday={weekMonday}
-          selectedDow={selectedDow}
-          todayDow={todayDow}
-          isCurrentWeek={isCurrentWeek}
-          onSelect={setSelectedDow}
-          completedCount={completedCount}
-          totalTraining={totalTraining}
-          loggedIds={loggedIds}
-        />
-      )}
+      <CalendarStrip
+        week={week}
+        calendarDays={calWeek?.days ?? null}
+        weekMonday={weekMonday}
+        selectedDow={selectedDow}
+        todayDow={todayDow}
+        isCurrentWeek={isCurrentWeek}
+        onSelect={setSelectedDow}
+        completedCount={completedCount}
+        totalTraining={totalTraining}
+        loggedIds={loggedIds}
+      />
 
       {/* ── Two-column layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

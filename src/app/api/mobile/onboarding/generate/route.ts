@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { completeOnboardingUseCase } from '@/domain/onboarding/complete-onboarding.use-case'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
@@ -32,15 +33,20 @@ export async function POST(req: NextRequest) {
       userRepo: new PrismaUserRepository(),
     })
 
-    // Mobile needs a refreshed token with onboardingCompleted=true
-    const userPlan = mobile.userPlan
+    // Mobile needs a refreshed token with onboardingCompleted=true and updated features
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: mobile.id },
+      select: { config: true },
+    })
+    const updatedConfig = parseUserConfig(updatedUser?.config)
     const token = await signMobileToken({
       id: mobile.id,
       email: mobile.email,
       name: mobile.name,
       role: mobile.role,
       onboardingCompleted: true,
-      userPlan,
+      userPlan: getUserPlan(updatedConfig.features),
+      features: updatedConfig.features,
     })
 
     return NextResponse.json({ success: true, ...result, token })

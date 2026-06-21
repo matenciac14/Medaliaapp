@@ -168,7 +168,7 @@ export async function completeOnboardingUseCase(
     {
       userId,
       goalType,
-      generatedBy: data.planMethod === 'TEMPLATE' ? 'TEMPLATE' : 'AI',
+      generatedBy: 'AI',
       raceDate: data.raceDate ?? undefined,
       targetTimeSecs: timeStringToSecs(data.targetTime) ?? undefined,
       weightGoalKg: data.weightGoalKg ?? undefined,

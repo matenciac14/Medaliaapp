@@ -23,7 +23,20 @@ export async function GET(
     prisma.foodProfile.findUnique({ where: { userId: athleteId } }),
   ])
 
-  return NextResponse.json({ mealPlan, foodProfile })
+  // Resolver alimentos del atleta desde el catálogo (para el constructor visual)
+  const athleteFoods = foodProfile?.availableFoodIds?.length
+    ? await prisma.food.findMany({
+        where: { id: { in: foodProfile.availableFoodIds }, isActive: true },
+        select: {
+          id: true, name: true, category: true,
+          kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true,
+          servingG: true, servingLabel: true,
+        },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      })
+    : []
+
+  return NextResponse.json({ mealPlan, foodProfile, athleteFoods })
 }
 
 export async function PATCH(

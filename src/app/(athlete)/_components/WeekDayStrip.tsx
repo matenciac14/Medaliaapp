@@ -52,7 +52,7 @@ export default function WeekDayStrip({ cells, selectedIdx, onCellClick, variant 
 // ── Dashboard card variant ─────────────────────────────────────────────────────
 
 function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => void }) {
-  const { isToday, done, sessionType, label, durationMin, zoneTarget, gymOverlay } = cell
+  const { isToday, done, sessionType, label, durationMin, zoneTarget, gymOverlay, gymOverlayDone } = cell
   const isRest = sessionType === 'DESCANSO'
   const hasSession = !!sessionType && !isRest
   const emoji = SESSION_ICONS[sessionType ?? ''] ?? (isRest ? '😴' : null)
@@ -107,8 +107,13 @@ function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => v
         </span>
       )}
       {gymOverlay && (
-        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-1.5 py-0.5 leading-none mt-0.5 w-fit">
-          💪 {gymOverlay}
+        <span className={cn(
+          'inline-flex items-center gap-0.5 text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none mt-0.5 w-fit',
+          gymOverlayDone
+            ? 'text-white bg-green-500 border border-green-400'
+            : 'text-purple-600 bg-purple-50 border border-purple-100',
+        )}>
+          {gymOverlayDone ? '✓' : '💪'} {gymOverlay}
         </span>
       )}
     </Wrapper>

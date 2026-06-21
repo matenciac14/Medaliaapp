@@ -1,0 +1,98 @@
+import { NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id || session.user.role !== 'COACH') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const { id: athleteId } = await params
+
+  const relation = await prisma.coachAthlete.findFirst({
+    where: { coachId: session.user.id, athleteId },
+    select: { id: true },
+  })
+  if (!relation) {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+  }
+
+  const assignment = await prisma.assignedWorkout.findFirst({
+    where: { athleteId, isActive: true },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      template: {
+        include: {
+          days: {
+            orderBy: { order: 'asc' },
+            include: {
+              exercises: {
+                orderBy: { order: 'asc' },
+                include: { exercise: { select: { id: true, name: true, muscleGroups: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!assignment) {
+    return NextResponse.json({ assignment: null, recentSessions: [] })
+  }
+
+  const recentSessions = await prisma.gymSession.findMany({
+    where: { athleteId, assignedWorkoutId: assignment.id, completed: true },
+    orderBy: { date: 'desc' },
+    take: 5,
+    select: {
+      id: true,
+      date: true,
+      dayOfWeek: true,
+      durationMin: true,
+      rpe: true,
+      exerciseOverrides: true,
+    },
+  })
+
+  return NextResponse.json({
+    assignment: {
+      id: assignment.id,
+      startDate: assignment.startDate,
+      endDate: assignment.endDate,
+      notes: assignment.notes,
+      template: {
+        id: assignment.template.id,
+        name: assignment.template.name,
+        goal: assignment.template.goal,
+        level: assignment.template.level,
+        daysPerWeek: assignment.template.daysPerWeek,
+        days: assignment.template.days.map(d => ({
+          id: d.id,
+          dayOfWeek: d.dayOfWeek,
+          label: d.label,
+          muscleGroups: d.muscleGroups,
+          isRestDay: d.isRestDay,
+          exercises: d.exercises.map(we => ({
+            id: we.id,
+            sets: we.sets,
+            repsScheme: we.repsScheme,
+            exercise: we.exercise,
+          })),
+        })),
+      },
+    },
+    recentSessions: recentSessions.map(s => ({
+      id: s.id,
+      date: s.date.toISOString().split('T')[0],
+      dayOfWeek: s.dayOfWeek,
+      durationMin: s.durationMin,
+      rpe: s.rpe,
+      overridesCount: Array.isArray(s.exerciseOverrides) ? (s.exerciseOverrides as unknown[]).length : 0,
+    })),
+  })
+}

@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       role: user.role,
       onboardingCompleted,
       userPlan: getUserPlan(config.features),
+      features: config.features,
     })
 
     return NextResponse.json({

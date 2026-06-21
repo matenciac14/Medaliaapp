@@ -30,6 +30,7 @@ import { getTemplate } from '@/lib/plan/templates'
 import { buildPlanSystemPrompt, parseAIProfile } from '@/lib/ai/profile'
 import { getCachedSystemConfig } from '@/lib/db/system-config'
 import { parseUserConfig } from '@/lib/config/user-config'
+import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import type { PrismaClient } from '../../generated/prisma/client'
 
@@ -55,7 +56,7 @@ export type GeneratePlanInput = {
   injuries: string[]
   conditions: string[]
   nutritionCommitment: string
-  generatedBy?: 'AI' | 'COACH' | 'TEMPLATE'
+  generatedBy?: 'AI' | 'COACH'
   experienceLevel?: string
 }
 
@@ -119,7 +120,7 @@ export async function generatePlanUseCase(
       startDate: planStart,
       endDate: planEnd,
       hrZones,
-      generatedBy: (input.generatedBy ?? 'AI') as 'AI' | 'COACH' | 'TEMPLATE',
+      generatedBy: input.generatedBy === 'COACH' ? 'COACH' : 'AI',
     })
 
     if (template) {
@@ -189,7 +190,8 @@ export async function generatePlanUseCase(
     select: { config: true },
   })
   const currentConfig = parseUserConfig(existingUser?.config)
-  const { sportType, sportGoal } = resolveSportConfig(input.goalType)
+  // Use shared resolveSportConfig from onboarding.utils (covers all sport cases)
+  const { sportType, sportGoal } = resolveSportConfig(input.goalType, {} as any)
 
   const newConfig = {
     ...currentConfig,
@@ -208,20 +210,6 @@ export async function generatePlanUseCase(
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
-
-function resolveSportConfig(goalType: string): {
-  sportType: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL'
-  sportGoal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS'
-} {
-  const upper = goalType.toUpperCase()
-  if (upper.startsWith('RACE_CYCLING'))   return { sportType: 'CYCLING',  sportGoal: 'RACE' }
-  if (upper.startsWith('RACE_TRIATHLON')) return { sportType: 'TRIATHLON', sportGoal: 'RACE' }
-  if (upper.startsWith('RACE_'))          return { sportType: 'RUNNING',   sportGoal: 'RACE' }
-  if (upper === 'BODY_RECOMPOSITION' || upper === 'WEIGHT_LOSS') {
-    return { sportType: 'STRENGTH', sportGoal: 'BODY_RECOMPOSITION' }
-  }
-  return { sportType: 'GENERAL', sportGoal: 'GENERAL_FITNESS' }
-}
 
 async function getAIRecommendations(
   aiService: IAIService,

@@ -128,7 +128,7 @@ export function buildStaticMealPlan(macros: MacroTargets, input: GenerateMealsIn
   ]
 
   const hydration = { hard: 2.5, easy: 2.0, rest: 1.8 }
-  const restCarbs = Math.round(macros.easy.carbs * 0.6)
+  const restCarbs = Math.round(macros.easy.carbs * 0.7)
 
   return {
     hard: {

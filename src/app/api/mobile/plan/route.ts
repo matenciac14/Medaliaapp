@@ -43,7 +43,6 @@ export async function GET(req: NextRequest) {
         zoneTarget: s.zoneTarget ?? '',
         dayOfWeek: s.dayOfWeek,
         coachNote: s.coachNote ?? null,
-        sportLabel: (s as any).sportLabel ?? null,
         detailText: s.detailText ?? null,
         intensity: s.intensity ?? null,
         completed: !!s.log,

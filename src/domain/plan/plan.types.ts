@@ -17,14 +17,13 @@ export type SessionType =
 
 export type PlannedSession = {
   id: string
-  dayOfWeek: number        // 0=Mon … 6=Sun
+  dayOfWeek: number        // 1=Mon … 7=Sun (matches DB schema dayOfWeek)
   type: SessionType
   intensity: SessionIntensity
   durationMin: number
-  description: string | null
+  description: string | null   // maps to DB detailText
   coachNotes: string | null
-  sportLabel: string | null
-  zone: string | null
+  zone: string | null          // maps to DB zoneTarget
   weekNumber: number
 }
 

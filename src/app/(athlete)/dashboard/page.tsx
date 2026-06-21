@@ -9,10 +9,9 @@ import InstallPWABanner from '@/app/_components/InstallPWABanner'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
 import WeekNavBar from '../_components/WeekNavBar'
-import WeekDayStrip from '../_components/WeekDayStrip'
-import { buildWeekDayCells } from '../_components/week-day-cells'
+import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
-import { jsToOurDow, jsToWeekIdx } from '@/lib/core/date-utils'
+import { jsToOurDow } from '@/lib/core/date-utils'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -186,7 +185,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // ── Plan y semana actual ───────────────────────────────────────────────────
   let planData = { name: 'Sin plan', totalWeeks: 0, currentWeek: 0, phase: 'BASE' }
   let todaySession: { id: string; type: string; intensity: string; durationMin: number; zoneTarget: string; detailText: string; completed: boolean } | null = null
-  let weekSessionMap: Record<number, { type: string; label: string; done: boolean; durationMin: number; zoneTarget: string; intensity: string }> = {}
   let currentWeekVolumeKm: number | null = null
   let weekOffset = 0
   let selectedWeekNum = 0
@@ -198,17 +196,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const rawWeek = Math.floor(diffDays / 7) + 1
     const currentWeek = Math.max(1, Math.min(activePlan.totalWeeks, rawWeek))
 
-    // Offset libre de calendario — solo impedimos ir antes del inicio del plan
     weekOffset = Math.max(1 - currentWeek, rawWeekOffset)
     selectedWeekNum = currentWeek + weekOffset
     isCurrentWeek = weekOffset === 0
 
-    // currentPlanWeek: always the real current week (for todaySession card)
     const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek)
       ?? activePlan.weeks[activePlan.weeks.length - 1]
       ?? null
 
-    // selectedPlanWeek: la semana que muestra el strip — null si está fuera del plan
     const selectedPlanWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
 
     planData = {
@@ -218,7 +213,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       phase: currentPlanWeek?.phase ?? 'BASE',
     }
 
-    // todaySession always from the real current week
     if (currentPlanWeek) {
       const todayPlanned = currentPlanWeek.sessions.find(s => s.dayOfWeek === todayDow) ?? null
       if (todayPlanned && todayPlanned.type !== 'DESCANSO') {
@@ -234,61 +228,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       }
     }
 
-    // weekSessionMap from selectedPlanWeek (the one the strip shows)
-    if (selectedPlanWeek) {
-      for (const s of selectedPlanWeek.sessions) {
-        const idx = jsToWeekIdx(s.dayOfWeek)
-        weekSessionMap[idx] = {
-          type: s.type,
-          label: (s.detailText ?? s.type).slice(0, 28),
-          done: !!s.log,
-          durationMin: s.durationMin,
-          zoneTarget: s.zoneTarget ?? '',
-          intensity: s.intensity ?? 'MODERATE',
-        }
-      }
-      currentWeekVolumeKm = selectedPlanWeek.volumeKm ?? null
-    }
-  }
-
-  // ── Gym sessions in weekly calendar ───────────────────────────────────────
-  // gymOverlayMap: days where there's a gym session (used as secondary badge when training also exists)
-  const gymOverlayMap: Record<number, string> = {}
-  if (assignedWorkout) {
-    for (const day of assignedWorkout.template.days) {
-      if (day.isRestDay) continue
-      const idx = jsToWeekIdx(day.dayOfWeek)
-      const gymLabel = day.label ?? day.muscleGroups?.[0] ?? 'Gym'
-      if (activePlan && weekSessionMap[idx]) {
-        // Training session exists on this day → gym shows as secondary overlay
-        gymOverlayMap[idx] = gymLabel
-      } else if (!weekSessionMap[idx]) {
-        // Empty day → gym is the primary session
-        weekSessionMap[idx] = {
-          type: 'FUERZA',
-          label: gymLabel,
-          done: false,
-          durationMin: 60,
-          zoneTarget: '',
-          intensity: 'MODERATE',
-        }
-      }
-    }
-  }
-  // GYM-only users (no training plan): include rest days in the map
-  if (!activePlan && assignedWorkout) {
-    for (const day of assignedWorkout.template.days) {
-      if (!day.isRestDay) continue
-      const idx = jsToWeekIdx(day.dayOfWeek)
-      weekSessionMap[idx] = {
-        type: 'DESCANSO',
-        label: 'Descanso',
-        done: false,
-        durationMin: 0,
-        zoneTarget: '',
-        intensity: 'MODERATE',
-      }
-    }
+    currentWeekVolumeKm = selectedPlanWeek?.volumeKm ?? null
   }
 
   // ── Métricas reales ────────────────────────────────────────────────────────
@@ -310,10 +250,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       })
     : null
 
-  // ── Día actual ────────────────────────────────────────────────────────────
-  const todayWeekIdx = jsToWeekIdx(new Date().getDay())
-  const completedCount = Object.values(weekSessionMap).filter(s => s.done && s.type !== 'DESCANSO').length
-  const totalTraining = Object.values(weekSessionMap).filter(s => s.type !== 'DESCANSO').length
+  // ── KPIs de la semana — solo sesiones de plan (sport adherence) ──────────
+  const selectedPlanWeekSessions = activePlan?.weeks.find(w => w.weekNumber === selectedWeekNum)?.sessions ?? []
+  const completedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== 'DESCANSO').length
+  const totalTraining  = selectedPlanWeekSessions.filter(s => s.type !== 'DESCANSO').length
 
   // ── Rango de fechas de la semana actual ────────────────────────────────────
   // Usamos el lunes calendario real de la semana de hoy (igual que PlanClient.getWeekMonday).
@@ -339,23 +279,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       : `${startStr} – ${endStr}`
     return activePlan ? `Sem. ${selectedWeekNum || planData.currentWeek} · ${rangeStr}` : rangeStr
   })()
-  // Fecha numérica para cada día del strip (0=Lun…6=Dom)
-  const weekDayDates: Record<number, number> = Object.fromEntries(
-    Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStartDate)
-      d.setDate(d.getDate() + i)
-      return [i, d.getDate()]
-    })
-  )
-
-  // ── Weekly strip cells ────────────────────────────────────────────────────
-  const weekCells = buildWeekDayCells({
-    weekDayDates,
-    sessionMap: weekSessionMap,
-    gymOverlayMap,
-    todayWeekIdx: isCurrentWeek ? todayWeekIdx : -1,
-  })
-
   // ── Check-in semanal pendiente ─────────────────────────────────────────────
   // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
   const checkinWeekNumber = activePlan
@@ -734,15 +657,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
-              {/* ── TRAINING: barra de progreso ── */}
-              {dashboardMode === 'TRAINING' && totalTraining > 0 && (
-                <div className="h-1 bg-gray-100 rounded-full mb-4 overflow-hidden">
-                  <div className="h-full bg-[#22c55e] rounded-full transition-all" style={{ width: `${(completedCount / totalTraining) * 100}%` }} />
-                </div>
-              )}
-
-              {/* Strip de días */}
-              <WeekDayStrip cells={weekCells} variant="cards" />
+              {/* Strip de días — calendar API unificado (sport + gym con completion real) */}
+              <DashboardCalendarStrip
+                weekOffset={weekOffset}
+                showProgressBar={dashboardMode === 'TRAINING'}
+              />
 
               {/* ── TRAINING: detalle sesión de hoy — solo si estamos en la semana actual ── */}
               {dashboardMode === 'TRAINING' && isCurrentWeek && todaySession && (

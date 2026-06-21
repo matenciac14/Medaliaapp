@@ -3,6 +3,8 @@
  * No 'use client' — importable from both Server and Client Components.
  */
 
+import type { CalendarWeek } from '@/domain/calendar/calendar.types'
+
 export type WeekDayCell = {
   idx: number
   dateNum: number
@@ -13,6 +15,77 @@ export type WeekDayCell = {
   zoneTarget: string
   label: string | null
   gymOverlay: string | null
+  gymOverlayDone: boolean
+}
+
+/**
+ * Converts CalendarDay[] (from /api/athlete/calendar) to WeekDayCell[].
+ *
+ * Coexistence rules:
+ *   sport (non-rest) + gym  → sport is primary, gym is overlay with done state
+ *   sport (non-rest) only   → sport is primary, no overlay
+ *   DESCANSO + gym          → gym is primary (rest day means no sport, not no gym)
+ *   gym only                → gym is primary (type=FUERZA)
+ *   DESCANSO only           → DESCANSO
+ *   neither                 → empty cell
+ */
+export function calendarDaysToWeekCells(
+  days: CalendarWeek['days'],
+  todayWeekIdx: number,
+): WeekDayCell[] {
+  return days.map((d) => {
+    const { sport, gym, weekIdx, dateNum } = d
+
+    const hasSport = !!sport && sport.type !== 'DESCANSO'
+    const isRest   = !!sport && sport.type === 'DESCANSO'
+    const hasGym   = !!gym
+
+    let sessionType: string | null = null
+    let done = false
+    let durationMin = 0
+    let zoneTarget = ''
+    let label: string | null = null
+    let gymOverlay: string | null = null
+    let gymOverlayDone = false
+
+    if (hasSport && hasGym) {
+      // Sport is primary; gym badge shown as overlay
+      sessionType    = sport!.type
+      done           = sport!.done
+      durationMin    = sport!.durationMin
+      zoneTarget     = sport!.zoneTarget ?? ''
+      label          = sport!.detailText?.slice(0, 28) ?? sport!.type
+      gymOverlay     = gym!.label
+      gymOverlayDone = gym!.done
+    } else if (hasSport) {
+      sessionType = sport!.type
+      done        = sport!.done
+      durationMin = sport!.durationMin
+      zoneTarget  = sport!.zoneTarget ?? ''
+      label       = sport!.detailText?.slice(0, 28) ?? sport!.type
+    } else if (hasGym) {
+      // Gym is the only session (or sport was DESCANSO → gym wins as primary)
+      sessionType = 'FUERZA'
+      done        = gym!.done
+      durationMin = 60
+      label       = gym!.label
+    } else if (isRest) {
+      sessionType = 'DESCANSO'
+    }
+
+    return {
+      idx: weekIdx,
+      dateNum,
+      isToday: weekIdx === todayWeekIdx,
+      sessionType,
+      done,
+      durationMin,
+      zoneTarget,
+      label,
+      gymOverlay,
+      gymOverlayDone,
+    }
+  })
 }
 
 export function buildWeekDayCells({
@@ -38,6 +111,7 @@ export function buildWeekDayCells({
       zoneTarget: s?.zoneTarget ?? '',
       label: s?.label ?? null,
       gymOverlay: gymOverlayMap[idx] ?? null,
+      gymOverlayDone: false,
     }
   })
 }

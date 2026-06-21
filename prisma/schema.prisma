@@ -33,11 +33,12 @@ model User {
   coachedBy         CoachAthlete[]    @relation("AthleteRelation")
 
   // Gym feature
-  exercises          Exercise[]        @relation("CoachExercises")
-  workoutTemplates   WorkoutTemplate[] @relation("CoachTemplates")
-  coachAssignments   AssignedWorkout[] @relation("CoachAssignments")
-  athleteAssignments AssignedWorkout[] @relation("AthleteAssignments")
-  gymSessions        GymSession[]
+  exercises            Exercise[]        @relation("CoachExercises")
+  workoutTemplates     WorkoutTemplate[] @relation("CoachTemplates")
+  athleteTemplates     WorkoutTemplate[] @relation("AthleteTemplates")
+  coachAssignments     AssignedWorkout[] @relation("CoachAssignments")
+  athleteAssignments   AssignedWorkout[] @relation("AthleteAssignments")
+  gymSessions          GymSession[]
 
   // Marketplace
   coachProfile       CoachProfile?
@@ -264,22 +265,26 @@ enum Phase {
 }
 
 model PlannedSession {
-  id          String           @id @default(cuid())
-  weekId      String
-  dayOfWeek   Int
-  type        SessionType
-  intensity   SessionIntensity @default(MODERATE)
-  durationMin Int
-  zoneTarget  String?
-  structure   String?
-  detailText  String?
-  coachNote   String?
-  date        DateTime
+  id           String           @id @default(cuid())
+  weekId       String
+  dayOfWeek    Int
+  type         SessionType
+  intensity    SessionIntensity @default(MODERATE)
+  durationMin  Int
+  zoneTarget   String?
+  structure    String?
+  detailText   String?
+  coachNote    String?
+  date         DateTime
+  workoutDayId String?          // link to WorkoutDay when type=FUERZA
 
-  week PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  log  SessionLog?
+  week       PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  log        SessionLog?
+  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id])
+  gymSession GymSession?
 
   @@index([weekId])
+  @@index([date])
 }
 
 enum SessionIntensity {
@@ -415,7 +420,8 @@ enum ExerciseCategory {
 
 model WorkoutTemplate {
   id          String  @id @default(cuid())
-  coachId     String?  // null = plantilla pública del sistema
+  coachId     String?   // null = plantilla pública del sistema o rutina del atleta
+  athleteId   String?   // null = coach/sistema. string = rutina propia del atleta sin coach
   name        String
   description String?
   goal        String? // "HYPERTROPHY", "STRENGTH", "TONING", "FUNCTIONAL"
@@ -426,6 +432,7 @@ model WorkoutTemplate {
   category    String? // "PPL", "FULL_BODY", "UPPER_LOWER", "STRENGTH", "BEGINNER"
 
   coach       User?            @relation("CoachTemplates", fields: [coachId], references: [id])
+  athlete     User?            @relation("AthleteTemplates", fields: [athleteId], references: [id])
   days        WorkoutDay[]
   assignments AssignedWorkout[]
 
@@ -444,8 +451,9 @@ model WorkoutDay {
   cardioNotes  String?
   order        Int      @default(0)
 
-  template  WorkoutTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  exercises WorkoutExercise[]
+  template         WorkoutTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercises        WorkoutExercise[]
+  plannedSessions  PlannedSession[]
 }
 
 model WorkoutExercise {
@@ -498,6 +506,7 @@ model GymSession {
   id                String   @id @default(cuid())
   athleteId         String
   assignedWorkoutId String
+  plannedSessionId  String?  @unique  // link to PlannedSession for calendar merge
   dayOfWeek         Int
   date              DateTime
   durationMin       Int?
@@ -505,13 +514,17 @@ model GymSession {
   notes             String?
   completed         Boolean  @default(false)
 
+  exerciseOverrides Json?   // [{ originalWorkoutExerciseId, replacedWithExerciseId, replacedExerciseName, reason? }]
+
   athlete         User            @relation(fields: [athleteId], references: [id])
   assignedWorkout AssignedWorkout @relation(fields: [assignedWorkoutId], references: [id])
+  plannedSession  PlannedSession? @relation(fields: [plannedSessionId], references: [id])
   setLogs         SetLog[]
 
   createdAt DateTime @default(now())
 
   @@index([athleteId, completed])
+  @@index([athleteId, date])
 }
 
 model SetLog {
@@ -625,8 +638,9 @@ model NutritionPlan {
 model FoodProfile {
   id             String   @id @default(cuid())
   userId         String   @unique
-  availableFoods String[]
-  restrictions   String[]
+  availableFoods   String[]
+  availableFoodIds String[]  // IDs linkeados a Food.id — para cálculo de macros
+  restrictions     String[]
   mealsPerDay    Int      @default(3)
   weighsFood     Boolean  @default(false)
   notes          String?
