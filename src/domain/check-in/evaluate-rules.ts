@@ -66,6 +66,13 @@ export function evaluateCheckInRules(
     severity = 'critical'
   }
 
+  // Energía baja
+  if (checkIn.energyLevel <= CHECK_IN_THRESHOLDS.LOW_ENERGY) {
+    triggers.push('energia_baja')
+    adjustments.push('Energía baja — reducir carga esta semana y priorizar recuperación')
+    if (severity === 'ok') severity = 'warning'
+  }
+
   // Estrés alto
   if (checkIn.stressLevel >= CHECK_IN_THRESHOLDS.HIGH_STRESS) {
     triggers.push('estres_alto')

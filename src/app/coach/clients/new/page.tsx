@@ -11,10 +11,9 @@ const SPORTS = [
   { value: 'RUNNING', label: 'Atletismo / Running' },
   { value: 'CYCLING', label: 'Ciclismo' },
   { value: 'TRIATHLON', label: 'Triatlón' },
-  { value: 'GYM', label: 'Gimnasio' },
+  { value: 'STRENGTH', label: 'Fuerza / Gimnasio' },
   { value: 'SWIMMING', label: 'Natación' },
-  { value: 'FUNCTIONAL', label: 'Funcional' },
-  { value: 'OTHER', label: 'Otro' },
+  { value: 'FOOTBALL', label: 'Fútbol' },
 ]
 
 const GOALS = [
@@ -36,7 +35,7 @@ type ExistingUser = { id: string; name: string; email: string }
 
 type CreatedAthlete = {
   email: string
-  tempPassword: string
+  resetLink: string
   athleteId: string
   athleteName: string
 }
@@ -163,7 +162,7 @@ export default function CreateAthletePage() {
       })
       const data = await res.json()
       if (!res.ok) { setCreateError(data.error ?? 'Error al crear el atleta.'); return }
-      setCreated({ email: data.email, tempPassword: data.tempPassword, athleteId: data.athleteId, athleteName: data.athleteName })
+      setCreated({ email: data.email, resetLink: data.resetLink, athleteId: data.athleteId, athleteName: data.athleteName })
       setStep('done')
     } catch {
       setCreateError('Error de conexión.')
@@ -219,14 +218,9 @@ export default function CreateAthletePage() {
                   <CopyButton value={created.email} />
                 </div>
                 <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-green-200 gap-2">
-                  <span className="text-xs text-gray-500 font-medium shrink-0">Contraseña temporal</span>
-                  <span className="text-sm font-mono font-bold text-gray-900 flex-1 text-right">{created.tempPassword}</span>
-                  <CopyButton value={created.tempPassword} />
-                </div>
-                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-green-200 gap-2">
-                  <span className="text-xs text-gray-500 font-medium shrink-0">URL de ingreso</span>
-                  <span className="text-sm font-mono text-[#1e3a5f] flex-1 text-right">medaliq.com/login</span>
-                  <CopyButton value="https://medaliq.com/login" />
+                  <span className="text-xs text-gray-500 font-medium shrink-0">Link de acceso</span>
+                  <span className="text-sm text-[#1e3a5f] flex-1 text-right truncate">El atleta crea su contraseña aquí</span>
+                  <CopyButton value={created.resetLink} />
                 </div>
               </div>
             </div>

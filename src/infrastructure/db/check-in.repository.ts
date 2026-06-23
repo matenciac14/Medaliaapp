@@ -37,8 +37,8 @@ export class PrismaCheckInRepository implements ICheckInRepository {
       nutritionAdherencePct: data.nutritionAdherence
         ? Math.round(data.nutritionAdherence * 10)  // 1-10 scale → 0-100
         : undefined,
-      dietAdherencePct: data.trainingAdherence,
       painLevel: data.painLevel ?? null,
+      painDescription: data.painDescription ?? null,
       painFlag: hasPain,
       notes: data.notes ?? null,
       adjustmentsTriggered: data.triggers,

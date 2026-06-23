@@ -1,11 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { rateLimitAsync } from '@/lib/rate-limit'
-import { parseUserConfig } from '@/lib/config/user-config'
 import {
   computeNutritionTargets,
-  buildMealPlanPrompt,
-  callAIForMealPlan,
   buildStaticMealPlan,
   type GenerateMealsInput,
 } from '@/domain/nutrition/generate-meal-plan'
@@ -22,23 +19,26 @@ export async function POST(req: Request) {
   if (!body.availableFoods || body.availableFoods.length < 2)
     return Response.json({ error: 'Agrega al menos 2 alimentos disponibles' }, { status: 400 })
 
+  const { availableFoodIds, ...foodProfileInput } = body
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { profile: true, goals: { where: { status: 'ACTIVE' }, take: 1 } },
   })
   if (!user?.profile) return Response.json({ error: 'Perfil de salud requerido' }, { status: 400 })
 
-  if (!parseUserConfig(user.config).features.aiPlan) {
-    return Response.json({ error: 'Plan Pro requerido para generar plan de comidas con IA.', upgrade: '/upgrade' }, { status: 402 })
-  }
 
   const { tdee, macros } = computeNutritionTargets(user.profile)
 
+  const foodProfileData = {
+    ...foodProfileInput,
+    ...(availableFoodIds && availableFoodIds.length > 0 ? { availableFoodIds } : {}),
+  }
   await Promise.all([
     prisma.foodProfile.upsert({
       where: { userId },
-      create: { userId, ...body },
-      update: body,
+      create: { userId, ...foodProfileData },
+      update: foodProfileData,
     }),
     prisma.nutritionPlan.upsert({
       where: { userId },
@@ -47,14 +47,7 @@ export async function POST(req: Request) {
     }),
   ])
 
-  let mealData: unknown
-  try {
-    const prompt = buildMealPlanPrompt(user.profile, macros, tdee, user.goals[0]?.type, body)
-    mealData = await callAIForMealPlan(prompt)
-  } catch (err) {
-    console.error('[generate-meals] AI error, using static fallback:', err)
-    mealData = buildStaticMealPlan(macros, body)
-  }
+  const mealData = buildStaticMealPlan(macros, body)
 
   const mealPlan = await prisma.mealPlan.upsert({
     where: { userId },

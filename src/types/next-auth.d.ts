@@ -17,8 +17,6 @@ declare module 'next-auth' {
         log: boolean
         coach: boolean
         gym: boolean
-        aiPlan: boolean
-        aiCoach: boolean
       }
       name?: string | null
       email?: string | null
@@ -40,8 +38,6 @@ declare module 'next-auth' {
       log: boolean
       coach: boolean
       gym: boolean
-      aiPlan: boolean
-      aiCoach: boolean
     }
   }
 }
@@ -62,8 +58,6 @@ declare module 'next-auth/jwt' {
       log: boolean
       coach: boolean
       gym: boolean
-      aiPlan: boolean
-      aiCoach: boolean
     }
   }
 }

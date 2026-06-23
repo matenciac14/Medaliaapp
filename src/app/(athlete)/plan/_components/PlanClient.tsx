@@ -20,6 +20,7 @@ export type PlanClientWeekSession = {
   durationMin: number
   zoneTarget: string
   detailText: string
+  structure: string | null
   intensity: string | null
   logId: string | null
   logDurationMin: number | null
@@ -736,7 +737,9 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
     : isGym ? 'bg-purple-500'
     : 'bg-[#1e3a5f]'
   const showZone = session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== '' && session.zoneTarget !== 'N/A'
-  const structureLines = session.detailText ? session.detailText.split('\n').filter(Boolean) : []
+  const structureLines = (session.structure || session.detailText)
+    ? (session.structure ?? session.detailText!).split('\n').filter(Boolean)
+    : []
 
   return (
     <>

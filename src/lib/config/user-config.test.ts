@@ -5,7 +5,7 @@ import { parseUserConfig, DEFAULT_USER_CONFIG, getUserPlan, type UserPlan } from
 // DEFAULT_USER_CONFIG — estado inicial correcto
 // ---------------------------------------------------------------------------
 describe('DEFAULT_USER_CONFIG', () => {
-  it('plan es true por defecto — todos los usuarios acceden al módulo de plan', () => {
+  it('plan es true por defecto', () => {
     expect(DEFAULT_USER_CONFIG.features.plan).toBe(true)
   })
 
@@ -19,15 +19,8 @@ describe('DEFAULT_USER_CONFIG', () => {
     expect(f.gym).toBe(true)
   })
 
-  it('features de pago desactivadas por defecto', () => {
-    const f = DEFAULT_USER_CONFIG.features
-    expect(f.aiPlan).toBe(false)
-    expect(f.aiCoach).toBe(false)
-    expect(f.coach).toBe(false)
-  })
-
-  it('ai.monthlyLimit es 0 por defecto', () => {
-    expect(DEFAULT_USER_CONFIG.ai.monthlyLimit).toBe(0)
+  it('feature coach desactivada por defecto', () => {
+    expect(DEFAULT_USER_CONFIG.features.coach).toBe(false)
   })
 
   it('onboarding no está completado por defecto', () => {
@@ -54,16 +47,9 @@ describe('parseUserConfig', () => {
   })
 
   it('merge parcial de features — defaults conservados', () => {
-    const result = parseUserConfig({ features: { aiPlan: true } })
-    expect(result.features.aiPlan).toBe(true)
-    expect(result.features.plan).toBe(true)   // default true preservado
-    expect(result.features.aiCoach).toBe(false) // default false preservado
-  })
-
-  it('merge parcial de ai — monthlyLimit override', () => {
-    const result = parseUserConfig({ ai: { monthlyLimit: 100, messagesThisMonth: 5, messagesResetAt: '2026-06' } })
-    expect(result.ai.monthlyLimit).toBe(100)
-    expect(result.ai.messagesThisMonth).toBe(5)
+    const result = parseUserConfig({ features: { coach: true } })
+    expect(result.features.coach).toBe(true)
+    expect(result.features.plan).toBe(true)
   })
 
   it('merge parcial de sport', () => {
@@ -85,23 +71,11 @@ describe('parseUserConfig', () => {
 })
 
 // ---------------------------------------------------------------------------
-// getUserPlan — deriva FREE | PRO de features
+// getUserPlan — siempre devuelve FREE mientras no haya tiers activos
 // ---------------------------------------------------------------------------
 describe('getUserPlan', () => {
-  it('FREE cuando aiPlan y aiCoach son false', () => {
-    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features })).toBe('FREE')
-  })
-
-  it('PRO cuando aiPlan es true', () => {
-    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiPlan: true })).toBe('PRO')
-  })
-
-  it('PRO cuando aiCoach es true', () => {
-    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiCoach: true })).toBe('PRO')
-  })
-
-  it('PRO cuando ambos son true', () => {
-    expect(getUserPlan({ ...DEFAULT_USER_CONFIG.features, aiPlan: true, aiCoach: true })).toBe('PRO')
+  it('siempre devuelve FREE', () => {
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features)).toBe('FREE')
   })
 })
 

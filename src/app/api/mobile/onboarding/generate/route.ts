@@ -7,7 +7,6 @@ import { completeOnboardingUseCase } from '@/domain/onboarding/complete-onboardi
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { AnthropicService } from '@/infrastructure/ai/anthropic.service'
 import type { WizardData } from '@/app/onboarding/_types'
 
 export async function POST(req: NextRequest) {
@@ -28,7 +27,6 @@ export async function POST(req: NextRequest) {
     const result = await completeOnboardingUseCase(data, mobile.id, {
       db: prisma as any,
       planRepo: new PrismaPlanRepository(),
-      aiService: new AnthropicService(),
       healthProfileRepo: new PrismaHealthProfileRepository(),
       userRepo: new PrismaUserRepository(),
     })

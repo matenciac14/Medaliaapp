@@ -4,7 +4,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
-import { parseUserConfig } from '@/lib/config/user-config'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
@@ -12,6 +11,7 @@ import WeekNavBar from '../_components/WeekNavBar'
 import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
+import { selectActivePlan } from '@/lib/plan/active-plan'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -87,21 +87,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!dbUser) redirect('/login')
 
   // ── Seleccionar el plan ACTIVE correcto cuando hay duplicados ─────────────
-  let activePlanRaw: (typeof activePlansRaw)[0] | null = activePlansRaw[0] ?? null
-  if (activePlansRaw.length > 1) {
-    let bestLogCount = -1
-    for (const p of activePlansRaw) {
-      const logCount = p.weeks.flatMap(w => w.sessions).filter(s => s.log).length
-      if (logCount > bestLogCount) { bestLogCount = logCount; activePlanRaw = p }
-    }
-    const winnerIds = new Set([activePlanRaw?.id])
-    const loserIds = activePlansRaw.filter(p => !winnerIds.has(p.id)).map(p => p.id)
-    if (loserIds.length > 0) {
-      await prisma.trainingPlan.updateMany({
-        where: { id: { in: loserIds } },
-        data: { status: PlanStatus.COMPLETED },
-      }).catch(() => {})
-    }
+  const { winner: _activePlanWinner, loserIds: _dashboardLoserIds } = selectActivePlan(activePlansRaw)
+  let activePlanRaw = _activePlanWinner
+  if (_dashboardLoserIds.length > 0) {
+    await prisma.trainingPlan.updateMany({
+      where: { id: { in: _dashboardLoserIds } },
+      data: { status: PlanStatus.COMPLETED },
+    }).catch(() => {})
   }
 
   // ── Lifecycle: detectar plan expirado → RECOVERY / FREE ───────────────────
@@ -164,15 +156,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const firstName = (dbUser.name ?? dbUser.email ?? 'Atleta').split(' ')[0]
 
-  // ── AI chat: límite mensual ────────────────────────────────────────────────
-  const userConfig = parseUserConfig(dbUser.config)
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const aiMessagesUsed = userConfig.ai.messagesResetAt === currentMonth
-    ? userConfig.ai.messagesThisMonth
-    : 0
-  const aiMonthlyLimit = userConfig.ai.monthlyLimit
-  const nextMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1))
-  const aiResetAt = nextMonth.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
   const profile = dbUser.profile
   const lastCheckIn = dbUser.checkIns[0] ?? null
   const lastDailyLog = dbUser.dailyLogs[0] ?? null
@@ -306,8 +289,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const raceDays = raceDate
     ? Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000)
     : null
+  const sportGoal = ((dbUser.config as Record<string, unknown>)?.sport as Record<string, unknown>)?.goal as string | undefined
   const isRecomp = !!(
-    userConfig.sport?.goal?.includes('BODY') ||
+    sportGoal?.includes('BODY') ||
     activePlan?.name?.toLowerCase().includes('recomp') ||
     activePlan?.name?.toLowerCase().includes('body')
   )

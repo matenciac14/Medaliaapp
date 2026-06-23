@@ -113,8 +113,8 @@ export default async function GymHistoryPage() {
             }> = {}
 
             for (const sl of gs.setLogs) {
-              const exName = sl.workoutExercise.exercise.name
-              const exId = sl.workoutExerciseId
+              const exName = sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio'
+              const exId = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
               if (!exerciseGroups[exId]) {
                 exerciseGroups[exId] = { name: exName, sets: [] }
               }

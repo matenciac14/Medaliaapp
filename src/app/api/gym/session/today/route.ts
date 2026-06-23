@@ -3,6 +3,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { parseUserConfig } from '@/lib/config/user-config'
 
 
 export async function GET(req: NextRequest) {
@@ -11,6 +12,13 @@ export async function GET(req: NextRequest) {
   if (!athleteId) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
+
+  // Feature gate
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
+  if (!parseUserConfig(userRecord?.config).features.gym) {
+    return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
+  }
+
   const todayDow = jsToOurDow(new Date().getDay())
 
   // Check today's planned session type

@@ -60,18 +60,20 @@ export async function GET(
     // Group set logs by exercise within this session
     const byExercise: Record<string, typeof gymSession.setLogs> = {}
     for (const setLog of gymSession.setLogs) {
-      const exId = setLog.workoutExercise.exercise.id
+      const exId = setLog.workoutExercise?.exercise.id ?? setLog.exerciseName ?? 'unknown'
       if (!byExercise[exId]) byExercise[exId] = []
       byExercise[exId].push(setLog)
     }
 
     for (const [exId, logs] of Object.entries(byExercise)) {
-      const ex = logs[0].workoutExercise.exercise
+      const ex = logs[0].workoutExercise?.exercise
+      const exName = ex?.name ?? logs[0].exerciseName ?? 'Ejercicio'
+      const exMuscles = ex?.muscleGroups ?? []
       if (!exerciseMap[exId]) {
         exerciseMap[exId] = {
           exerciseId: exId,
-          name: ex.name,
-          muscleGroups: ex.muscleGroups,
+          name: exName,
+          muscleGroups: exMuscles,
           logs: [],
         }
       }

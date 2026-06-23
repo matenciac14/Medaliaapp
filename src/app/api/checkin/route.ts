@@ -6,7 +6,6 @@ import { PrismaCheckInRepository } from '@/infrastructure/db/check-in.repository
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { AnthropicService } from '@/infrastructure/ai/anthropic.service'
 import { unauthorized, ok, serverError } from '@/lib/api/responses'
 // prisma is passed as `db` so the use case can open $transaction
 
@@ -67,7 +66,6 @@ export async function POST(req: NextRequest) {
         db: prisma,
         checkInRepo: new PrismaCheckInRepository(),
         planRepo: new PrismaPlanRepository(),
-        aiService: new AnthropicService(),
         healthProfileRepo: new PrismaHealthProfileRepository(),
         userRepo: new PrismaUserRepository(),
       }

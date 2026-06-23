@@ -49,7 +49,7 @@ export default async function CoachDashboardPage() {
               include: {
                 weeks: {
                   orderBy: { weekNumber: 'asc' },
-                  include: { sessions: { include: { log: { select: { id: true } } } } },
+                  include: { sessions: { where: { date: { lte: now } }, include: { log: { select: { id: true } } } } },
                 },
               },
             },

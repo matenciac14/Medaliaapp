@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Flame, Check, Moon } from 'lucide-react'
+import { Flame, Check, Moon, Activity } from 'lucide-react'
 
 type Meal = {
   time: string
@@ -33,6 +33,59 @@ type MealPlanData = {
   rest: DayMeals
 }
 
+// Coach constructor saves a different format (slots: breakfast/lunch/dinner/snacks).
+// Normalize it to the canonical AI format before rendering.
+type CoachMealEntry = { foodName: string; grams: number; kcal: number; protein: number; carbs: number; fat: number }
+type CoachDayMeals = { breakfast?: CoachMealEntry[]; lunch?: CoachMealEntry[]; dinner?: CoachMealEntry[]; snacks?: CoachMealEntry[] }
+
+function normalizeDay(raw: unknown): DayMeals {
+  if (!raw || typeof raw !== 'object') return { meals: [], supplements: [], hydrationL: 2, rules: [] }
+  const r = raw as Record<string, unknown>
+
+  // Already canonical AI format
+  if (Array.isArray(r.meals)) return raw as DayMeals
+
+  // Coach constructor format — convert slots to meals array
+  const coachDay = r as CoachDayMeals
+  const slotLabels: Record<string, string> = {
+    breakfast: 'Desayuno',
+    lunch: 'Almuerzo',
+    dinner: 'Cena',
+    snacks: 'Snack',
+  }
+  const meals: Meal[] = []
+  for (const [slot, label] of Object.entries(slotLabels)) {
+    const entries = (coachDay[slot as keyof CoachDayMeals] ?? []) as CoachMealEntry[]
+    if (entries.length === 0) continue
+    const totals = entries.reduce(
+      (acc, e) => ({ kcal: acc.kcal + e.kcal, protein: acc.protein + e.protein, carbs: acc.carbs + e.carbs, fat: acc.fat + e.fat }),
+      { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+    )
+    meals.push({
+      time: '',
+      label,
+      foods: entries.map((e) => `${e.foodName} ${e.grams}g`).join(', '),
+      ...totals,
+    })
+  }
+  return { meals, supplements: [], hydrationL: 2, rules: [] }
+}
+
+function normalizeMealPlan(data: unknown): MealPlanData & { low: DayMeals } {
+  if (!data || typeof data !== 'object') {
+    const empty = { meals: [], supplements: [], hydrationL: 2, rules: [] }
+    return { hard: empty, easy: empty, low: empty, rest: empty }
+  }
+  const d = data as Record<string, unknown>
+  const easy = normalizeDay(d.easy)
+  return {
+    hard: normalizeDay(d.hard),
+    easy,
+    low: normalizeDay(d.low ?? d.easy), // no 'low' key in AI plans — fall back to easy meals
+    rest: normalizeDay(d.rest),
+  }
+}
+
 type NutritionPlanTargets = {
   tdee: number
   targetKcalHard: number
@@ -44,12 +97,13 @@ type NutritionPlanTargets = {
   fatG: number
 }
 
-type DayType = 'hard' | 'easy' | 'rest'
+type DayType = 'hard' | 'easy' | 'low' | 'rest'
 
 const DAY_TABS: { key: DayType; label: string; Icon: React.ElementType; color: string }[] = [
-  { key: 'hard', label: 'Día duro',  Icon: Flame, color: '#f97316' },
-  { key: 'easy', label: 'Día fácil', Icon: Check, color: '#16a34a' },
-  { key: 'rest', label: 'Descanso',  Icon: Moon,  color: '#6b7280' },
+  { key: 'hard', label: 'Día duro',   Icon: Flame,    color: '#f97316' },
+  { key: 'easy', label: 'Día fácil',  Icon: Check,    color: '#16a34a' },
+  { key: 'low',  label: 'Día suave',  Icon: Activity, color: '#8b5cf6' },
+  { key: 'rest', label: 'Descanso',   Icon: Moon,     color: '#6b7280' },
 ]
 
 const MEAL_ICONS: Record<string, string> = {
@@ -64,7 +118,7 @@ const MEAL_ICONS: Record<string, string> = {
 }
 
 interface Props {
-  mealPlan: MealPlanData
+  mealPlan: MealPlanData | (MealPlanData & { low: DayMeals })
   nutritionPlan: NutritionPlanTargets
   todayDayType: DayType
 }
@@ -78,18 +132,20 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
     return () => clearTimeout(t)
   }, [])
 
-  const dayData = mealPlan[activeTab]
+  const normalizedPlan = normalizeMealPlan(mealPlan)
+  const dayData = normalizedPlan[activeTab]
   const targets = {
-    hard:  { kcal: nutritionPlan.targetKcalHard, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsHardG, fat: nutritionPlan.fatG },
-    easy:  { kcal: nutritionPlan.targetKcalEasy, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG, fat: nutritionPlan.fatG },
-    rest:  { kcal: nutritionPlan.targetKcalRest, protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.7), fat: nutritionPlan.fatG },
+    hard: { kcal: nutritionPlan.targetKcalHard, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsHardG, fat: nutritionPlan.fatG },
+    easy: { kcal: nutritionPlan.targetKcalEasy, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG, fat: nutritionPlan.fatG },
+    low:  { kcal: Math.round(nutritionPlan.targetKcalEasy * 0.88), protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.75), fat: nutritionPlan.fatG },
+    rest: { kcal: nutritionPlan.targetKcalRest, protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.7), fat: nutritionPlan.fatG },
   }
   const target = targets[activeTab]
 
-  const totalKcal = dayData.meals.reduce((s, m) => s + m.kcal, 0)
-  const totalProtein = dayData.meals.reduce((s, m) => s + m.protein, 0)
-  const totalCarbs = dayData.meals.reduce((s, m) => s + m.carbs, 0)
-  const totalFat = dayData.meals.reduce((s, m) => s + m.fat, 0)
+  const totalKcal = dayData.meals.reduce((s, m) => s + (m.kcal ?? 0), 0)
+  const totalProtein = dayData.meals.reduce((s, m) => s + (m.protein ?? 0), 0)
+  const totalCarbs = dayData.meals.reduce((s, m) => s + (m.carbs ?? 0), 0)
+  const totalFat = dayData.meals.reduce((s, m) => s + (m.fat ?? 0), 0)
 
   return (
     <div className="space-y-6">

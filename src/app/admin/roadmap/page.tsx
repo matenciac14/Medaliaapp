@@ -457,8 +457,8 @@ const PHASES = [
       { title: 'Wompi/Stripe: suscripción Pro $15/mes + webhook activa tier', done: false, note: '/upgrade tiene botón mailto: temporal. Detalle completo en Fase 13.' },
       { title: '[HECHO] Fix: onboarding — steps muertos eliminados (main-goal, gym-goal, body-goal, day-schedule)', done: true, note: 'Removidos de StepId union type en _types.ts y de STEP_LABELS + stepContent en page.tsx. Los componentes existen pero nunca se renderizan. TypeScript ahora enforza solo los 10 steps activos.' },
       { title: '[HECHO] Fix: onboarding FREE path derivaba mainGoal="BODY" en handleGenerate()', done: true, note: 'La cadena ternaria caía en "BODY" cuando healthGoal=FREE. La API route detecta FREE por data.healthGoal, no por mainGoal, así que funcionaba por casualidad. Fix: caso explícito healthGoal==="FREE" → mainGoal="FREE" antes de llamar a la API.' },
-      { title: 'Fix crítico: dayOfWeek incorrecto en gym-session mobile', done: false, note: 'MEDALIQ-MOBILE/app/(app)/gym-session.tsx:167 usa new Date().getDay() que devuelve 0-6 (JS). El sistema usa 1-7. Domingos graba dayOfWeek:0 en DB rompiendo historial y adherencia. Fix 1 línea.' },
-      { title: 'Modal RPE + notas al finalizar sesión gym en mobile', done: false, note: 'Mobile usa Alert.alert básico. Web tiene modal completo (RPE slider 1-10, duración auto del timer, notas). La API /api/gym/session/complete ya acepta rpe/durationMin/notes. Implementar FinishModal en gym-session.tsx al estilo del RestTimerModal (bottom sheet).' },
+      { title: '[HECHO] Fix: dayOfWeek en gym-session mobile', done: true, note: 'gym-session.tsx, gym.tsx y plan.tsx ya usan d === 0 ? 7 : d correctamente. Bug ya estaba corregido.' },
+      { title: '[HECHO] Modal RPE + notas al finalizar sesión gym en mobile', done: true, note: 'FinishModal ya implementado en gym-session.tsx — RPE selector 1-10, duración pre-llenada con tiempo real del timer, notas opcionales. Bottom sheet con animationType="slide". Ya estaba completo.' },
     ],
   },
   {

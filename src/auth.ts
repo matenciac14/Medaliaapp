@@ -110,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
         session.user.features = (token.features as Session['user']['features']) ?? {
           plan: true, checkin: true, nutrition: true, progress: true,
-          log: true, coach: false, gym: true, aiPlan: false, aiCoach: false,
+          log: true, coach: false, gym: true,
         }
       }
       return session

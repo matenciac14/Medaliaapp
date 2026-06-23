@@ -122,18 +122,25 @@ enum AthleteStatus { ACTIVE  PAUSED  COMPLETED }
 
 ## Training-Nutrition Sync — arquitectura
 
-La nutrición es un espejo del entrenamiento. Lógica en `src/lib/nutrition/daily-target.ts`:
+La nutrición es un espejo del entrenamiento. Fuente canónica: `src/lib/nutrition/daily-target.ts`
 ```
 PlannedSession.intensity → target nutricional del día
-  HIGH     → NutritionPlan.targetKcalHard   + carbsHardG
-  MODERATE → NutritionPlan.targetKcalEasy   + carbsEasyG
-  LOW      → targetKcalEasy - 200           + carbsEasyG - 30
-  REST     → NutritionPlan.targetKcalRest   + carbsEasyG (bajo)
-  (sin sesión) → targetKcalRest
+
+getDailyNutritionTarget(intensity, plan):
+  HIGH     → targetKcalHard   + carbsHardG
+  MODERATE → targetKcalEasy   + carbsEasyG
+  LOW      → targetKcalEasy*0.88 + carbsEasyG*0.75
+  REST     → targetKcalRest   + carbsEasyG*0.6    ← NOTA: nutrition/page usa *0.7
+  (sin sesión) → REST target
+
+intensityToDayType(intensity) → 'hard' | 'easy' | 'rest'  [src/lib/nutrition/day-type.ts]
+getSessionIntensity(type) → intensity                       [src/lib/plan/intensity.ts]
 ```
-- Dashboard atleta muestra: sesión del día + kcal objetivo + macros + label de carga
-- Coach ve en Tab Plan: carga semanal total (HIGH=3, MODERATE=2, LOW=1, REST=0)
-- Coach puede ajustar targets por fase del plan desde Tab Nutrición
+**Inconsistencia conocida:** `daily-target.ts` usa `carbsEasyG * 0.6` para REST;
+`nutrition/page.tsx` y `calculate-food-log.ts` usan `* 0.7`. Pendiente unificar a 0.7.
+
+- Dashboard atleta: sesión del día + kcal objetivo + macros + label de carga
+- Coach: Tab Plan muestra carga semanal (HIGH=3, MODERATE=2, LOW=1, REST=0)
 
 ## Flujos de referencia
 Ver `FLOWS.md` para diagramas completos de todos los flujos del producto.
@@ -151,36 +158,44 @@ Ver `FLOWS.md` para diagramas completos de todos los flujos del producto.
 - `src/auth.config.ts` — config SIN Prisma, usada en middleware (Edge-safe)
 - `src/auth.ts` — config completa con PrismaAdapter, usada en server components y API routes
 - Middleware importa de `auth.config.ts`, nunca de `auth.ts`
-- JWT contiene: `id`, `role`, `onboardingCompleted`, `trialEndsAt`, `userPlan`
+- JWT contiene: `id`, `role`, `onboardingCompleted`, `activated` (=features.plan), `userPlan`
+- `trialEndsAt` NO existe en JWT — no hay check de trial en middleware
 
 ## UserConfig — patrón central
 Cada `User` tiene un campo `config Json` en DB que controla toda su experiencia.
 Tipo en `src/lib/config/user-config.ts`:
 ```ts
 type UserConfig = {
-  features: { plan, checkin, nutrition, progress, log, coach, gym }  // booleanos
+  features: {
+    plan, checkin, nutrition, progress, log, coach, gym  // feature flags
+    aiPlan: boolean    // acceso a generación AI de plan (PRO)
+    aiCoach: boolean   // acceso a AI chat (PRO)
+  }
   sport: { type, goal }
   plan: { activePlanId, currentWeek, totalWeeks, phase }
   onboarding: { completed, completedAt }
-  trial: { plan: 'TRIAL' | 'FREE' | 'PRO', endsAt: string | null }
+  // NO existe campo 'trial' — el tier se deriva de features
   ai: { monthlyLimit, messagesThisMonth, messagesResetAt }
   preferences: { language, units, notifications }
 }
 ```
-- Al completar onboarding B2C: `trial.plan = 'TRIAL'`, `trial.endsAt = +30 días`, `monthlyLimit = 999999`
-- Al expirar trial: middleware redirige a `/upgrade`
-- Post-upgrade Free: features.plan/checkin/nutrition = false
-- `parseUserConfig(raw)` — helper con merge de defaults
+- `getUserPlan(features)` → 'PRO' si `features.aiPlan || features.aiCoach`, 'FREE' sino
+- Trial = activar `aiPlan: true`, `aiCoach: true`, `monthlyLimit: 999999`
+- Al completar onboarding B2C: features todas activadas incluyendo aiPlan/aiCoach
+- Post-downgrade Free: features.plan/checkin/nutrition/progress/aiPlan/aiCoach = false
+- `parseUserConfig(raw)` — merge con DEFAULT_USER_CONFIG (features.plan: true por defecto)
 
 ## Middleware — protección de rutas
+Verificado contra `src/middleware.ts`:
 - Sin auth → `/login`
 - Onboarding incompleto + NO api → `/onboarding`
-- Trial expirado (ATHLETE + TRIAL) → `/upgrade`
+- ATHLETE + onboardingCompleted + !activated (features.plan=false) → `/pending` (B2B)
 - ADMIN → siempre `/admin`
-- COACH → `/dashboard` redirige a `/coach/dashboard`
+- COACH + `/dashboard` → `/coach/dashboard`
 - `/coaches`, `/p/*`, `/join/*` → públicas
 - `/admin/*` → solo ADMIN
 - `/coach/*` → solo COACH
+- **NO hay check de trial expirado en middleware** — upgrade logic está inline en páginas
 
 ## Onboarding — flujo multi-deporte
 Archivo principal: `src/app/onboarding/page.tsx` (self-contained, sin imports de _steps/)
@@ -239,48 +254,51 @@ const isLastDataStep = steps[stepIndex + 1] === 'generating'
 ### Templates disponibles (`src/lib/plan/templates.ts`):
 | Template | GoalType | Semanas | Fases |
 |----------|----------|---------|-------|
-| HALF_MARATHON_18W | RACE_HALF_MARATHON, RACE_MARATHON*, RACE_CYCLING*, RACE_TRIATHLON* | 18 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
+| HALF_MARATHON_18W | RACE_HALF_MARATHON, RACE_MARATHON†, RACE_CYCLING†, RACE_TRIATHLON†, RACE_SWIMMING†, FOOTBALL_GPP† | 18 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
 | TEN_K_12W | RACE_10K | 12 | BASE→DESARROLLO→AFINAMIENTO |
 | FIVE_K_8W | RACE_5K | 8 | BASE→ESPECÍFICO |
-| BODY_RECOMPOSITION_16W | BODY_RECOMPOSITION | 16 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
+| BODY_RECOMPOSITION_16W | BODY_RECOMPOSITION, STRENGTH_TRAINING | 16 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
 
-*Fallback temporal hasta tener templates propios para maratón, ciclismo y triatlón.
+† Fallback — estos deportes usan HALF_MARATHON_18W hasta tener templates propios.
 
-### Flujo de generación (`src/lib/plan/generator.ts`):
+### Flujo de generación (verificado — `src/domain/plan/generate-plan.use-case.ts`):
 1. Selecciona template por goalType
-2. Calcula hrMax real o estimado (211 - 0.64 × edad)
-3. Calcula zonas FC por Karvonen
-4. Calcula TDEE (Mifflin-St Jeor) y macros
-5. **Solo B2C**: llama Claude Haiku para 3 recomendaciones personalizadas usando AIProfile del admin
-6. Crea en DB: TrainingPlan + PlanWeeks + PlannedSessions (via `createMany`, timeout 30s)
-7. Upsert NutritionPlan
-8. Actualiza User.config: features activos, trial 30d, sport.type, plan.activePlanId
+2. Calcula hrMax: usa el dado por el usuario si > 100, sino estima con `211 - 0.64 × edad`
+3. Calcula zonas FC: Karvonen si hrResting > 0, porcentaje simple si hrResting = 0
+4. Calcula TDEE (Mifflin-St Jeor) + macros periodizados (hard/easy/rest)
+5. **AI deshabilitada** (`AI_ONBOARDING_ENABLED = false`) → `recommendations = []` siempre
+6. `$transaction(30s)`: deactivateUserPlans → createPlan → createWeeks → createSessions → upsertNutrition
+7. Actualiza User.config: features (solo B2C), plan.activePlanId, sport, onboarding.completed
 
 ### AIProfile (admin configura en `/admin/ai`):
 - Almacenado en `SystemConfig.aiProfile` (singleton en DB)
 - Campos: `coachingPhilosophy`, `periodizationPrinciples`, `injuryProtocol`, `nutritionGuidelines`, `goalNotes`
-- Se usa como system prompt base tanto en generación de planes como en chat del atleta
+- Usado SOLO en AI Coach chat — NO en generación de planes (AI_ONBOARDING_ENABLED=false)
 - Editable por admin sin deploy
 
 ### Chat AI (`/api/ai/chat`):
+- Rate limit: 20 msgs/min por usuario
+- Feature gate: `features.aiCoach` (false → 402)
+- Monthly limit: `ai.monthlyLimit` en User.config (0=FREE, 100=PRO, 999999=trial activo)
 - System prompt = `buildChatSystemPrompt(aiProfile)` + `buildAthleteContext(user)`
-- Contexto del atleta: perfil, plan activo, objetivo, último check-in, restricciones médicas
-- Límite por rate limiting: 20 msgs/min por usuario, límite mensual configurable
-- Modelo: configurable via `getAIConfig()` (default Sonnet)
+- Streaming SSE, modelo Sonnet por defecto (`getAIConfig().chatModel`)
+- Al finalizar stream: actualiza `ai.messagesThisMonth` (fire-and-forget)
 
-## Feature gating por tier
+## Feature gating por tier (implementación real)
 
-| Feature | FREE | TRIAL (30d) | PRO |
-|---------|------|-------------|-----|
+El tier se deriva de `features.aiPlan || features.aiCoach` → no hay campo `trial` explícito.
+
+| Feature | DEFAULT/FREE | B2C onboarding completo | PRO (pago) |
+|---------|-------------|------------------------|------------|
 | Dashboard | ✅ | ✅ | ✅ |
 | Log manual | ✅ | ✅ | ✅ |
-| Profile | ✅ | ✅ | ✅ |
-| Plan adaptativo | ❌ paywall | ✅ | ✅ |
-| Check-in semanal | ❌ paywall | ✅ | ✅ |
-| Nutrición | ❌ paywall | ✅ | ✅ |
-| Progreso | ❌ paywall | ✅ | ✅ |
-| Gym tracker | ❌ paywall | ✅ | ✅ |
-| AI Coach chat | ❌ bloqueado (limit=0) | ✅ ilimitado (999999) | ✅ 100 msgs/mes |
+| Plan / Check-in / Nutrición / Gym | ✅ (default true) | ✅ | ✅ |
+| AI Plan generation | ❌ | ✅ (aiPlan=true) | ✅ |
+| AI Coach chat | ❌ (limit=0) | ✅ (limit=999999) | ✅ (limit=100) |
+
+- Paywalls inline en páginas para usuarios que perdieron acceso (post-downgrade)
+- Sidebar oculta links según `features.*` del JWT (primera capa de defensa)
+- Gating real: API routes verifican `features.aiCoach` / `monthlyLimit` antes de llamar Anthropic
 
 - Paywalls implementados a nivel de página en todas las rutas Pro
 - Sidebar oculta links según `features.*` (primera capa de defensa)
@@ -288,31 +306,34 @@ const isLastDataStep = steps[stepIndex + 1] === 'generating'
 
 ## Flujos de usuario — críticos
 
-### Atleta B2C (sin coach)
-1. Registro → onboarding multi-deporte (8 pasos reales) → AI genera plan → JWT refresh → `/dashboard`
-2. Trial 30 días automático al completar onboarding
-3. Al expirar: middleware → `/upgrade` (Free o Pro $15)
+### Atleta B2C (sin coach) — VERIFICADO
+1. Registro → onboarding multi-deporte → completeOnboardingUseCase → generatePlanUseCase → `/dashboard`
+2. Onboarding completo activa: features.plan/checkin/nutrition/progress/log/gym/aiPlan/aiCoach = true
+   ai.monthlyLimit = 999999 (acceso ilimitado a AI Chat)
+3. AI en onboarding está DESHABILITADA (AI_ONBOARDING_ENABLED=false) — recommendations = []
+4. Trial/upgrade: no hay lógica en middleware — se maneja inline en páginas
 
-### Atleta B2B (del coach)
-1. Coach crea atleta desde `/coach/clients/new` → atleta recibe credenciales
-2. Atleta hace onboarding para recolectar perfil — el generate route detecta que es B2B y **no genera plan**
-   - Pendiente: implementar detección B2B en onboarding (hoy todos generan plan)
-3. Atleta queda en `/pending` esperando activación
-4. Coach activa cuenta desde tab Resumen (`PATCH /api/coach/athlete/[id]/activate`)
-5. Coach crea plan desde tab Plan (`POST /api/coach/athlete/[id]/plan`) — sin llamada AI
-6. Medaliq cobra al coach $6/asesorado activo/mes
+### Atleta B2B (del coach) — VERIFICADO
+1. Coach crea atleta desde `/coach/clients/new`
+2. Atleta hace onboarding → `completeOnboardingUseCase` detecta B2B vía `CoachAthlete` lookup
+   → solo upsertProfile, onboarding.completed=true, SIN features activadas, SIN plan
+3. Atleta → `/pending` (middleware: !activated porque features.plan=false)
+4. Coach activa desde tab Resumen → `PATCH /api/coach/athlete/[id]/activate`
+   → enableFeature(plan, checkin, nutrition, log, gym, progress)
+5. Coach crea plan → `POST /api/coach/athlete/[id]/plan`
+   → generatePlanUseCase({ generatedBy: 'COACH' }) — sin AI, sin activar features adicionales
 
-### Generador de planes
-- `generatedBy: 'AI'` (default) → llama Haiku para recomendaciones (B2C), activa trial 30d, pone features.plan=true
-- `generatedBy: 'COACH'` → salta AI, plan puro desde template. NO activa trial, NO activa features.plan — el coach los activa manualmente
-- `isB2C = input.generatedBy !== 'COACH'` — ramificación en generator.ts línea 294
-- Upsert de HealthProfile con sport, experienceLevel, sportDetails JSON, dataSources JSON
+### Generador de planes — VERIFICADO
+- `generatedBy: 'COACH'` → `isB2C = false` → no activa features, no genera AI recs
+- `generatedBy: 'AI'` (default) → `isB2C = true` → activa features, AI recs deshabilitadas hoy
+- `src/lib/plan/generator.ts` es thin adapter → delega a `domain/plan/generate-plan.use-case.ts`
+- Única enum válida en DB: `PlanSource { AI | COACH | AI_COACH_APPROVED }` — 'TEMPLATE' no existe
 
-### Post-onboarding redirect
-- `handleGenerate()` siempre hace `router.push('/dashboard')` al terminar
-- Para B2B: el middleware intercepta y redirige a `/pending` (features.plan=false → activated=false)
-- Para B2C: va al dashboard directamente (features activadas, JWT refreshed via `refreshSession`)
-- API devuelve `isB2B` en la respuesta → `handleGenerate` pushea a `/pending` si B2B, `/dashboard` si B2C
+### Post-onboarding redirect — VERIFICADO
+- API devuelve `{ isB2B }` en respuesta
+- `handleGenerate()`: `router.push(isB2B ? '/pending' : '/dashboard')`
+- Para B2B: middleware confirma !activated → `/pending`
+- Para B2C: features activadas en DB → siguiente request ya tiene acceso
 
 ## HealthProfile — campos deportivos
 Migración `add_sport_fields_to_health_profile` aplicada:
@@ -404,64 +425,63 @@ src/app/
   - `miguel@medaliq.com` / `atleta123` — ATHLETE con plan + coach
   - `ana@medaliq.com` / `atleta123` — ATHLETE B2C sin coach
 
-## Estado actual
+## Estado actual (verificado 2026-06-23)
 
 ### Completado ✅
-- Fase 1: Auth, onboarding, generador plan AI, dashboard atleta, check-in, nutrición, progreso
-- Fase 2: Coach B2B — dashboard, panel atleta 5 tabs, notas coach, vinculación por código invite
-- Fase 3: Gym Coach — librería ejercicios, constructor rutinas, tracker sesión, progresión cargas
-- Fase 4: Marketplace — directorio público, perfiles coach, programas, posts
-- Fase 5: Admin — KPIs, gestión usuarios/coaches, activaciones manuales, roadmap
-- Fase 6: Deploy — Vercel, Neon, dominio medaliq.com (Route 53), rate limiting, error pages
-- Fase 9: UX Atleta v2 — dashboard, métricas reales, AI gateado, i18n ES/EN/PT, landing animada
-- Fase 10: Pre-lanzamiento — rate limiting, error pages, beta cerrada, activación manual admin
-- Fase 11 (parcial): Trial 30d, middleware /upgrade, página /upgrade, feature gating inline
-- Fase 17 (parcial): SessionIntensity enum + migración + generator.ts + daily-target.ts + dashboard card
-- AI Profile centralizado — admin edita filosofía en /admin/ai
-- Onboarding multi-deporte — 6 deportes + recomposición corporal con campos específicos
-- HealthProfile extendido — sport, experienceLevel, sportDetails JSON, dataSources JSON
+- Fases 1-9: Auth, onboarding multi-deporte, plan AI, dashboard atleta, check-in, nutrición, progreso, gym, coach B2B, marketplace, admin, deploy
+- Fase 17: SessionIntensity enum + daily-target.ts + training-nutrition sync
+- Fase 18 (parcial): APIs constructor visual + editor sesión inline + calendar strip UX
+- Fase 19 (parcial): PerformanceBenchmark API + migración aplicada
+- Fase 20: Infraestructura — índices DB, rate limiting async, Vercel maxDuration 60s, pool explícito, cache SystemConfig
+- Fase 21: Consolidación coach — clients/check, clients/link, /coach/clients/new email-first, /coach/invite conectada
+- Fase 22 (parcial): FoodLog API (web + mobile), FoodSetupFlow mobile, food tracking mobile
+- Fase 24 (parcial): Quick log, streak, adherencia %, gráficas SVG en /progress
+- Mobile QA: 15 bugs críticos corregidos (hooks, UpgradeWall, onboarding, upgrade screen)
+- Hexagonal arch: check-in use case + repos completos, plan repository
+- SetLog.workoutExerciseId nullable + exerciseName (historial seguro al editar rutinas)
+- normalizeMealPlan() — soporta formato AI y formato constructor coach en NutritionContent
+- selectActivePlan() — utilidad compartida dashboard/plan page
+- intensityToDayType() con 'low' DayType para sesiones LOW
+- Timezone bug nutrición corregido (weekNumber+dayOfWeek vs UTC range)
+- Adherencia coach dashboard corregida (excluye sesiones futuras)
 
-**Bugs corregidos (sesión actual):**
-- InviteCode model en DB — código invite ahora persiste y se valida en /join/[code]
-- planTier='pro' ya no bypasea /pending — atleta siempre espera activación del coach
-- gender hardcodeado 'male' corregido en 4 routes de API
-- FC baseline dinámica en check-in (compara vs FC propia del atleta)
-- applyPlanAdjustments() modifica sesiones en DB según triggers del check-in
-
-**Features nuevas (sesión actual):**
-- Feed de alertas del coach: sin check-in >7d, RPE ≥8, pérdida de peso, ajustes automáticos
-- Editor de sesión inline en Tab Plan: tipo, duración, zona, descripción + API PATCH /api/coach/sessions/[id]
-- Log de ajustes automáticos en Tab Resumen: qué cambió, cuándo, por qué
-
-### Pendiente — QA Local (prioridad actual)
-- [ ] Test E2E onboarding: CYCLING, SWIMMING, TRIATHLON, FOOTBALL, STRENGTH, BODY
-- [ ] Test E2E flujo B2B completo (coach crea atleta → onboarding → /pending → activa → plan)
-- [ ] Test invite code flow: genera → /join/[code] → registra → vincula → onboarding
-- [ ] Verificar PlanWeeks + PlannedSessions creadas en DB (planes no vacíos)
-- [ ] Test check-in → applyPlanAdjustments → log de ajustes visible en panel coach
-- [ ] Fallback plan de comidas (plantillas estáticas si AI falla)
-
-### Backlog Comercial (post-QA)
-- [ ] Email transaccional (Resend): recordatorio check-in, plan actualizado, trial expirando
-- [ ] Quick-log de sesión desde dashboard (1 click desde card del día)
-- [ ] Gráficas de progreso visuales (curvas de peso, FC, adherencia)
-- [ ] Mensajería simple coach → atleta dentro de la app
+### P0 — Bloquea revenue o es riesgo legal (HACER PRIMERO)
+- [ ] **[SEGURIDAD CRÍTICA]** `tempPassword` en JSON plaintext — `/api/coach/clients/create` y `/reset-password` → usar token de reset firmado, nunca la contraseña
+- [ ] Feature gating ausente en 4 endpoints mobile PRO: `/mobile/nutrition/log`, `/mobile/progress`, `/mobile/gym/week`, `/mobile/nutrition/generate-meals`
 - [ ] Stripe/Wompi: suscripción Pro $15/mes + webhook activa tier
-- [ ] Simplificar onboarding a 5 pasos reales
+- [ ] `features.*` ausentes en `MobileTokenPayload` → client mobile ciego a su tier
 
-### Constructor Visual (Fase 18 — siguiente sprint)
-- [ ] API POST /api/coach/athlete/[id]/plan/custom (transacción completa)
-- [ ] API POST /api/coach/plan/[planId]/sessions
-- [ ] API PATCH /api/coach/plan/[planId]/week/[weekId]
-- [ ] Página /coach/athlete/[id]/plan/build (full-screen)
-- [ ] Componentes: WeekGrid, SessionCard, SessionModal, WeekNav
-- [ ] "Copiar semana anterior" + "Generar desde template → abrir en builder"
+### P1 — Bugs confirmados que rompen flujos
+- [ ] AI Haiku dentro de `$transaction` del generador (generator.ts ~line 485) → mover ANTES de abrir la tx
+- [ ] `applyPlanAdjustments` race condition vs edición coach (sin lock) → timestamp de edición
+- [ ] Onboarding B2B sin transacción → `healthProfile.upsert` + `user.update` en `$transaction`
+- [ ] Off-by-one fecha de sesión coach: `/api/coach/plan/[planId]/sessions` → `dayOfWeek - 1`
+- [ ] `applyPlanAdjustments` ignora Z1 → agregar `Z1 → 'DESCANSO'` al zoneMap
+- [ ] Onboarding mobile B2B + GYM salta detección B2B → mover `isB2B` check antes de mainGoal
 
-### Benchmarks + Coach Protocol (Fase 19)
-- [ ] Migración DB: PerformanceBenchmark + CoachAthlete.coachGoal/status
-- [ ] API CRUD /api/coach/athlete/[id]/benchmarks
-- [ ] UI coach: registrar test (5K, FTP, 1RM, CSS)
-- [ ] CoachAthlete.status en dashboard coach (filtrar ACTIVE/PAUSED)
+### P2 — Deuda técnica y calidad
+- [ ] Tests E2E: flujo B2B completo, invite code, generación de plan
+- [ ] `CheckInClient.tsx` 662 líneas → dividir en 3 componentes
+- [ ] Paginación panel atleta coach (90 sesiones en 1 query → semana actual ±2)
+- [ ] `FoodSetupFlow` — 19 alimentos hardcodeados → fetchear `/api/nutrition/foods`
+- [ ] `FoodLog` sin unicidad → `@@unique([userId, foodId, date, mealType])`
+- [ ] `TrainingPlan` sin `UNIQUE(userId, status=ACTIVE)` → posibles 2 planes activos
+- [ ] `GymSession` sin `UNIQUE([athleteId, date, assignedWorkoutId])`
+- [ ] 11 endpoints mobile sin rate limiting por usuario
+- [ ] `daily-target.ts:65` REST carbs `*0.6` → unificar a `*0.7`
+- [ ] Race condition feature toggles coach → loading state por feature individual
+
+### P3 — Mejoras de producto
+- [ ] Medidas corporales en check-in (waist, arms, hips, legs) — migración DB + UI
+- [ ] Fotos de progreso — Vercel Blob + ProgressPhoto model
+- [ ] Récords personales gym (isPR detection en SetLog)
+- [ ] Resumen semana determinista en dashboard (sin AI)
+- [ ] Fallback plan de comidas sin AI (plantillas estáticas)
+- [ ] `sportLabel String?` en PlannedSession — migración pendiente
+- [ ] `AthleteStatus.COMPLETED` — enum incompleto, migración pendiente
+- [ ] Email transaccional (Resend): welcome, activación B2B, trial expirando
+- [ ] Forgot password (web + mobile)
+- [ ] `CoachAthlete` sin `onDelete: Cascade` — huérfanas si se elimina coach
 
 ## Modelo de negocio — definitivo
 

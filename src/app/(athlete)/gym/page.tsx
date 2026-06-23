@@ -86,7 +86,26 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   })
 
   if (!assigned) {
-    // Mostrar plantillas públicas para auto-asignación
+    const coachRelation = await prisma.coachAthlete.findFirst({
+      where: { athleteId, status: 'ACTIVE' },
+      select: { id: true },
+    })
+
+    if (coachRelation) {
+      return (
+        <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
+          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-sm">
+            <div className="text-5xl mb-4">🏋️</div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Tu coach gestionará tu rutina</h2>
+            <p className="text-gray-500 text-sm max-w-xs mx-auto">
+              Cuando tu coach te asigne una rutina de gym, aparecerá aquí automáticamente.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    // Sin coach — mostrar plantillas públicas para auto-asignación
     const publicTemplates = await prisma.workoutTemplate.findMany({
       where: { isPublic: true, isActive: true },
       include: { days: { select: { isRestDay: true } } },
@@ -146,7 +165,8 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         repsScheme: string
         order: number
         exercise: { name: string }
-      }
+      } | null
+      exerciseName: string | null
     }[]
   } | null = null
 
@@ -188,9 +208,9 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   if (selectedSession?.setLogs.length) {
     const map = new Map<string, ExerciseDetail>()
     for (const log of selectedSession.setLogs) {
-      const key = log.workoutExercise.id
+      const key = log.workoutExercise?.id ?? log.exerciseName ?? 'unknown'
       if (!map.has(key)) {
-        map.set(key, { name: log.workoutExercise.exercise.name, sets: [] })
+        map.set(key, { name: log.workoutExercise?.exercise.name ?? log.exerciseName ?? 'Ejercicio', sets: [] })
       }
       map.get(key)!.sets.push({
         setNumber: log.setNumber,

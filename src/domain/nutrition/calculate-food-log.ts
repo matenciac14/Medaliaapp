@@ -37,12 +37,17 @@ export function calcNutritionTarget(
   nutritionPlan: NutritionPlan,
   dayType: DayType
 ): MacroTotals {
-  return {
-    kcal:     dayType === 'hard' ? nutritionPlan.targetKcalHard : dayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy,
-    proteinG: nutritionPlan.proteinG,
-    carbsG:   dayType === 'hard' ? nutritionPlan.carbsHardG : dayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG,
-    fatG:     nutritionPlan.fatG,
-  }
+  const kcal =
+    dayType === 'hard' ? nutritionPlan.targetKcalHard
+    : dayType === 'rest' ? nutritionPlan.targetKcalRest
+    : dayType === 'low'  ? Math.round(nutritionPlan.targetKcalEasy * 0.88)
+    : nutritionPlan.targetKcalEasy
+  const carbsG =
+    dayType === 'hard' ? nutritionPlan.carbsHardG
+    : dayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7)
+    : dayType === 'low'  ? Math.round(nutritionPlan.carbsEasyG * 0.75)
+    : nutritionPlan.carbsEasyG
+  return { kcal, proteinG: nutritionPlan.proteinG, carbsG, fatG: nutritionPlan.fatG }
 }
 
 export function calcProgressPct(totals: MacroTotals, target: MacroTotals): MacroTotals {

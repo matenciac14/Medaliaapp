@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent from './_components/NutritionContent'
@@ -17,21 +18,28 @@ export default async function NutritionPage() {
 
   const todayDow = jsToOurDow(new Date().getDay())
 
+  // Get active plan first to compute currentWeek (timezone-safe — no UTC date range)
+  const activePlan = await prisma.trainingPlan.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, startDate: true, totalWeeks: true },
+  })
+  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
+
   // Cargar datos en paralelo
   const [nutritionPlan, mealPlan, foodProfile, todaySession, gymToday, allFoods] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     prisma.foodProfile.findUnique({ where: { userId } }),
-    prisma.plannedSession.findFirst({
-      where: {
-        week: { plan: { userId, status: 'ACTIVE' } },
-        date: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lt: new Date(new Date().setHours(23, 59, 59, 999)),
-        },
-      },
-      select: { intensity: true },
-    }),
+    activePlan && currentWeek
+      ? prisma.plannedSession.findFirst({
+          where: {
+            week: { planId: activePlan.id, weekNumber: currentWeek },
+            dayOfWeek: todayDow,
+          },
+          select: { intensity: true },
+        })
+      : Promise.resolve(null),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
       select: {
@@ -68,9 +76,10 @@ export default async function NutritionPage() {
       : 'easy'
 
   const DAY_TYPE_LABELS = {
-    hard: { label: 'Día duro', emoji: '🔥', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-    easy: { label: 'Día fácil', emoji: '✅', color: 'bg-green-100 text-green-700 border-green-200' },
-    rest: { label: 'Descanso', emoji: '😴', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    hard: { label: 'Día duro',   emoji: '🔥', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    easy: { label: 'Día fácil',  emoji: '✅', color: 'bg-green-100 text-green-700 border-green-200' },
+    low:  { label: 'Día suave',  emoji: '🟣', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    rest: { label: 'Descanso',   emoji: '😴', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   }
   const badge = DAY_TYPE_LABELS[todayDayType]
 
@@ -79,10 +88,16 @@ export default async function NutritionPage() {
 
   // Targets del día según tipo (para pasar al FoodGuide)
   const todayKcal    = nutritionPlan
-    ? (todayDayType === 'hard' ? nutritionPlan.targetKcalHard : todayDayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy)
+    ? (todayDayType === 'hard' ? nutritionPlan.targetKcalHard
+      : todayDayType === 'rest' ? nutritionPlan.targetKcalRest
+      : todayDayType === 'low'  ? Math.round(nutritionPlan.targetKcalEasy * 0.88)
+      : nutritionPlan.targetKcalEasy)
     : 0
   const todayCarbs   = nutritionPlan
-    ? (todayDayType === 'hard' ? nutritionPlan.carbsHardG : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG)
+    ? (todayDayType === 'hard' ? nutritionPlan.carbsHardG
+      : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7)
+      : todayDayType === 'low'  ? Math.round(nutritionPlan.carbsEasyG * 0.75)
+      : nutritionPlan.carbsEasyG)
     : 0
   const todayProtein = nutritionPlan?.proteinG ?? 0
   const todayFat     = nutritionPlan?.fatG ?? 0
@@ -121,9 +136,9 @@ export default async function NutritionPage() {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Tus macros de hoy</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Calorías', value: todayDayType === 'hard' ? nutritionPlan.targetKcalHard : todayDayType === 'rest' ? nutritionPlan.targetKcalRest : nutritionPlan.targetKcalEasy, unit: 'kcal', color: 'text-[#f97316]' },
+                { label: 'Calorías', value: todayKcal, unit: 'kcal', color: 'text-[#f97316]' },
                 { label: 'Proteína', value: nutritionPlan.proteinG, unit: 'g', color: 'text-blue-600' },
-                { label: 'Carbohidratos', value: todayDayType === 'hard' ? nutritionPlan.carbsHardG : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7) : nutritionPlan.carbsEasyG, unit: 'g', color: 'text-yellow-600' },
+                { label: 'Carbohidratos', value: todayCarbs, unit: 'g', color: 'text-yellow-600' },
                 { label: 'Grasas', value: nutritionPlan.fatG, unit: 'g', color: 'text-green-600' },
               ].map((m) => (
                 <div key={m.label} className="bg-gray-50 rounded-xl p-3">
@@ -139,7 +154,7 @@ export default async function NutritionPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-sm font-semibold text-blue-800 mb-1">¿Quieres un plan de comidas detallado?</p>
             <p className="text-xs text-blue-600 mb-3">Completa tu perfil alimenticio para recibir un plan con comidas específicas y suplementación.</p>
-            <FoodSetupFlow hasFoodProfile={hasFoodProfile} />
+            <FoodSetupFlow hasFoodProfile={hasFoodProfile} allFoods={allFoods} />
           </div>
         </div>
       )}

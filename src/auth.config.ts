@@ -38,7 +38,7 @@ export const authConfig: NextAuthConfig = {
         session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
         session.user.features = (token.features as any) ?? {
           plan: true, checkin: true, nutrition: true, progress: true,
-          log: true, coach: false, gym: true, aiPlan: false, aiCoach: false,
+          log: true, coach: false, gym: true,
         }
       }
       return session

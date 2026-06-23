@@ -62,7 +62,7 @@ export function getDailyNutritionTarget(
       return {
         kcal: plan.targetKcalRest,
         proteinG: plan.proteinG,
-        carbsG: Math.round(plan.carbsEasyG * 0.6),
+        carbsG: Math.round(plan.carbsEasyG * 0.7),
         fatG: plan.fatG,
         label: 'Día descanso',
         intensity: intensity ?? 'REST',

@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { SignJWT } from 'jose'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
-function generateTempPassword(length = 8): string {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+async function generateResetLink(athleteId: string): Promise<string> {
+  const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET)
+  const token = await new SignJWT({ sub: athleteId, purpose: 'set-password' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d')
+    .sign(secret)
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://medaliq.com'}/set-password?token=${token}`
 }
 
 export async function POST(
@@ -28,13 +29,13 @@ export async function POST(
   })
   if (!relation) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const tempPassword = generateTempPassword()
-  const hashedPassword = await bcrypt.hash(tempPassword, 12)
-
+  // Set a random placeholder password — the athlete sets their real password via the reset link
+  const placeholder = await bcrypt.hash(Math.random().toString(36), 12)
   await prisma.user.update({
     where: { id: athleteId },
-    data: { password: hashedPassword },
+    data: { password: placeholder },
   })
 
-  return NextResponse.json({ ok: true, tempPassword })
+  const resetLink = await generateResetLink(athleteId)
+  return NextResponse.json({ ok: true, resetLink })
 }

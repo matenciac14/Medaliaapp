@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------------------
-// athlete-formulas.ts — Capa determinista sin dependencia de AI
+// athlete-formulas.ts — Capa determinista
 // Todas las funciones son puras: mismos inputs → mismos outputs.
-// Importar desde aquí garantiza cero llamadas a Anthropic.
 // ---------------------------------------------------------------------------
 
 // Re-exporta todas las fórmulas de entrenamiento existentes
@@ -17,7 +16,7 @@ export {
   type Macros,
 } from '@/lib/plan/formulas'
 
-import type { UserConfig, UserPlan } from '@/lib/config/user-config'
+import type { UserPlan } from '@/lib/config/user-config'
 
 // ---------------------------------------------------------------------------
 // Estado de cuenta — FREE | PRO
@@ -25,41 +24,12 @@ import type { UserConfig, UserPlan } from '@/lib/config/user-config'
 
 export type AccountStatus = 'FREE' | 'PRO'
 
-/**
- * Determina el estado de la cuenta a partir del plan del usuario.
- */
 export function getAccountStatus(userPlan: UserPlan): AccountStatus {
   return userPlan === 'PRO' ? 'PRO' : 'FREE'
 }
 
 // ---------------------------------------------------------------------------
-// AI allowance — cuántos mensajes quedan este mes
-// ---------------------------------------------------------------------------
-
-export type AIAllowance = {
-  remaining: number      // mensajes disponibles (-1 = ilimitado)
-  limit: number          // límite mensual configurado
-  isUnlimited: boolean
-}
-
-/**
- * Calcula mensajes AI disponibles a partir del config del usuario.
- * No consulta la DB — usa los valores del JWT/config ya cargado.
- */
-export function getAIAllowance(ai: UserConfig['ai']): AIAllowance {
-  const { monthlyLimit, messagesThisMonth } = ai
-  if (monthlyLimit >= 999999) {
-    return { remaining: -1, limit: monthlyLimit, isUnlimited: true }
-  }
-  return {
-    remaining: Math.max(0, monthlyLimit - messagesThisMonth),
-    limit: monthlyLimit,
-    isUnlimited: false,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Nutrición por día — reflejo del entrenamiento sin AI
+// Nutrición por día — reflejo del entrenamiento
 // ---------------------------------------------------------------------------
 
 export type DayLoad = 'HIGH' | 'MODERATE' | 'LOW' | 'REST' | 'NONE'

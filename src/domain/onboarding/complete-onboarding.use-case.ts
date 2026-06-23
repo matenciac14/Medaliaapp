@@ -15,7 +15,6 @@
 import type { IHealthProfileRepository, CreateHealthProfile } from '@/domain/ports/health-profile.repository'
 import type { IUserRepository } from '@/domain/ports/user.repository'
 import type { IPlanRepository } from '@/domain/ports/plan.repository'
-import type { IAIService } from '@/domain/ports/ai.service'
 import type { WizardData } from '@/app/onboarding/_types'
 import { parseUserConfig } from '@/lib/config/user-config'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
@@ -42,7 +41,6 @@ export async function completeOnboardingUseCase(
   deps: {
     db: PrismaClient
     planRepo: IPlanRepository
-    aiService: IAIService
     healthProfileRepo: IHealthProfileRepository
     userRepo: IUserRepository
   }
@@ -218,7 +216,6 @@ export async function completeOnboardingUseCase(
     {
       db: deps.db,
       planRepo: deps.planRepo,
-      aiService: deps.aiService,
       userRepo: deps.userRepo,
     }
   )

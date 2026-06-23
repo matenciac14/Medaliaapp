@@ -36,8 +36,6 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
-    // AI Coach chat desactivado temporalmente — reactivar cuando se defina la nueva UX de AI proactiva
-    // { href: '/ai-coach',  label: s.aiCoach,     icon: MessageSquare,   show: features.aiCoach },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 

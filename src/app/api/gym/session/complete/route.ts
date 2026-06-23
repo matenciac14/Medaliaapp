@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength'
+import { parseUserConfig } from '@/lib/config/user-config'
 
 type SetPayload = {
   workoutExerciseId: string
@@ -24,11 +25,17 @@ export async function POST(req: NextRequest) {
   const athleteId = mobile?.id ?? (await auth())?.user?.id
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  let body: { assignedWorkoutId: string; dayOfWeek: number; rpe?: number; durationMin?: number; notes?: string; sets?: SetPayload[]; setLogs?: SetPayload[]; exerciseOverrides?: ExerciseOverride[] }
+  // Feature gate
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
+  if (!parseUserConfig(userRecord?.config).features.gym) {
+    return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
+  }
+
+  let body: { assignedWorkoutId: string; dayOfWeek: number; rpe?: number; durationMin?: number; notes?: string; sets?: SetPayload[]; exerciseOverrides?: ExerciseOverride[] }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
 
   const { assignedWorkoutId, dayOfWeek, rpe, durationMin, notes } = body
-  const sets = body.sets ?? body.setLogs ?? []
+  const sets = body.sets ?? []
   const exerciseOverrides = body.exerciseOverrides ?? null
 
   if (!assignedWorkoutId || !dayOfWeek || !Array.isArray(sets))
@@ -38,6 +45,16 @@ export async function POST(req: NextRequest) {
     where: { id: assignedWorkoutId, athleteId, isActive: true },
   })
   if (!assigned) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 })
+
+  // Pre-fetch exercise names for desnormalization (protege historial ante cambios futuros de rutina)
+  const weIds = [...new Set(sets.map(s => s.workoutExerciseId).filter(Boolean))]
+  const workoutExercises = weIds.length > 0
+    ? await prisma.workoutExercise.findMany({
+        where: { id: { in: weIds } },
+        select: { id: true, exercise: { select: { name: true } } },
+      })
+    : []
+  const weNameMap = new Map(workoutExercises.map(we => [we.id, we.exercise.name]))
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -55,6 +72,7 @@ export async function POST(req: NextRequest) {
       setLogs: {
         create: sets.map(s => ({
           workoutExerciseId: s.workoutExerciseId,
+          exerciseName: weNameMap.get(s.workoutExerciseId) ?? null,
           setNumber: s.setNumber,
           weightKg: s.weightKg ?? null,
           repsCompleted: s.repsCompleted ?? null,

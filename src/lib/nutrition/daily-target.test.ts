@@ -64,7 +64,7 @@ describe('getDailyNutritionTarget — REST', () => {
   it('devuelve valores del día descanso', () => {
     const r = getDailyNutritionTarget('REST', PLAN)
     expect(r.kcal).toBe(2000)
-    expect(r.carbsG).toBe(Math.round(280 * 0.6)) // 168
+    expect(r.carbsG).toBe(Math.round(280 * 0.7)) // 196
     expect(r.label).toBe('Día descanso')
   })
 })

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
+import { selectActivePlan } from '@/lib/plan/active-plan'
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -50,7 +51,7 @@ export default async function PlanPage() {
   let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
 
   try {
-    const [activePlansData, nutritionPlanData, profileData, checkIns] = await Promise.all([
+    const [activePlansData, nutritionPlanData, profileData, checkIns, oldestCheckIn] = await Promise.all([
       prisma.trainingPlan.findMany({
         where: { userId, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
@@ -77,24 +78,20 @@ export default async function PlanPage() {
         take: 2,
         select: { recordedAt: true, weightKg: true },
       }),
+      prisma.weeklyCheckIn.findFirst({
+        where: { userId, weightKg: { not: null } },
+        orderBy: { recordedAt: 'asc' },
+        select: { weightKg: true },
+      }),
     ])
 
     // Seleccionar el plan con más logs; desactivar duplicados en background
-    let activePlanData = activePlansData[0] ?? null
-    if (activePlansData.length > 1) {
-      let bestLogCount = -1
-      for (const p of activePlansData) {
-        const logCount = p.weeks.flatMap(w => w.sessions).filter(s => s.log).length
-        if (logCount > bestLogCount) { bestLogCount = logCount; activePlanData = p }
-      }
-      const winnerIds = new Set([activePlanData?.id])
-      const loserIds = activePlansData.filter(p => !winnerIds.has(p.id)).map(p => p.id)
-      if (loserIds.length > 0) {
-        await prisma.trainingPlan.updateMany({
-          where: { id: { in: loserIds } },
-          data: { status: PlanStatus.COMPLETED },
-        }).catch(() => {})
-      }
+    const { winner: activePlanData, loserIds: _planLoserIds } = selectActivePlan(activePlansData)
+    if (_planLoserIds.length > 0) {
+      await prisma.trainingPlan.updateMany({
+        where: { id: { in: _planLoserIds } },
+        data: { status: PlanStatus.COMPLETED },
+      }).catch(() => {})
     }
 
     if (activePlanData) {
@@ -126,9 +123,13 @@ export default async function PlanPage() {
       if (profileData?.weightKg) {
         const curr = profileData.weightKg
         const goal = profileData.weightGoalKg ?? null
-        // Progress: how much of the gap to goal has been covered, using profile weight as starting point
-        // Since we don't store startWeight, show pct as (curr - goal) / (curr - goal) scaled — show null if data is insufficient
-        const progressPct: number | null = null // requires historical start weight; shown as bar disabled
+        const startWeight = oldestCheckIn?.weightKg ?? null
+        let progressPct: number | null = null
+        if (startWeight && goal && startWeight !== goal) {
+          progressPct = Math.min(100, Math.max(0,
+            Math.round(((startWeight - curr) / (startWeight - goal)) * 100)
+          ))
+        }
         let weeklyChange: number | null = null
         if (checkIns.length >= 2 && checkIns[0].weightKg && checkIns[1].weightKg) {
           const daysDiff = Math.max(1,
@@ -163,6 +164,7 @@ export default async function PlanPage() {
           durationMin: s.durationMin,
           zoneTarget: s.zoneTarget ?? '',
           detailText: s.detailText ?? '',
+          structure: s.structure ?? null,
           intensity: (s.intensity as string) ?? null,
           logId: s.log?.id ?? null,
           logDurationMin: s.log?.durationMin ?? null,

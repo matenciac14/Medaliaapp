@@ -36,7 +36,8 @@ export async function POST(
     return NextResponse.json({ error: 'Week not found' }, { status: 404 })
 
   const sessionDate = new Date(week.startDate)
-  sessionDate.setDate(sessionDate.getDate() + Number(dayOfWeek))
+  // week.startDate = Monday (dow 1). dayOfWeek 1→+0 days, 2→+1, ..., 7→+6
+  sessionDate.setDate(sessionDate.getDate() + Number(dayOfWeek) - 1)
 
   const newSession = await prisma.plannedSession.create({
     data: {

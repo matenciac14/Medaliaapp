@@ -4,16 +4,20 @@
  */
 
 export type SessionIntensity = 'HIGH' | 'MODERATE' | 'LOW' | 'REST'
+/** Must match DB enum SessionType exactly — values are in Spanish */
 export type SessionType =
-  | 'EASY_RUN'
+  | 'RODAJE_Z2'
+  | 'FARTLEK'
   | 'TEMPO'
-  | 'INTERVALS'
-  | 'LONG_RUN'
-  | 'REST'
-  | 'CROSS_TRAINING'
-  | 'STRENGTH'
-  | 'GYM'
-  | 'CUSTOM'
+  | 'INTERVALOS'
+  | 'TIRADA_LARGA'
+  | 'FUERZA'
+  | 'CICLA'
+  | 'NATACION'
+  | 'DESCANSO'
+  | 'TEST'
+  | 'SIMULACRO'
+  | 'OTRO'
 
 export type PlannedSession = {
   id: string

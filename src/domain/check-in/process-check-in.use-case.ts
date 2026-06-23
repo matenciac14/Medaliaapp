@@ -4,14 +4,14 @@
  * Single source of business logic — shared by web and mobile routes.
  * Routes handle ONLY auth + input normalization, then delegate here.
  *
- * Three phases:
+ * Two phases:
  *
  *  PHASE 1 — Reads (parallel, outside transaction)
  *    Load previous check-in, active plan, training adherence
  *
- *  PHASE 2 — Pure computation + external I/O (outside transaction)
+ *  PHASE 2 — Pure computation (outside transaction)
  *    Evaluate rules deterministically
- *    Call AI for recommendation (MUST be outside tx — external I/O cannot be inside $transaction)
+ *    Build recommendation from adjustments (no AI)
  *
  *  PHASE 3 — All DB writes in ONE atomic $transaction (timeout 30s)
  *    Upsert WeeklyCheckIn
@@ -21,7 +21,6 @@
  */
 import type { ICheckInRepository } from '@/domain/ports/checkin.repository'
 import type { IPlanRepository } from '@/domain/ports/plan.repository'
-import type { IAIService } from '@/domain/ports/ai.service'
 import type { IHealthProfileRepository } from '@/domain/ports/health-profile.repository'
 import type { IUserRepository } from '@/domain/ports/user.repository'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
@@ -63,7 +62,6 @@ export async function processCheckIn(
     db: PrismaFullClient
     checkInRepo: ICheckInRepository
     planRepo: IPlanRepository
-    aiService: IAIService
     healthProfileRepo: IHealthProfileRepository
     userRepo: IUserRepository
   }
@@ -87,9 +85,7 @@ export async function processCheckIn(
     : 0
 
   // ─────────────────────────────────────────────────────────
-  // PHASE 2 — Pure evaluation + AI (OUTSIDE transaction)
-  // AI is external I/O — cannot run inside a DB transaction.
-  // If Haiku takes 30s, we don't want the transaction to expire.
+  // PHASE 2 — Pure evaluation (deterministic, no external I/O)
   // ─────────────────────────────────────────────────────────
   const planContext: PlanContext = {
     planId: activePlan?.id ?? '',
@@ -103,11 +99,9 @@ export async function processCheckIn(
 
   const { triggers, adjustments, severity } = evaluateCheckInRules(data, planContext)
 
-  let recommendation = RECOMMENDATION_FALLBACK
-  if (triggers.length > 0) {
-    const prompt = buildRecommendationPrompt(data, adjustments, planContext)
-    recommendation = (await deps.aiService.generateRecommendation(prompt)) ?? adjustments.join('. ')
-  }
+  const recommendation = triggers.length > 0
+    ? adjustments.join('. ')
+    : RECOMMENDATION_FALLBACK
 
   // ─────────────────────────────────────────────────────────
   // PHASE 3 — All DB writes in ONE atomic $transaction
@@ -175,6 +169,9 @@ async function applySessionAdjustments(
   let count = 0
 
   for (const session of sessions) {
+    // Skip sessions manually edited by the coach (coachNotes present but not [AUTO]-generated)
+    if (session.coachNotes && !session.coachNotes.includes('[AUTO]')) continue
+
     const updates: Record<string, unknown> = {}
     const notes: string[] = []
 
@@ -252,27 +249,4 @@ async function syncWeight(
     carbsEasyG: macros.easy.carbs,
     fatG: macros.hard.fat,
   })
-}
-
-function buildRecommendationPrompt(
-  data: CheckInInput,
-  adjustments: string[],
-  plan: PlanContext
-): string {
-  return `Atleta acaba de hacer check-in semanal. Genera un mensaje motivador y específico de 2-3 oraciones en español.
-
-Datos del check-in:
-- FC reposo: ${data.heartRate ?? '?'} bpm
-- Sueño: ${data.sleepHours} h
-- Energía: ${data.energyLevel}/10
-- RPE sesión más dura: ${data.rpe}/10
-- Estrés: ${data.stressLevel}/10
-- Motivación: ${data.motivation ?? '?'}/10
-- Dolor (nivel): ${data.painLevel ?? 'No reportado'}
-- Adherencia nutricional: ${data.nutritionAdherence ?? '?'}/10
-
-Ajustes detectados: ${adjustments.join('; ')}
-Semana ${plan.currentWeek}/${plan.totalWeeks} — Fase ${plan.phase}
-
-El mensaje debe: reconocer el esfuerzo, explicar brevemente por qué se hace el ajuste, y dar una instrucción clara para esta semana. Tono directo, sin ser dramático. Si hay dolor, siempre mencionar evaluación médica.`
 }

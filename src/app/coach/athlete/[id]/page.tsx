@@ -94,6 +94,9 @@ export default async function AthleteDetailPage({
         heightCm: healthProfile.heightCm,
         injuries: healthProfile.injuries,
         conditions: healthProfile.conditions,
+        sport: healthProfile.sport,
+        experienceLevel: healthProfile.experienceLevel,
+        ftp: healthProfile.ftp,
       }
     : null
 
@@ -118,6 +121,7 @@ export default async function AthleteDetailPage({
             zoneTarget: s.zoneTarget,
             coachNote: s.coachNote,
             intensity: s.intensity ?? 'MODERATE',
+            date: s.date,
           })),
         })),
       }

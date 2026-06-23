@@ -12,13 +12,11 @@ import { generatePlanUseCase, type GeneratePlanInput } from '@/domain/plan/gener
 import { prisma } from '@/lib/db/prisma'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { AnthropicService } from '@/infrastructure/ai/anthropic.service'
 
 export async function generatePlan(input: GeneratePlanInput) {
   return generatePlanUseCase(input, {
     db: prisma as any,
     planRepo: new PrismaPlanRepository(),
-    aiService: new AnthropicService(),
     userRepo: new PrismaUserRepository(),
   })
 }
