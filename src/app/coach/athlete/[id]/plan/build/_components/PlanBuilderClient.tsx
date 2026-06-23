@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +39,13 @@ type ModalState = {
   dayOfWeek: number
   session?: BuilderSession
   preselectedType?: string
+}
+
+type WeekEditState = {
+  weekId: string
+  phase: string
+  focusDescription: string
+  isRecoveryWeek: boolean
 }
 
 type Props = {
@@ -84,10 +91,18 @@ function formatWeekRange(startDate: string, endDate: string): string {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+const PHASES = ['BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO', 'COMPETICIÓN', 'RECUPERACIÓN']
+
+const PHASE_COLORS: Record<string, string> = {
+  BASE: '#1e3a5f', DESARROLLO: '#f97316', 'ESPECÍFICO': '#dc2626',
+  AFINAMIENTO: '#7c3aed', 'COMPETICIÓN': '#0891b2', 'RECUPERACIÓN': '#16a34a',
+}
+
 export default function PlanBuilderClient({ athleteId, athleteName, initialPlan }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
   const [weekIdx, setWeekIdx] = useState(0)
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
   const [saving, setSaving] = useState(false)
 
   const week = plan?.weeks[weekIdx] ?? null
@@ -217,6 +232,30 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
     }
   }
 
+  async function handleSaveWeekMeta(data: { phase: string; focusDescription: string; isRecoveryWeek: boolean }) {
+    if (!plan || !weekEdit) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/coach/plan/${plan.id}/week/${weekEdit.weekId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error('Error actualizando semana')
+      const { week: updated } = await res.json()
+      setPlan((prev) =>
+        prev
+          ? { ...prev, weeks: prev.weeks.map((w) => w.id === weekEdit.weekId ? { ...w, ...updated } : w) }
+          : prev
+      )
+      setWeekEdit(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // ── No plan ───────────────────────────────────────────────────────────────
 
   if (!plan) {
@@ -315,17 +354,29 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
             </div>
           </div>
 
-          {/* Phase label */}
+          {/* Phase label + edit */}
           <div className="mb-4 flex items-center gap-2">
             <span
               className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: '#1e3a5f' }}
+              style={{ color: PHASE_COLORS[week!.phase] ?? '#1e3a5f' }}
             >
-              Fase: {week!.phase}
+              {week!.phase}
             </span>
             {week!.focusDescription && (
               <span className="text-xs text-gray-400">· {week!.focusDescription}</span>
             )}
+            {week!.isRecoveryWeek && (
+              <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                Recuperación
+              </span>
+            )}
+            <button
+              onClick={() => setWeekEdit({ weekId: week!.id, phase: week!.phase, focusDescription: week!.focusDescription ?? '', isRecoveryWeek: week!.isRecoveryWeek })}
+              className="text-gray-300 hover:text-gray-600 transition-colors ml-1"
+              title="Editar metadatos de semana"
+            >
+              <Pencil size={12} />
+            </button>
           </div>
 
           {/* 7-day grid */}
@@ -379,17 +430,45 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
             })}
           </div>
 
-          {/* Week dots */}
-          <div className="flex justify-center gap-1.5 mt-8">
-            {plan.weeks.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setWeekIdx(i)}
-                className="w-1.5 h-1.5 rounded-full transition-colors"
-                style={{ backgroundColor: i === weekIdx ? '#1e3a5f' : '#d1d5db' }}
-                title={`Semana ${i + 1}`}
-              />
-            ))}
+          {/* WeekNav — mini-overview */}
+          <div className="mt-8 border-t border-gray-100 pt-4">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Semanas del plan
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {plan.weeks.map((w, i) => {
+                const sessionCount = w.sessions.length
+                const phaseColor = PHASE_COLORS[w.phase] ?? '#9ca3af'
+                const isActive = i === weekIdx
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => setWeekIdx(i)}
+                    title={`Sem ${w.weekNumber} — ${w.phase}${w.isRecoveryWeek ? ' · Recuperación' : ''} · ${sessionCount} sesiones`}
+                    className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg border transition-all"
+                    style={{
+                      borderColor: isActive ? phaseColor : '#e5e7eb',
+                      backgroundColor: isActive ? `${phaseColor}10` : 'white',
+                      minWidth: 36,
+                    }}
+                  >
+                    <span
+                      className="text-[10px] font-bold leading-none"
+                      style={{ color: isActive ? phaseColor : '#9ca3af' }}
+                    >
+                      {w.weekNumber}
+                    </span>
+                    <div
+                      className="w-1 h-1 rounded-full"
+                      style={{ backgroundColor: sessionCount > 0 ? phaseColor : '#e5e7eb' }}
+                    />
+                    {w.isRecoveryWeek && (
+                      <div className="w-1 h-1 rounded-full bg-amber-400" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </main>
       </div>
@@ -401,6 +480,16 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
           onSave={handleSaveSession}
           onDelete={modal.session ? () => handleDeleteSession(modal.session!.id) : undefined}
           onClose={() => setModal(null)}
+          saving={saving}
+        />
+      )}
+
+      {/* Week metadata modal */}
+      {weekEdit && (
+        <WeekEditModal
+          state={weekEdit}
+          onSave={handleSaveWeekMeta}
+          onClose={() => setWeekEdit(null)}
           saving={saving}
         />
       )}
@@ -598,6 +687,103 @@ function SessionModal({
             style={{ backgroundColor: '#1e3a5f' }}
           >
             {saving ? 'Guardando...' : isEdit ? 'Guardar' : 'Añadir'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Week metadata modal ───────────────────────────────────────────────────────
+
+function WeekEditModal({
+  state,
+  onSave,
+  onClose,
+  saving,
+}: {
+  state: WeekEditState
+  onSave: (data: { phase: string; focusDescription: string; isRecoveryWeek: boolean }) => void
+  onClose: () => void
+  saving: boolean
+}) {
+  const [phase, setPhase] = useState(state.phase)
+  const [focusDescription, setFocusDescription] = useState(state.focusDescription)
+  const [isRecoveryWeek, setIsRecoveryWeek] = useState(state.isRecoveryWeek)
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Editar semana</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Phase */}
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Fase</p>
+            <div className="grid grid-cols-2 gap-1">
+              {PHASES.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPhase(p)}
+                  className="px-3 py-2 rounded-lg text-sm text-left transition-colors"
+                  style={
+                    phase === p
+                      ? { backgroundColor: `${PHASE_COLORS[p]}15`, color: PHASE_COLORS[p], fontWeight: 600 }
+                      : { backgroundColor: '#f9fafb', color: '#6b7280' }
+                  }
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Focus description */}
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Descripción de enfoque
+            </p>
+            <input
+              type="text"
+              value={focusDescription}
+              onChange={(e) => setFocusDescription(e.target.value)}
+              placeholder="Ej: Construcción aeróbica + fuerza base"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-200"
+            />
+          </div>
+
+          {/* Recovery week toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700">Semana de recuperación</span>
+            <button
+              onClick={() => setIsRecoveryWeek((v) => !v)}
+              className="relative w-10 h-6 rounded-full transition-colors"
+              style={{ backgroundColor: isRecoveryWeek ? '#f97316' : '#d1d5db' }}
+            >
+              <span
+                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+                style={{ transform: isRecoveryWeek ? 'translateX(18px)' : 'translateX(2px)' }}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onSave({ phase, focusDescription, isRecoveryWeek })}
+            disabled={saving}
+            className="px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>

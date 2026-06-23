@@ -264,7 +264,7 @@ export default function AthleteDetailClient({
       if (!res.ok) throw new Error(json.error ?? 'Error generando el plan')
       setPlanCreated(true)
       setCreatingPlan(false)
-      router.refresh()
+      router.push(`/coach/athlete/${athleteId}/plan/build`)
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
