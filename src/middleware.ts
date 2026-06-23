@@ -27,6 +27,7 @@ export default auth((req) => {
     const onboardingCompleted = (session.user as any).onboardingCompleted ?? true
     const role = (session.user as any).role
     const activated = (session.user as any).activated ?? false
+    const isB2B = (session.user as any).isB2B ?? false
     const userPlan = ((session.user as any).userPlan as string) ?? 'FREE'
 
     // Redirige a onboarding si no lo completó
@@ -35,11 +36,11 @@ export default auth((req) => {
     }
 
     // Atleta B2B que completó onboarding pero no fue activado por su coach → /pending
-    // activated = features.plan — false solo para atletas B2B creados por coach
-    // B2C siempre tienen features.plan = true (DEFAULT_USER_CONFIG)
+    // Solo aplica si isB2B=true, evita capturar atletas B2C con features.plan=false (ej. downgrade)
     if (
       role === 'ATHLETE' &&
       onboardingCompleted &&
+      isB2B &&
       !activated &&
       !pathname.startsWith('/pending') &&
       !pathname.startsWith('/api') &&

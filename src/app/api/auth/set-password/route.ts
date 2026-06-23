@@ -11,21 +11,21 @@ export async function POST(req: NextRequest) {
   }
 
   const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET)
-  let athleteId: string
+  let userId: string
 
   try {
     const { payload } = await jwtVerify(token, secret)
     if (payload.purpose !== 'set-password' || typeof payload.sub !== 'string') {
       return NextResponse.json({ error: 'Token inválido.' }, { status: 400 })
     }
-    athleteId = payload.sub
+    userId = payload.sub
   } catch {
     return NextResponse.json({ error: 'El link expiró o no es válido. Pide a tu coach un nuevo link.' }, { status: 400 })
   }
 
   const hashed = await bcrypt.hash(newPassword, 12)
   await prisma.user.update({
-    where: { id: athleteId },
+    where: { id: userId },
     data: { password: hashed },
   })
 

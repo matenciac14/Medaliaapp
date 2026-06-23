@@ -7,6 +7,7 @@ declare module 'next-auth' {
       role: string
       onboardingCompleted: boolean
       activated: boolean
+      isB2B: boolean
       userPlan: 'FREE' | 'PRO'
       features: {
         plan: boolean
@@ -29,6 +30,7 @@ declare module 'next-auth' {
     role?: string
     onboardingCompleted?: boolean
     activated?: boolean
+    isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
     features?: {
       plan: boolean
@@ -50,6 +52,7 @@ declare module 'next-auth/jwt' {
     role?: string
     onboardingCompleted?: boolean
     activated?: boolean
+    isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
     features?: {
       plan: boolean
