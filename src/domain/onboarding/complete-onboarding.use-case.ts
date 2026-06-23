@@ -8,8 +8,8 @@
  *   SPORT/BODY — profile + full plan generation (delegates to generatePlanUseCase)
  *
  * Each path calls healthProfileRepo.upsertProfile + userRepo.updateConfig + optionally generatePlanUseCase.
- * No DB writes here are wrapped in $transaction — they are independent operations that each
- * have their own error boundary. The plan generation use case wraps its own writes atomically.
+ * Profile + config writes are wrapped in $transaction per path. Nutrition upserts stay outside tx (idempotent).
+ * Plan generation (B2C SPORT/BODY) wraps its own writes atomically in generate-plan.use-case.ts.
  */
 
 import type { IHealthProfileRepository, CreateHealthProfile } from '@/domain/ports/health-profile.repository'
@@ -22,6 +22,10 @@ import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { resolveGoalType, buildSportDetails, timeStringToSecs } from '@/domain/onboarding/onboarding.utils'
 import { generatePlanUseCase } from '@/domain/plan/generate-plan.use-case'
 import type { PrismaClient } from '../../generated/prisma/client'
+// Pragmatic exception: concrete repos needed to create tx-scoped instances inside $transaction
+// (same pattern as generate-plan.use-case.ts)
+import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,32 +57,38 @@ export async function completeOnboardingUseCase(
     const sportType = data.sport ?? 'GENERAL'
     const sportGoal = data.hasSport ? 'RACE' : 'GENERAL_FITNESS'
 
-    await Promise.all([
-      deps.planRepo.upsertNutrition(userId, {
-        tdee,
-        targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
-        proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
-      }),
-      deps.healthProfileRepo.upsertProfile(userId, {
-        age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
-        weightGoalKg: data.weightGoalKg ?? undefined,
-        gender: data.gender ?? 'male',
-        sport: sportType,
-        sportDetails: {},
-        dataSources: {},
-      }),
-    ])
+    // Nutrition outside tx (idempotent upsert)
+    await deps.planRepo.upsertNutrition(userId, {
+      tdee,
+      targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
+      proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
+    })
 
+    // Read config before tx
     const currentConfig = await readCurrentConfig(deps.db, userId)
-    await deps.userRepo.updateConfig(userId, {
+    const newConfig = {
       ...currentConfig,
-      // B2B: solo marca onboarding completo, el coach activa features.plan
       features: isB2B ? currentConfig.features : {
         ...currentConfig.features,
         plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true,
       },
       onboarding: { completed: true, completedAt: now() },
       sport: { type: sportType as 'RUNNING' | 'CYCLING' | 'SWIMMING' | 'TRIATHLON' | 'FOOTBALL' | 'STRENGTH' | 'GENERAL', goal: sportGoal as 'RACE' | 'GENERAL_FITNESS' },
+    }
+
+    // Profile + config atomic
+    await deps.db.$transaction(async (tx) => {
+      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
+      const txUser = new PrismaUserRepository(tx as any)
+      await txHealthProfile.upsertProfile(userId, {
+        age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
+        weightGoalKg: data.weightGoalKg ?? undefined,
+        gender: data.gender ?? 'male',
+        sport: sportType,
+        sportDetails: {},
+        dataSources: {},
+      })
+      await txUser.updateConfig(userId, newConfig)
     })
 
     return { isB2B, planId: null }
@@ -91,31 +101,38 @@ export async function completeOnboardingUseCase(
     const tdee = calculateTDEE(data.weightKg!, data.heightCm!, data.age!, data.gender ?? 'male', data.daysPerWeek)
     const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
 
-    await Promise.all([
-      deps.planRepo.upsertNutrition(userId, {
-        tdee,
-        targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
-        proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
-      }),
-      deps.healthProfileRepo.upsertProfile(userId, {
-        age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
-        weightGoalKg: data.weightGoalKg ?? undefined,
-        gender: data.gender ?? 'male',
-        sport: 'GYM',
-        sportDetails: { gymGoal: data.gymGoal },
-        dataSources: {},
-      }),
-    ])
+    // Nutrition outside tx (idempotent upsert)
+    await deps.planRepo.upsertNutrition(userId, {
+      tdee,
+      targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal,
+      proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
+    })
 
+    // Read config before tx
     const currentConfig = await readCurrentConfig(deps.db, userId)
-    await deps.userRepo.updateConfig(userId, {
+    const newConfig = {
       ...currentConfig,
       features: isB2B ? currentConfig.features : {
         ...currentConfig.features,
         plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true,
       },
       onboarding: { completed: true, completedAt: now() },
-      sport: { type: 'STRENGTH', goal: 'BODY_RECOMPOSITION' },
+      sport: { type: 'STRENGTH' as const, goal: 'BODY_RECOMPOSITION' as const },
+    }
+
+    // Profile + config atomic
+    await deps.db.$transaction(async (tx) => {
+      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
+      const txUser = new PrismaUserRepository(tx as any)
+      await txHealthProfile.upsertProfile(userId, {
+        age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
+        weightGoalKg: data.weightGoalKg ?? undefined,
+        gender: data.gender ?? 'male',
+        sport: 'GYM',
+        sportDetails: { gymGoal: data.gymGoal },
+        dataSources: {},
+      })
+      await txUser.updateConfig(userId, newConfig)
     })
 
     return { isB2B, planId: null }
@@ -130,7 +147,10 @@ export async function completeOnboardingUseCase(
     ...(data.ftp ? { ftp: { source: 'manual', updatedAt: now() } } : {}),
   }
 
-  await deps.healthProfileRepo.upsertProfile(userId, {
+  // ── B2B path: profile only, coach activates plan later ───────────────────
+  const isB2B = await checkIsB2B(deps.db, userId)
+
+  const profileData = {
     age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
     weightGoalKg: data.weightGoalKg ?? undefined,
     gender: data.gender ?? 'male',
@@ -143,25 +163,35 @@ export async function completeOnboardingUseCase(
     experienceLevel: data.experienceLevel ?? undefined,
     sportDetails,
     dataSources,
-  })
+  }
 
-  // ── B2B path: profile only, coach activates plan later ───────────────────
-  const isB2B = await checkIsB2B(deps.db, userId)
   if (isB2B) {
     const b2bSportType = data.mainGoal === 'SPORT' ? (data.sport ?? 'GENERAL') : 'GENERAL'
     const b2bGoal = data.mainGoal === 'SPORT' ? 'RACE' : data.mainGoal === 'BODY' ? 'BODY_RECOMPOSITION' : 'GENERAL_FITNESS'
 
     const currentConfig = await readCurrentConfig(deps.db, userId)
-    await deps.userRepo.updateConfig(userId, {
+    const b2bConfig = {
       ...currentConfig,
       onboarding: { completed: true, completedAt: now() },
       sport: {
         type: b2bSportType as 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL',
         goal: b2bGoal as 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS',
       },
+    }
+
+    // Profile + config atomic for B2B
+    await deps.db.$transaction(async (tx) => {
+      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
+      const txUser = new PrismaUserRepository(tx as any)
+      await txHealthProfile.upsertProfile(userId, profileData)
+      await txUser.updateConfig(userId, b2bConfig)
     })
+
     return { isB2B: true, planId: null }
   }
+
+  // B2C: write profile before plan generation (plan generation reads it)
+  await deps.healthProfileRepo.upsertProfile(userId, profileData)
 
   // ── B2C plan generation ───────────────────────────────────────────────────
   const result = await generatePlanUseCase(
