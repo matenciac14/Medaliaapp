@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:gym-history`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const athleteId = mobile.id
 
@@ -38,8 +41,8 @@ export async function GET(req: NextRequest) {
 
     const exerciseMap: Record<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }> = {}
     for (const sl of gs.setLogs) {
-      const key = sl.workoutExerciseId
-      if (!exerciseMap[key]) exerciseMap[key] = { name: sl.workoutExercise.exercise.name, sets: [] }
+      const key = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
+      if (!exerciseMap[key]) exerciseMap[key] = { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] }
       exerciseMap[key].sets.push({
         setNumber: sl.setNumber,
         weightKg: sl.weightKg,

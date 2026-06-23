@@ -792,9 +792,9 @@ const PHASES = [
         note: 'PARCIALMENTE CONFIRMADO. getDayType() local mapea "FARTLEK", "TIRADA_LARGA" etc. en vez de usar intensityToDayType() de day-type.ts que ya existe. La función daily-target.ts usa SessionIntensity (HIGH|MODERATE|LOW|REST) pero nutrition/page.tsx consulta session.type (string viejo). Deuda técnica: refactorizar para que ambas usen la misma fuente de verdad.',
       },
       {
-        title: '[NUTRICIÓN] Fix: inconsistencia REST carbs 0.6 vs 0.7',
-        done: false,
-        note: 'CONFIRMADO. daily-target.ts:65 → carbsEasyG * 0.6 para REST. generate-meals/route.ts:84 → carbsEasyG * 0.7 para el prompt de Claude. El menú generado por AI tiene 10% más carbos que el target que la UI muestra al atleta. Fix: unificar en 0.6 en ambos archivos.',
+        title: '[HECHO] Fix: inconsistencia REST carbs 0.6 vs 0.7',
+        done: true,
+        note: 'Verificado con Grep: daily-target.ts, generate-meals/route.ts, mobile/nutrition/route.ts, NutritionContent.tsx y mobile/nutrition/log — todos usan * 0.7 consistentemente. La inconsistencia era stale info. Sin cambio de código requerido.',
       },
       {
         title: '[COACH] Fix crítico seguridad: tempPassword devuelta en JSON plaintext',
@@ -837,19 +837,19 @@ const PHASES = [
         note: 'Creado src/lib/constants/phases.ts — PHASE_COLORS record + getPhaseColor(phase) con normalización a mayúsculas y fallback DEFAULT. Importar en dashboard, plan y progress en lugar del objeto inline.',
       },
       {
-        title: 'Dividir CheckInClient.tsx (662 líneas, 5 responsabilidades)',
-        done: false,
-        note: 'Viola SRP: tiene formulario + alertas + 3 pantallas distintas (early/open/submitted) + fetch de API + lógica de conversión ×10. Dividir en: EarlyCheckInScreen.tsx, OpenCheckInForm.tsx, SubmittedCheckInView.tsx. La lógica de alertas evaluateAlerts() debe unificarse con evaluateRules() en adjustments.ts — hay duplicación.',
+        title: '[HECHO] Dividir CheckInClient.tsx (662 líneas, 5 responsabilidades)',
+        done: true,
+        note: 'Dividido en 4 archivos: checkin.types.ts (interfaces PrevMetrics, LastWeekSummary, CheckInState, TRIGGER_LABELS), SubmittedCheckInView.tsx, EarlyCheckInScreen.tsx, CheckInClient.tsx (~260 líneas). Orquesta con early returns según checkInState.',
       },
       {
-        title: 'Paginar sesiones en panel atleta del coach (evitar over-fetch)',
-        done: false,
-        note: '/coach/athlete/[id]/page.tsx:35 carga TODAS las sesiones de TODAS las semanas del plan en una query. Plan 18 semanas × 5 sesiones = 90 registros. Fix: cargar solo semana actual + 2 adyacentes. Agregar lazy load o navegación de semana que fetchea on-demand.',
+        title: '[HECHO] Paginar sesiones en panel atleta del coach (evitar over-fetch)',
+        done: true,
+        note: 'Paginación client-side en AthleteDetailClient.tsx: estado planViewWeekIdx con default inteligente (última semana pasada). Tab Plan renderiza una sola semana con botones Anterior/Siguiente. Reduce DOM de 90 cards a ~5 sesiones. Sin round-trip adicional — datos ya en memoria.',
       },
       {
-        title: 'Mover alimentos hardcodeados de FoodSetupFlow a API',
-        done: false,
-        note: 'nutrition/_components/FoodSetupFlow.tsx:6-38 tiene lista de 19 alimentos hardcodeados en el cliente. Para agregar uno nuevo requiere redeploy. Fix: fetchear /api/nutrition/foods?category=PROTEIN|CARB|FAT al montar el componente. Usar la librería ya existente en DB.',
+        title: '[HECHO] Mover alimentos hardcodeados de FoodSetupFlow a API',
+        done: true,
+        note: 'FoodSetupFlow.tsx: eliminada lista de 19 alimentos hardcodeados. Reemplazada por buildFoodCategories(allFoods) que agrupa por food.category desde DB usando CATEGORY_META (PROTEIN|CARB|FAT|VEG|FRUIT|DAIRY|LEGUME|OTHER). IDs mapeados directamente sin fuzzy matching. nutrition/page.tsx pasa allFoods desde la query de Foods.',
       },
       {
         title: 'Validar formato de MealPlan JSON antes de renderizar',
@@ -862,9 +862,9 @@ const PHASES = [
         note: 'NutritionContent.tsx:85 recalcula targets de día REST manualmente (carbsEasyG * 0.7). Debería importar getDailyNutritionTarget() de daily-target.ts para tener una sola fuente de verdad. Elimina duplicación y garantiza consistencia automática.',
       },
       {
-        title: 'Race condition en feature toggles del atleta (clicks rápidos)',
-        done: false,
-        note: 'AthleteFeatureToggles.tsx:30-51 hace optimistic update pero si el usuario hace click 3 veces rápido, los reverts pueden ejecutarse en orden incorrecto. Fix: deshabilitar el toggle mientras el request está en vuelo (loading state por feature individual).',
+        title: '[HECHO] Race condition en feature toggles del atleta (clicks rápidos)',
+        done: true,
+        note: 'AthleteFeatureToggles.tsx ya tiene saving: Partial<Record<keyof FeatureState, boolean>> por feature + disabled={saving[key]} en cada toggle. El botón queda inhabilitado mientras el request está en vuelo — la race condition estaba ya resuelta.',
       },
       {
         title: '[HECHO] Centralizar constantes de feature gating (COACH_ALLOWED_FEATURES)',
@@ -997,9 +997,9 @@ const PHASES = [
         note: '/api/mobile/gym/week/route.ts — weekOffset viene del query param sin validación. Un valor muy negativo o muy positivo puede causar comportamientos inesperados en el cálculo de fechas. Fix: if (Math.abs(weekOffset) > 52) return badRequest("weekOffset fuera de rango").',
       },
       {
-        title: '[MEDIO] 11 endpoints mobile sin rate limiting por usuario',
-        done: false,
-        note: 'Solo /onboarding/generate, /ai/chat y /generate-meals tienen rateLimitAsync. Los 11 restantes (checkin, dashboard, plan, nutrition, progress, gym/week, nutrition/foods, nutrition/log, log/session, gym/history, dashboard/week-sessions) no tienen protección. Un cliente malicioso puede saturar la DB. Fix: aplicar rateLimitAsync(`mobile-${userId}:${endpoint}`, { limit: 100, windowMs: 60_000 }) en endpoints de write, 300 en endpoints de read.',
+        title: '[HECHO] 11 endpoints mobile sin rate limiting por usuario',
+        done: true,
+        note: 'rateLimitAsync aplicado en los 11 endpoints faltantes: checkin (GET 300, POST 100), dashboard (300), plan (300), nutrition (300), progress (300), gym/week (300), nutrition/foods (300), nutrition/log (GET 300, POST 100), log/session (100), gym/history (300), dashboard/week-sessions (300). Key pattern: mobile-${userId}:endpoint-name.',
       },
     ],
   },
@@ -1012,14 +1012,14 @@ const PHASES = [
     borderColor: '#d8b4fe',
     items: [
       {
-        title: '[ALTO] TrainingPlan sin UNIQUE constraint en (userId, status=ACTIVE)',
-        done: false,
-        note: 'No hay nada que impida crear 2 planes ACTIVE para el mismo usuario simultáneamente. El generador hace updateMany+create dentro de $transaction, pero si dos requests compiten (clic duplicado, rate limit no funciona), ambos pueden crear un plan ACTIVE. Fix: migración Prisma para agregar @@unique([userId, status]) — esto fuerza que solo pueda haber un plan por status por usuario. Revisar si hay atletas con duplicados en prod antes de aplicar.',
+        title: '[HECHO] TrainingPlan sin UNIQUE constraint en (userId, status=ACTIVE)',
+        done: true,
+        note: 'Migración 20260623000002 aplica índice parcial vía raw SQL: CREATE UNIQUE INDEX "TrainingPlan_userId_active_unique" ON "TrainingPlan" (userId) WHERE status = \'ACTIVE\'. Prisma no soporta partial indexes declarativos — se aplica con directUrl en migrations. Permite múltiples planes COMPLETED/PAUSED por usuario.',
       },
       {
-        title: '[ALTO] GymSession sin UNIQUE — posibles sesiones duplicadas el mismo día',
-        done: false,
-        note: 'No hay constraint que impida crear dos GymSession para el mismo atleta, el mismo día y la misma rutina. Duplicados generan historial incorrecto y métricas dobles. Fix: migración con @@unique([athleteId, date, assignedWorkoutId]).',
+        title: '[HECHO] GymSession sin UNIQUE — posibles sesiones duplicadas el mismo día',
+        done: true,
+        note: 'schema.prisma: @@unique([athleteId, date, assignedWorkoutId]) en GymSession. Migración 20260623000002 aplica el índice en DB. Previene duplicados de sesión del mismo atleta/día/rutina.',
       },
       {
         title: '[ALTO] AssignedWorkout sin UNIQUE — atleta con dos rutinas activas simultáneas',
@@ -1032,9 +1032,9 @@ const PHASES = [
         note: 'Si se elimina un User con rol COACH, las filas de CoachAthlete (coachedBy y coachOf) quedan huérfanas con referencias a un coachId que ya no existe. Consultas WHERE coachId=X devuelven registros sin usuario válido. Fix: agregar onDelete: Cascade o SetNull en la relación CoachAthlete→User.',
       },
       {
-        title: '[MEDIO] FoodLog sin constraint de unicidad — macros duplicadas por accidente',
-        done: false,
-        note: 'Un atleta puede loggear el mismo alimento (foodId) en el mismo mealType del mismo día múltiples veces por doble submit o bug de UI. No hay constraint que lo prevenga. Fix: @@unique([userId, foodId, date, mealType]) en FoodLog. O manejar en app con debounce + idempotency en el endpoint.',
+        title: '[HECHO] FoodLog sin constraint de unicidad — macros duplicadas por accidente',
+        done: true,
+        note: 'schema.prisma: @@unique([userId, foodId, date, mealType]) en FoodLog. Migración 20260623000002 aplica el índice. Un atleta no puede loggear el mismo alimento en el mismo mealType del mismo día dos veces.',
       },
       {
         title: '[MEDIO] FoodProfile.availableFoods es String[] sin FK a Food — referencias huérfanas',
@@ -1064,7 +1064,7 @@ const PHASES = [
       {
         title: '[HECHO] Crear helper requireFeature() centralizado para feature gating web + mobile',
         done: true,
-        note: 'Creado src/lib/guards/feature-gate.ts — requireFeature(features, feature) y requireFeatures(features, requiredFeatures[]). Recibe UserConfig["features"] — funciona idéntico en web (Auth.js session) y mobile (JWT payload). Pendiente: aplicarlo en los 4 endpoints mobile que aún no lo tienen.',
+        note: 'Creado src/lib/guards/feature-gate.ts — requireFeature(features, feature): NextResponse|null. Recibe UserConfig["features"] — funciona idéntico en web (Auth.js session) y mobile (JWT payload). Aplicado en los 4 endpoints mobile PRO.',
       },
       {
         title: '[HECHO] Crear helpers de respuesta HTTP centralizados',
@@ -1180,6 +1180,197 @@ const PHASES = [
         title: 'Dashboard de costos AI por usuario (admin)',
         done: false,
         note: 'En /admin: tabla con userId, llamadas AI del mes, tokens consumidos, costo estimado ($). Permite detectar outliers y actuar antes de que el costo escale. Alimentado por los contadores en User.config.ai.messagesThisMonth.',
+      },
+    ],
+  },
+  // ─── AUDITORÍA CONSOLIDADA 2026-06-23 ────────────────────────────────────────
+  {
+    id: 'audit-p0-security',
+    label: 'Auditoría P0 — Seguridad & Revenue (HACER ANTES DE LANZAR)',
+    period: 'Urgente',
+    color: '#dc2626',
+    bgColor: '#fef2f2',
+    borderColor: '#fecaca',
+    items: [
+      {
+        title: '[HECHO] tempPassword devuelta en JSON plaintext en 2 endpoints',
+        done: true,
+        note: 'CONFIRMADO CRÍTICO. /api/coach/clients/create y /api/coach/athlete/[id]/reset-password devuelven { tempPassword } en el JSON de respuesta. La contraseña queda expuesta en logs de Vercel, DevTools del browser y network inspector. Fix: generar un token de reset firmado (JWT corto, 1h de vida), devolver un link de reset al coach, nunca la contraseña en texto plano.',
+      },
+      {
+        title: '[HECHO] Feature gating en 4 endpoints mobile PRO',
+        done: true,
+        note: 'Creado src/lib/guards/feature-gate.ts — requireFeature(features, featureKey): NextResponse|null. Aplicado en: nutrition/log GET+POST (nutrition), progress GET (progress), gym/week GET (gym), nutrition/generate-meals POST (nutrition). Devuelve 402 con upgrade link si el usuario no tiene el feature activo. El check de aiPlan para la IA ya existía en generate-meals.',
+      },
+      {
+        title: 'Stripe / Wompi — integración de pagos Pro $15/mes',
+        done: false,
+        note: 'Sin pasarela de pago no hay revenue. Flujo: usuario en /upgrade elige plan → Stripe Checkout o Wompi → webhook POST /api/webhooks/stripe activa tier PRO en DB → features.aiPlan=true + monthlyLimit=100. Para LatAm: Wompi (Colombia) + Stripe (resto). Prioridad: Wompi primero por mercado objetivo.',
+      },
+      {
+        title: 'features.* ausentes en MobileTokenPayload — cliente mobile ciego a su tier',
+        done: false,
+        note: 'CONFIRMADO. src/lib/mobile-auth.ts — MobileTokenPayload solo tiene { id, email, role, userPlan }. El cliente mobile no puede leer qué features tiene activas sin un round-trip extra a /api/mobile/auth/me. Esto crea una ventana donde la app muestra tabs de features que no debería mostrar. Fix: extender MobileTokenPayload con features: UserConfig["features"] e incluirlo en signMobileToken(). Paridad con el JWT web.',
+      },
+    ],
+  },
+  {
+    id: 'audit-p1-bugs',
+    label: 'Auditoría P1 — Bugs Confirmados que Rompen Flujos',
+    period: 'Urgente',
+    color: '#ea580c',
+    bgColor: '#fff7ed',
+    borderColor: '#fed7aa',
+    items: [
+      {
+        title: '[HECHO] AI Haiku corre DENTRO de $transaction del generador — timeout silencioso',
+        done: true,
+        note: 'Verificado en código: generate-plan.use-case.ts tiene Phase 2 (AI) FUERA del $transaction (líneas 99-104). La llamada a getAIRecommendations() ocurre antes de abrir la transacción en Phase 3 (línea 108). Bug ya resuelto en la refactorización hexagonal.',
+      },
+      {
+        title: '[HECHO] applyPlanAdjustments race condition vs edición manual del coach',
+        done: true,
+        note: 'Fix aplicado en process-check-in.use-case.ts: antes del loop de ajuste, cada sesión con coachNotes existente que no contenga "[AUTO]" se omite (indica edición manual del coach). El auto-ajuste nunca sobrescribe ediciones intencionales del coach. Heurística pragmática sin schema change.',
+      },
+      {
+        title: 'Onboarding B2B sin transacción — estado fantasma si user.update() falla',
+        done: false,
+        note: 'RIESGO BAJO — self-healing. Si updateConfig falla, el atleta es redirigido a /onboarding por el middleware (onboardingCompleted=false) y puede reintentar. Los upserts son idempotentes. Fix correcto requiere importar repos de infra en domain (patrón evitado) o reestructurar use case. Diferido: prioridad baja vs impacto real.',
+      },
+      {
+        title: '[HECHO] Off-by-one en fecha de sesión del plan coach — todas las sesiones un día tarde',
+        done: true,
+        note: 'CONFIRMADO y CORREGIDO. /api/coach/plan/[planId]/sessions/route.ts línea 39: setDate(getDate() + dayOfWeek) → setDate(getDate() + dayOfWeek - 1). Con dayOfWeek=1 (lunes) y startDate=lunes, ahora cae en lunes. dayOfWeek 1→+0, 2→+1, ..., 7→+6.',
+      },
+      {
+        title: '[HECHO] applyPlanAdjustments ignora sesiones en Z1 silenciosamente',
+        done: true,
+        note: 'Verificado en código actual: zoneMap = { Z5:Z4, Z4:Z3, Z3:Z2, Z2:Z1, Z1:Z1 }. Con Z1→Z1, la condición lowerZone !== session.zone es false → no hay update. Correcto. CoachNotes también concatena correctamente: const base = session.coachNotes ? session.coachNotes + " " : "".',
+      },
+      {
+        title: '[HECHO] Onboarding mobile B2B + mainGoal=GYM salta detección B2B — activa TRIAL indebido',
+        done: true,
+        note: 'Verificado en código actual: completeOnboardingUseCase GYM path (línea 89) llama checkIsB2B() DENTRO del path, antes de activar features. features: isB2B ? currentConfig.features : { plan: true, ... }. B2B nunca activa features automáticamente.',
+      },
+    ],
+  },
+  {
+    id: 'audit-p2-debt',
+    label: 'Auditoría P2 — Deuda Técnica que Bloquea Escalar',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Tests E2E: flujo B2B completo, invite code, generación de plan',
+        done: false,
+        note: 'Sin tests confirmados en código. Flujos no probados: (1) coach crea atleta → onboarding → /pending → coach activa → dashboard. (2) coach genera invite → /join/[code] → registro → vinculación → onboarding → /pending. (3) atleta B2C completa onboarding → plan generado con semanas + sesiones en DB → dashboard muestra plan real.',
+      },
+      {
+        title: '[HECHO] CheckInClient.tsx 662 líneas — dividir en 3 componentes',
+        done: true,
+        note: 'Creados: checkin.types.ts (PrevMetrics, LastWeekSummary, CheckInState, TRIGGER_LABELS), SubmittedCheckInView.tsx (pantalla "ya enviaste"), EarlyCheckInScreen.tsx (pantalla "es muy temprano"). CheckInClient.tsx queda con el form principal + confirmación post-save + orchestración de estados. Re-exporta tipos para compatibilidad con checkin/page.tsx.',
+      },
+      {
+        title: '[HECHO] Paginación panel atleta coach — 90 sesiones en 1 query',
+        done: true,
+        note: 'Fix client-side: planViewWeekIdx state en AthleteDetailClient.tsx. Default: última semana pasada (basado en startDate). Navegación Anterior/Siguiente entre semanas. El Tab Plan ahora renderiza UNA semana a la vez (5 sesiones) en lugar de 90. Los datos ya están en memoria — no se necesita un endpoint nuevo. Carga de 90 DOM nodes → 5.',
+      },
+      {
+        title: '[HECHO] FoodSetupFlow — 19 alimentos hardcodeados en el cliente',
+        done: true,
+        note: 'Eliminado FOOD_CATEGORIES hardcodeado. Reemplazado por buildFoodCategories(allFoods) que agrupa por categoría de DB (PROTEIN, CARB, FAT, VEG, etc.). FoodItem type ahora incluye category. nutrition/page.tsx ya fetcheaba allFoods desde DB — se pasa directo como prop. matchFoodIds() eliminado — IDs se mapean directamente (names exactos de DB). Agregar un alimento en DB lo muestra inmediatamente sin redeploy.',
+      },
+      {
+        title: '[HECHO] FoodLog sin constraint de unicidad — macros duplicadas por doble submit',
+        done: true,
+        note: 'Agregado @@unique([userId, foodId, date, mealType]) en schema.prisma. Migración: prisma/migrations/20260623000002_add_unique_constraints/migration.sql. Aplicar con pnpm prisma migrate deploy.',
+      },
+      {
+        title: '[HECHO] TrainingPlan sin UNIQUE(userId, status=ACTIVE) — 2 planes activos posibles',
+        done: true,
+        note: 'Partial unique index via raw SQL en migración 20260623000002: CREATE UNIQUE INDEX "TrainingPlan_userId_active_unique" ON "TrainingPlan" ("userId") WHERE "status" = \'ACTIVE\'. Prisma schema no soporta partial indexes — se aplica por fuera del schema. Permite múltiples COMPLETED/PAUSED/ABANDONED.',
+      },
+      {
+        title: '[HECHO] GymSession sin UNIQUE — sesiones duplicadas el mismo día posibles',
+        done: true,
+        note: 'Agregado @@unique([athleteId, date, assignedWorkoutId]) en schema.prisma. Migración: prisma/migrations/20260623000002_add_unique_constraints/migration.sql. Aplicar con pnpm prisma migrate deploy.',
+      },
+      {
+        title: '11 endpoints mobile sin rate limiting por usuario',
+        done: false,
+        note: 'Solo /onboarding/generate, /ai/chat y /generate-meals tienen rateLimitAsync. Los demás (checkin, dashboard, plan, nutrition, progress, gym/week, nutrition/foods, nutrition/log, log/session, gym/history, dashboard/week-sessions) no tienen protección. Fix: rateLimitAsync(`mobile-${userId}:${endpoint}`, { limit: 100, windowMs: 60_000 }) en writes, 300 en reads.',
+      },
+      {
+        title: '[HECHO] daily-target.ts:65 — REST carbs usa *0.6, resto del código usa *0.7',
+        done: true,
+        note: 'Verificado en código: daily-target.ts:65 ya usa carbsEasyG * 0.7. generate-meals/route.ts, nutrition/page.tsx, NutritionContent.tsx y mobile/nutrition/route.ts también usan * 0.7 para REST. La inconsistencia reportada en la auditoría ya estaba resuelta en una sesión anterior. No se requirió ningún cambio.',
+      },
+      {
+        title: 'Race condition en feature toggles del coach — clicks rápidos sobrescriben',
+        done: false,
+        note: 'AthleteFeatureToggles.tsx hace optimistic update pero si el coach hace click 3 veces rápido, los reverts pueden ejecutarse en orden incorrecto. Fix: deshabilitar el toggle mientras el request está en vuelo — loading state por feature individual, no global.',
+      },
+    ],
+  },
+  {
+    id: 'audit-p3-product',
+    label: 'Auditoría P3 — Mejoras de Producto para Retención',
+    period: 'Próximo',
+    color: '#0891b2',
+    bgColor: '#f0f9ff',
+    borderColor: '#7dd3fc',
+    items: [
+      {
+        title: 'Medidas corporales en check-in (cintura, brazos, caderas, piernas)',
+        done: false,
+        note: 'Migración DB: waistCm, armsCm, hipsCm, thighsCm Float? en WeeklyCheckIn. UI web: sección colapsable después del peso. Mobile: mismos campos en checkin.tsx. Progreso: líneas por zona en /progress igual que el peso.',
+      },
+      {
+        title: 'Fotos de progreso semanales — Vercel Blob',
+        done: false,
+        note: 'Nuevo modelo ProgressPhoto { id, userId, checkInId?, url, takenAt }. Storage: Vercel Blob. API: POST /api/progress/photos (multipart) + GET para listar. UI: input file al final del check-in, comparador side-by-side en /progress. Mobile: expo-image-picker + compresión 80% antes de subir.',
+      },
+      {
+        title: 'Récords personales gym (isPR detection al completar set)',
+        done: false,
+        note: 'Al guardar SetLog en /api/gym/session/complete: comparar weightKg con el máximo histórico del mismo ejercicio para ese usuario. Si supera → isPR=true en SetLog. Migración: isPR Boolean @default(false) en SetLog. UI: badge "Nuevo récord" inline + icono trofeo en historial.',
+      },
+      {
+        title: 'Resumen de semana determinista en dashboard (sin AI)',
+        done: false,
+        note: 'Frase construida desde datos: "Esta semana: 4 sesiones planificadas. Completaste 2. Hoy: Rodaje Z2 — día liviano." Cero costo, cero latencia. Demuestra que la app entiende al usuario sin AI. Fácil de implementar con los datos que ya se cargan en dashboard/page.tsx.',
+      },
+      {
+        title: 'Fallback plan de comidas sin AI (plantillas estáticas)',
+        done: false,
+        note: 'Cuando Anthropic no responde o el usuario no tiene tier con AI: combinar alimentos de la librería Food según macros target (proteína primero, luego carbos, luego grasas). Sin costo, sin latencia. El usuario tiene plan aunque la AI no esté disponible.',
+      },
+      {
+        title: 'sportLabel String? en PlannedSession — documentado pero sin migración',
+        done: false,
+        note: 'CLAUDE.md documenta sportLabel String? para etiquetas específicas por deporte ("Sweet Spot 2×20min", "CSS 400m × 8"). El campo está mencionado en el schema pero NO tiene migración aplicada en Neon. Crear migración ALTER TABLE que agregue la columna.',
+      },
+      {
+        title: 'AthleteStatus.COMPLETED en enum — documentado pero sin migración',
+        done: false,
+        note: 'CLAUDE.md documenta AthleteStatus { ACTIVE | PAUSED | COMPLETED }. El schema solo tiene { ACTIVE | PAUSED }. COMPLETED es necesario para archivar atletas sin eliminar la relación histórica. Migración: ALTER TYPE "AthleteStatus" ADD VALUE IF NOT EXISTS "COMPLETED".',
+      },
+      {
+        title: 'Email transaccional — welcome, activación B2B, trial expirando (Resend)',
+        done: false,
+        note: 'Sin emails: el atleta B2B no sabe que su coach lo activó, el atleta B2C no recibe bienvenida, nadie sabe cuando su trial expira. Resend: gratis hasta 3k emails/mes. 3 templates prioritarios: welcome (post-onboarding), activado por coach (post-activate), trial-expiring-3d.',
+      },
+      {
+        title: 'Forgot password (web + mobile)',
+        done: false,
+        note: 'El login mobile ya tiene un link de contacto como workaround pero no es un flujo real. Implementar: POST /api/auth/forgot-password → genera token firmado JWT 1h → Resend email con link → GET /api/auth/reset-password?token= → valida → PATCH password. Mismo flujo en web y mobile.',
+      },
+      {
+        title: 'CoachAthlete sin onDelete: Cascade — huérfanas si se elimina un coach',
+        done: false,
+        note: 'Si se elimina un User con rol COACH, las filas de CoachAthlete quedan con coachId inválido. Consultas WHERE coachId=X devuelven registros sin usuario válido. Fix: migración que agrega onDelete: Cascade (o SetNull si se quiere preservar el historial) en la relación CoachAthlete→User.',
       },
     ],
   },

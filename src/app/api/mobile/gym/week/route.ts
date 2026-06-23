@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { getWeekBounds, buildDaySummaries } from '@/domain/gym/build-gym-week'
+import { requireFeature } from '@/lib/guards/feature-gate'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:gym-week`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'gym')
+  if (featureGuard) return featureGuard
 
   const athleteId = mobile.id
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0') || 0
@@ -72,8 +78,8 @@ export async function GET(req: NextRequest) {
       if (session?.completed && session.setLogs.length > 0) {
         const exerciseMap = new Map<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }>()
         for (const sl of session.setLogs) {
-          const key = sl.workoutExercise.id
-          if (!exerciseMap.has(key)) exerciseMap.set(key, { name: sl.workoutExercise.exercise.name, sets: [] })
+          const key = sl.workoutExercise?.id ?? sl.exerciseName ?? 'unknown'
+          if (!exerciseMap.has(key)) exerciseMap.set(key, { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] })
           exerciseMap.get(key)!.sets.push({ setNumber: sl.setNumber, weightKg: sl.weightKg, repsCompleted: sl.repsCompleted, completed: sl.completed })
         }
         selectedDetail = { type: 'completed', session: { durationMin: session.durationMin, rpe: session.rpe, notes: session.notes, exercises: [...exerciseMap.values()] } }

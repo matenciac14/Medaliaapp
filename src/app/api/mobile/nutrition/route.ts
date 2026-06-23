@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const userId = mobile.id
   const todayDow = jsToOurDow(new Date().getDay())
@@ -55,17 +58,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null })
   }
 
-  const macros = {
-    kcal: dayType === 'hard'
-      ? nutritionPlan.targetKcalHard
-      : dayType === 'rest'
-        ? nutritionPlan.targetKcalRest
-        : nutritionPlan.targetKcalEasy,
-    proteinG: nutritionPlan.proteinG,
-    carbsG: dayType === 'hard' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG,
-    fatG: nutritionPlan.fatG,
-    tdee: nutritionPlan.tdee,
-  }
+  const kcal =
+    dayType === 'hard' ? nutritionPlan.targetKcalHard
+    : dayType === 'rest' ? nutritionPlan.targetKcalRest
+    : dayType === 'low'  ? Math.round(nutritionPlan.targetKcalEasy * 0.88)
+    : nutritionPlan.targetKcalEasy
+  const carbsG =
+    dayType === 'hard' ? nutritionPlan.carbsHardG
+    : dayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7)
+    : dayType === 'low'  ? Math.round(nutritionPlan.carbsEasyG * 0.75)
+    : nutritionPlan.carbsEasyG
+  const macros = { kcal, proteinG: nutritionPlan.proteinG, carbsG, fatG: nutritionPlan.fatG, tdee: nutritionPlan.tdee }
 
   return NextResponse.json({
     hasNutritionPlan: true,

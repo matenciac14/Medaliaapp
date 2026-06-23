@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { rateLimitAsync } from '@/lib/rate-limit'
 import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate-food-log'
+import { requireFeature } from '@/lib/guards/feature-gate'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition-log`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'nutrition')
+  if (featureGuard) return featureGuard
 
   const userId = mobile.id
   const dateParam = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
@@ -41,6 +47,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition-log`, { limit: 100, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'nutrition')
+  if (featureGuard) return featureGuard
 
   const userId = mobile.id
   const parsed = parseFoodLogPost(await req.json())

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:plan`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const plan = await prisma.trainingPlan.findFirst({
     where: { userId: mobile.id, status: 'ACTIVE' },
@@ -44,6 +47,7 @@ export async function GET(req: NextRequest) {
         dayOfWeek: s.dayOfWeek,
         coachNote: s.coachNote ?? null,
         detailText: s.detailText ?? null,
+        structure: s.structure ?? null,
         intensity: s.intensity ?? null,
         completed: !!s.log,
         log: s.log ? {

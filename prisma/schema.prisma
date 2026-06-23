@@ -523,6 +523,7 @@ model GymSession {
 
   createdAt DateTime @default(now())
 
+  @@unique([athleteId, date, assignedWorkoutId])
   @@index([athleteId, completed])
   @@index([athleteId, date])
 }
@@ -530,15 +531,19 @@ model GymSession {
 model SetLog {
   id                String  @id @default(cuid())
   sessionId         String
-  workoutExerciseId String
+  workoutExerciseId String?  // nullable — SetNull when coach edits/deletes exercise from routine
+  exerciseName      String?  // desnormalized — preserves name even if WorkoutExercise is deleted
   setNumber         Int
   weightKg          Float?
   repsCompleted     Int?
   completed         Boolean @default(false)
   notes             String?
 
-  session         GymSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id])
+  session         GymSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutExercise WorkoutExercise? @relation(fields: [workoutExerciseId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([workoutExerciseId])
 }
 
 // ─── MARKETPLACE DE COACHES ─────────────────────────────────────────────────
@@ -708,6 +713,7 @@ model FoodLog {
 
   createdAt DateTime @default(now())
 
+  @@unique([userId, foodId, date, mealType])
   @@index([userId, date])
 }
 

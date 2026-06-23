@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import AthleteFeatureToggles from './AthleteFeatureToggles'
 import NutritionConstructor from './NutritionConstructor'
 
@@ -23,6 +24,9 @@ export type HealthProfileData = {
   heightCm: number
   injuries: string[]
   conditions: string[]
+  sport: string | null
+  experienceLevel: string | null
+  ftp: number | null
 } | null
 
 export type PlanWeekData = {
@@ -39,6 +43,7 @@ export type PlanWeekData = {
     zoneTarget: string | null
     coachNote: string | null
     intensity: string
+    date: Date | null
   }[]
 }
 
@@ -209,6 +214,7 @@ export default function AthleteDetailClient({
   initialFeatures,
   initialStatus,
 }: AthleteDetailClientProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('Resumen')
 
   // Initialize notes from server data (persisted coachNotes)
@@ -223,6 +229,19 @@ export default function AthleteDetailClient({
   })
   const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({})
   const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
+
+  // Plan week navigation — show one week at a time to avoid rendering 90 sessions at once
+  const [planViewWeekIdx, setPlanViewWeekIdx] = useState(() => {
+    if (!activePlan || activePlan.weeks.length === 0) return 0
+    // Default to the last week that has passed or the first future one
+    const today = new Date()
+    const lastPassedIdx = activePlan.weeks.reduce((best, w, i) => {
+      const weekStart = new Date(activePlan.startDate)
+      weekStart.setDate(weekStart.getDate() + (w.weekNumber - 1) * 7)
+      return weekStart <= today ? i : best
+    }, 0)
+    return lastPassedIdx
+  })
 
   // Plan creation state
   const [creatingPlan, setCreatingPlan] = useState(false)
@@ -245,7 +264,7 @@ export default function AthleteDetailClient({
       if (!res.ok) throw new Error(json.error ?? 'Error generando el plan')
       setPlanCreated(true)
       setCreatingPlan(false)
-      window.location.reload()
+      router.refresh()
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -269,25 +288,25 @@ export default function AthleteDetailClient({
 
   // Reset password state
   const [resettingPwd, setResettingPwd] = useState(false)
-  const [newTempPassword, setNewTempPassword] = useState<string | null>(null)
+  const [resetLink, setResetLink] = useState<string | null>(null)
   const [pwdCopied, setPwdCopied] = useState(false)
 
   async function handleResetPassword() {
     setResettingPwd(true)
-    setNewTempPassword(null)
+    setResetLink(null)
     try {
       const res = await fetch(`/api/coach/athlete/${athleteId}/reset-password`, { method: 'POST' })
       const data = await res.json()
-      if (res.ok) setNewTempPassword(data.tempPassword)
+      if (res.ok) setResetLink(data.resetLink)
     } finally {
       setResettingPwd(false)
     }
   }
 
   async function handleCopyPassword() {
-    if (!newTempPassword) return
+    if (!resetLink) return
     try {
-      await navigator.clipboard.writeText(newTempPassword)
+      await navigator.clipboard.writeText(resetLink)
       setPwdCopied(true)
       setTimeout(() => setPwdCopied(false), 2000)
     } catch { /* no-op */ }
@@ -381,6 +400,7 @@ export default function AthleteDetailClient({
   const [editingNutrition, setEditingNutrition] = useState(false)
   const [nutritionDraft, setNutritionDraft] = useState<NutritionPlanData>(nutritionPlan)
   const [savingNutrition, setSavingNutrition] = useState(false)
+  const [nutritionSaveError, setNutritionSaveError] = useState<string | null>(null)
 
   // Meal plan + food profile (lazy load on tab open)
   type MealPlanData = { data: unknown; updatedAt: string } | null
@@ -431,7 +451,7 @@ export default function AthleteDetailClient({
         body: JSON.stringify(sessionDraft),
       })
       setEditingSession(null)
-      window.location.reload()
+      router.refresh()
     } finally {
       setSavingSession(false)
     }
@@ -504,6 +524,7 @@ export default function AthleteDetailClient({
   async function handleSaveNutrition() {
     if (!nutritionDraft) return
     setSavingNutrition(true)
+    setNutritionSaveError(null)
     try {
       const res = await fetch(`/api/coach/athlete/${athleteId}/nutrition`, {
         method: 'PATCH',
@@ -512,7 +533,11 @@ export default function AthleteDetailClient({
       })
       if (res.ok) {
         setEditingNutrition(false)
+      } else {
+        setNutritionSaveError('Error al guardar. Inténtalo de nuevo.')
       }
+    } catch {
+      setNutritionSaveError('Error de conexión.')
     } finally {
       setSavingNutrition(false)
     }
@@ -667,6 +692,42 @@ export default function AthleteDetailClient({
                 value={lastCheckInDaysAgo !== null ? `Hace ${lastCheckInDaysAgo} días` : 'Sin datos'}
               />
               <Stat label="Email" value={athlete.email} />
+              {healthProfile?.sport && (
+                <Stat label="Deporte" value={SPORT_LABELS[healthProfile.sport] ?? healthProfile.sport} />
+              )}
+              {healthProfile?.experienceLevel && (
+                <Stat label="Nivel" value={
+                  healthProfile.experienceLevel === 'BEGINNER' ? 'Principiante' :
+                  healthProfile.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' :
+                  healthProfile.experienceLevel === 'ADVANCED' ? 'Avanzado' :
+                  healthProfile.experienceLevel
+                } />
+              )}
+              {healthProfile?.ftp != null && (
+                <Stat label="FTP" value={`${healthProfile.ftp} W`} />
+              )}
+              {latestCheckIn && (
+                <>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Estrés (últ.)</p>
+                    <p className={`text-sm font-semibold ${latestCheckIn.stressLevel != null && latestCheckIn.stressLevel >= 7 ? 'text-red-600' : 'text-gray-800'}`}>
+                      {latestCheckIn.stressLevel != null ? `${latestCheckIn.stressLevel}/10` : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Motivación (últ.)</p>
+                    <p className={`text-sm font-semibold ${latestCheckIn.motivationLevel != null && latestCheckIn.motivationLevel <= 3 ? 'text-red-600' : 'text-gray-800'}`}>
+                      {latestCheckIn.motivationLevel != null ? `${latestCheckIn.motivationLevel}/10` : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Dolor (últ.)</p>
+                    <p className={`text-sm font-semibold ${latestCheckIn.painLevel != null && latestCheckIn.painLevel >= 5 ? 'text-red-600' : 'text-gray-800'}`}>
+                      {latestCheckIn.painLevel != null ? `${latestCheckIn.painLevel}/10` : '—'}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -703,10 +764,10 @@ export default function AthleteDetailClient({
                 {resettingPwd ? 'Generando...' : 'Resetear contraseña'}
               </button>
             </div>
-            {newTempPassword && (
+            {resetLink && (
               <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                <span className="text-xs text-gray-500 shrink-0">Nueva contraseña:</span>
-                <span className="font-mono font-bold text-sm text-gray-900 flex-1">{newTempPassword}</span>
+                <span className="text-xs text-gray-500 shrink-0">Link de acceso:</span>
+                <span className="text-xs text-[#1e3a5f] flex-1 truncate">Comparte este link con el atleta</span>
                 <button
                   onClick={handleCopyPassword}
                   className="text-xs font-medium px-2 py-0.5 rounded transition-colors shrink-0"
@@ -942,8 +1003,15 @@ export default function AthleteDetailClient({
                       <option value="RACE_5K">Carrera 5K (8 semanas)</option>
                       <option value="RACE_10K">Carrera 10K (12 semanas)</option>
                       <option value="RACE_HALF_MARATHON">Media maratón (18 semanas)</option>
+                      <option value="RACE_MARATHON">Maratón (18 semanas)</option>
+                      <option value="RACE_CYCLING">Carrera ciclismo (18 semanas)</option>
+                      <option value="RACE_TRIATHLON">Triatlón (18 semanas)</option>
+                      <option value="RACE_SWIMMING">Natación competitiva (12 semanas)</option>
+                      <option value="FOOTBALL_GPP">Fútbol — Prep. general</option>
+                      <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
                       <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
-                      <option value="GENERAL_FITNESS">Fitness general</option>
+                      <option value="WEIGHT_LOSS">Pérdida de peso</option>
+                      <option value="GENERAL_FITNESS">Condición general</option>
                     </select>
                   </div>
 
@@ -981,12 +1049,34 @@ export default function AthleteDetailClient({
                 </div>
               )}
             </div>
-          ) : (
-            activePlan.weeks.map((week, idx) => {
+          ) : (() => {
+              const week = activePlan.weeks[planViewWeekIdx]
               const load = weekLoadScore(week.sessions)
-              const prevLoad = idx > 0 ? weekLoadScore(activePlan.weeks[idx - 1].sessions) : null
+              const prevLoad = planViewWeekIdx > 0 ? weekLoadScore(activePlan.weeks[planViewWeekIdx - 1].sessions) : null
               const overload = prevLoad !== null && prevLoad > 0 && (load - prevLoad) / prevLoad > 0.20
               return (
+              <>
+              {/* Week navigation */}
+              <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+                <button
+                  onClick={() => setPlanViewWeekIdx(i => Math.max(0, i - 1))}
+                  disabled={planViewWeekIdx === 0}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ← Anterior
+                </button>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-[#1e3a5f]">Semana {week.weekNumber} de {activePlan.totalWeeks}</p>
+                  <p className="text-xs text-gray-400">{week.phase}</p>
+                </div>
+                <button
+                  onClick={() => setPlanViewWeekIdx(i => Math.min(activePlan.weeks.length - 1, i + 1))}
+                  disabled={planViewWeekIdx === activePlan.weeks.length - 1}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Siguiente →
+                </button>
+              </div>
               <div key={week.weekNumber} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h2 className="font-semibold" style={{ color: '#1e3a5f' }}>
@@ -1135,8 +1225,9 @@ export default function AthleteDetailClient({
                   )}
                 </div>
               </div>
-            )})
-          )}
+            </>
+            )
+          })()}
         </div>
       )}
 
@@ -1337,6 +1428,9 @@ export default function AthleteDetailClient({
                         {savingNutrition ? 'Guardando...' : 'Guardar cambios'}
                       </button>
                     </div>
+                    {nutritionSaveError && (
+                      <p className="text-xs text-red-600 mt-2">{nutritionSaveError}</p>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
