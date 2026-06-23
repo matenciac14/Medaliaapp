@@ -972,24 +972,24 @@ const PHASES = [
     borderColor: '#fecaca',
     items: [
       {
-        title: '[CRÍTICO] Feature gating ausente en 4 endpoints mobile PRO',
-        done: false,
-        note: 'Los siguientes endpoints NO validan features.* del UserConfig: (1) POST /api/mobile/nutrition/log → usuarios FREE pueden loggear comidas, (2) GET /api/mobile/progress → usuarios FREE ven gráficas de progreso, (3) GET /api/mobile/gym/week → usuarios FREE ven rutinas activas, (4) POST /api/mobile/nutrition/generate-meals → genera con Haiku (costo real) sin validar tier. Web sí valida via middleware. Fix: crear helper requireFeature(config, "nutrition") en src/lib/guards/feature-gate.ts y llamarlo al inicio de cada route handler mobile.',
+        title: '[HECHO] Feature gating en 4 endpoints mobile PRO',
+        done: true,
+        note: 'requireFeature(mobile.features, feature) aplicado: nutrition/log (GET+POST), progress, gym/week, nutrition/generate-meals. src/lib/guards/feature-gate.ts centralizado. Funciona con features del JWT — sin round-trip a DB.',
       },
       {
-        title: '[ALTO] MobileTokenPayload no incluye features.* — cliente mobile ciego a su propio tier',
-        done: false,
-        note: 'src/lib/mobile-auth.ts — MobileTokenPayload solo tiene { id, email, role, userPlan }. El cliente mobile no sabe qué features están activas hasta hacer GET /api/mobile/auth/me. Crea ventana donde la app muestra tabs de features que no debería. Web JWT sí incluye features completos. Fix: agregar features: UserConfig["features"] a MobileTokenPayload y signMobileToken().',
+        title: '[HECHO] MobileTokenPayload incluye features.* — cliente mobile conoce su tier',
+        done: true,
+        note: 'MobileTokenPayload ya tiene features: UserConfig["features"]. signMobileToken() lo incluye en el JWT. El cliente mobile puede leer features sin llamada extra a la API.',
       },
       {
-        title: '[ALTO] Onboarding mobile path GYM omite validación B2B',
-        done: false,
-        note: '/api/mobile/onboarding/generate/route.ts — la validación isB2B (busca CoachAthlete) ocurre DESPUÉS del if(mainGoal === "GYM"). Un atleta B2B que selecciona GYM en mobile salta la detección, genera NutritionPlan y activa TRIAL — cuando debería ir a /pending esperando activación del coach. Fix: mover isB2B check al inicio del handler, antes de cualquier bifurcación por mainGoal.',
+        title: '[HECHO] Onboarding mobile path GYM — validación B2B correcta',
+        done: true,
+        note: 'completeOnboardingUseCase llama checkIsB2B() dentro de cada path (FREE, GYM, SPORT/BODY). Si es B2B, conserva features actuales del coach y no activa TRIAL. El bug ya estaba corregido en el use case.',
       },
       {
-        title: '[MEDIO] POST /api/mobile/log/session sin validación de features.plan',
-        done: false,
-        note: 'Un atleta FREE puede loggear sesiones del plan desde mobile (aunque web no le muestre el plan). El endpoint valida ownership (sesión pertenece al usuario) pero no verifica features.log o features.plan. Fix: agregar requireFeature(config, "plan") al inicio del handler.',
+        title: '[HECHO] POST /api/mobile/log/session — feature gating añadido',
+        done: true,
+        note: 'requireFeature(mobile.features, "log") añadido al handler. Usuarios FREE no pueden loggear sesiones del plan desde mobile.',
       },
       {
         title: '[MEDIO] weekOffset en gym/week sin validación de rango',
