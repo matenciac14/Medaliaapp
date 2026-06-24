@@ -107,7 +107,7 @@ export default function NewGoalPage() {
             ← Volver
           </Link>
           <h1 className="text-2xl font-bold text-[#1e3a5f] mt-4">¿Cuál es tu próxima meta?</h1>
-          <p className="text-sm text-gray-500 mt-1">Elige una y la IA arma tu plan periodizado.</p>
+          <p className="text-sm text-gray-500 mt-1">Elige una y Medaliq arma tu plan periodizado.</p>
         </div>
 
         {/* Selector de meta */}

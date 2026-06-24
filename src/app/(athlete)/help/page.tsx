@@ -32,7 +32,7 @@ const SECTIONS = [
     items: [
       { q: '¿Por qué debo hacer el check-in?', a: 'El check-in registra datos reales de tu semana (peso, sueño, energía, RPE). Sin él, el plan no puede ajustarse a cómo estás respondiendo realmente.' },
       { q: '¿Cuándo debo hacerlo?', a: 'Una vez por semana, idealmente el mismo día (ej: domingo por la noche o lunes en la mañana antes de entrenar).' },
-      { q: '¿Qué pasa si tengo dolor o lesión?', a: 'Marca "bandera roja de dolor" en el check-in. El sistema alerta a tu coach y el AI ajusta la carga para la próxima semana.' },
+      { q: '¿Qué pasa si tengo dolor o lesión?', a: 'Marca "bandera roja de dolor" en el check-in. El sistema alerta a tu coach y ajusta la carga para la próxima semana.' },
     ],
   },
   {

@@ -133,7 +133,7 @@ export default function FoodSetupFlow({ hasFoodProfile, allFoods = [] }: Props) 
           <div>
             <h3 className="font-bold text-base">Configura tu plan de comidas</h3>
             <p className="text-white/70 text-xs mt-0.5">
-              Dinos qué alimentos tienes y la AI arma tu menú semanal personalizado
+              Dinos qué alimentos tienes y Medaliq arma tu menú semanal personalizado
             </p>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function FoodSetupFlow({ hasFoodProfile, allFoods = [] }: Props) 
               </div>
               <div className="text-center">
                 <p className="font-semibold text-gray-900">Analizando tu perfil...</p>
-                <p className="text-sm text-gray-500 mt-1">La AI está armando tu menú personalizado con tus alimentos</p>
+                <p className="text-sm text-gray-500 mt-1">Medaliq está armando tu menú personalizado con tus alimentos</p>
               </div>
             </div>
           )}

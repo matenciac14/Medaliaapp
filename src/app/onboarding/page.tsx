@@ -1077,9 +1077,9 @@ function StepPlanMethod({ data, update }: { data: WizardData; update: (d: Partia
           <span className="text-2xl leading-none mt-0.5">⚡</span>
           <span className="flex flex-col gap-0.5">
             <span className={cn('font-semibold text-base', data.planMethod === 'AI' ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
-              Personalizado con AI
+              Plan personalizado
             </span>
-            <span className="text-sm text-gray-500">El coach virtual analiza tu perfil y añade recomendaciones específicas para ti</span>
+            <span className="text-sm text-gray-500">Medaliq analiza tu perfil y añade recomendaciones específicas para ti</span>
           </span>
         </button>
         <button

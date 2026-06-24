@@ -128,10 +128,21 @@ export function getUserPlan(_features: UserConfig['features']): UserPlan {
 export function parseUserConfig(raw: unknown): UserConfig {
   if (!raw || typeof raw !== 'object') return DEFAULT_USER_CONFIG
   const partial = raw as Partial<UserConfig>
+  // Explicitly pick only known feature keys to prevent stale fields (e.g. aiPlan, aiCoach)
+  // from old DB records from leaking into the auth token.
+  const pf = (partial.features ?? {}) as Record<string, boolean | undefined>
   return {
     ...DEFAULT_USER_CONFIG,
     ...partial,
-    features: { ...DEFAULT_USER_CONFIG.features, ...(partial.features ?? {}) },
+    features: {
+      plan:      pf.plan      ?? DEFAULT_USER_CONFIG.features.plan,
+      checkin:   pf.checkin   ?? DEFAULT_USER_CONFIG.features.checkin,
+      nutrition: pf.nutrition ?? DEFAULT_USER_CONFIG.features.nutrition,
+      progress:  pf.progress  ?? DEFAULT_USER_CONFIG.features.progress,
+      log:       pf.log       ?? DEFAULT_USER_CONFIG.features.log,
+      coach:     pf.coach     ?? DEFAULT_USER_CONFIG.features.coach,
+      gym:       pf.gym       ?? DEFAULT_USER_CONFIG.features.gym,
+    },
     sport: { ...DEFAULT_USER_CONFIG.sport, ...(partial.sport ?? {}) },
     plan: { ...DEFAULT_USER_CONFIG.plan, ...(partial.plan ?? {}) },
     onboarding: { ...DEFAULT_USER_CONFIG.onboarding, ...(partial.onboarding ?? {}) },

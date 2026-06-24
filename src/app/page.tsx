@@ -250,7 +250,7 @@ export default async function Home() {
                 ))}
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
-                <span className="text-[#f97316] font-semibold">Coach AI: </span>
+                <span className="text-[#f97316] font-semibold">Medaliq: </span>
                 {l.features.aiMsg}
               </div>
             </div>

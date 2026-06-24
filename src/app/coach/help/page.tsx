@@ -11,7 +11,7 @@ const SECTIONS = [
       { q: '¿Qué información veo en el panel de atletas?', a: 'Atletas activos, check-ins pendientes de revisar y alertas activas (sobrecarga, dolor reportado, baja adherencia). Puedes filtrar por "Con alertas" o "Sin check-in reciente".' },
       { q: '¿Qué son las alertas de atleta?', a: 'Notificaciones automáticas cuando un atleta reporta dolor, baja energía, adherencia < 60% o variaciones importantes en FC reposo. Requieren tu atención.' },
       { q: '¿Qué veo en el detalle de un atleta?', a: '5 tabs: Resumen (métricas clave), Plan (sesiones semanales), Progreso (gráficas), Nutrición (macros) y Gym (progresión de cargas por ejercicio).' },
-      { q: '¿Puedo editar el plan de un atleta?', a: 'Puedes revisar y aprobar el plan generado por AI. Para modificaciones profundas de sesiones individuales, la función completa de edición está en desarrollo.' },
+      { q: '¿Puedo editar el plan de un atleta?', a: 'Puedes revisar y aprobar el plan de un atleta. Para modificaciones profundas de sesiones individuales, la función completa de edición está en desarrollo.' },
     ],
   },
   {
@@ -21,7 +21,7 @@ const SECTIONS = [
     color: '#f97316',
     items: [
       { q: '¿Cómo agrego un nuevo atleta?', a: 'Toca el botón "+" central en la nav de abajo (móvil) o "Crear asesorado" en el sidebar (desktop). Ingresa nombre, email, deporte y una nota inicial.' },
-      { q: '¿Qué recibe el atleta cuando lo creo?', a: 'Se crea su cuenta con credenciales temporales. El atleta recibe sus datos de acceso y puede completar su onboarding (9 pasos) para que el AI genere su plan.' },
+      { q: '¿Qué recibe el atleta cuando lo creo?', a: 'Se crea su cuenta con credenciales temporales. El atleta recibe sus datos de acceso y puede completar su onboarding (9 pasos) para que Medaliq genere su plan.' },
       { q: '¿Cuál es la diferencia con el código de invitación?', a: 'El código de invitación es para atletas que ya tienen cuenta y quieren unirse a ti. "Crear asesorado" crea la cuenta desde cero — útil para atletas que no conocen la plataforma.' },
     ],
   },
@@ -74,7 +74,7 @@ export default function CoachHelpPage() {
         <AlertTriangle size={18} className="text-blue-600 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-blue-800">Tu rol como coach</p>
-          <p className="text-xs text-blue-700 mt-0.5">El AI genera planes y hace el seguimiento automático. Tu valor está en el criterio humano: ajustar, motivar y tomar decisiones que ningún algoritmo puede tomar.</p>
+          <p className="text-xs text-blue-700 mt-0.5">Medaliq genera planes y hace el seguimiento automático. Tu valor está en el criterio humano: ajustar, motivar y tomar decisiones que ningún algoritmo puede tomar.</p>
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export default function CoachHelpPage() {
           {[
             { step: '1', text: 'Crea el asesorado con su nombre y email', href: '/coach/clients/new' },
             { step: '2', text: 'El atleta completa su onboarding (9 pasos)' },
-            { step: '3', text: 'El AI genera el plan — tú lo revisas y apruebas' },
+            { step: '3', text: 'Medaliq genera el plan — tú lo revisas y apruebas' },
             { step: '4', text: 'Si hace gym: crea y asigna una rutina', href: '/coach/gym' },
             { step: '5', text: 'Monitorea semana a semana desde el dashboard', href: '/coach/dashboard' },
           ].map(({ step, text, href }) => (

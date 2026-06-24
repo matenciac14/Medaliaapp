@@ -40,7 +40,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
         <!-- Footer -->
         <tr>
           <td style="padding:20px 40px;border-top:1px solid #f1f5f9;text-align:center">
-            <p style="margin:0;font-size:12px;color:#94a3b8">© 2026 Medaliq · Tu coach deportivo con AI</p>
+            <p style="margin:0;font-size:12px;color:#94a3b8">© 2026 Medaliq · Coaching deportivo inteligente</p>
           </td>
         </tr>
       </table>
