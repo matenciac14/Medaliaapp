@@ -24,9 +24,9 @@ export default async function UpgradePage() {
           <ul className="text-sm text-gray-600 space-y-2 mb-8 flex-1">
             <li>✓ Dashboard básico</li>
             <li>✓ Registro manual de sesiones</li>
-            <li className="text-gray-300">✗ Plan adaptativo AI</li>
+            <li className="text-gray-300">✗ Plan adaptativo</li>
             <li className="text-gray-300">✗ Nutrición personalizada</li>
-            <li className="text-gray-300">✗ AI Coach chat</li>
+            <li className="text-gray-300">✗ Check-ins semanales</li>
             <li className="text-gray-300">✗ Gym tracker</li>
           </ul>
           <DowngradeButton />
@@ -45,11 +45,11 @@ export default async function UpgradePage() {
           <p className="text-gray-400 text-sm mb-6">por mes</p>
           <ul className="text-sm text-gray-600 space-y-2 mb-8 flex-1">
             <li>✓ Todo lo del trial, para siempre</li>
-            <li>✓ Plan adaptativo AI</li>
+            <li>✓ Plan adaptativo periodizado</li>
             <li>✓ Nutrición personalizada</li>
-            <li>✓ AI Coach chat (100 msgs/mes)</li>
+            <li>✓ Check-ins semanales con ajuste de carga</li>
             <li>✓ Gym tracker completo</li>
-            <li>✓ Check-ins semanales</li>
+            <li>✓ Soporte de coach</li>
           </ul>
           <a
             href={`mailto:hola@medaliq.com?subject=Quiero%20Pro%20-%20${encodeURIComponent(session.user.email ?? '')}&body=Hola%2C%20quiero%20activar%20el%20plan%20Pro%20de%20Medaliq%20a%20%2415%2Fmes.`}
