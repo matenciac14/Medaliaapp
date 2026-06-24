@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if (!body.availableFoods || body.availableFoods.length < 2)
     return Response.json({ error: 'Agrega al menos 2 alimentos disponibles' }, { status: 400 })
 
-  const { availableFoodIds, ...foodProfileInput } = body
+  const { availableFoods, availableFoodIds, restrictions, mealsPerDay, weighsFood, notes } = body
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -31,7 +31,11 @@ export async function POST(req: Request) {
   const { tdee, macros } = computeNutritionTargets(user.profile)
 
   const foodProfileData = {
-    ...foodProfileInput,
+    availableFoods,
+    restrictions: restrictions ?? [],
+    mealsPerDay: mealsPerDay ?? 3,
+    weighsFood: weighsFood ?? false,
+    ...(notes !== undefined ? { notes } : {}),
     ...(availableFoodIds && availableFoodIds.length > 0 ? { availableFoodIds } : {}),
   }
   await Promise.all([
