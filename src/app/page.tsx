@@ -310,38 +310,7 @@ export default async function Home() {
               </p>
             </div>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* AI Coach card */}
-            <RevealOnScroll>
-              <div className="bg-[#1e3a5f] text-white rounded-2xl border-2 border-[#f97316] shadow-lg p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-[#f97316] flex items-center justify-center text-white font-extrabold text-base shrink-0 anim-pulse-cta">
-                    AI
-                  </div>
-                  <div>
-                    <div className="font-bold text-base leading-tight">{l.coachSection.aiCoachName}</div>
-                    <div className="text-blue-200 text-xs">{l.coachSection.aiCoachAvail}</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {["Running", "Gym", "Ciclismo", "Triatlón"].map((s) => (
-                    <span key={s} className="bg-white/20 text-white text-xs rounded-full px-2 py-0.5">{s}</span>
-                  ))}
-                </div>
-                <p className="text-blue-100 text-sm mb-4 flex-1">
-                  {l.coachSection.aiCoachDesc}
-                </p>
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="text-blue-200 text-sm">{l.coachSection.aiCoachFrom} <span className="text-white font-bold">$15</span>/mes</span>
-                  <a href="/p/ai-coach">
-                    <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">
-                      {l.coachSection.viewProfile}
-                    </span>
-                  </a>
-                </div>
-              </div>
-            </RevealOnScroll>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Placeholder coach 1 */}
             <RevealOnScroll delay={100}>
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full">
