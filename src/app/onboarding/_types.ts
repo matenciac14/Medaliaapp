@@ -194,7 +194,31 @@ export type StepId =
   | 'plan-method'
   | 'generating'
 
-export function getSteps(_data: WizardData): StepId[] {
-  // Onboarding simplificado: objetivo → perfil → guardando
-  return ['health-goal', 'physical', 'generating']
+export function getSteps(data: WizardData): StepId[] {
+  const steps: StepId[] = ['health-goal']
+
+  if (!data.healthGoal) return steps
+
+  if (data.healthGoal === 'FREE') {
+    return [...steps, 'physical', 'generating']
+  }
+
+  steps.push('has-sport')
+
+  if (data.hasSport === null) return steps
+
+  if (data.hasSport) {
+    steps.push('sport-select')
+    if (!data.sport) return steps
+    steps.push('sport-details', 'physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
+  } else {
+    if (data.healthGoal === 'MUSCLE_GAIN') {
+      steps.push('physical', 'plan-method', 'generating')
+    } else {
+      // WEIGHT_LOSS | FITNESS | RECOMPOSITION
+      steps.push('physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
+    }
+  }
+
+  return steps
 }

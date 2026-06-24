@@ -68,6 +68,22 @@ describe('parseUserConfig', () => {
     const result = parseUserConfig({})
     expect(result).toEqual(DEFAULT_USER_CONFIG)
   })
+
+  it('campos stale del DB (aiPlan, aiCoach) NO pasan al resultado', () => {
+    const raw = { features: { plan: true, checkin: true, nutrition: true, progress: true, log: true, coach: false, gym: true, aiPlan: false, aiCoach: false } }
+    const result = parseUserConfig(raw)
+    expect(result.features).not.toHaveProperty('aiPlan')
+    expect(result.features).not.toHaveProperty('aiCoach')
+    expect(result.features.plan).toBe(true)
+    expect(result.features.coach).toBe(false)
+  })
+
+  it('campos stale no sobreescriben features reales', () => {
+    const raw = { features: { plan: false, aiCoach: true } }
+    const result = parseUserConfig(raw)
+    expect(result.features.plan).toBe(false)
+    expect(result.features).not.toHaveProperty('aiCoach')
+  })
 })
 
 // ---------------------------------------------------------------------------
