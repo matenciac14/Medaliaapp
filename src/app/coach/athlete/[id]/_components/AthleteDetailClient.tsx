@@ -465,8 +465,9 @@ export default function AthleteDetailClient({
       template: { id: string; name: string; goal: string | null; level: string | null; daysPerWeek: number; days: GymAssignedDay[] }
     } | null
     recentSessions: { id: string; date: string; dayOfWeek: number; durationMin: number | null; rpe: number | null; overridesCount: number }[]
+    runningSessions: Record<number, { type: string; durationMin: number | null; intensity: string }>
   }
-  const [gymAssigned, setGymAssigned] = useState<GymAssignedData>({ assignment: null, recentSessions: [] })
+  const [gymAssigned, setGymAssigned] = useState<GymAssignedData>({ assignment: null, recentSessions: [], runningSessions: {} })
   const [gymAssignedLoading, setGymAssignedLoading] = useState(false)
   const [gymAssignedLoaded, setGymAssignedLoaded] = useState(false)
 
@@ -1848,9 +1849,10 @@ export default function AthleteDetailClient({
           )}
 
           {!gymAssignedLoading && gymAssigned.assignment && (() => {
-            const { assignment, recentSessions } = gymAssigned
+            const { assignment, recentSessions, runningSessions } = gymAssigned
             const { template } = assignment
             const DOW_LABELS: Record<number, string> = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }
+            const HARD_SESSIONS = new Set(['TEMPO', 'INTERVALOS', 'TIRADA_LARGA', 'FARTLEK', 'TEST', 'SIMULACRO'])
             return (
               <>
                 {/* Template card */}
@@ -1888,8 +1890,11 @@ export default function AthleteDetailClient({
 
                   {/* Days overview */}
                   <div className="space-y-2">
-                    {template.days.map(day => (
-                      <div key={day.id} className="flex items-start gap-3 py-2 border-t border-gray-50 first:border-t-0">
+                    {template.days.map(day => {
+                      const runSession = runningSessions[day.dayOfWeek]
+                      const hasConflict = !day.isRestDay && runSession && HARD_SESSIONS.has(runSession.type)
+                      return (
+                      <div key={day.id} className={`flex items-start gap-3 py-2 border-t first:border-t-0 ${hasConflict ? 'border-orange-100 bg-orange-50/40 rounded-lg px-2 -mx-2' : 'border-gray-50'}`}>
                         <div
                           className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold mt-0.5"
                           style={day.isRestDay
@@ -1899,20 +1904,36 @@ export default function AthleteDetailClient({
                           {DOW_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800">{day.label}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-gray-800">{day.label}</p>
+                            {hasConflict && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                                ! Doble carga
+                              </span>
+                            )}
+                          </div>
                           {day.isRestDay ? (
-                            <p className="text-xs text-gray-400">Descanso</p>
+                            <p className="text-xs text-gray-400">Descanso gym</p>
                           ) : (
                             <p className="text-xs text-gray-500 truncate">
                               {day.exercises.map(e => e.exercise.name).join(' · ')}
                             </p>
+                          )}
+                          {runSession && (
+                            <p className={`text-xs mt-0.5 font-medium ${hasConflict ? 'text-orange-600' : 'text-blue-500'}`}>
+                              Running: {runSession.type.replace(/_/g, ' ')} {runSession.durationMin}min
+                            </p>
+                          )}
+                          {!runSession && !day.isRestDay && (
+                            <p className="text-xs text-green-600 mt-0.5">Sin running este dia</p>
                           )}
                         </div>
                         {!day.isRestDay && (
                           <span className="text-xs text-gray-400 shrink-0">{day.exercises.length} ejerc.</span>
                         )}
                       </div>
-                    ))}
+                    )})}
+
                   </div>
 
                   {assignment.notes && (

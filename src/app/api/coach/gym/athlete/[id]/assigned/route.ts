@@ -21,7 +21,19 @@ export async function GET(
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
   }
 
-  const assignment = await prisma.assignedWorkout.findFirst({
+  // Current week Monday (same logic as calendar route)
+  const now = new Date()
+  const diffToMon = now.getDay() === 0 ? -6 : 1 - now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMon)
+  monday.setHours(0, 0, 0, 0)
+
+  const [activePlan, assignment] = await Promise.all([
+    prisma.trainingPlan.findFirst({
+      where: { userId: athleteId, status: 'ACTIVE' },
+      select: { id: true, startDate: true },
+    }),
+    prisma.assignedWorkout.findFirst({
     where: { athleteId, isActive: true },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -39,10 +51,31 @@ export async function GET(
         },
       },
     },
-  })
+    }),
+  ])
+
+  const targetWeekNumber = activePlan
+    ? Math.floor((monday.getTime() - new Date(activePlan.startDate).getTime()) / 86_400_000 / 7) + 1
+    : null
+
+  const weekRunningSessions = activePlan && targetWeekNumber !== null && targetWeekNumber >= 1
+    ? await prisma.plannedSession.findMany({
+        where: {
+          week: { planId: activePlan.id, weekNumber: targetWeekNumber },
+          NOT: { type: 'DESCANSO' },
+        },
+        select: { dayOfWeek: true, type: true, durationMin: true, intensity: true },
+      })
+    : []
+
+  // Build map: dayOfWeek → running session
+  const runningSessions: Record<number, { type: string; durationMin: number | null; intensity: string }> = {}
+  for (const s of weekRunningSessions) {
+    runningSessions[s.dayOfWeek] = { type: s.type, durationMin: s.durationMin, intensity: s.intensity }
+  }
 
   if (!assignment) {
-    return NextResponse.json({ assignment: null, recentSessions: [] })
+    return NextResponse.json({ assignment: null, recentSessions: [], runningSessions: {} })
   }
 
   const recentSessions = await prisma.gymSession.findMany({
@@ -94,5 +127,6 @@ export async function GET(
       rpe: s.rpe,
       overridesCount: Array.isArray(s.exerciseOverrides) ? (s.exerciseOverrides as unknown[]).length : 0,
     })),
+    runningSessions,
   })
 }

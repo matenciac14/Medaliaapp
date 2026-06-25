@@ -39,13 +39,43 @@ export async function GET(req: NextRequest) {
   const { monday, sunday } = getWeekBounds(weekOffset)
   const isCurrentWeek = weekOffset === 0
 
-  const weekSessions = await prisma.gymSession.findMany({
-    where: { athleteId, assignedWorkoutId: assigned.id, date: { gte: monday, lte: sunday } },
-    select: { dayOfWeek: true, completed: true, id: true },
+  // Find active running plan to compute current weekNumber (same logic as calendar)
+  const activePlan = await prisma.trainingPlan.findFirst({
+    where: { userId: athleteId, status: 'ACTIVE' },
+    select: { id: true, startDate: true },
   })
 
+  const targetWeekNumber = activePlan
+    ? Math.floor((monday.getTime() - new Date(activePlan.startDate).getTime()) / 86_400_000 / 7) + 1
+    : null
+
+  const [weekSessions, weekRunningSessions] = await Promise.all([
+    prisma.gymSession.findMany({
+      where: { athleteId, assignedWorkoutId: assigned.id, date: { gte: monday, lte: sunday } },
+      select: { dayOfWeek: true, completed: true, id: true },
+    }),
+    activePlan && targetWeekNumber !== null && targetWeekNumber >= 1
+      ? prisma.plannedSession.findMany({
+          where: {
+            week: { planId: activePlan.id, weekNumber: targetWeekNumber },
+            NOT: { type: 'DESCANSO' },
+          },
+          select: { dayOfWeek: true, type: true, durationMin: true, zoneTarget: true, intensity: true },
+        })
+      : Promise.resolve([]),
+  ])
+
+  // Map dayOfWeek → running session for this week
+  const runningByDow: Record<number, { type: string; durationMin: number | null; zoneTarget: string | null; intensity: string }> = {}
+  for (const s of weekRunningSessions) {
+    runningByDow[s.dayOfWeek] = { type: s.type, durationMin: s.durationMin, zoneTarget: s.zoneTarget, intensity: s.intensity }
+  }
+
   const completedDows = new Set(weekSessions.filter(s => s.completed).map(s => s.dayOfWeek))
-  const days = buildDaySummaries(monday, assigned.template.days, completedDows, isCurrentWeek)
+  const days = buildDaySummaries(monday, assigned.template.days, completedDows, isCurrentWeek).map(day => ({
+    ...day,
+    runningSession: runningByDow[day.dow] ?? null,
+  }))
 
   // Detail for selectedDow
   let selectedDetail: {
