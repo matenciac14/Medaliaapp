@@ -181,15 +181,12 @@ GoalType               Template              Semanas
 RACE_5K               → FIVE_K_8W               8
 RACE_10K              → TEN_K_12W              12
 RACE_HALF_MARATHON    → HALF_MARATHON_18W      18
-RACE_MARATHON         → HALF_MARATHON_18W*     18  ← fallback
-RACE_CYCLING          → HALF_MARATHON_18W*     18  ← fallback
-RACE_TRIATHLON        → HALF_MARATHON_18W*     18  ← fallback
-RACE_SWIMMING         → HALF_MARATHON_18W*     18  ← fallback
-FOOTBALL_GPP          → HALF_MARATHON_18W*     18  ← fallback
+RACE_MARATHON         → HALF_MARATHON_18W      18
 BODY_RECOMPOSITION    → BODY_RECOMPOSITION_16W 16
 STRENGTH_TRAINING     → BODY_RECOMPOSITION_16W 16
 
-* Templates propios pendientes para natación, ciclismo, triatlón, fútbol
+Scope actual: solo RUNNING + STRENGTH. CYCLING, SWIMMING, TRIATHLON, FOOTBALL
+eliminados de UI. Enums y datos historicos siguen en DB.
 ```
 
 ---

@@ -52,15 +52,8 @@ SaaS de coaching deportivo con AI para LatAm. Cubre recomposición corporal, met
 - pnpm · bcryptjs
 - Neon (PostgreSQL serverless) — pooler para runtime, direct URL para migraciones
 
-## Stack Mobile (futuro — Fase 16)
-- **React Native + Expo (managed workflow)** — iOS + Android desde un solo codebase TypeScript
-- **EAS Build + EAS Submit** — builds en la nube, publicación automatizada a App Store y Google Play
-- **EAS Update** — OTA updates sin pasar por review de store (cambios JS/UI)
-- **Monorepo pnpm**: `apps/web` (Next.js actual) + `apps/mobile` (Expo) + `packages/shared-types` + `packages/api-client`
-- Dispositivos: `react-native-ble-plx` (HRM Bluetooth), `@react-native-health/health` (HealthKit + Health Connect)
-- Integraciones fitness: Strava OAuth, Garmin Connect API, Polar Flow API
-- Offline-first: `expo-secure-store` para tokens, `AsyncStorage` para sessions de gym pendientes de sync
-- NativeWind (Tailwind en RN) para consistencia visual con web
+## Stack Mobile
+React Native + Expo managed workflow — ver `MEDALIQ-MOBILE/CLAUDE.md` para detalle.
 
 ## Repositorio
 - GitHub: `git@github.com:matenciac14/Medaliq.git`
@@ -302,36 +295,7 @@ El tier se deriva de `features.aiPlan || features.aiCoach` → no hay campo `tri
 - Sidebar oculta links según `features.*` (primera capa de defensa)
 - Downgrade route desactiva: plan, checkin, nutrition, progress, gym, coach
 
-## Flujos de usuario — críticos
-
-### Atleta B2C (sin coach) — VERIFICADO
-1. Registro → onboarding multi-deporte → completeOnboardingUseCase → generatePlanUseCase → `/dashboard`
-2. Onboarding completo activa: features.plan/checkin/nutrition/progress/log/gym/aiPlan/aiCoach = true
-   ai.monthlyLimit = 999999 (acceso ilimitado a AI Chat)
-3. AI en onboarding está DESHABILITADA (AI_ONBOARDING_ENABLED=false) — recommendations = []
-4. Trial/upgrade: no hay lógica en middleware — se maneja inline en páginas
-
-### Atleta B2B (del coach) — VERIFICADO
-1. Coach crea atleta desde `/coach/clients/new`
-2. Atleta hace onboarding → `completeOnboardingUseCase` detecta B2B vía `CoachAthlete` lookup
-   → solo upsertProfile, onboarding.completed=true, SIN features activadas, SIN plan
-3. Atleta → `/pending` (middleware: !activated porque features.plan=false)
-4. Coach activa desde tab Resumen → `PATCH /api/coach/athlete/[id]/activate`
-   → enableFeature(plan, checkin, nutrition, log, gym, progress)
-5. Coach crea plan → `POST /api/coach/athlete/[id]/plan`
-   → generatePlanUseCase({ generatedBy: 'COACH' }) — sin AI, sin activar features adicionales
-
-### Generador de planes — VERIFICADO
-- `generatedBy: 'COACH'` → `isB2C = false` → no activa features, no genera AI recs
-- `generatedBy: 'AI'` (default) → `isB2C = true` → activa features, AI recs deshabilitadas hoy
-- `src/lib/plan/generator.ts` es thin adapter → delega a `domain/plan/generate-plan.use-case.ts`
-- Única enum válida en DB: `PlanSource { AI | COACH | AI_COACH_APPROVED }` — 'TEMPLATE' no existe
-
-### Post-onboarding redirect — VERIFICADO
-- API devuelve `{ isB2B }` en respuesta
-- `handleGenerate()`: `router.push(isB2B ? '/pending' : '/dashboard')`
-- Para B2B: middleware confirma !activated → `/pending`
-- Para B2C: features activadas en DB → siguiente request ya tiene acceso
+Ver `FLOWS.md` para todos los flujos del sistema con detalle de implementación.
 
 ## HealthProfile — campos deportivos
 Migración `add_sport_fields_to_health_profile` aplicada:
@@ -423,79 +387,7 @@ src/app/
   - `miguel@medaliq.com` / `atleta123` — ATHLETE con plan + coach
   - `ana@medaliq.com` / `atleta123` — ATHLETE B2C sin coach
 
-## Estado actual (verificado 2026-06-23)
-
-### Completado ✅
-- Fases 1-9: Auth, onboarding multi-deporte, plan AI, dashboard atleta, check-in, nutrición, progreso, gym, coach B2B, marketplace, admin, deploy
-- Fase 17: SessionIntensity enum + daily-target.ts + training-nutrition sync
-- Fase 18 (parcial): APIs constructor visual + editor sesión inline + calendar strip UX
-- Fase 19 (parcial): PerformanceBenchmark API + migración aplicada
-- Fase 20: Infraestructura — índices DB, rate limiting async, Vercel maxDuration 60s, pool explícito, cache SystemConfig
-- Fase 21: Consolidación coach — clients/check, clients/link, /coach/clients/new email-first, /coach/invite conectada
-- Fase 22 (parcial): FoodLog API (web + mobile), FoodSetupFlow mobile, food tracking mobile
-- Fase 24 (parcial): Quick log, streak, adherencia %, gráficas SVG en /progress
-- Mobile QA: 15 bugs críticos corregidos (hooks, UpgradeWall, onboarding, upgrade screen)
-- Hexagonal arch: check-in use case + repos completos, plan repository
-- SetLog.workoutExerciseId nullable + exerciseName (historial seguro al editar rutinas)
-- normalizeMealPlan() — soporta formato AI y formato constructor coach en NutritionContent
-- selectActivePlan() — utilidad compartida dashboard/plan page
-- intensityToDayType() con 'low' DayType para sesiones LOW
-- Timezone bug nutrición corregido (weekNumber+dayOfWeek vs UTC range)
-- Adherencia coach dashboard corregida (excluye sesiones futuras)
-
-### P0 — Bloquea revenue o es riesgo legal (HACER PRIMERO)
-- [ ] **[SEGURIDAD CRÍTICA]** `tempPassword` en JSON plaintext — `/api/coach/clients/create` y `/reset-password` → usar token de reset firmado, nunca la contraseña
-- [ ] Feature gating ausente en 4 endpoints mobile PRO: `/mobile/nutrition/log`, `/mobile/progress`, `/mobile/gym/week`, `/mobile/nutrition/generate-meals`
-- [ ] Stripe/Wompi: suscripción Pro $15/mes + webhook activa tier
-- [ ] `features.*` ausentes en `MobileTokenPayload` → client mobile ciego a su tier
-
-### P1 — Bugs confirmados que rompen flujos
-- [ ] AI Haiku dentro de `$transaction` del generador (generator.ts ~line 485) → mover ANTES de abrir la tx
-- [ ] `applyPlanAdjustments` race condition vs edición coach (sin lock) → timestamp de edición
-- [ ] Onboarding B2B sin transacción → `healthProfile.upsert` + `user.update` en `$transaction`
-- [ ] Off-by-one fecha de sesión coach: `/api/coach/plan/[planId]/sessions` → `dayOfWeek - 1`
-- [ ] `applyPlanAdjustments` ignora Z1 → agregar `Z1 → 'DESCANSO'` al zoneMap
-- [ ] Onboarding mobile B2B + GYM salta detección B2B → mover `isB2B` check antes de mainGoal
-
-### P2 — Deuda técnica y calidad
-- [ ] Tests E2E: flujo B2B completo, invite code, generación de plan
-- [ ] `CheckInClient.tsx` 662 líneas → dividir en 3 componentes
-- [ ] Paginación panel atleta coach (90 sesiones en 1 query → semana actual ±2)
-- [ ] `FoodSetupFlow` — 19 alimentos hardcodeados → fetchear `/api/nutrition/foods`
-- [ ] `FoodLog` sin unicidad → `@@unique([userId, foodId, date, mealType])`
-- [ ] `TrainingPlan` sin `UNIQUE(userId, status=ACTIVE)` → posibles 2 planes activos
-- [ ] `GymSession` sin `UNIQUE([athleteId, date, assignedWorkoutId])`
-- [ ] 11 endpoints mobile sin rate limiting por usuario
-- [ ] `daily-target.ts:65` REST carbs `*0.6` → unificar a `*0.7`
-- [ ] Race condition feature toggles coach → loading state por feature individual
-
-### P3 — Mejoras de producto
-- [ ] Medidas corporales en check-in (waist, arms, hips, legs) — migración DB + UI
-- [ ] Fotos de progreso — Vercel Blob + ProgressPhoto model
-- [ ] Récords personales gym (isPR detection en SetLog)
-- [ ] Resumen semana determinista en dashboard (sin AI)
-- [ ] Fallback plan de comidas sin AI (plantillas estáticas)
-- [ ] `sportLabel String?` en PlannedSession — migración pendiente
-- [ ] `AthleteStatus.COMPLETED` — enum incompleto, migración pendiente
-- [ ] Email transaccional (Resend): welcome, activación B2B, trial expirando
-- [ ] Forgot password (web + mobile)
-- [ ] `CoachAthlete` sin `onDelete: Cascade` — huérfanas si se elimina coach
-
-## Modelo de negocio — definitivo
-
-### Atletas
-| Tier | Precio | Qué incluye |
-|------|--------|-------------|
-| Trial | $0 — 30 días | Todo completo (plan AI, check-in, nutrición, AI chat, gym) |
-| Free | $0 post-trial | Dashboard básico, log manual, sin AI, sin plan adaptativo |
-| Pro | $15/mes | Plan adaptativo + check-in + nutrición + AI chat (100 msgs/mes) + gym |
-
-### Coaches
-| Asesorados directos | Fee a Medaliq |
-|---------------------|---------------|
-| 1 a 50 | $6/asesorado activo/mes |
-| 51 a 100 | $5/asesorado activo/mes + AI assistant gratis |
-| +100 | $3/asesorado activo/mes + AI assistant gratis |
+Ver `BACKLOG.md` para estado actual, bugs, prioridades y modelo de negocio.
 
 ## Arquitectura — Hexagonal (Ports & Adapters)
 
