@@ -6,10 +6,6 @@ import { mapRelation } from '../athletes/_lib/map-athlete'
 
 const SPORT_LABELS: Record<string, string> = {
   RUNNING: '🏃 Running',
-  CYCLING: '🚴 Ciclismo',
-  SWIMMING: '🏊 Natación',
-  TRIATHLON: '🏅 Triatlón',
-  FOOTBALL: '⚽ Fútbol',
   STRENGTH: '🏋️ Fuerza',
 }
 

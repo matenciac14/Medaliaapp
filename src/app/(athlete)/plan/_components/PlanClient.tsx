@@ -71,7 +71,6 @@ const PLAN_NAME_MAP: Record<string, string> = {
   // GoalType values (generator.ts format)
   RACE_HALF_MARATHON: 'Media Maratón', RACE_MARATHON: 'Maratón',
   RACE_10K: '10K', RACE_5K: '5K',
-  RACE_CYCLING: 'Ciclismo', RACE_TRIATHLON: 'Triatlón',
   BODY_RECOMPOSITION: 'Recomposición Corporal',
   WEIGHT_LOSS: 'Pérdida de Peso', GENERAL_FITNESS: 'Fitness General',
   // Template name aliases

@@ -18,7 +18,7 @@ export type UserConfig = {
     gym: boolean         // Tiene acceso al gym tracker
   }
   sport: {
-    type: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'FOOTBALL' | 'STRENGTH' | 'GENERAL' | null
+    type: 'RUNNING' | 'STRENGTH' | 'GENERAL' | null
     goal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS' | null
   }
   plan: {

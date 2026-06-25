@@ -20,7 +20,6 @@ const GOALS: GoalOption[] = [
   { value: 'RACE_10K',           icon: '🏃', label: '10K',                    subtext: 'Carrera de 10 km — 12 semanas',       weeks: 12, hasDate: true  },
   { value: 'RACE_HALF_MARATHON', icon: '🏃', label: 'Media Maratón',          subtext: '21.1 km — 18 semanas',               weeks: 18, hasDate: true  },
   { value: 'RACE_MARATHON',      icon: '🏃', label: 'Maratón',                subtext: '42.2 km — 18 semanas',               weeks: 18, hasDate: true  },
-  { value: 'RACE_CYCLING',       icon: '🚴', label: 'Ciclismo',               subtext: 'Carrera o granfondo — 18 semanas',   weeks: 18, hasDate: true  },
 ]
 
 const LOADING_STEPS = [

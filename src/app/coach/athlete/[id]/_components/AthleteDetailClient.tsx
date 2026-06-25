@@ -146,30 +146,21 @@ type BenchmarkItem = {
 }
 
 const SPORT_LABELS: Record<string, string> = {
-  RUNNING: 'Running', CYCLING: 'Ciclismo', SWIMMING: 'Natación',
-  TRIATHLON: 'Triatlón', STRENGTH: 'Fuerza', FOOTBALL: 'Fútbol',
+  RUNNING: 'Running', STRENGTH: 'Fuerza',
 }
 
 const METRIC_OPTIONS: Record<string, { metric: string; label: string; unit: string }[]> = {
-  RUNNING:   [
+  RUNNING:  [
     { metric: '5K_TIME',            label: '5K',            unit: 'seconds' },
     { metric: '10K_TIME',           label: '10K',           unit: 'seconds' },
     { metric: 'HALF_MARATHON_TIME', label: 'Media Maratón', unit: 'seconds' },
     { metric: 'MARATHON_TIME',      label: 'Maratón',       unit: 'seconds' },
   ],
-  CYCLING:   [{ metric: 'FTP_WATTS', label: 'FTP', unit: 'watts' }],
-  SWIMMING:  [{ metric: 'CSS_PACE',  label: 'CSS Pace (seg/100m)', unit: 'seconds' }],
-  TRIATHLON: [
-    { metric: 'FTP_WATTS', label: 'FTP',          unit: 'watts' },
-    { metric: 'CSS_PACE',  label: 'CSS Pace',     unit: 'seconds' },
-    { metric: '5K_TIME',   label: '5K (carrera)', unit: 'seconds' },
-  ],
-  STRENGTH:  [
+  STRENGTH: [
     { metric: '1RM_SQUAT',    label: '1RM Sentadilla',  unit: 'kg' },
     { metric: '1RM_DEADLIFT', label: '1RM Peso muerto', unit: 'kg' },
     { metric: '1RM_BENCH',    label: '1RM Press banca', unit: 'kg' },
   ],
-  FOOTBALL: [],
 }
 
 const METRIC_LABELS: Record<string, string> = {
@@ -1004,10 +995,6 @@ export default function AthleteDetailClient({
                       <option value="RACE_10K">Carrera 10K (12 semanas)</option>
                       <option value="RACE_HALF_MARATHON">Media maratón (18 semanas)</option>
                       <option value="RACE_MARATHON">Maratón (18 semanas)</option>
-                      <option value="RACE_CYCLING">Carrera ciclismo (18 semanas)</option>
-                      <option value="RACE_TRIATHLON">Triatlón (18 semanas)</option>
-                      <option value="RACE_SWIMMING">Natación competitiva (12 semanas)</option>
-                      <option value="FOOTBALL_GPP">Fútbol — Prep. general</option>
                       <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
                       <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
                       <option value="WEIGHT_LOSS">Pérdida de peso</option>

@@ -9,13 +9,9 @@ import type { WizardData } from '@/app/onboarding/_types'
 export function resolveGoalType(data: WizardData): string {
   if (data.mainGoal === 'SPORT') {
     switch (data.sport) {
-      case 'RUNNING':   return data.raceDistance ?? 'RACE_HALF_MARATHON'
-      case 'CYCLING':   return 'RACE_CYCLING'
-      case 'TRIATHLON': return 'RACE_TRIATHLON'
-      case 'SWIMMING':  return 'RACE_SWIMMING'
-      case 'FOOTBALL':  return 'FOOTBALL_GPP'
-      case 'STRENGTH':  return 'STRENGTH_TRAINING'
-      default:          return 'BODY_RECOMPOSITION'
+      case 'RUNNING':  return data.raceDistance ?? 'RACE_HALF_MARATHON'
+      case 'STRENGTH': return 'STRENGTH_TRAINING'
+      default:         return 'BODY_RECOMPOSITION'
     }
   }
   if (data.mainGoal === 'GYM' || data.mainGoal === 'BODY') return 'BODY_RECOMPOSITION'
@@ -28,14 +24,6 @@ export function buildSportDetails(data: WizardData): Record<string, unknown> {
     switch (data.sport) {
       case 'RUNNING':
         return { raceDistance: data.raceDistance, raceDate: data.raceDate, targetTime: data.targetTime, recentBestTime: data.recentBestTime }
-      case 'CYCLING':
-        return { cyclingModality: data.cyclingModality, hasPowerMeter: data.hasPowerMeter, ftp: data.ftp, raceDate: data.raceDate }
-      case 'SWIMMING':
-        return { swimStroke: data.swimStroke, recentSwimTime: data.recentSwimTime, raceDate: data.raceDate }
-      case 'TRIATHLON':
-        return { triathlonDistance: data.triathlonDistance, weakestSegment: data.weakestSegment, raceDate: data.raceDate }
-      case 'FOOTBALL':
-        return { footballPosition: data.footballPosition, competitionLevel: data.competitionLevel, seasonPhase: data.seasonPhase }
       case 'STRENGTH':
         return { strengthStyle: data.strengthStyle }
     }
@@ -57,16 +45,12 @@ export function timeStringToSecs(timeStr: string | null | undefined): number | n
 
 /** Maps goalType string to UserConfig sport fields. */
 export function resolveSportConfig(goalType: string, _data: WizardData): {
-  sportType: 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'FOOTBALL' | 'STRENGTH' | 'GENERAL'
+  sportType: 'RUNNING' | 'STRENGTH' | 'GENERAL'
   sportGoal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS'
 } {
   const upper = goalType.toUpperCase()
-  if (upper === 'RACE_CYCLING')    return { sportType: 'CYCLING',   sportGoal: 'RACE' }
-  if (upper === 'RACE_TRIATHLON')  return { sportType: 'TRIATHLON', sportGoal: 'RACE' }
-  if (upper === 'RACE_SWIMMING')   return { sportType: 'SWIMMING',  sportGoal: 'RACE' }
-  if (upper === 'FOOTBALL_GPP')    return { sportType: 'FOOTBALL',  sportGoal: 'GENERAL_FITNESS' }
   if (upper === 'STRENGTH_TRAINING') return { sportType: 'STRENGTH', sportGoal: 'BODY_RECOMPOSITION' }
-  if (upper.startsWith('RACE_'))   return { sportType: 'RUNNING',   sportGoal: 'RACE' }
+  if (upper.startsWith('RACE_'))     return { sportType: 'RUNNING',  sportGoal: 'RACE' }
   if (upper === 'BODY_RECOMPOSITION' || upper === 'WEIGHT_LOSS') {
     return { sportType: 'STRENGTH', sportGoal: 'BODY_RECOMPOSITION' }
   }

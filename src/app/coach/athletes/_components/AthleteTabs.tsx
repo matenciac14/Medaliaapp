@@ -14,12 +14,8 @@ const TABS = [
 ]
 
 const SPORT_LABELS: Record<string, string> = {
-  RUNNING:   '🏃 Running',
-  CYCLING:   '🚴 Ciclismo',
-  SWIMMING:  '🏊 Natación',
-  TRIATHLON: '🏅 Triatlón',
-  FOOTBALL:  '⚽ Fútbol',
-  STRENGTH:  '🏋️ Fuerza',
+  RUNNING:  '🏃 Running',
+  STRENGTH: '🏋️ Fuerza',
 }
 
 function checkInColor(days: number): string {

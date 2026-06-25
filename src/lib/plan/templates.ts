@@ -544,12 +544,8 @@ export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
   RACE_HALF_MARATHON: HALF_MARATHON_18W,
   RACE_MARATHON:      HALF_MARATHON_18W,        // base aeróbica — template maratón pendiente
 
-  // Deportes con fallback razonable hasta tener template propio
-  RACE_CYCLING:       HALF_MARATHON_18W,         // aeróbico periodizado — template ciclismo pendiente
-  RACE_TRIATHLON:     HALF_MARATHON_18W,         // base aeróbica multideporte — template triatlón pendiente
-  RACE_SWIMMING:      TEN_K_12W,                 // volumen aeróbico 12W — template natación pendiente
-  FOOTBALL_GPP:       BODY_RECOMPOSITION_16W,    // fuerza + acondicionamiento — template fútbol pendiente
-  STRENGTH_TRAINING:  BODY_RECOMPOSITION_16W,    // base hipertrofia/fuerza — template fuerza pendiente
+  // Fuerza
+  STRENGTH_TRAINING:  BODY_RECOMPOSITION_16W,    // base hipertrofia/fuerza
 
   // Composición corporal
   BODY_RECOMPOSITION: BODY_RECOMPOSITION_16W,

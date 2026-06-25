@@ -71,7 +71,7 @@ export async function completeOnboardingUseCase(
         plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true,
       },
       onboarding: { completed: true, completedAt: now() },
-      sport: { type: sportType as 'RUNNING' | 'CYCLING' | 'SWIMMING' | 'TRIATHLON' | 'FOOTBALL' | 'STRENGTH' | 'GENERAL', goal: sportGoal as 'RACE' | 'GENERAL_FITNESS' },
+      sport: { type: sportType as 'RUNNING' | 'STRENGTH' | 'GENERAL', goal: sportGoal as 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS' },
     }
 
     // Profile + config atomic
@@ -142,7 +142,6 @@ export async function completeOnboardingUseCase(
   const sportDetails = buildSportDetails(data)
   const dataSources: Record<string, unknown> = {
     hrMax: { source: data.hrSource === 'known' ? 'manual' : 'estimated', updatedAt: now() },
-    ...(data.ftp ? { ftp: { source: 'manual', updatedAt: now() } } : {}),
   }
 
   // ── B2B path: profile only, coach activates plan later ───────────────────
@@ -154,7 +153,6 @@ export async function completeOnboardingUseCase(
     gender: data.gender ?? 'male',
     hrResting: data.hrResting ?? undefined,
     hrMax: data.hrMax ?? undefined,
-    ftp: data.ftp ?? undefined,
     injuries: data.injuries,
     conditions: data.conditions,
     sport: data.mainGoal === 'SPORT' ? (data.sport ?? undefined) : 'STRENGTH',
@@ -172,7 +170,7 @@ export async function completeOnboardingUseCase(
       ...currentConfig,
       onboarding: { completed: true, completedAt: now() },
       sport: {
-        type: b2bSportType as 'RUNNING' | 'CYCLING' | 'TRIATHLON' | 'SWIMMING' | 'STRENGTH' | 'GENERAL',
+        type: b2bSportType as 'RUNNING' | 'STRENGTH' | 'GENERAL',
         goal: b2bGoal as 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS',
       },
     }

@@ -27,7 +27,7 @@ export const es: Translations = {
       subtitle: 'Tres perfiles, una sola plataforma.',
       card1Title: 'Atleta amateur',
       card1Desc: 'Quieres bajar peso sin perder músculo, mejorar tu composición corporal y sentirte con más energía. Sin plantillas genéricas — un plan hecho para tu cuerpo y tu ritmo de vida.',
-      card2Title: 'Corredor / ciclista',
+      card2Title: 'Running / Gym',
       card2Desc: 'Tienes una carrera en el horizonte y quieres llegar al día D en tu mejor forma. Medaliq construye tu plan de 12–20 semanas y lo ajusta según cómo vas respondiendo.',
       card3Title: 'Entrenador profesional',
       card3Desc: 'Gestionas varios atletas y el tiempo no alcanza. Medaliq hace el trabajo pesado de diseño y seguimiento — tú te enfocas en lo que realmente agrega valor: el criterio humano.',

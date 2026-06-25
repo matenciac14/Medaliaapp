@@ -33,12 +33,10 @@ async function getAthleteCounts(profileIds: string[]) {
   return result
 }
 
-const SPORTS = ['Todos', 'Running', 'Gym', 'Ciclismo', 'Triatlón', 'Funcional'] as const
+const SPORTS = ['Todos', 'Running', 'Gym', 'Funcional'] as const
 const SPORT_MAP: Record<string, string> = {
   Running: 'RUNNING',
   Gym: 'GYM',
-  Ciclismo: 'CYCLING',
-  Triatlón: 'TRIATHLON',
   Funcional: 'FUNCTIONAL',
 }
 
@@ -61,8 +59,6 @@ function sportLabel(s: string): string {
   const map: Record<string, string> = {
     RUNNING: 'Running',
     GYM: 'Gym',
-    CYCLING: 'Ciclismo',
-    TRIATHLON: 'Triatlón',
     FUNCTIONAL: 'Funcional',
   }
   return map[s] ?? s
@@ -113,7 +109,7 @@ export default async function CoachesPage({
             Encuentra tu coach ideal
           </h1>
           <p className="text-blue-100 text-lg max-w-xl mx-auto">
-            Coaches especializados en running, gym, ciclismo y más.
+            Coaches especializados en running y gym.
           </p>
         </div>
       </section>

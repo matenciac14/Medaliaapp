@@ -100,8 +100,8 @@ model PerformanceBenchmark {
   id        String   @id @default(cuid())
   userId    String
   coachId   String?
-  sport     String   // RUNNING | CYCLING | SWIMMING | STRENGTH
-  metric    String   // 5K_TIME | FTP_WATTS | 1RM_SQUAT | CSS
+  sport     String   // RUNNING | STRENGTH
+  metric    String   // 5K_TIME | 1RM_SQUAT | etc.
   value     Float
   unit      String   // seconds | watts | kg
   testedAt  DateTime
@@ -233,14 +233,12 @@ otros sin deporte          → mainGoal='BODY'
 | Deporte | Campos requeridos | Campos opcionales |
 |---------|-------------------|-------------------|
 | RUNNING | raceDistance | raceDate, targetTime, recentBestTime |
-| CYCLING | cyclingModality | hasPowerMeter, ftp, raceDate |
-| SWIMMING | swimStroke | recentSwimTime, raceDate |
-| TRIATHLON | triathlonDistance + weakestSegment | raceDate |
-| FOOTBALL | footballPosition + competitionLevel | seasonPhase |
 | STRENGTH | strengthStyle | — |
 
+**Scope actual: solo RUNNING + STRENGTH.** CYCLING, SWIMMING, TRIATHLON, FOOTBALL eliminados de UI. Schema DB intacto para datos históricos.
+
 ### FC (step hr-fitness):
-- Deportes aeróbicos (RUNNING, CYCLING, SWIMMING, TRIATHLON): pide hrSource (known/estimated) + hrMax
+- RUNNING: pide hrSource (known/estimated) + hrMax
 - STRENGTH: solo pide experienceLevel, sin FC
 
 ### Regla crítica isLastDataStep:
@@ -254,7 +252,7 @@ const isLastDataStep = steps[stepIndex + 1] === 'generating'
 ### Templates disponibles (`src/lib/plan/templates.ts`):
 | Template | GoalType | Semanas | Fases |
 |----------|----------|---------|-------|
-| HALF_MARATHON_18W | RACE_HALF_MARATHON, RACE_MARATHON†, RACE_CYCLING†, RACE_TRIATHLON†, RACE_SWIMMING†, FOOTBALL_GPP† | 18 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
+| HALF_MARATHON_18W | RACE_HALF_MARATHON, RACE_MARATHON | 18 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
 | TEN_K_12W | RACE_10K | 12 | BASE→DESARROLLO→AFINAMIENTO |
 | FIVE_K_8W | RACE_5K | 8 | BASE→ESPECÍFICO |
 | BODY_RECOMPOSITION_16W | BODY_RECOMPOSITION, STRENGTH_TRAINING | 16 | BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO |
@@ -337,7 +335,7 @@ El tier se deriva de `features.aiPlan || features.aiCoach` → no hay campo `tri
 
 ## HealthProfile — campos deportivos
 Migración `add_sport_fields_to_health_profile` aplicada:
-- `sport String?` — deporte principal (RUNNING | CYCLING | SWIMMING | TRIATHLON | FOOTBALL | STRENGTH)
+- `sport String?` — deporte principal (RUNNING | STRENGTH) — otros valores históricos existen en DB pero ya no se crean
 - `experienceLevel String?` — BEGINNER | INTERMEDIATE | ADVANCED
 - `ftp Int?` — Functional Threshold Power (ciclismo/triatlón)
 - `sportDetails Json` — campos específicos del deporte (raceDistance, cyclingModality, swimStroke, etc.)
@@ -581,7 +579,7 @@ export async function POST(req: NextRequest) {
 
 ## Lógica de negocio existente (legado — no tocar sin razón)
 - `src/lib/plan/formulas.ts` — Karvonen HR zones, Mifflin-St Jeor TDEE, Riegel race time
-- `src/lib/plan/templates.ts` — 4 templates base, índice con fallbacks para deportes sin template
+- `src/lib/plan/templates.ts` — 4 templates base (RUNNING: 5K/10K/HM, STRENGTH: BODY_RECOMPOSITION)
 - `src/lib/plan/generator.ts` — selecciona template, llama Haiku (solo B2C), guarda en DB
 - `src/lib/ai/profile.ts` — AIProfile type, defaults, buildPlanSystemPrompt, buildChatSystemPrompt
 - `src/lib/config/user-config.ts` — UserConfig type, parseUserConfig, helpers por rol

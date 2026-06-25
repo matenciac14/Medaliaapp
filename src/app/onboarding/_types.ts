@@ -5,7 +5,7 @@
 
 export type MainGoal = 'SPORT' | 'BODY' | 'GYM' | 'FREE'
 export type HealthGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION' | 'FREE'
-export type Sport = 'RUNNING' | 'CYCLING' | 'SWIMMING' | 'TRIATHLON' | 'FOOTBALL' | 'STRENGTH'
+export type Sport = 'RUNNING' | 'STRENGTH'
 export type BodyGoal = 'FAT_LOSS' | 'MUSCLE_GAIN' | 'RECOMPOSITION'
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
 export type HRSource = 'known' | 'estimated'
@@ -82,24 +82,6 @@ export type WizardData = {
   targetTime: string | null
   recentBestTime: string | null
 
-  // Ciclismo
-  cyclingModality: 'ROAD' | 'MTB' | null
-  hasPowerMeter: boolean | null
-  ftp: number | null
-
-  // Natación
-  swimStroke: 'FREESTYLE' | 'BACKSTROKE' | 'BREASTSTROKE' | 'BUTTERFLY' | 'MIXED' | null
-  recentSwimTime: string | null
-
-  // Triatlón
-  triathlonDistance: 'SPRINT' | 'OLYMPIC' | 'HALF' | 'FULL' | null
-  weakestSegment: 'SWIM' | 'BIKE' | 'RUN' | null
-
-  // Fútbol
-  footballPosition: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null
-  competitionLevel: 'RECREATIONAL' | 'AMATEUR' | 'SEMIPRO' | null
-  seasonPhase: 'PRESEASON' | 'INSEASON' | 'OFFSEASON' | null
-
   // Fuerza
   strengthStyle: 'POWERLIFTING' | 'HYPERTROPHY' | 'FUNCTIONAL' | null
 
@@ -148,16 +130,6 @@ export const INITIAL_DATA: WizardData = {
   raceDate: null,
   targetTime: null,
   recentBestTime: null,
-  cyclingModality: null,
-  hasPowerMeter: null,
-  ftp: null,
-  swimStroke: null,
-  recentSwimTime: null,
-  triathlonDistance: null,
-  weakestSegment: null,
-  footballPosition: null,
-  competitionLevel: null,
-  seasonPhase: null,
   strengthStyle: null,
   age: null,
   heightCm: null,

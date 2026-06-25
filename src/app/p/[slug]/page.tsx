@@ -18,8 +18,6 @@ function sportLabel(s: string): string {
   const map: Record<string, string> = {
     RUNNING: 'Running',
     GYM: 'Gym',
-    CYCLING: 'Ciclismo',
-    TRIATHLON: 'Triatlón',
     FUNCTIONAL: 'Funcional',
   }
   return map[s] ?? s

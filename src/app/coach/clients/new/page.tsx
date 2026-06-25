@@ -8,12 +8,8 @@ import { useRouter } from 'next/navigation'
 
 const SPORTS = [
   { value: '', label: 'Sin especificar' },
-  { value: 'RUNNING', label: 'Atletismo / Running' },
-  { value: 'CYCLING', label: 'Ciclismo' },
-  { value: 'TRIATHLON', label: 'Triatlón' },
+  { value: 'RUNNING', label: 'Running' },
   { value: 'STRENGTH', label: 'Fuerza / Gimnasio' },
-  { value: 'SWIMMING', label: 'Natación' },
-  { value: 'FOOTBALL', label: 'Fútbol' },
 ]
 
 const GOALS = [

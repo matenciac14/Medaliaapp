@@ -323,7 +323,7 @@ export default async function Home() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Running</span>
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Triatlón</span>
+                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Gym</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-4 flex-1">{l.coachSection.comingSoon}</p>
                 <div className="flex items-center justify-between mt-auto">
