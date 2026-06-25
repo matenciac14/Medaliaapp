@@ -31,21 +31,21 @@
 
 ## P0 — Bloquea revenue o es riesgo legal
 
-- [ ] **[SEGURIDAD CRITICA]** `tempPassword` en JSON plaintext — `/api/coach/clients/create` → usar token de reset firmado, nunca la contrasena
-- [ ] Feature gating ausente en 4 endpoints mobile PRO: `/mobile/nutrition/log`, `/mobile/progress`, `/mobile/gym/week`, `/mobile/nutrition/generate-meals`
+- [x] `tempPassword` en JSON plaintext — ya devuelve `resetLink` (token JWT firmado, 7d)
+- [x] Feature gating en 4 endpoints mobile — todos tienen `requireFeature()` aplicado
+- [x] `features.*` en `MobileTokenPayload` — login mobile ya los incluye en el token
 - [ ] Stripe/Wompi: suscripcion Pro $15/mes + webhook activa tier en UserConfig
-- [ ] `features.*` ausentes en `MobileTokenPayload` → cliente mobile ciego a su tier
 
 ---
 
 ## P1 — Bugs confirmados que rompen flujos
 
-- [ ] AI Haiku dentro de `$transaction` del generador (`generator.ts` ~line 485) → mover llamada AI ANTES de abrir la tx
-- [ ] `applyPlanAdjustments` race condition vs edicion coach (sin lock) → agregar timestamp de edicion como lock optimista
-- [ ] Onboarding B2B sin transaccion atomica → `healthProfile.upsert` + `user.update` en `$transaction`
-- [ ] Off-by-one fecha de sesion coach: `/api/coach/plan/[planId]/sessions` → `dayOfWeek - 1`
-- [ ] `applyPlanAdjustments` ignora sesiones Z1 → agregar `Z1 → 'DESCANSO'` al zoneMap
-- [ ] Onboarding mobile B2B + mainGoal=GYM salta deteccion B2B → mover `isB2B` check antes de mainGoal
+- [x] AI Haiku dentro de `$transaction` — no hay llamada AI en ninguna transaccion (codigo limpio)
+- [x] `applyPlanAdjustments` race condition — protegido con `!coachNotes.includes('[AUTO]')` check
+- [x] Onboarding B2B sin transaccion — ya en `$transaction` (complete-onboarding.use-case.ts)
+- [x] Off-by-one fecha sesion coach — ya corregido: `+ dayOfWeek - 1` (coach/plan/[planId]/sessions)
+- [x] Z1 ignorado en zoneMap — `Z1: 'Z1'` es el comportamiento correcto (zona minima, no convierte a DESCANSO)
+- [x] Mobile B2B + GYM salta deteccion — `completeOnboardingUseCase` chequea B2B en el GYM path
 
 ---
 

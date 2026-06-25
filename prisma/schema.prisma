@@ -56,6 +56,10 @@ model User {
 
   // Benchmarks de rendimiento
   benchmarks         PerformanceBenchmark[]
+
+  // Mensajería
+  sentMessages       Message[] @relation("SentMessages")
+  receivedMessages   Message[] @relation("ReceivedMessages")
 }
 
 enum UserRole {
@@ -734,4 +738,21 @@ model PerformanceBenchmark {
 
   @@index([userId, sport])
   @@index([userId, metric, testedAt])
+}
+
+// ─── MENSAJERÍA ──────────────────────────────────────────────────────────────
+
+model Message {
+  id        String    @id @default(cuid())
+  fromId    String
+  toId      String
+  content   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  from User @relation("SentMessages",     fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: Cascade)
+
+  @@index([fromId, toId, createdAt])
+  @@index([toId, readAt])
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   LogOut,
   Dumbbell,
   UserCircle,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -28,6 +30,18 @@ export default function SidebarClient({ user, config }: Props) {
   const { features } = config
   const { t } = useLanguage()
   const s = t.app.sidebar
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const load = () =>
+      fetch('/api/messages/unread-count')
+        .then(r => r.json())
+        .then(d => setUnreadCount(d.count ?? 0))
+        .catch(() => {})
+    load()
+    const interval = setInterval(load, 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const allNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard, show: true },
@@ -36,6 +50,7 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
+    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: true, badge: unreadCount },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
@@ -64,7 +79,7 @@ export default function SidebarClient({ user, config }: Props) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {allNavLinks.map(({ href, label, icon: Icon }) => {
+          {allNavLinks.map(({ href, label, icon: Icon, badge }) => {
             const active = isActive(href)
             return (
               <Link
@@ -81,7 +96,12 @@ export default function SidebarClient({ user, config }: Props) {
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#f97316]" />
                 )}
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {badge != null && badge > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#f97316] text-white text-[10px] font-bold flex items-center justify-center">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
               </Link>
             )
           })}
