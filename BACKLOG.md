@@ -51,12 +51,10 @@
 
 ## Paridad Pulsefit — features que retienen usuarios
 
-- [ ] **Mensajeria coach-atleta** (PRIORIDAD 1 post-P0)
-  - Modelo `Message(id, fromId, toId, content, readAt, createdAt)`
-  - API: `GET /api/messages?with=[userId]` · `POST /api/messages` · `PATCH /api/messages/read` · `GET /api/messages/unread-count`
-  - UI web: tab "Mensajes" en `/coach/athlete/[id]` + seccion en dashboard atleta con badge
-  - UI mobile: pantalla nueva `/(app)/(tabs)/messages.tsx`
-  - Sin WebSockets — polling 30s es suficiente para v1
+- [x] **Mensajeria coach-atleta**
+  - Modelo `Message` en DB · 4 endpoints web + 4 endpoints mobile
+  - UI web: tab coach + pagina atleta + badge en sidebar (polling 30s)
+  - UI mobile: pantalla `/messages` accesible desde perfil
 
 - [ ] **GIFs de ejercicio**
   - ExerciseDB (RapidAPI): 1,300+ GIFs con modelo 3D
