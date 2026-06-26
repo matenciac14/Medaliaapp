@@ -102,7 +102,7 @@ export default async function GymHistoryPage() {
       ) : (
         <div className="space-y-4">
           {sessions.map((gs) => {
-            const workoutDay = gs.assignedWorkout.template.days.find(
+            const workoutDay = gs.assignedWorkout?.template.days.find(
               (d) => d.dayOfWeek === gs.dayOfWeek
             )
 

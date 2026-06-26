@@ -44,7 +44,7 @@ export async function GET(
     return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
   }
 
-  const workoutDay = gymSession.assignedWorkout.template.days.find(
+  const workoutDay = gymSession.assignedWorkout?.template.days.find(
     (d) => d.dayOfWeek === gymSession.dayOfWeek
   )
 
@@ -58,7 +58,7 @@ export async function GET(
     rpe: gymSession.rpe,
     notes: gymSession.notes,
     completed: gymSession.completed,
-    templateName: gymSession.assignedWorkout.template.name,
+    templateName: gymSession.assignedWorkout?.template.name ?? '',
     setLogs: gymSession.setLogs.map((sl) => ({
       id: sl.id,
       setNumber: sl.setNumber,

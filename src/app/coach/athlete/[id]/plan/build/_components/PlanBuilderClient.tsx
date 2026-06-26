@@ -6,6 +6,21 @@ import { X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+type GymExercisePreview = { name: string; sets: number; repsScheme: string }
+
+type GymTemplateDay = {
+  id: string
+  label: string
+  muscleGroups: string[]
+  exercises: GymExercisePreview[]
+}
+
+type GymTemplate = {
+  id: string
+  name: string
+  days: GymTemplateDay[]
+}
+
 type BuilderSession = {
   id: string
   dayOfWeek: number
@@ -13,6 +28,8 @@ type BuilderSession = {
   durationMin: number
   zoneTarget: string | null
   detailText: string | null
+  workoutDayId: string | null
+  workoutDay: { id: string; label: string; exercises: GymExercisePreview[] } | null
 }
 
 type BuilderWeek = {
@@ -52,6 +69,7 @@ type Props = {
   athleteId: string
   athleteName: string
   initialPlan: BuilderPlan | null
+  gymTemplates: GymTemplate[]
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -98,7 +116,7 @@ const PHASE_COLORS: Record<string, string> = {
   AFINAMIENTO: '#7c3aed', 'COMPETICIÓN': '#0891b2', 'RECUPERACIÓN': '#16a34a',
 }
 
-export default function PlanBuilderClient({ athleteId, athleteName, initialPlan }: Props) {
+export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
   const [weekIdx, setWeekIdx] = useState(0)
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -120,9 +138,13 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
     durationMin: number
     zoneTarget: string
     detailText: string
+    workoutDayId: string | null
   }) {
     if (!modal || !plan) return
     setSaving(true)
+    // Resolve workoutDay preview for optimistic update
+    const allDays = gymTemplates.flatMap(t => t.days)
+    const resolvedDay = data.workoutDayId ? (allDays.find(d => d.id === data.workoutDayId) ?? null) : null
     try {
       if (modal.session) {
         const res = await fetch(`/api/coach/sessions/${modal.session.id}/edit`, {
@@ -139,7 +161,9 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
                 weeks: prev.weeks.map((w) => ({
                   ...w,
                   sessions: w.sessions.map((s) =>
-                    s.id === modal.session!.id ? { ...s, ...updated } : s
+                    s.id === modal.session!.id
+                      ? { ...s, ...updated, workoutDayId: data.workoutDayId, workoutDay: resolvedDay ? { id: resolvedDay.id, label: resolvedDay.label, exercises: resolvedDay.exercises } : null }
+                      : s
                   ),
                 })),
               }
@@ -153,6 +177,11 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
         })
         if (!res.ok) throw new Error('Error creando sesión')
         const { session: created } = await res.json()
+        const createdWithGym = {
+          ...created,
+          workoutDayId: data.workoutDayId,
+          workoutDay: resolvedDay ? { id: resolvedDay.id, label: resolvedDay.label, exercises: resolvedDay.exercises } : null,
+        }
         setPlan((prev) =>
           prev
             ? {
@@ -161,7 +190,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
                   w.id === modal.weekId
                     ? {
                         ...w,
-                        sessions: [...w.sessions, created].sort(
+                        sessions: [...w.sessions, createdWithGym].sort(
                           (a, b) => a.dayOfWeek - b.dayOfWeek
                         ),
                       }
@@ -415,6 +444,11 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
                               {s.detailText}
                             </p>
                           )}
+                          {s.type === 'FUERZA' && s.workoutDay && (
+                            <p className="text-[10px] text-purple-500 mt-0.5 truncate font-medium">
+                              💪 {s.workoutDay.label}
+                            </p>
+                          )}
                         </button>
                       )
                     })}
@@ -481,6 +515,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan 
           onDelete={modal.session ? () => handleDeleteSession(modal.session!.id) : undefined}
           onClose={() => setModal(null)}
           saving={saving}
+          gymTemplates={gymTemplates}
         />
       )}
 
@@ -545,17 +580,23 @@ function SessionModal({
   onDelete,
   onClose,
   saving,
+  gymTemplates,
 }: {
   modal: ModalState
-  onSave: (data: { type: string; durationMin: number; zoneTarget: string; detailText: string }) => void
+  onSave: (data: { type: string; durationMin: number; zoneTarget: string; detailText: string; workoutDayId: string | null }) => void
   onDelete?: () => void
   onClose: () => void
   saving: boolean
+  gymTemplates: GymTemplate[]
 }) {
   const [type, setType] = useState(modal.session?.type ?? modal.preselectedType ?? 'RODAJE_Z2')
   const [durationMin, setDurationMin] = useState(modal.session?.durationMin ?? 45)
   const [zoneTarget, setZoneTarget] = useState(modal.session?.zoneTarget ?? '')
   const [detailText, setDetailText] = useState(modal.session?.detailText ?? '')
+  const [workoutDayId, setWorkoutDayId] = useState<string | null>(modal.session?.workoutDayId ?? null)
+
+  const allGymDays = gymTemplates.flatMap(t => t.days.map(d => ({ ...d, templateName: t.name })))
+  const selectedGymDay = allGymDays.find(d => d.id === workoutDayId) ?? null
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isEdit = !!modal.session
@@ -647,6 +688,44 @@ function SessionModal({
             />
           </div>
 
+          {/* WorkoutDay picker — only when FUERZA */}
+          {type === 'FUERZA' && (
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Rutina de gym
+              </p>
+              {allGymDays.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No hay rutinas creadas todavía. Crea una en Gym → Rutinas.</p>
+              ) : (
+                <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
+                  <button
+                    onClick={() => setWorkoutDayId(null)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                    style={workoutDayId === null ? { backgroundColor: '#f3f4f6', fontWeight: 600, color: '#374151' } : { color: '#9ca3af' }}
+                  >
+                    Sin rutina asignada
+                  </button>
+                  {allGymDays.map(d => (
+                    <button
+                      key={d.id}
+                      onClick={() => setWorkoutDayId(d.id)}
+                      className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                      style={workoutDayId === d.id ? { backgroundColor: '#f3e8ff', fontWeight: 600, color: '#7c3aed' } : { color: '#374151', backgroundColor: '#f9fafb' }}
+                    >
+                      <span className="font-medium">{d.label}</span>
+                      <span className="text-xs text-gray-400 ml-1">— {d.templateName}</span>
+                      {workoutDayId === d.id && (
+                        <p className="text-xs text-purple-500 mt-0.5">
+                          {d.exercises.map(e => `${e.name} ${e.sets}×${e.repsScheme}`).join(' · ')}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Description */}
           <div>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -681,7 +760,7 @@ function SessionModal({
             Cancelar
           </button>
           <button
-            onClick={() => onSave({ type, durationMin, zoneTarget, detailText })}
+            onClick={() => onSave({ type, durationMin, zoneTarget, detailText, workoutDayId: type === 'FUERZA' ? workoutDayId : null })}
             disabled={saving}
             className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: '#1e3a5f' }}

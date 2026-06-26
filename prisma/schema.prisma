@@ -509,8 +509,8 @@ model AssignedWorkout {
 model GymSession {
   id                String   @id @default(cuid())
   athleteId         String
-  assignedWorkoutId String
-  plannedSessionId  String?  @unique  // link to PlannedSession for calendar merge
+  assignedWorkoutId String?  // null when session comes from a TrainingPlan (plannedSessionId set)
+  plannedSessionId  String?  @unique  // link to PlannedSession — exclusive with assignedWorkoutId
   dayOfWeek         Int
   date              DateTime
   durationMin       Int?
@@ -520,14 +520,15 @@ model GymSession {
 
   exerciseOverrides Json?   // [{ originalWorkoutExerciseId, replacedWithExerciseId, replacedExerciseName, reason? }]
 
-  athlete         User            @relation(fields: [athleteId], references: [id])
-  assignedWorkout AssignedWorkout @relation(fields: [assignedWorkoutId], references: [id])
-  plannedSession  PlannedSession? @relation(fields: [plannedSessionId], references: [id])
+  athlete         User             @relation(fields: [athleteId], references: [id])
+  assignedWorkout AssignedWorkout? @relation(fields: [assignedWorkoutId], references: [id])
+  plannedSession  PlannedSession?  @relation(fields: [plannedSessionId], references: [id])
   setLogs         SetLog[]
 
   createdAt DateTime @default(now())
 
-  @@unique([athleteId, date, assignedWorkoutId])
+  @@unique([athleteId, date, assignedWorkoutId])  // legacy template-based sessions
+  @@unique([athleteId, date, plannedSessionId])   // plan-based sessions
   @@index([athleteId, completed])
   @@index([athleteId, date])
 }

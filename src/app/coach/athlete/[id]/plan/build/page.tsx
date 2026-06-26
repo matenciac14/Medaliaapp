@@ -25,17 +25,37 @@ export default async function PlanBuildPage({
   })
   if (!athlete) redirect('/coach/athletes')
 
-  const plan = await prisma.trainingPlan.findFirst({
-    where: { userId: athleteId, status: 'ACTIVE' },
-    include: {
-      weeks: {
-        orderBy: { weekNumber: 'asc' },
-        include: {
-          sessions: { orderBy: { dayOfWeek: 'asc' } },
+  const [plan, gymTemplates] = await Promise.all([
+    prisma.trainingPlan.findFirst({
+      where: { userId: athleteId, status: 'ACTIVE' },
+      include: {
+        weeks: {
+          orderBy: { weekNumber: 'asc' },
+          include: {
+            sessions: {
+              orderBy: { dayOfWeek: 'asc' },
+              include: {
+                workoutDay: {
+                  include: { exercises: { include: { exercise: { select: { name: true } } }, orderBy: { order: 'asc' } } },
+                },
+              },
+            },
+          },
         },
       },
-    },
-  })
+    }),
+    prisma.workoutTemplate.findMany({
+      where: { coachId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        days: {
+          where: { isRestDay: false },
+          orderBy: { order: 'asc' },
+          include: { exercises: { include: { exercise: { select: { name: true } } }, orderBy: { order: 'asc' } } },
+        },
+      },
+    }),
+  ])
 
   const planData = plan
     ? {
@@ -58,16 +78,40 @@ export default async function PlanBuildPage({
             durationMin: s.durationMin,
             zoneTarget: s.zoneTarget,
             detailText: s.detailText,
+            workoutDayId: s.workoutDayId ?? null,
+            workoutDay: s.workoutDay
+              ? {
+                  id: s.workoutDay.id,
+                  label: s.workoutDay.label,
+                  exercises: s.workoutDay.exercises.map(e => ({
+                    name: e.exercise.name,
+                    sets: e.sets,
+                    repsScheme: e.repsScheme,
+                  })),
+                }
+              : null,
           })),
         })),
       }
     : null
+
+  const gymTemplatesData = gymTemplates.map(t => ({
+    id: t.id,
+    name: t.name,
+    days: t.days.map(d => ({
+      id: d.id,
+      label: d.label,
+      muscleGroups: d.muscleGroups,
+      exercises: d.exercises.map(e => ({ name: e.exercise.name, sets: e.sets, repsScheme: e.repsScheme })),
+    })),
+  }))
 
   return (
     <PlanBuilderClient
       athleteId={athleteId}
       athleteName={athlete.name ?? 'Atleta'}
       initialPlan={planData}
+      gymTemplates={gymTemplatesData}
     />
   )
 }

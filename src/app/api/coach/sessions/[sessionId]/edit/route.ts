@@ -41,6 +41,23 @@ export async function PATCH(
   if (typeof body.durationMin === 'number' && body.durationMin > 0) data.durationMin = body.durationMin
   if (typeof body.detailText === 'string') data.detailText = body.detailText.trim() || null
   if (typeof body.zoneTarget === 'string') data.zoneTarget = body.zoneTarget.trim() || null
+  // workoutDayId: null clears it, string sets it (only allowed when type=FUERZA)
+  if ('workoutDayId' in body) {
+    const newType = (data.type as string | undefined) ?? plannedSession.type
+    if (newType === 'FUERZA') {
+      if (body.workoutDayId === null) {
+        data.workoutDayId = null
+      } else if (typeof body.workoutDayId === 'string') {
+        const day = await prisma.workoutDay.findUnique({
+          where: { id: body.workoutDayId },
+          select: { template: { select: { coachId: true } } },
+        })
+        if (day && day.template.coachId === session.user.id) data.workoutDayId = body.workoutDayId
+      }
+    } else {
+      data.workoutDayId = null // clear if type changed away from FUERZA
+    }
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })

@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   })
 
   const formatted = sessions.map(gs => {
-    const workoutDay = gs.assignedWorkout.template.days.find(d => d.dayOfWeek === gs.dayOfWeek)
+    const workoutDay = gs.assignedWorkout?.template.days.find(d => d.dayOfWeek === gs.dayOfWeek)
 
     const exerciseMap: Record<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }> = {}
     for (const sl of gs.setLogs) {

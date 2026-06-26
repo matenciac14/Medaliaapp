@@ -26,7 +26,7 @@ export async function POST(
   if (!relation) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { weekId, dayOfWeek, type, durationMin, zoneTarget, detailText } = body
+  const { weekId, dayOfWeek, type, durationMin, zoneTarget, detailText, workoutDayId } = body
 
   if (!weekId || dayOfWeek === undefined || !type || !durationMin)
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -35,8 +35,17 @@ export async function POST(
   if (!week || week.planId !== planId)
     return NextResponse.json({ error: 'Week not found' }, { status: 404 })
 
+  // Validate workoutDayId belongs to coach if provided
+  if (workoutDayId) {
+    const day = await prisma.workoutDay.findUnique({
+      where: { id: workoutDayId },
+      select: { template: { select: { coachId: true } } },
+    })
+    if (!day || day.template.coachId !== coachId)
+      return NextResponse.json({ error: 'WorkoutDay not found' }, { status: 404 })
+  }
+
   const sessionDate = new Date(week.startDate)
-  // week.startDate = Monday (dow 1). dayOfWeek 1→+0 days, 2→+1, ..., 7→+6
   sessionDate.setDate(sessionDate.getDate() + Number(dayOfWeek) - 1)
 
   const newSession = await prisma.plannedSession.create({
@@ -49,6 +58,7 @@ export async function POST(
       zoneTarget: zoneTarget?.trim() || null,
       detailText: detailText?.trim() || null,
       date: sessionDate,
+      workoutDayId: workoutDayId ?? null,
     },
   })
 
