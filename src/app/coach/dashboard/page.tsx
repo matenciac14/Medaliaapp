@@ -146,6 +146,37 @@ export default async function CoachDashboardPage() {
         </a>
       </div>
 
+      {/* First-time experience — solo cuando no hay atletas */}
+      {totalCount === 0 && (
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-[#1e3a5f]/20 bg-gradient-to-br from-[#1e3a5f]/5 to-orange-50 p-8">
+          <div className="max-w-lg">
+            <div className="text-4xl mb-3">🎯</div>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-2">Bienvenido a Medaliq</h2>
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Tu panel está listo. El siguiente paso es agregar a tus primeros asesorados para empezar a gestionar sus planes, check-ins y progreso.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <a
+                href="/coach/clients/new"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#f97316' }}
+              >
+                + Agregar primer asesorado
+              </a>
+              <a
+                href="/coach/invite"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors"
+              >
+                Compartir link de invitación
+              </a>
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              También puedes compartir tu link de invitación y que los atletas se registren solos.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard
