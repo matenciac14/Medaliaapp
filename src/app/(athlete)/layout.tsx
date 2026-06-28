@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 import SidebarClient from './_components/SidebarClient'
 
 export default async function AthleteLayout({ children }: { children: React.ReactNode }) {
@@ -9,18 +9,34 @@ export default async function AthleteLayout({ children }: { children: React.Reac
 
   if (!session?.user?.id) redirect('/login')
 
-  // Leer config fresca desde DB (no JWT — puede cambiar sin re-login)
+  // Leer columnas frescas desde DB (no JWT — pueden cambiar sin re-login)
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, role: true, config: true },
+    select: {
+      name: true, role: true, onboardingCompleted: true,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+    },
   })
 
   if (!dbUser) redirect('/login')
 
-  const config = parseUserConfig(dbUser.config)
-
   // Si no completó onboarding, redirigir (también lo maneja el middleware)
-  if (!config.onboarding.completed) redirect('/onboarding')
+  if (!dbUser.onboardingCompleted) redirect('/onboarding')
+
+  const config = {
+    ...DEFAULT_USER_CONFIG,
+    features: {
+      plan:      dbUser.featurePlan,
+      checkin:   dbUser.featureCheckin,
+      nutrition: dbUser.featureNutrition,
+      progress:  dbUser.featureProgress,
+      log:       dbUser.featureLog,
+      coach:     dbUser.featureCoach,
+      gym:       dbUser.featureGym,
+    },
+    onboarding: { completed: dbUser.onboardingCompleted, completedAt: null },
+  }
 
   const user = {
     name: dbUser.name ?? session.user.email ?? 'Usuario',

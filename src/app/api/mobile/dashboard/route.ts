@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
     prisma.user.findUnique({
       where: { id: userId },
       select: {
-        name: true, config: true,
-        profile: { select: { weightKg: true, hrResting: true, weightGoalKg: true, sleepHoursAvg: true, sportDetails: true } },
+        name: true,
+        profile: { select: { weightKg: true, hrResting: true, weightGoalKg: true, sleepHoursAvg: true, sportDetails: true, sportGoal: true } },
       },
     }),
     prisma.trainingPlan.findFirst({

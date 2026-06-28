@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { generatePlan } from '@/lib/plan/generator'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -19,7 +19,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // COACH para saltarse la lógica de trial — el usuario ya tiene su tier activo
+    // generatedBy: 'COACH' → PlanSource.COACH en DB (plan de plantilla, no AI).
+    // El use case ya escribe plan.{currentWeek,totalWeeks,phase} en Phase 3.
+    // Solo necesitamos activar las features de training sin tocar el tier existente.
     const result = await generatePlan({
       userId,
       goalType,
@@ -39,34 +41,8 @@ export async function POST(req: NextRequest) {
       experienceLevel: profile.experienceLevel ?? undefined,
     })
 
-    // Leer el plan recién creado para obtener totalWeeks y fase inicial
-    const newPlan = await prisma.trainingPlan.findUnique({
-      where: { id: result.planId },
-      select: {
-        totalWeeks: true,
-        weeks: { take: 1, orderBy: { weekNumber: 'asc' }, select: { phase: true } },
-      },
-    })
-
-    // Activar features.plan sin tocar el tier de trial existente
-    const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
-    const currentConfig = parseUserConfig(existingUser?.config)
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        config: {
-          ...currentConfig,
-          features: { ...currentConfig.features, plan: true, checkin: true, log: true },
-          plan: {
-            activePlanId: result.planId,
-            currentWeek: 1,
-            totalWeeks: newPlan?.totalWeeks ?? 0,
-            phase: (newPlan?.weeks[0]?.phase ?? 'BASE') as any,
-          },
-        } as object,
-      },
-    })
+    // Activar features de training atómicamente — sin read-modify-write
+    await new PrismaUserRepository().enableFeatures(userId, ['plan', 'checkin', 'log'])
 
     return NextResponse.json({ success: true, planId: result.planId })
   } catch (err) {

@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
-import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
+
+const USER_SELECT = {
+  id: true, email: true, name: true, password: true, role: true,
+  featurePlan: true, featureCheckin: true, featureNutrition: true,
+  featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+  onboardingCompleted: true,
+} as const
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      select: { id: true, email: true, name: true, password: true, role: true, config: true },
+      select: USER_SELECT,
     })
 
     if (!user || !user.password) {
@@ -26,17 +32,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Credenciales incorrectas.' }, { status: 401 })
     }
 
-    const config = parseUserConfig(user.config)
-    const onboardingCompleted = config.onboarding.completed
+    const features = {
+      plan:      user.featurePlan,
+      checkin:   user.featureCheckin,
+      nutrition: user.featureNutrition,
+      progress:  user.featureProgress,
+      log:       user.featureLog,
+      coach:     user.featureCoach,
+      gym:       user.featureGym,
+    }
 
     const token = await signMobileToken({
       id: user.id,
       email: user.email,
       name: user.name ?? '',
       role: user.role,
-      onboardingCompleted,
-      userPlan: getUserPlan(config.features),
-      features: config.features,
+      onboardingCompleted: user.onboardingCompleted,
+      userPlan: 'PRO',
+      features,
     })
 
     return NextResponse.json({
@@ -46,9 +59,9 @@ export async function POST(req: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        onboardingCompleted,
-        userPlan: getUserPlan(config.features),
-        features: config.features,
+        onboardingCompleted: user.onboardingCompleted,
+        userPlan: 'PRO',
+        features,
       },
     })
   } catch (err) {

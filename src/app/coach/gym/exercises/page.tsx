@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import type { EquipmentType } from '@/generated/prisma/enums'
 import ExerciseForm from './_components/ExerciseForm'
 
 const MUSCLE_GROUP_LABELS: Record<string, string> = {
@@ -58,7 +59,7 @@ export default async function ExercisesPage({ searchParams }: Props) {
       AND: [
         { OR: [{ coachId }, { isGlobal: true }] },
         muscleGroup ? { muscleGroups: { has: muscleGroup } } : {},
-        equipment ? { equipment: equipment as any } : {},
+        equipment ? { equipment: equipment as EquipmentType } : {},
       ],
     },
     orderBy: [{ isGlobal: 'asc' }, { name: 'asc' }],

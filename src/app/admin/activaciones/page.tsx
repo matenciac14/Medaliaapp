@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { ActivateButton } from './_components/ActivateButton'
 
 export default async function ActivacionesPage() {
@@ -11,19 +10,14 @@ export default async function ActivacionesPage() {
       name: true,
       email: true,
       createdAt: true,
-      config: true,
+      featurePlan: true,
+      onboardingCompleted: true,
+      profile: { select: { sport: true } },
     },
   })
 
-  const pendingUsers = allAthletes.filter((u) => {
-    const cfg = parseUserConfig(u.config)
-    return !cfg.features.plan
-  })
-
-  const activeUsers = allAthletes.filter((u) => {
-    const cfg = parseUserConfig(u.config)
-    return cfg.features.plan
-  })
+  const pendingUsers = allAthletes.filter((u) => !u.featurePlan)
+  const activeUsers = allAthletes.filter((u) => u.featurePlan)
 
   return (
     <div>
@@ -89,33 +83,30 @@ export default async function ActivacionesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pendingUsers.map((u) => {
-                  const cfg = parseUserConfig(u.config)
-                  return (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">
-                        {u.name ?? '—'}
-                      </td>
-                      <td className="px-5 py-3 text-gray-600">{u.email}</td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">
-                        {cfg.sport.type ?? '—'}
-                      </td>
-                      <td className="px-5 py-3">
-                        {cfg.onboarding.completed ? (
-                          <span className="text-green-600 text-xs font-medium">Completado</span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">Pendiente</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
-                        {new Date(u.createdAt).toLocaleDateString('es-CO')}
-                      </td>
-                      <td className="px-5 py-3">
-                        <ActivateButton userId={u.id} isActive={false} />
-                      </td>
-                    </tr>
-                  )
-                })}
+                {pendingUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">
+                      {u.name ?? '—'}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">{u.email}</td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">
+                      {u.profile?.sport ?? '—'}
+                    </td>
+                    <td className="px-5 py-3">
+                      {u.onboardingCompleted ? (
+                        <span className="text-green-600 text-xs font-medium">Completado</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Pendiente</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                      {new Date(u.createdAt).toLocaleDateString('es-CO')}
+                    </td>
+                    <td className="px-5 py-3">
+                      <ActivateButton userId={u.id} isActive={false} />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -146,31 +137,28 @@ export default async function ActivacionesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {activeUsers.map((u) => {
-                  const cfg = parseUserConfig(u.config)
-                  return (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">
-                        {u.name ?? '—'}
-                      </td>
-                      <td className="px-5 py-3 text-gray-600">{u.email}</td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">
-                        {cfg.sport.type ?? '—'}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
-                          Activo
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
-                        {new Date(u.createdAt).toLocaleDateString('es-CO')}
-                      </td>
-                      <td className="px-5 py-3">
-                        <ActivateButton userId={u.id} isActive={true} />
-                      </td>
-                    </tr>
-                  )
-                })}
+                {activeUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">
+                      {u.name ?? '—'}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">{u.email}</td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">
+                      {u.profile?.sport ?? '—'}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+                        Activo
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                      {new Date(u.createdAt).toLocaleDateString('es-CO')}
+                    </td>
+                    <td className="px-5 py-3">
+                      <ActivateButton userId={u.id} isActive={true} />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

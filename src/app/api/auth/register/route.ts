@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
-import { DEFAULT_USER_CONFIG, COACH_CONFIG } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { sendCoachWelcomeEmail } from '@/infrastructure/email/resend'
 
@@ -42,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
-    const initialConfig = userRole === 'COACH' ? COACH_CONFIG : DEFAULT_USER_CONFIG
+    const isCoach = userRole === 'COACH'
 
     await prisma.user.create({
       data: {
@@ -50,7 +49,20 @@ export async function POST(req: NextRequest) {
         email,
         password: hashedPassword,
         role: userRole,
-        config: initialConfig,
+        // Coach: solo feature coach activa, onboarding completado
+        ...(isCoach ? {
+          featurePlan:      false,
+          featureCheckin:   false,
+          featureNutrition: false,
+          featureProgress:  false,
+          featureLog:       false,
+          featureCoach:     true,
+          featureGym:       false,
+          onboardingCompleted:   true,
+          onboardingCompletedAt: new Date(),
+        } : {
+          // Athlete: defaults de columnas son correctos (all true excepto coach)
+        }),
       },
     })
 

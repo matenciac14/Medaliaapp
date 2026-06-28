@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import type { FeatureKey } from '@/domain/ports/user.repository'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -20,16 +21,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const ops: Promise<unknown>[] = []
 
-  // Update features on User.config if provided
+  // Update features on User.config if provided — atomic merge, no read needed
   if (body.features) {
-    const COACH_ALLOWED_FEATURES = ['plan', 'checkin', 'nutrition', 'progress', 'log', 'gym']
-    const safeFeatures = Object.fromEntries(
-      Object.entries(body.features).filter(([k]) => COACH_ALLOWED_FEATURES.includes(k))
-    )
-    const athlete = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
-    const config = parseUserConfig(athlete?.config)
-    const updated = { ...config, features: { ...config.features, ...safeFeatures } }
-    ops.push(prisma.user.update({ where: { id: athleteId }, data: { config: updated } }))
+    const COACH_ALLOWED_FEATURES: FeatureKey[] = ['plan', 'checkin', 'nutrition', 'progress', 'log', 'gym']
+    const safePatch = Object.fromEntries(
+      Object.entries(body.features).filter(([k]) => COACH_ALLOWED_FEATURES.includes(k as FeatureKey))
+    ) as Partial<Record<FeatureKey, boolean>>
+    ops.push(new PrismaUserRepository().mergeFeatures(athleteId, safePatch))
   }
 
   // Update coachGoal / privateNotes on CoachAthlete if provided

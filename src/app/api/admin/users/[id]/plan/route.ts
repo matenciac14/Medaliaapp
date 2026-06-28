@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import {
-  DEFAULT_USER_CONFIG,
-  FULL_ATHLETE_CONFIG,
-  COACH_CONFIG,
-} from '@/lib/config/user-config'
 
 export async function PATCH(
   req: NextRequest,
@@ -27,28 +22,56 @@ export async function PATCH(
   const { id } = await params
   const { plan } = await req.json() // 'FREE' | 'PRO' | 'COACH'
 
-  let config: typeof DEFAULT_USER_CONFIG
+  const now = new Date()
+
+  let data: Parameters<typeof prisma.user.update>[0]['data']
   let role: 'ATHLETE' | 'COACH'
 
   if (plan === 'COACH') {
-    config = COACH_CONFIG
     role = 'COACH'
+    data = {
+      role,
+      featurePlan:      false,
+      featureCheckin:   false,
+      featureNutrition: false,
+      featureProgress:  false,
+      featureLog:       false,
+      featureCoach:     true,
+      featureGym:       false,
+      onboardingCompleted:   true,
+      onboardingCompletedAt: now,
+    }
   } else if (plan === 'PRO') {
-    config = FULL_ATHLETE_CONFIG
     role = 'ATHLETE'
+    data = {
+      role,
+      featurePlan:      true,
+      featureCheckin:   true,
+      featureNutrition: true,
+      featureProgress:  true,
+      featureLog:       true,
+      featureCoach:     false,
+      featureGym:       true,
+    }
   } else {
-    // INACTIVE
-    config = DEFAULT_USER_CONFIG
+    // INACTIVE / FREE
     role = 'ATHLETE'
+    data = {
+      role,
+      featurePlan:      true,
+      featureCheckin:   true,
+      featureNutrition: true,
+      featureProgress:  true,
+      featureLog:       true,
+      featureCoach:     false,
+      featureGym:       true,
+    }
   }
 
   const user = await prisma.user.update({
     where: { id },
-    data: {
-      role,
-      config: config as object,
-    },
-    select: { id: true, role: true, config: true },
+    data,
+    select: { id: true, role: true, featurePlan: true, featureCoach: true, onboardingCompleted: true },
   })
 
   return NextResponse.json({ ok: true, user })

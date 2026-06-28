@@ -3,7 +3,6 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
-import { parseUserConfig } from '@/lib/config/user-config'
 
 
 export async function GET(req: NextRequest) {
@@ -14,8 +13,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Feature gate
-  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
-  if (!parseUserConfig(userRecord?.config).features.gym) {
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true } })
+  if (!userRecord?.featureGym) {
     return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
   }
 

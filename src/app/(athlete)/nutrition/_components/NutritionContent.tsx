@@ -27,7 +27,7 @@ type DayMeals = {
   rules: string[]
 }
 
-type MealPlanData = {
+export type MealPlanData = {
   hard: DayMeals
   easy: DayMeals
   rest: DayMeals

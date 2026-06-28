@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 import { sendAthleteWelcomeEmail } from '@/infrastructure/email/resend'
 
 function generateTempPassword(length = 8): string {
@@ -65,28 +64,6 @@ export async function POST(req: NextRequest) {
     const tempPassword = generateTempPassword()
     const hashedPassword = await bcrypt.hash(tempPassword, 12)
 
-    const athleteConfig = {
-      ...DEFAULT_USER_CONFIG,
-      features: {
-        ...DEFAULT_USER_CONFIG.features,
-        plan: false,       // coach activa explícitamente desde Tab Resumen
-        checkin: false,
-        nutrition: false,
-        progress: false,
-        log: false,
-        coach: false,
-        gym: false,
-      },
-      sport: {
-        type: sport ?? null,
-        goal: goal ?? null,
-      },
-      onboarding: {
-        completed: false,
-        completedAt: null,
-      },
-    }
-
     // Create athlete user and link to coach atomically
     const athlete = await prisma.$transaction(async (tx) => {
       const newAthlete = await tx.user.create({
@@ -95,7 +72,15 @@ export async function POST(req: NextRequest) {
           email,
           password: hashedPassword,
           role: 'ATHLETE',
-          config: athleteConfig,
+          // B2B athlete: todas las features desactivadas hasta que el coach active
+          featurePlan:      false,
+          featureCheckin:   false,
+          featureNutrition: false,
+          featureProgress:  false,
+          featureLog:       false,
+          featureCoach:     false,
+          featureGym:       false,
+          onboardingCompleted: false,
         },
       })
       await tx.coachAthlete.create({

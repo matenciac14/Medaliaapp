@@ -7,6 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL!, max: 10 })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any — Prisma 7 adapter constructor typing limitation
   return new PrismaClient({ adapter } as any)
 }
 

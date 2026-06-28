@@ -39,6 +39,12 @@ export type DbFood = {
   servingLabel: string | null
 }
 
+type Meal = { time: string; label: string; foods: string; kcal: number; protein: number; carbs: number; fat: number }
+type Supplement = { name: string; dose: string; when: string; purpose: string }
+type DayPlan = { meals: Meal[]; supplements: Supplement[]; hydrationL: number; rules: string[] }
+
+export type StaticMealPlan = { hard: DayPlan; easy: DayPlan; rest: DayPlan }
+
 const PROTEIN_CATS = new Set(['PROTEIN', 'DAIRY'])
 const CARB_CATS    = new Set(['CARB', 'LEGUME'])
 const VEG_CATS     = new Set(['VEGETABLE', 'FRUIT'])
@@ -103,7 +109,7 @@ export function computeNutritionTargets(profile: ProfileInput) {
  * Si se pasan dbFoods, calcula porciones en gramos exactos (weighsFood=true)
  * o medidas caseras (weighsFood=false).
  */
-export function buildStaticMealPlan(macros: MacroTargets, input: GenerateMealsInput, dbFoods?: DbFood[]): unknown {
+export function buildStaticMealPlan(macros: MacroTargets, input: GenerateMealsInput, dbFoods?: DbFood[]): StaticMealPlan {
   const foods = input.availableFoods
   const n = Math.max(2, Math.min(6, input.mealsPerDay))
 

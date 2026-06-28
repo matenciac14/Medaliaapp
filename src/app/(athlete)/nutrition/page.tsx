@@ -7,7 +7,7 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import FoodSetupFlow from './_components/FoodSetupFlow'
-import NutritionContent from './_components/NutritionContent'
+import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
 
@@ -118,7 +118,7 @@ export default async function NutritionPage() {
       {/* Contenido real — si hay meal plan completo */}
       {hasMealPlan && nutritionPlan && (
         <NutritionContent
-          mealPlan={mealPlan.data as any}
+          mealPlan={mealPlan.data as unknown as MealPlanData}
           nutritionPlan={nutritionPlan}
           todayDayType={todayDayType}
         />

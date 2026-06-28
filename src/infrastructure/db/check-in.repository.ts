@@ -45,11 +45,23 @@ export class PrismaCheckInRepository implements ICheckInRepository {
       recordedAt: new Date(),
     }
 
-    await this.db.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId, weekNumber: data.weekNumber } },
-      update: record,
-      create: { userId, weekNumber: data.weekNumber, ...record },
+    // Upsert manual por (userId, planId, weekNumber) — necesario porque los partial indexes
+    // de PostgreSQL no son expresables como compound key en Prisma (NULL != NULL en unique).
+    const existing = await this.db.weeklyCheckIn.findFirst({
+      where: { userId, planId: data.planId ?? null, weekNumber: data.weekNumber },
+      select: { id: true },
     })
+
+    if (existing) {
+      await this.db.weeklyCheckIn.update({
+        where: { id: existing.id },
+        data: record,
+      })
+    } else {
+      await this.db.weeklyCheckIn.create({
+        data: { userId, planId: data.planId ?? null, weekNumber: data.weekNumber, ...record },
+      })
+    }
   }
 
   async count(userId: string): Promise<number> {

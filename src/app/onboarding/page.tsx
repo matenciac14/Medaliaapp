@@ -1112,8 +1112,7 @@ export default function OnboardingPage() {
   // B2C new users are also INACTIVE before onboarding but their sport.type is null,
   // so the effect exits early at `if (!sport)`.
   useEffect(() => {
-    const user = sessionData?.user as any
-    if (user?.onboardingCompleted) return  // already done — guard below handles it too
+    if (sessionData?.user?.onboardingCompleted) return  // already done — guard below handles it too
 
     fetch('/api/athlete/sport')
       .then((r) => r.json())

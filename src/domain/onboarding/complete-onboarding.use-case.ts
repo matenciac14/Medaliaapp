@@ -16,11 +16,10 @@ import type { IHealthProfileRepository, CreateHealthProfile } from '@/domain/por
 import type { IUserRepository } from '@/domain/ports/user.repository'
 import type { IPlanRepository } from '@/domain/ports/plan.repository'
 import type { WizardData } from '@/app/onboarding/_types'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { resolveGoalType, buildSportDetails, timeStringToSecs } from '@/domain/onboarding/onboarding.utils'
 import { generatePlanUseCase } from '@/domain/plan/generate-plan.use-case'
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaDbClient } from '@/lib/db/prisma-client'
 // Pragmatic exception: concrete repos needed to create tx-scoped instances inside $transaction
 // (same pattern as generate-plan.use-case.ts)
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
@@ -39,7 +38,7 @@ export async function completeOnboardingUseCase(
   data: WizardData,
   userId: string,
   deps: {
-    db: PrismaClient
+    db: PrismaDbClient
     planRepo: IPlanRepository
     healthProfileRepo: IHealthProfileRepository
     userRepo: IUserRepository
@@ -62,22 +61,10 @@ export async function completeOnboardingUseCase(
       proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
     })
 
-    // Read config before tx
-    const currentConfig = await readCurrentConfig(deps.db, userId)
-    const newConfig = {
-      ...currentConfig,
-      features: isB2B ? currentConfig.features : {
-        ...currentConfig.features,
-        plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true,
-      },
-      onboarding: { completed: true, completedAt: now() },
-      sport: { type: sportType as 'RUNNING' | 'STRENGTH' | 'GENERAL', goal: sportGoal as 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS' },
-    }
-
     // Profile + config atomic
     await deps.db.$transaction(async (tx) => {
-      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
-      const txUser = new PrismaUserRepository(tx as any)
+      const txHealthProfile = new PrismaHealthProfileRepository(tx)
+      const txUser = new PrismaUserRepository(tx)
       await txHealthProfile.upsertProfile(userId, {
         age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
         weightGoalKg: data.weightGoalKg ?? undefined,
@@ -86,7 +73,11 @@ export async function completeOnboardingUseCase(
         sportDetails: {},
         dataSources: {},
       })
-      await txUser.updateConfig(userId, newConfig)
+      await txUser.completeOnboarding(userId, {
+        features: isB2B ? undefined : { plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true },
+        onboarding: { completed: true, completedAt: now() },
+        sport: { type: sportType, goal: sportGoal },
+      })
     })
 
     return { isB2B, planId: null }
@@ -106,22 +97,10 @@ export async function completeOnboardingUseCase(
       proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat,
     })
 
-    // Read config before tx
-    const currentConfig = await readCurrentConfig(deps.db, userId)
-    const newConfig = {
-      ...currentConfig,
-      features: isB2B ? currentConfig.features : {
-        ...currentConfig.features,
-        plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true,
-      },
-      onboarding: { completed: true, completedAt: now() },
-      sport: { type: 'STRENGTH' as const, goal: 'BODY_RECOMPOSITION' as const },
-    }
-
     // Profile + config atomic
     await deps.db.$transaction(async (tx) => {
-      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
-      const txUser = new PrismaUserRepository(tx as any)
+      const txHealthProfile = new PrismaHealthProfileRepository(tx)
+      const txUser = new PrismaUserRepository(tx)
       await txHealthProfile.upsertProfile(userId, {
         age: data.age!, heightCm: data.heightCm!, weightKg: data.weightKg!,
         weightGoalKg: data.weightGoalKg ?? undefined,
@@ -130,7 +109,11 @@ export async function completeOnboardingUseCase(
         sportDetails: { gymGoal: data.gymGoal },
         dataSources: {},
       })
-      await txUser.updateConfig(userId, newConfig)
+      await txUser.completeOnboarding(userId, {
+        features: isB2B ? undefined : { plan: true, nutrition: true, progress: true, log: true, checkin: true, gym: true },
+        onboarding: { completed: true, completedAt: now() },
+        sport: { type: 'STRENGTH', goal: 'BODY_RECOMPOSITION' },
+      })
     })
 
     return { isB2B, planId: null }
@@ -165,22 +148,15 @@ export async function completeOnboardingUseCase(
     const b2bSportType = data.mainGoal === 'SPORT' ? (data.sport ?? 'GENERAL') : 'GENERAL'
     const b2bGoal = data.mainGoal === 'SPORT' ? 'RACE' : data.mainGoal === 'BODY' ? 'BODY_RECOMPOSITION' : 'GENERAL_FITNESS'
 
-    const currentConfig = await readCurrentConfig(deps.db, userId)
-    const b2bConfig = {
-      ...currentConfig,
-      onboarding: { completed: true, completedAt: now() },
-      sport: {
-        type: b2bSportType as 'RUNNING' | 'STRENGTH' | 'GENERAL',
-        goal: b2bGoal as 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS',
-      },
-    }
-
     // Profile + config atomic for B2B
     await deps.db.$transaction(async (tx) => {
-      const txHealthProfile = new PrismaHealthProfileRepository(tx as any)
-      const txUser = new PrismaUserRepository(tx as any)
+      const txHealthProfile = new PrismaHealthProfileRepository(tx)
+      const txUser = new PrismaUserRepository(tx)
       await txHealthProfile.upsertProfile(userId, profileData)
-      await txUser.updateConfig(userId, b2bConfig)
+      await txUser.completeOnboarding(userId, {
+        onboarding: { completed: true, completedAt: now() },
+        sport: { type: b2bSportType, goal: b2bGoal },
+      })
     })
 
     return { isB2B: true, planId: null }
@@ -227,12 +203,7 @@ function now(): string {
   return new Date().toISOString()
 }
 
-async function readCurrentConfig(db: PrismaClient, userId: string) {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { config: true } })
-  return parseUserConfig(user?.config)
-}
-
-async function checkIsB2B(db: PrismaClient, userId: string): Promise<boolean> {
+async function checkIsB2B(db: PrismaDbClient, userId: string): Promise<boolean> {
   const relation = await db.coachAthlete.findFirst({ where: { athleteId: userId } })
   return !!relation
 }

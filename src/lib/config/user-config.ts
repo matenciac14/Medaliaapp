@@ -22,7 +22,6 @@ export type UserConfig = {
     goal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS' | null
   }
   plan: {
-    activePlanId: string | null
     currentWeek: number
     totalWeeks: number
     phase: 'BASE' | 'DESARROLLO' | 'ESPECIFICO' | 'AFINAMIENTO' | null
@@ -54,7 +53,6 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
     goal: null,
   },
   plan: {
-    activePlanId: null,
     currentWeek: 0,
     totalWeeks: 0,
     phase: null,
@@ -86,7 +84,6 @@ export const FULL_ATHLETE_CONFIG: UserConfig = {
     goal: 'RACE',
   },
   plan: {
-    activePlanId: 'seed-plan-1',
     currentWeek: 1,
     totalWeeks: 18,
     phase: 'BASE',
@@ -114,14 +111,17 @@ export const COACH_CONFIG: UserConfig = {
     gym: false,
   },
   sport: { type: null, goal: null },
-  plan: { activePlanId: null, currentWeek: 0, totalWeeks: 0, phase: null },
+  plan: { currentWeek: 0, totalWeeks: 0, phase: null },
   onboarding: { completed: true, completedAt: '2026-04-18T00:00:00.000Z' },
   preferences: { language: 'es', units: 'metric', notifications: true },
 }
 
-/** Todos los usuarios tienen el mismo plan base */
+/**
+ * Todos los usuarios tienen acceso completo hasta que se active billing (Stripe/Wompi).
+ * Cuando se integre billing, esta función leerá de UserSubscription.tier en DB.
+ */
 export function getUserPlan(_features: UserConfig['features']): UserPlan {
-  return 'FREE'
+  return 'PRO'
 }
 
 /** Helper: parsea el JSON crudo de la DB y hace merge con defaults */
@@ -131,6 +131,7 @@ export function parseUserConfig(raw: unknown): UserConfig {
   // Explicitly pick only known feature keys to prevent stale fields (e.g. aiPlan, aiCoach)
   // from old DB records from leaking into the auth token.
   const pf = (partial.features ?? {}) as Record<string, boolean | undefined>
+  const pp = partial.plan as Partial<UserConfig['plan']> | undefined
   return {
     ...DEFAULT_USER_CONFIG,
     ...partial,
@@ -144,7 +145,12 @@ export function parseUserConfig(raw: unknown): UserConfig {
       gym:       pf.gym       ?? DEFAULT_USER_CONFIG.features.gym,
     },
     sport: { ...DEFAULT_USER_CONFIG.sport, ...(partial.sport ?? {}) },
-    plan: { ...DEFAULT_USER_CONFIG.plan, ...(partial.plan ?? {}) },
+    // Explicit pick — evita que activePlanId de registros viejos en DB se filtre al tipo
+    plan: {
+      currentWeek: pp?.currentWeek  ?? DEFAULT_USER_CONFIG.plan.currentWeek,
+      totalWeeks:  pp?.totalWeeks   ?? DEFAULT_USER_CONFIG.plan.totalWeeks,
+      phase:       pp?.phase        ?? DEFAULT_USER_CONFIG.plan.phase,
+    },
     onboarding: { ...DEFAULT_USER_CONFIG.onboarding, ...(partial.onboarding ?? {}) },
     preferences: { ...DEFAULT_USER_CONFIG.preferences, ...(partial.preferences ?? {}) },
   }

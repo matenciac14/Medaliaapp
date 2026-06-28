@@ -26,32 +26,15 @@ export async function POST(req: NextRequest) {
 
   const { availableFoods, availableFoodIds, restrictions, mealsPerDay, weighsFood, notes } = body
 
+  const foodSelect = { name: true, category: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true, servingG: true, servingLabel: true } as const
+
   const [user, dbFoods] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true, goals: { where: { status: 'ACTIVE' }, take: 1 } },
     }),
-    // Buscar alimentos en DB por coincidencia de nombre (maneja plural, variantes y calificadores)
-    availableFoods.length > 0
-      ? prisma.food.findMany({
-          where: {
-            isActive: true,
-            OR: availableFoods.flatMap(name => {
-              const variants = name.split('/').map(v => v.trim().split('(')[0].trim())
-              return variants.flatMap(v => {
-                const terms: { name: { contains: string; mode: 'insensitive' } }[] = [
-                  { name: { contains: v, mode: 'insensitive' } },
-                ]
-                // Manejo singular/plural: "Huevos" → también buscar "Huevo"
-                if (v.toLowerCase().endsWith('s')) {
-                  terms.push({ name: { contains: v.slice(0, -1), mode: 'insensitive' } })
-                }
-                return terms
-              })
-            }),
-          },
-          select: { name: true, category: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true, servingG: true, servingLabel: true },
-        })
+    availableFoodIds && availableFoodIds.length > 0
+      ? prisma.food.findMany({ where: { isActive: true, id: { in: availableFoodIds } }, select: foodSelect })
       : Promise.resolve([] as DbFood[]),
   ])
 

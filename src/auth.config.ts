@@ -1,6 +1,8 @@
 import type { NextAuthConfig } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 
 // Config sin Prisma — compatible con Edge Runtime (middleware)
 export const authConfig: NextAuthConfig = {
@@ -21,25 +23,26 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.role = (user as any).role
-        token.onboardingCompleted = (user as any).onboardingCompleted ?? false
-        token.activated = (user as any).activated ?? false
-        token.userPlan = (user as any).userPlan ?? 'FREE'
-        token.features = (user as any).features ?? {}
+        token.role = user.role
+        token.onboardingCompleted = user.onboardingCompleted ?? false
+        token.activated = user.activated ?? false
+        token.userPlan = user.userPlan ?? 'FREE'
+        token.features = user.features ?? DEFAULT_USER_CONFIG.features
       }
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.onboardingCompleted = token.onboardingCompleted as boolean
-        session.user.activated = token.activated as boolean
-        session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
-        session.user.features = (token.features as any) ?? {
-          plan: true, checkin: true, nutrition: true, progress: true,
-          log: true, coach: false, gym: true,
-        }
+      // Cast required: next-auth v5 beta.31 doesn't resolve JWT module augmentation
+      // correctly in callback context — the augmented JWT from next-auth/jwt is correct.
+      const t = token as JWT
+      if (t) {
+        session.user.id = t.id ?? ''
+        session.user.role = t.role ?? 'ATHLETE'
+        session.user.onboardingCompleted = t.onboardingCompleted ?? false
+        session.user.activated = t.activated ?? false
+        session.user.userPlan = t.userPlan ?? 'FREE'
+        session.user.needsRoleSelection = t.needsRoleSelection ?? false
+        session.user.features = t.features ?? DEFAULT_USER_CONFIG.features
       }
       return session
     },

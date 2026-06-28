@@ -60,7 +60,7 @@ export default async function CoachAthletesPage() {
       },
     }),
     prisma.coachAthlete.count({ where: { coachId } }),
-    prisma.payment.findMany({ where: { coachId, status: 'OVERDUE' }, select: { athleteId: true } }),
+    prisma.payment.findMany({ where: { coachId, status: 'PENDING', dueDate: { lt: now } }, select: { athleteId: true } }),
   ])
 
   const hasMore = coachRelations.length > TAKE

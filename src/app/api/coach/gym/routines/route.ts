@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import type { SetType } from '@/generated/prisma/enums'
 
 export async function GET(_req: NextRequest) {
   const session = await auth()
@@ -149,7 +150,7 @@ export async function POST(req: NextRequest) {
               sets: ex.sets ?? 4,
               repsScheme: ex.repsScheme?.trim() || '12',
               restSeconds: typeof ex.restSeconds === 'number' ? ex.restSeconds : null,
-              setType: (ex.setType as any) ?? 'NORMAL',
+              setType: (ex.setType as SetType) ?? 'NORMAL',
               notes: ex.notes?.trim() || null,
             },
             select: { id: true },

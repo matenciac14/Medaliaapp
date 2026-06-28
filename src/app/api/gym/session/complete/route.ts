@@ -3,7 +3,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength'
-import { parseUserConfig } from '@/lib/config/user-config'
 
 type SetPayload = {
   workoutExerciseId: string
@@ -26,8 +25,8 @@ export async function POST(req: NextRequest) {
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   // Feature gate
-  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
-  if (!parseUserConfig(userRecord?.config).features.gym) {
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true } })
+  if (!userRecord?.featureGym) {
     return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
   }
 
