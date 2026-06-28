@@ -17,8 +17,6 @@ model User {
   role          UserRole  @default(ATHLETE)
   password      String?
   emailVerified DateTime?
-  config        Json      @default("{}")   // DEPRECADO — migrar lectores a columnas individuales
-
   // Feature flags (migrados de config.features)
   featurePlan      Boolean @default(true)
   featureCheckin   Boolean @default(true)

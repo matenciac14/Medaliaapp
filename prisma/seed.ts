@@ -2,7 +2,6 @@ import 'dotenv/config'
 import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
-import { FULL_ATHLETE_CONFIG, COACH_CONFIG, DEFAULT_USER_CONFIG } from '../src/lib/config/user-config'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter } as any)
@@ -28,26 +27,32 @@ async function main() {
   // ── Coach 1 ───────────────────────────────────────────────────────────────
   const coach1 = await prisma.user.upsert({
     where: { email: 'coach@medaliq.com' },
-    update: { config: COACH_CONFIG },
+    update: { featureCoach: true, featurePlan: false, featureCheckin: false, featureNutrition: false, featureProgress: false, featureLog: false, featureGym: false, onboardingCompleted: true, needsRoleSelection: false },
     create: {
       email: 'coach@medaliq.com',
       name: 'Carlos Entrenador',
       password: coachPassword,
       role: UserRole.COACH,
-      config: COACH_CONFIG,
+      featureCoach: true,
+      featurePlan: false, featureCheckin: false, featureNutrition: false,
+      featureProgress: false, featureLog: false, featureGym: false,
+      onboardingCompleted: true, needsRoleSelection: false,
     },
   })
 
   // ── Coach 2 ───────────────────────────────────────────────────────────────
   const coach2 = await prisma.user.upsert({
     where: { email: 'maria.coach@medaliq.com' },
-    update: { config: COACH_CONFIG },
+    update: { featureCoach: true, featurePlan: false, featureCheckin: false, featureNutrition: false, featureProgress: false, featureLog: false, featureGym: false, onboardingCompleted: true, needsRoleSelection: false },
     create: {
       email: 'maria.coach@medaliq.com',
       name: 'María González',
       password: coachPassword,
       role: UserRole.COACH,
-      config: COACH_CONFIG,
+      featureCoach: true,
+      featurePlan: false, featureCheckin: false, featureNutrition: false,
+      featureProgress: false, featureLog: false, featureGym: false,
+      onboardingCompleted: true, needsRoleSelection: false,
     },
   })
 
@@ -60,20 +65,22 @@ async function main() {
       name: 'Admin Medaliq',
       password: await bcrypt.hash('admin123!', 12),
       role: UserRole.ADMIN,
-      config: { ...DEFAULT_USER_CONFIG, onboarding: { completed: true, completedAt: new Date().toISOString() } },
+      onboardingCompleted: true,
     },
   })
 
   // ── Atleta 1 — miguel (B2B coach1, running half marathon) ────────────────
   const athlete1 = await prisma.user.upsert({
     where: { email: 'miguel@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'miguel@medaliq.com',
       name: 'Miguel Atleta',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 30, heightCm: 175, weightKg: 75, weightGoalKg: 70,
@@ -203,7 +210,9 @@ async function main() {
       name: 'Ana Runner',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: DEFAULT_USER_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: false,
       profile: {
         create: {
           age: 27, heightCm: 163, weightKg: 62, weightGoalKg: 60,
@@ -218,13 +227,15 @@ async function main() {
   // ── Atleta 3 — Juan Pérez (B2B coach1, running 10K) ──────────────────────
   const a3 = await prisma.user.upsert({
     where: { email: 'juan.perez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'juan.perez@medaliq.com',
       name: 'Juan Pérez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 34, heightCm: 172, weightKg: 72, weightGoalKg: 70,
@@ -260,13 +271,15 @@ async function main() {
   // ── Atleta 4 — Sofía Ramírez (B2B coach2, recomposición corporal) ─────────
   const a4 = await prisma.user.upsert({
     where: { email: 'sofia.ramirez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'sofia.ramirez@medaliq.com',
       name: 'Sofía Ramírez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 26, heightCm: 160, weightKg: 68, weightGoalKg: 60,
@@ -299,13 +312,15 @@ async function main() {
   // ── Atleta 5 — Andrés Moreno (B2C trial, ciclismo) ───────────────────────
   const a5 = await prisma.user.upsert({
     where: { email: 'andres.moreno@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'andres.moreno@medaliq.com',
       name: 'Andrés Moreno',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 35, heightCm: 178, weightKg: 80, weightGoalKg: 76,
@@ -330,13 +345,15 @@ async function main() {
   // ── Atleta 6 — Valentina Castro (B2C trial, running half) ─────────────────
   const a6 = await prisma.user.upsert({
     where: { email: 'valentina.castro@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'valentina.castro@medaliq.com',
       name: 'Valentina Castro',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 29, heightCm: 165, weightKg: 58, weightGoalKg: 56,
@@ -364,13 +381,15 @@ async function main() {
   // ── Atleta 7 — Camilo Torres (B2B coach2, fuerza) ─────────────────────────
   const a7 = await prisma.user.upsert({
     where: { email: 'camilo.torres@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'camilo.torres@medaliq.com',
       name: 'Camilo Torres',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 32, heightCm: 182, weightKg: 88, weightGoalKg: 85,
@@ -401,13 +420,15 @@ async function main() {
   // ── Atleta 8 — Laura Gómez (B2C trial, recomposición) ────────────────────
   const a8 = await prisma.user.upsert({
     where: { email: 'laura.gomez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'laura.gomez@medaliq.com',
       name: 'Laura Gómez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 24, heightCm: 158, weightKg: 65, weightGoalKg: 58,
@@ -431,13 +452,15 @@ async function main() {
   // ── Atleta 9 — Sebastián Ríos (B2B coach1, running 5K) ───────────────────
   const a9 = await prisma.user.upsert({
     where: { email: 'sebastian.rios@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'sebastian.rios@medaliq.com',
       name: 'Sebastián Ríos',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 22, heightCm: 170, weightKg: 65, weightGoalKg: 63,
@@ -471,13 +494,15 @@ async function main() {
   // ── Atleta 10 — Daniela Vargas (B2C trial, triatlón) ─────────────────────
   const a10 = await prisma.user.upsert({
     where: { email: 'daniela.vargas@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'daniela.vargas@medaliq.com',
       name: 'Daniela Vargas',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 31, heightCm: 167, weightKg: 60, weightGoalKg: 58,
@@ -503,13 +528,15 @@ async function main() {
   // ── Atleta 11 — Felipe Herrera (B2C trial, ciclismo) ─────────────────────
   const a11 = await prisma.user.upsert({
     where: { email: 'felipe.herrera@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'felipe.herrera@medaliq.com',
       name: 'Felipe Herrera',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 28, heightCm: 180, weightKg: 76, weightGoalKg: 73,
@@ -537,13 +564,15 @@ async function main() {
   // ── Atleta 12 — Isabella Méndez (B2B coach2, recomposición) ──────────────
   const a12 = await prisma.user.upsert({
     where: { email: 'isabella.mendez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'isabella.mendez@medaliq.com',
       name: 'Isabella Méndez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 33, heightCm: 162, weightKg: 70, weightGoalKg: 63,
@@ -572,13 +601,15 @@ async function main() {
   // ── Atleta 13 — Nicolás Gutiérrez (B2B coach1, half marathon) ────────────
   const a13 = await prisma.user.upsert({
     where: { email: 'nicolas.gutierrez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'nicolas.gutierrez@medaliq.com',
       name: 'Nicolás Gutiérrez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 38, heightCm: 176, weightKg: 78, weightGoalKg: 74,
@@ -608,13 +639,15 @@ async function main() {
   // ── Atleta 14 — Catalina Jiménez (B2C trial, running 10K) ────────────────
   const a14 = await prisma.user.upsert({
     where: { email: 'catalina.jimenez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'catalina.jimenez@medaliq.com',
       name: 'Catalina Jiménez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 25, heightCm: 161, weightKg: 55, weightGoalKg: 54,
@@ -644,13 +677,15 @@ async function main() {
   // ── Atleta 15 — Santiago Rodríguez (B2B coach1, maratón) ─────────────────
   const a15 = await prisma.user.upsert({
     where: { email: 'santiago.rodriguez@medaliq.com' },
-    update: { config: FULL_ATHLETE_CONFIG },
+    update: { featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true, featureLog: true, featureGym: true, onboardingCompleted: true },
     create: {
       email: 'santiago.rodriguez@medaliq.com',
       name: 'Santiago Rodríguez',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      config: FULL_ATHLETE_CONFIG,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureGym: true,
+      onboardingCompleted: true,
       profile: {
         create: {
           age: 41, heightCm: 174, weightKg: 74, weightGoalKg: 71,
