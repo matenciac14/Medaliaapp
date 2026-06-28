@@ -1,0 +1,32 @@
+#!/bin/sh
+# Valida que el nombre de la branch sigue la nomenclatura del proyecto
+# Patrón: feature/N-desc | bugfix/N-desc | chore/desc | hotfix/N-desc
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Ramas protegidas — siempre permitidas
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "HEAD" ]; then
+  exit 0
+fi
+
+PATTERN="^(feature|bugfix|chore|hotfix)/[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+
+if ! echo "$BRANCH" | grep -Eq "$PATTERN"; then
+  echo ""
+  echo "  ✗ Branch name inválido: '$BRANCH'"
+  echo ""
+  echo "  Usa uno de estos formatos:"
+  echo "    feature/[n]-descripcion     → nueva funcionalidad"
+  echo "    bugfix/[n]-descripcion      → corrección de bug"
+  echo "    chore/descripcion           → docs, config, dependencias"
+  echo "    hotfix/[n]-descripcion      → fix urgente en producción"
+  echo ""
+  echo "  Ejemplos válidos:"
+  echo "    feature/5-gym-session-mobile"
+  echo "    bugfix/2-timezone-nutricion"
+  echo "    chore/update-dependencies"
+  echo ""
+  exit 1
+fi
+
+exit 0

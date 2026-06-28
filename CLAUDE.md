@@ -1,5 +1,29 @@
 # Medaliq
 
+## Nomenclatura de branches — OBLIGATORIO
+
+Toda branch debe seguir este patrón exacto o el push será bloqueado:
+
+```
+feature/[n]-descripcion-kebab-case    # nueva funcionalidad
+bugfix/[n]-descripcion-kebab-case     # corrección de bug
+chore/descripcion-kebab-case          # docs, config, dependencias, refactor
+hotfix/[n]-descripcion-kebab-case     # fix urgente directo a producción
+```
+
+**Ejemplos válidos:**
+```
+feature/1-registro-coach
+feature/2-emails-bienvenida
+bugfix/1-timezone-nutricion
+chore/branch-naming-convention
+hotfix/1-fix-login-crash
+```
+
+**Regla para agentes:** antes de crear cualquier branch, verificar que el nombre cumple el patrón. Nunca usar nombres genéricos como `fix`, `update`, `test`, `atleta-dashboard`.
+
+---
+
 ## Regla crítica para agentes
 **NUNCA romper código existente.** Antes de modificar cualquier archivo:
 1. Leerlo completo para entender el contexto
