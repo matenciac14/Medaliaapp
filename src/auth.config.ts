@@ -36,6 +36,7 @@ export const authConfig: NextAuthConfig = {
         session.user.onboardingCompleted = token.onboardingCompleted as boolean
         session.user.activated = token.activated as boolean
         session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
+        session.user.needsRoleSelection = (token.needsRoleSelection as boolean) ?? false
         session.user.features = (token.features as any) ?? {
           plan: true, checkin: true, nutrition: true, progress: true,
           log: true, coach: false, gym: true,

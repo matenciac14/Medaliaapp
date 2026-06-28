@@ -18,6 +18,7 @@ declare module 'next-auth' {
         coach: boolean
         gym: boolean
       }
+      needsRoleSelection?: boolean
       name?: string | null
       email?: string | null
       image?: string | null
@@ -50,6 +51,7 @@ declare module 'next-auth/jwt' {
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    needsRoleSelection?: boolean
     features?: {
       plan: boolean
       checkin: boolean

@@ -29,9 +29,15 @@ export default auth((req) => {
     const activated = (session.user as any).activated ?? false
     const isB2B = (session.user as any).isB2B ?? false
     const userPlan = ((session.user as any).userPlan as string) ?? 'FREE'
+    const needsRoleSelection = (session.user as any).needsRoleSelection ?? false
+
+    // Google OAuth user que no ha seleccionado su rol
+    if (needsRoleSelection && !pathname.startsWith('/select-role') && !pathname.startsWith('/api')) {
+      return NextResponse.redirect(new URL('/select-role', nextUrl))
+    }
 
     // Redirige a onboarding si no lo completó
-    if (!onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !isPublicRoute) {
+    if (!onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/select-role') && !pathname.startsWith('/api') && !isPublicRoute) {
       return NextResponse.redirect(new URL('/onboarding', nextUrl))
     }
 

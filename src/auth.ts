@@ -4,7 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
-import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
+import { parseUserConfig, getUserPlan, DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -63,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, trigger, account }) {
       if (user) {
         token.id = user.id
         token.role = (user as any).role
@@ -73,13 +73,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.userPlan = (user as any).userPlan ?? 'FREE'
         token.features = (user as any).features ?? {}
       }
-      // Refresh from DB on session update
+      // Google OAuth — always load config from DB (PrismaAdapter doesn't call authorize())
+      if (account?.provider === 'google' && token.id) {
+        try {
+          const [dbUser, coachRelation] = await Promise.all([
+            prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { role: true, config: true },
+            }),
+            prisma.coachAthlete.findFirst({
+              where: { athleteId: token.id as string },
+              select: { id: true },
+            }),
+          ])
+          if (dbUser) {
+            if (!dbUser.config) {
+              // First time — user hasn't selected role yet
+              token.needsRoleSelection = true
+              token.onboardingCompleted = false
+              token.activated = false
+              token.isB2B = false
+              token.userPlan = 'FREE'
+              token.features = DEFAULT_USER_CONFIG.features
+            } else {
+              const config = parseUserConfig(dbUser.config)
+              token.role = dbUser.role
+              token.needsRoleSelection = false
+              token.onboardingCompleted = config.onboarding.completed
+              token.activated = config.features.plan
+              token.isB2B = !!coachRelation
+              token.userPlan = getUserPlan(config.features)
+              token.features = config.features
+            }
+          }
+        } catch {
+          // silently fail
+        }
+      }
+      // Refresh from DB on session update (called after set-role or onboarding)
       if (trigger === 'update' && token.id) {
         try {
           const [dbUser, coachRelation] = await Promise.all([
             prisma.user.findUnique({
               where: { id: token.id as string },
-              select: { config: true },
+              select: { role: true, config: true },
             }),
             prisma.coachAthlete.findFirst({
               where: { athleteId: token.id as string },
@@ -88,11 +125,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ])
           if (dbUser) {
             const config = parseUserConfig(dbUser.config)
+            token.role = dbUser.role
             token.activated = config.features.plan
             token.isB2B = !!coachRelation
             token.onboardingCompleted = config.onboarding.completed
             token.userPlan = getUserPlan(config.features)
             token.features = config.features
+            token.needsRoleSelection = false
           }
         } catch {
           // silently fail — token retains last known value
@@ -108,6 +147,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.activated = token.activated as boolean
         session.user.isB2B = (token.isB2B as boolean) ?? false
         session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
+        session.user.needsRoleSelection = (token.needsRoleSelection as boolean) ?? false
         session.user.features = (token.features as Session['user']['features']) ?? {
           plan: true, checkin: true, nutrition: true, progress: true,
           log: true, coach: false, gym: true,
