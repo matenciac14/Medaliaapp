@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 const USER_SELECT = {
   id: true, email: true, name: true, password: true, role: true,
@@ -18,8 +19,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Correo y contraseña requeridos.' }, { status: 400 })
     }
 
+    // Brute-force protection: 10 intentos/min por email
+    const normalizedEmail = String(email).toLowerCase().trim()
+    const { allowed } = await rateLimitAsync(`mobile-login-${normalizedEmail}`, { limit: 10, windowMs: 60_000 })
+    if (!allowed) return NextResponse.json({ error: 'Demasiados intentos. Intenta en un minuto.' }, { status: 429 })
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
       select: USER_SELECT,
     })
 

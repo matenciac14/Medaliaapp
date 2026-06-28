@@ -6,6 +6,7 @@ import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
 import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 // Shape de columnas de User que se leen en auth
 const USER_SELECT = {
@@ -62,8 +63,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Brute-force protection: 10 intentos/min por email
+        const email = (credentials.email as string).toLowerCase().trim()
+        const { allowed } = await rateLimitAsync(`login-${email}`, { limit: 10, windowMs: 60_000 })
+        if (!allowed) return null
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
           select: USER_SELECT,
         })
 

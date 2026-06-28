@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/db/prisma'
 import { rateLimitAsync } from '@/lib/rate-limit'
-import { sendCoachWelcomeEmail } from '@/infrastructure/email/resend'
+import { sendCoachWelcomeEmail, sendEmailVerification } from '@/infrastructure/email/resend'
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
@@ -66,10 +67,20 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://medaliq.com'
+
     if (userRole === 'COACH') {
-      const loginUrl = `${process.env.NEXTAUTH_URL ?? 'https://medaliq.com'}/login`
-      sendCoachWelcomeEmail(email, name, loginUrl).catch(() => {})
+      sendCoachWelcomeEmail(email, name, `${baseUrl}/login`).catch(() => {})
     }
+
+    // Email verification — solo para registro email+password (Google OAuth ya verifica)
+    const verificationToken = randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+    await prisma.verificationToken.create({
+      data: { identifier: email, token: verificationToken, expires },
+    })
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`
+    sendEmailVerification(email, name, verifyUrl).catch(() => {})
 
     return NextResponse.json({ success: true }, { status: 201 })
   } catch (err) {

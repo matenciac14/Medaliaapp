@@ -9,6 +9,9 @@ import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
 import WeekNavBar from '../_components/WeekNavBar'
 import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
+import CoachCard from '../_components/CoachCard'
+import WeeklySummaryCard from '../_components/WeeklySummaryCard'
+import DailySessionCard from '../_components/DailySessionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
@@ -715,107 +718,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 showProgressBar={dashboardMode === 'TRAINING'}
               />
 
-              {/* ── TRAINING: detalle sesión de hoy — solo si estamos en la semana actual ── */}
-              {dashboardMode === 'TRAINING' && isCurrentWeek && todaySession && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{SESSION_ICONS[todaySession.type] ?? '🏅'}</span>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ')}
-                        </p>
-                        <div className="flex gap-1.5 flex-wrap mt-1">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                            {todaySession.durationMin} min
-                          </span>
-                          {todaySession.zoneTarget && todaySession.zoneTarget !== '—' && todaySession.zoneTarget !== '' && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                              Zona {todaySession.zoneTarget}
-                            </span>
-                          )}
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
-                            ${todaySession.intensity === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                              todaySession.intensity === 'LOW' ? 'bg-green-100 text-green-700' :
-                              'bg-sky-100 text-sky-700'}`}>
-                            {todaySession.intensity === 'HIGH' ? '🔥 ALTA' :
-                             todaySession.intensity === 'LOW' ? '🌿 BAJA' : '⚡ MODERADA'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {todaySession.completed ? (
-                        <span className="flex items-center gap-1 text-[#22c55e] text-sm font-semibold">
-                          <CheckCircle2 size={16} /> Completada
-                        </span>
-                      ) : (
-                        <QuickLog sessionId={todaySession.id} initialCompleted={false} />
-                      )}
-                      <Link href="/plan" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] transition-colors whitespace-nowrap">
-                        Ver mi plan →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── TRAINING: descanso o gym — solo si estamos en la semana actual ── */}
-              {dashboardMode === 'TRAINING' && isCurrentWeek && activePlan && !todaySession && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
-                  <span>😴</span>
-                  <span>Descanso hoy</span>
-                </div>
-              )}
-              {isCurrentWeek && hasGymToday && !todaySession && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span>💪</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{todayGymDay!.label}</p>
-                      <p className="text-xs text-gray-500">{todayGymDay!.exercises.length} ejercicios</p>
-                    </div>
-                  </div>
-                  <Link href="/gym/session" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg">
-                    Empezar
-                  </Link>
-                </div>
-              )}
-
-              {/* ── RECOVERY: footer ── */}
-              {dashboardMode === 'RECOVERY' && (
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <p className="text-xs text-gray-500">Movilidad, caminatas o descanso activo. Sin intensidad.</p>
-                  <Link href="/log" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] whitespace-nowrap">
-                    Registrar →
-                  </Link>
-                </div>
-              )}
-
-              {/* ── FREE: footer ── */}
-              {dashboardMode === 'FREE' && (
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <p className="text-xs text-gray-500">Entrenamiento libre — sin estructura fija</p>
-                  <Link href="/log" className="text-xs font-semibold text-[#f97316] hover:opacity-80 whitespace-nowrap">
-                    + Registrar sesión
-                  </Link>
-                </div>
-              )}
-
-              {/* ── TRAINING: footer badges ── */}
-              {dashboardMode === 'TRAINING' && activePlan && (
-                <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 flex-wrap items-center">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${PHASE_COLORS[planData.phase] ?? 'bg-gray-100 text-gray-600'}`}>
-                    Fase {phaseDisplay}
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
-                    Semana {selectedWeekNum || planData.currentWeek}/{planData.totalWeeks}
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
-                    {completedCount}/{totalTraining} completadas
-                  </span>
-                </div>
-              )}
+              <DailySessionCard
+                dashboardMode={dashboardMode}
+                isCurrentWeek={isCurrentWeek}
+                todaySession={todaySession}
+                hasActivePlan={!!activePlan}
+                hasGymToday={hasGymToday}
+                todayGymDay={todayGymDay}
+                planPhase={planData.phase}
+                phaseDisplay={phaseDisplay}
+                phaseColors={PHASE_COLORS}
+                selectedWeekNum={selectedWeekNum || planData.currentWeek}
+                totalWeeks={planData.totalWeeks}
+                completedCount={completedCount}
+                totalTraining={totalTraining}
+              />
             </div>
           </section>
 
@@ -838,89 +755,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Card coach real — solo si tiene coach asignado */}
           {coachRelation && (
-            <section>
-              <div className="bg-[#1e3a5f]/5 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold shrink-0">
-                  {(coachRelation.coach.name ?? 'C').charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{coachRelation.coach.name ?? 'Tu coach'}</p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {coachRelation.coach.coachProfile?.headline ?? coachRelation.coach.coachProfile?.specialties?.[0] ?? 'Coach deportivo'}
-                  </p>
-                </div>
-                {coachRelation.coach.coachProfile?.slug && (
-                  <Link
-                    href={`/p/${coachRelation.coach.coachProfile.slug}`}
-                    className="text-xs font-semibold text-[#1e3a5f] hover:text-[#f97316] transition-colors shrink-0"
-                  >
-                    Ver perfil →
-                  </Link>
-                )}
-              </div>
-            </section>
+            <CoachCard
+              name={coachRelation.coach.name ?? null}
+              headline={coachRelation.coach.coachProfile?.headline ?? coachRelation.coach.coachProfile?.specialties?.[0] ?? null}
+              slug={coachRelation.coach.coachProfile?.slug ?? null}
+            />
           )}
 
           {/* Resumen Rápido */}
-          {(lastCheckIn || currentVolume) && (
-            <section>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Resumen Rápido</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                {/* Último Check-in */}
-                {lastCheckIn && (
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Último Check-in</p>
-                      {formCheckInDate && <p className="text-[10px] text-gray-400">{formCheckInDate}</p>}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {lastCheckIn.hardestSessionRpe != null && (
-                        <div className="bg-orange-50 rounded-xl px-3 py-2">
-                          <p className="text-base font-semibold text-[#f97316] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
-                          <p className="text-[10px] text-gray-500 mt-1">RPE</p>
-                        </div>
-                      )}
-                      {lastCheckIn.energyLevel != null && (
-                        <div className="bg-green-50 rounded-xl px-3 py-2">
-                          <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/10 ★</p>
-                          <p className="text-[10px] text-gray-500 mt-1">Energía</p>
-                        </div>
-                      )}
-                      {lastCheckIn.weightKg != null && (
-                        <div className="bg-blue-50 rounded-xl px-3 py-2">
-                          <p className="text-base font-semibold text-[#3b6fdd] leading-none">{lastCheckIn.weightKg} kg</p>
-                          <p className="text-[10px] text-gray-500 mt-1">Peso</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Carga Semanal */}
-                {currentVolume != null && (
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Carga Semanal</p>
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-2xl font-black text-[#1e3a5f]">{currentVolume} km</span>
-                      {volumeDeltaPct != null && (
-                        <span className={`text-xs font-semibold ${volumeDeltaPct >= 0 ? 'text-[#22c55e]' : 'text-red-500'}`}>
-                          {volumeDeltaPct >= 0 ? '↑' : '↓'} {Math.abs(volumeDeltaPct)}% vs sem. anterior
-                        </span>
-                      )}
-                    </div>
-                    <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
-                      <div className="h-full bg-[#f97316] rounded-full" style={{ width: `${Math.min(100, Math.round((completedCount / Math.max(totalTraining, 1)) * 100))}%` }} />
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      {Math.round((completedCount / Math.max(totalTraining, 1)) * 100)}% del objetivo semanal
-                    </p>
-                  </div>
-                )}
-
-              </div>
-            </section>
-          )}
+          <WeeklySummaryCard
+            lastCheckIn={lastCheckIn ? {
+              hardestSessionRpe: lastCheckIn.hardestSessionRpe ?? null,
+              energyLevel: lastCheckIn.energyLevel ?? null,
+              weightKg: lastCheckIn.weightKg ?? null,
+            } : null}
+            formCheckInDate={formCheckInDate}
+            currentVolume={currentVolume ?? null}
+            volumeDeltaPct={volumeDeltaPct ?? null}
+            completedCount={completedCount}
+            totalTraining={totalTraining}
+          />
 
         </div>{/* fin columna principal */}
 
