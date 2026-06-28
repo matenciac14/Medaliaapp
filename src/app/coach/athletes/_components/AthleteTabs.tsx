@@ -14,8 +14,12 @@ const TABS = [
 ]
 
 const SPORT_LABELS: Record<string, string> = {
-  RUNNING:  '🏃 Running',
-  STRENGTH: '🏋️ Fuerza',
+  RUNNING:    '🏃 Running',
+  STRENGTH:   '🏋️ Fuerza',
+  CYCLING:    '🚴 Ciclismo',
+  SWIMMING:   '🏊 Natación',
+  TRIATHLON:  '🏅 Triatlón',
+  FOOTBALL:   '⚽ Fútbol',
 }
 
 function checkInColor(days: number): string {
@@ -50,11 +54,14 @@ export default function AthleteTabs({
   athletes: initialAthletes,
   hasMore: initialHasMore,
   nextCursor: initialCursor,
+  overdueAthleteIds = [],
 }: {
   athletes: Athlete[]
   hasMore: boolean
   nextCursor: string | null
+  overdueAthleteIds?: string[]
 }) {
+  const overdueSet = new Set(overdueAthleteIds)
   const [tab, setTab] = useState('all')
   const [search, setSearch] = useState('')
   const [allAthletes, setAllAthletes] = useState<Athlete[]>(initialAthletes)
@@ -187,11 +194,12 @@ export default function AthleteTabs({
                   <tr key={a.id} className={`hover:bg-gray-50 transition-colors ${currentStatus === 'PAUSED' ? 'opacity-60' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="font-semibold text-gray-900">{a.name}</div>
-                      {(a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop) && (
+                      {(a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || overdueSet.has(a.id)) && (
                         <div className="flex gap-1 mt-0.5 flex-wrap">
                           {a.alertFlags.noCheckin  && <span className="text-[10px] text-red-600    bg-red-50    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
-                          {a.alertFlags.highRpe    && <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">⚠ RPE alto</span>}
+                          {a.alertFlags.highRpe    && <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
                           {a.alertFlags.weightDrop && <span className="text-[10px] text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded">⚠ Peso</span>}
+                          {overdueSet.has(a.id)    && <span className="text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
                         </div>
                       )}
                     </td>
@@ -264,6 +272,7 @@ export default function AthleteTabs({
             currentStatus={statuses[athlete.id] ?? athlete.status}
             isToggling={toggling[athlete.id] ?? false}
             onToggleStatus={() => handleToggleStatus(athlete.id)}
+            hasOverdue={overdueSet.has(athlete.id)}
           />
         ))}
       </div>
@@ -289,13 +298,15 @@ function AthleteCard({
   currentStatus,
   isToggling,
   onToggleStatus,
+  hasOverdue = false,
 }: {
   athlete: Athlete
   currentStatus: 'ACTIVE' | 'PAUSED'
   isToggling: boolean
   onToggleStatus: () => void
+  hasOverdue?: boolean
 }) {
-  const hasAlerts = athlete.alertFlags.noCheckin || athlete.alertFlags.highRpe || athlete.alertFlags.weightDrop
+  const hasAlerts = athlete.alertFlags.noCheckin || athlete.alertFlags.highRpe || athlete.alertFlags.weightDrop || hasOverdue
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 ${currentStatus === 'PAUSED' ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -348,8 +359,9 @@ function AthleteCard({
         {hasAlerts ? (
           <div className="flex flex-wrap gap-1">
             {athlete.alertFlags.noCheckin  && <span className="text-[10px] bg-red-50    text-red-700    border border-red-100    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
-            {athlete.alertFlags.highRpe    && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded">⚠ RPE alto</span>}
+            {athlete.alertFlags.highRpe    && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
             {athlete.alertFlags.weightDrop && <span className="text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-100 px-1.5 py-0.5 rounded">⚠ Peso</span>}
+            {hasOverdue                    && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
           </div>
         ) : <div />}
         <button

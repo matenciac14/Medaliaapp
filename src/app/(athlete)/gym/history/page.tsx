@@ -123,6 +123,7 @@ export default async function GymHistoryPage() {
 
             const exerciseList = Object.values(exerciseGroups)
             const completedSets = gs.setLogs.filter((sl) => sl.completed).length
+            const prCount = gs.setLogs.filter((sl) => sl.isPR).length
             const sessionVolume = gs.setLogs
               .filter((sl) => sl.completed)
               .reduce((acc, sl) => acc + (sl.weightKg ?? 0) * (sl.repsCompleted ?? 0), 0)
@@ -165,6 +166,11 @@ export default async function GymHistoryPage() {
                       <span className="flex items-center gap-1 text-xs font-semibold text-[#f97316]">
                         <Zap size={11} />
                         {Math.round(sessionVolume).toLocaleString()}kg
+                      </span>
+                    )}
+                    {prCount > 0 && (
+                      <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                        🏆 {prCount} PR
                       </span>
                     )}
                     <span className="text-xs text-gray-400">{completedSets} series</span>
@@ -216,9 +222,16 @@ export default async function GymHistoryPage() {
                               ) : (
                                 <span className="text-gray-400">— reps</span>
                               )}
-                              {sl.completed && (
-                                <CheckCircle2 size={13} className="text-green-500 ml-auto" />
-                              )}
+                              <span className="ml-auto flex items-center gap-1.5">
+                                {sl.isPR && (
+                                  <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                                    🏆 PR
+                                  </span>
+                                )}
+                                {sl.completed && !sl.isPR && (
+                                  <CheckCircle2 size={13} className="text-green-500" />
+                                )}
+                              </span>
                             </div>
                           ))}
                         </div>

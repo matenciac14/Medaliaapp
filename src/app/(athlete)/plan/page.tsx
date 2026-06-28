@@ -6,6 +6,7 @@ import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_compone
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { selectActivePlan } from '@/lib/plan/active-plan'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -94,13 +95,10 @@ export default async function PlanPage() {
     }
 
     if (activePlanData) {
-      const now = new Date()
-      const start = new Date(activePlanData.startDate)
-      const diffDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-      const currentWeek = Math.max(1, Math.min(activePlanData.totalWeeks, Math.floor(diffDays / 7) + 1))
+      const currentWeek = getPlanWeekNumber(activePlanData.startDate, activePlanData.totalWeeks)
 
       // Today's session for nutrition intensity
-      const todayDow = now.getDay() === 0 ? 7 : now.getDay() // 1=Mon..7=Sun
+      const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay() // 1=Mon..7=Sun
       const currentWeekData = activePlanData.weeks.find(w => w.weekNumber === currentWeek)
       const todaySession = currentWeekData?.sessions.find(s => s.dayOfWeek === todayDow)
       // Prefer stored intensity field (set by generator.ts); fall back to derived value

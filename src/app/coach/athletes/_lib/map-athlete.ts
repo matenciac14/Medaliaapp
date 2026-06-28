@@ -1,3 +1,5 @@
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+
 export const TAKE = 20
 
 export type MappedAthlete = {
@@ -74,7 +76,7 @@ export function mapRelation(rel: InputRow, now: Date): MappedAthlete {
     : 999
 
   const currentWeek = plan
-    ? Math.max(1, Math.floor((now.getTime() - new Date(plan.startDate).getTime()) / 604_800_000) + 1)
+    ? getPlanWeekNumber(new Date(plan.startDate), plan.totalWeeks)
     : 0
 
   const allPastSessions = plan?.weeks.flatMap((w) => w.sessions) ?? []

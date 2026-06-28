@@ -55,9 +55,10 @@ export default async function AthleteDetailPage({
         where: { userId: athleteId },
       }),
 
-      // Verify coach-athlete relation (security)
+      // Verify coach-athlete relation (security) + coach notes
       prisma.coachAthlete.findFirst({
         where: { coachId: session.user.id, athleteId },
+        select: { id: true, status: true, coachGoal: true, privateNotes: true },
       }),
     ])
 
@@ -120,6 +121,7 @@ export default async function AthleteDetailPage({
             detailText: s.detailText,
             zoneTarget: s.zoneTarget,
             coachNote: s.coachNote,
+            structure: s.structure,
             intensity: s.intensity ?? 'MODERATE',
             date: s.date,
           })),
@@ -168,6 +170,8 @@ export default async function AthleteDetailPage({
       nutritionPlan={nutritionPlanData}
       initialFeatures={initialFeatures}
       initialStatus={(coachRelation.status as 'ACTIVE' | 'PAUSED') ?? 'ACTIVE'}
+      coachGoal={coachRelation.coachGoal ?? null}
+      privateNotes={coachRelation.privateNotes ?? null}
     />
   )
 }

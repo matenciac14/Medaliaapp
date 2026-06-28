@@ -44,7 +44,8 @@ type PreviousLog = {
 }
 
 type SessionData = {
-  assignedWorkoutId: string
+  assignedWorkoutId: string | null
+  plannedSessionId: string | null
   templateName: string
   dayOfWeek: number
   isRestDay: boolean
@@ -246,17 +247,6 @@ export default function GymSessionPage() {
   const { data: authSession } = useSession()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
-
-  if (!authSession?.user?.features?.gym) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">🏋️</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
-      </div>
-    )
-  }
   const [error, setError] = useState<string | null>(null)
 
   const { display: timerDisplay, minutes: elapsedMinutes } = useSessionTimer()
@@ -273,6 +263,7 @@ export default function GymSessionPage() {
   // modal
   const [showModal, setShowModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [newPRs, setNewPRs] = useState<{ exerciseName: string | null; weightKg: number | null }[]>([])
 
   // Fetch session data on mount
   useEffect(() => {
@@ -403,7 +394,8 @@ export default function GymSessionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assignedWorkoutId: sessionData.assignedWorkoutId,
+          assignedWorkoutId: sessionData.assignedWorkoutId ?? undefined,
+          plannedSessionId: sessionData.plannedSessionId ?? undefined,
           dayOfWeek: sessionData.dayOfWeek,
           rpe,
           durationMin,
@@ -414,12 +406,29 @@ export default function GymSessionPage() {
 
       if (!res.ok) throw new Error('Error guardando sesión')
 
-      router.push('/gym?completed=1')
+      const data = await res.json()
+      if (data.newPRs?.length > 0) {
+        setNewPRs(data.newPRs)
+        setTimeout(() => router.push('/gym?completed=1'), 3000)
+      } else {
+        router.push('/gym?completed=1')
+      }
     } catch {
       setSubmitting(false)
       alert('Error al guardar la sesión. Intenta de nuevo.')
     }
   }, [sessionData, setsMap, router])
+
+  if (!authSession?.user?.features?.gym) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">🏋️</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -758,6 +767,27 @@ export default function GymSessionPage() {
           {canFinish ? '🏁 Finalizar sesión' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
         </button>
       </div>
+
+      {/* PR celebration banner */}
+      {newPRs.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+            <div className="text-5xl mb-4">🏆</div>
+            <h2 className="text-xl font-black text-gray-900 mb-2">¡Nuevo récord personal!</h2>
+            <div className="space-y-2 mb-6">
+              {newPRs.map((pr, i) => (
+                <div key={i} className="bg-orange-50 rounded-xl px-4 py-2">
+                  <p className="font-semibold text-gray-800 text-sm">{pr.exerciseName}</p>
+                  {pr.weightKg && (
+                    <p className="text-[#f97316] font-black text-lg">{pr.weightKg} kg</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">Redirigiendo...</p>
+          </div>
+        </div>
+      )}
 
       {/* Complete modal */}
       {showModal && (

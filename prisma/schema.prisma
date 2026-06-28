@@ -60,6 +60,10 @@ model User {
   // Mensajería
   sentMessages       Message[] @relation("SentMessages")
   receivedMessages   Message[] @relation("ReceivedMessages")
+
+  // Finanzas
+  coachPayments      Payment[] @relation("CoachPayments")
+  athletePayments    Payment[] @relation("AthletePayments")
 }
 
 enum UserRole {
@@ -106,14 +110,16 @@ model VerificationToken {
 // ─── COACH <> ATHLETE ───────────────────────────────────────────────────────
 
 model CoachAthlete {
-  id        String         @id @default(cuid())
-  coachId   String
-  athleteId String
-  status    AthleteStatus  @default(ACTIVE)
-  createdAt DateTime       @default(now())
+  id           String        @id @default(cuid())
+  coachId      String
+  athleteId    String
+  status       AthleteStatus @default(ACTIVE)
+  coachGoal    String?       // meta visible para el atleta (ej. "Bajar 5kg en 16 semanas")
+  privateNotes String?       // notas privadas del coach — el atleta nunca las ve
+  createdAt    DateTime      @default(now())
 
-  coach   User @relation("CoachRelation", fields: [coachId], references: [id])
-  athlete User @relation("AthleteRelation", fields: [athleteId], references: [id])
+  coach   User @relation("CoachRelation",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("AthleteRelation", fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@unique([coachId, athleteId])
 }
@@ -278,6 +284,7 @@ model PlannedSession {
   zoneTarget   String?
   structure    String?
   detailText   String?
+  sportLabel   String?          // etiqueta libre por deporte: "Sweet Spot 2×20min", "CSS 400m × 8"
   coachNote    String?
   date         DateTime
   workoutDayId String?          // link to WorkoutDay when type=FUERZA
@@ -327,6 +334,7 @@ model SessionLog {
   durationMin      Int?
   notes            String?
   garminActivityId String?
+  freeSessionType  String?   // solo para logs libres (plannedSessionId = null): RODAJE_Z2 | FUERZA | OTRO
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
@@ -542,6 +550,7 @@ model SetLog {
   weightKg          Float?
   repsCompleted     Int?
   completed         Boolean @default(false)
+  isPR              Boolean @default(false)
   notes             String?
 
   session         GymSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -739,6 +748,36 @@ model PerformanceBenchmark {
 
   @@index([userId, sport])
   @@index([userId, metric, testedAt])
+}
+
+// ─── FINANZAS ────────────────────────────────────────────────────────────────
+
+model Payment {
+  id          String        @id @default(cuid())
+  coachId     String
+  athleteId   String
+  amount      Float
+  currency    String        @default("COP")
+  description String?
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      PaymentStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  coach   User @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, status])
+  @@index([coachId, athleteId])
+  @@index([dueDate, status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 // ─── MENSAJERÍA ──────────────────────────────────────────────────────────────

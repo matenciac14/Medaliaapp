@@ -138,7 +138,7 @@ export const INITIAL_DATA: WizardData = {
   weightGoalKg: null,
   hrResting: null,
   hrMax: null,
-  hrSource: null,
+  hrSource: 'estimated',
   experienceLevel: null,
   daysPerWeek: 4,
   hoursPerSession: 1,

@@ -489,9 +489,10 @@ getSessionIntensity(type) → SessionIntensity:  [src/lib/plan/intensity.ts]
   DESCANSO → REST
 
 intensityToDayType(intensity) → DayType:  [src/lib/nutrition/day-type.ts]
-  HIGH → 'hard'  → targetKcalHard + carbsHardG
-  REST → 'rest'  → targetKcalRest + carbsEasyG*0.6 (daily-target) / *0.7 (otros)
-  otros→ 'easy'  → targetKcalEasy + carbsEasyG
+  HIGH     → 'hard'  → targetKcalHard    + carbsHardG
+  LOW      → 'low'   → targetKcalEasy*0.88 + carbsEasyG*0.75
+  REST     → 'rest'  → targetKcalRest    + carbsEasyG*0.7
+  MODERATE → 'easy'  → targetKcalEasy    + carbsEasyG
 
 Mapeo dominio → DB:
   PlannedSession.description ↔ DB.detailText
@@ -506,8 +507,8 @@ Mapeo dominio → DB:
 
 | # | Ubicación | Problema | Impacto |
 |---|-----------|----------|---------|
-| 1 | `daily-target.ts:65` | REST carbs: `carbsEasyG * 0.6` | Número diferente al que muestran nutrition page (`*0.7`) y calculate-food-log (`*0.7`) |
-| 2 | `daily-target.ts:50` | LOW kcal: `targetKcalEasy * 0.88` | calculate-food-log usa `targetKcalEasy - 200` — mismo concepto, cálculo diferente |
+| ~~1~~ | ~~`daily-target.ts:65`~~ | ~~REST carbs: `carbsEasyG * 0.6`~~ | ✅ Resuelto — unificado a `*0.7` en todos los archivos |
+| ~~2~~ | ~~`daily-target.ts:50`~~ | ~~LOW kcal: inconsistencia~~ | ✅ Resuelto — `daily-target.ts` y `calculate-food-log.ts` usan `*0.88` |
 | 3 | `middleware.ts` | Sin check de trial expirado | El upgrade se controla inline en páginas, no en middleware |
 | 4 | `UserConfig` | No existe campo `trial` en el tipo | El tier PRO/FREE se deriva de `features.aiPlan\|\|aiCoach` |
 | 5 | `generate-plan.use-case.ts:38` | `AI_ONBOARDING_ENABLED = false` | Sin recomendaciones AI en onboarding — preparado pero no activado |

@@ -62,7 +62,7 @@ function structTiradaLarga(durationMin: number, hasProgression = false): string 
 // ---------------------------------------------------------------------------
 // HALF_MARATHON_18W
 // Fases: Base (1-4), Desarrollo (5-10), Específico (11-15), Afinamiento (16-18)
-// Estructura: Lun=fuerza, Mar=Z2, Mié=calidad, Jue=cicla Z2, Vie=Z2+fuerza, Sáb=natación, Dom=tirada larga
+// Estructura: Lun=fuerza, Mar=Z2, Mié=calidad, Jue=Z1-Z2 recuperación, Vie=Z2, Dom=tirada larga
 // ---------------------------------------------------------------------------
 
 const halfMarathonQualityByPhase: Record<string, SessionTemplate> = {
@@ -129,10 +129,10 @@ function buildHalfMarathonWeek(
       qualitySession,
       {
         dayOfWeek: 4,
-        type: 'CICLA',
-        durationMin: 50,
-        zoneTarget: 'Z2',
-        structure: 'Cicla de bajo impacto Z2. Recuperación activa manteniendo base aeróbica.',
+        type: 'RODAJE_Z2',
+        durationMin: 35,
+        zoneTarget: 'Z1-Z2',
+        structure: 'Recuperación activa. Rodaje muy suave Z1-Z2 — si sientes fatiga, camina. Movilidad de cadera al terminar.',
       },
       {
         dayOfWeek: 5,
@@ -140,13 +140,6 @@ function buildHalfMarathonWeek(
         durationMin: 40,
         zoneTarget: 'Z2',
         structure: 'Rodaje Z2 + 15min fuerza core y movilidad de cadera post-rodaje.',
-      },
-      {
-        dayOfWeek: 6,
-        type: 'NATACION',
-        durationMin: 45,
-        zoneTarget: 'Z1-Z2',
-        structure: 'Natación técnica. Trabajo de brazada y patada. Recuperación activa.',
       },
       {
         dayOfWeek: 7,
@@ -422,7 +415,7 @@ export const FIVE_K_8W: PlanTemplate = {
       sessions: [
         { dayOfWeek: 1, type: 'RODAJE_Z2', durationMin: 20, zoneTarget: 'Z1-Z2', structure: 'Trote suave 20min.' },
         { dayOfWeek: 3, type: 'RODAJE_Z2', durationMin: 20, zoneTarget: 'Z2', structure: '15min suave + 4×100m strides rápidos.' },
-        { dayOfWeek: 6, type: 'DESCANSO', durationMin: 10, zoneTarget: 'Z1', structure: 'Caminata 10min + estiramientos suaves.' },
+        // Día 6 (sáb): descanso antes de carrera — sin sesión planificada
       ],
     },
   ],
@@ -492,13 +485,7 @@ function buildRecompWeek(
         zoneTarget: 'Z1-Z2',
         structure: 'Cardio suave recuperación: caminata 45min o bici estática Z1-Z2. Sin impacto.',
       },
-      {
-        dayOfWeek: 7,
-        type: 'DESCANSO',
-        durationMin: 30,
-        zoneTarget: 'Z1',
-        structure: 'Descanso activo: yoga, movilidad, foam rolling. Máximo 30min de actividad ligera.',
-      },
+      // Día 7 (dom): descanso activo — sin sesión planificada (yoga/movilidad libre)
     ],
   }
 }

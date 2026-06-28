@@ -74,12 +74,9 @@ export async function GET(
     runningSessions[s.dayOfWeek] = { type: s.type, durationMin: s.durationMin, intensity: s.intensity }
   }
 
-  if (!assignment) {
-    return NextResponse.json({ assignment: null, recentSessions: [], runningSessions: {} })
-  }
-
-  const recentSessions = await prisma.gymSession.findMany({
-    where: { athleteId, assignedWorkoutId: assignment.id, completed: true },
+  // Fetch recent sessions — all completed gym sessions regardless of path (assignment or plan-based)
+  const recentSessionsRaw = await prisma.gymSession.findMany({
+    where: { athleteId, completed: true },
     orderBy: { date: 'desc' },
     take: 5,
     select: {
@@ -89,8 +86,28 @@ export async function GET(
       durationMin: true,
       rpe: true,
       exerciseOverrides: true,
+      assignedWorkoutId: true,
+      plannedSessionId: true,
+      plannedSession: {
+        select: { workoutDay: { select: { label: true } } },
+      },
     },
   })
+
+  const recentSessions = recentSessionsRaw.map(s => ({
+    id: s.id,
+    date: s.date.toISOString().split('T')[0],
+    dayOfWeek: s.dayOfWeek,
+    durationMin: s.durationMin,
+    rpe: s.rpe,
+    overridesCount: Array.isArray(s.exerciseOverrides) ? (s.exerciseOverrides as unknown[]).length : 0,
+    source: s.assignedWorkoutId ? 'assignment' : 'plan',
+    label: s.plannedSession?.workoutDay?.label ?? null,
+  }))
+
+  if (!assignment) {
+    return NextResponse.json({ assignment: null, recentSessions, runningSessions })
+  }
 
   return NextResponse.json({
     assignment: {
@@ -119,14 +136,7 @@ export async function GET(
         })),
       },
     },
-    recentSessions: recentSessions.map(s => ({
-      id: s.id,
-      date: s.date.toISOString().split('T')[0],
-      dayOfWeek: s.dayOfWeek,
-      durationMin: s.durationMin,
-      rpe: s.rpe,
-      overridesCount: Array.isArray(s.exerciseOverrides) ? (s.exerciseOverrides as unknown[]).length : 0,
-    })),
+    recentSessions,
     runningSessions,
   })
 }

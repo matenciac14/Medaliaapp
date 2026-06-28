@@ -8,7 +8,7 @@ import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError } from '@/lib/api/responses'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 
 /** Mobile sends energy and stress on a 1-5 scale — normalize to 1-10 for consistency. */
 function scale5to10(v: number): number {
@@ -28,11 +28,9 @@ export async function GET(req: NextRequest) {
       select: { startDate: true, totalWeeks: true },
     })
 
-    const weekNumber = plan ? getPlanWeekNumber(plan.startDate, plan.totalWeeks) : null
-
-    if (!weekNumber) {
-      return ok({ submitted: false, weekNumber: null, data: null })
-    }
+    const weekNumber = plan
+      ? getPlanWeekNumber(plan.startDate, plan.totalWeeks)
+      : getCurrentISOWeek()
 
     const existing = await prisma.weeklyCheckIn.findFirst({
       where: { userId: mobile.id, weekNumber },

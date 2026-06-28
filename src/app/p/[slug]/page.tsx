@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 import { auth } from '@/auth'
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { JoinProgramButton } from '@/app/p/_components/JoinProgramButton'
 
 function initials(name: string | null): string {
@@ -58,10 +58,6 @@ export default async function CoachProfilePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-
-  if (slug === 'ai-coach') {
-    redirect('/p/ai-coach')
-  }
 
   const profile = await prisma.coachProfile.findFirst({
     where: { slug, isPublic: true },

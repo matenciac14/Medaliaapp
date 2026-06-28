@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
-          include: { sessions: { include: { log: true } } },
+          include: { sessions: { where: { date: { lte: new Date() } }, include: { log: true } } },
         },
       },
     }),

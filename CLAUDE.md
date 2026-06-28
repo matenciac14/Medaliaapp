@@ -44,6 +44,28 @@ El agente evalúa cada tarea y decide qué skills cargar. No espera instrucción
 ## Qué es
 SaaS de coaching deportivo con AI para LatAm. Cubre recomposición corporal, metas de carrera (cualquier deporte) y entrenadores con atletas. El "cerebro" es un AI coach que hace intake personalizado por deporte, genera planes periodizados y los ajusta según datos reales.
 
+## Filosofía de producto
+
+### Quién usa el producto y quién paga
+- **Coach**: cliente pagador. Gestiona atletas, crea planes, cobra honorarios. Su experiencia tiene prioridad en features de gestión.
+- **Atleta**: usuario final. Llega por invitación del coach (B2B) o por registro directo (B2C). Ejecuta el plan en mobile.
+- **El coach es el canal de distribución**: sin coaches no hay atletas. Features que facilitan al coach incorporar y retener atletas son P0.
+
+### Principios de diseño del producto
+- **Mobile-first para atletas**: los atletas viven en la app mobile. Cualquier feature de atleta requiere versión mobile antes de considerarse completa.
+- **Simplicidad sobre features**: un flow de 2 pasos es mejor que uno de 4 con más opciones. Ante la duda, hacer menos pero mejor.
+- **Planes vivos, no PDFs**: el plan se ajusta automáticamente según check-ins reales. Nunca es un documento estático descargable.
+- **AI como asistente, no como protagonista**: la AI apoya al coach y al atleta, no los reemplaza. El coach siempre puede sobreescribir cualquier decisión de la AI.
+
+### Idioma y mercado
+- **UI siempre en español**: toda copia de interfaz, mensajes de error, labels y notificaciones van en español. Nunca inglés en texto visible al usuario.
+- **LatAm**: contexto cultural colombiano/latinoamericano. Monedas: COP, USD, MXN, ARS. Timezone: América/Bogotá como referencia.
+
+### Guardrails de AI
+- La AI **NO puede medicar ni diagnosticar**. Solo coaching deportivo y nutricional general.
+- Ante banderas rojas médicas (dolor agudo, síntomas de lesión grave) → escalar al coach o médico, nunca continuar el flujo AI.
+- El coach siempre revisa y aprueba los planes generados por AI antes de que el atleta los ejecute (flujo B2B).
+
 ## Stack
 - Next.js 16 App Router + TypeScript + PostgreSQL + **Prisma 7**
 - Tailwind CSS v4 + shadcn/ui
@@ -327,6 +349,7 @@ src/app/
     clients/new/page.tsx
     plan/[id]/review/page.tsx
     invite/page.tsx
+    finanzas/page.tsx       ← KPIs + form + filtros + lista de pagos (PENDING/PAID/OVERDUE)
     settings/page.tsx
   admin/
     page.tsx (KPIs)
@@ -371,8 +394,10 @@ src/app/
     coach/gym/routines/
     coach/gym/routines/[id]/assign/
     coach/gym/athlete/[id]/logs/
+    coach/payments/                     ← GET (auto-OVERDUE) + POST: pagos coach
+    coach/payments/[paymentId]/         ← PATCH (marcar PAID) + DELETE
     gym/session/today/
-    gym/session/complete/
+    gym/session/complete/               ← devuelve newPRs[] con isPR detection
     gym/session/[id]/
 ```
 
@@ -380,6 +405,7 @@ src/app/
 - `DATABASE_URL` — pooler URL para runtime/queries
 - `DIRECT_URL` — direct URL para migraciones
 - Migraciones aplicadas: `init`, `add_user_config`, `gym_feature`, `marketplace`, `add_coach_note_to_planned_session`, `add_system_config`, `add_sport_fields_to_health_profile`
+- Modelos añadidos vía `db push`: `Payment` (PaymentStatus enum), `SetLog.isPR`, `CoachAthlete onDelete:Cascade`
 - Seed: `pnpm prisma db seed` → 39 ejercicios globales + usuarios de prueba
 - Usuarios seed:
   - `admin@medaliq.com` / `admin123!` — ADMIN

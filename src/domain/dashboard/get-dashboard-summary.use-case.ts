@@ -8,7 +8,7 @@
  *   result.planIdToComplete — if non-null, the route must mark that plan COMPLETED in DB.
  */
 
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { parseUserConfig } from '@/lib/config/user-config'
@@ -19,8 +19,9 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 type SessionLog = { id: string; log: { id: string } | null; type: string; dayOfWeek: number; durationMin: number | null; zoneTarget: string | null; intensity: string | null; detailText: string | null; coachNote?: string | null }
 type PlanWeek = { weekNumber: number; phase: string; volumeKm: number | null; sessions: SessionLog[] }
 type ActivePlan = { id: string; name: string; startDate: Date; totalWeeks: number; weeks: PlanWeek[] }
-type CheckIn = { recordedAt: Date; weightKg: number | null; sleepHours: number | null; energyLevel: number | null; hardestSessionRpe: number | null }
+type CheckIn = { recordedAt: Date; weekNumber: number; weightKg: number | null; hrResting: number | null; sleepHours: number | null; energyLevel: number | null; hardestSessionRpe: number | null }
 type NutritionPlan = { targetKcalHard: number; targetKcalEasy: number; targetKcalRest: number; proteinG: number; carbsHardG: number; carbsEasyG: number; fatG: number }
+type RecentLogInput = { completedAt: Date; freeSessionType?: string | null; durationMin?: number | null; rpe?: number | null; plannedSession?: { type: string } | null }
 
 export type AssignedWorkoutInput = {
   template: { days: { dayOfWeek: number; isRestDay: boolean }[] }
@@ -41,7 +42,7 @@ export type DashboardInput = {
   activePlanRaw: ActivePlan | null
   lastCompletedPlan: { name: string; endDate: Date } | null
   checkIns: CheckIn[]
-  recentLogs: { completedAt: Date }[]
+  recentLogs: RecentLogInput[]
   nutritionPlan: NutritionPlan | null
   assignedWorkout?: AssignedWorkoutInput
 }
@@ -87,6 +88,7 @@ export type DashboardSummary = {
   mode: 'TRAINING' | 'RECOVERY' | 'FREE'
   recoveryDaysLeft: number | null
   completedPlanName: string | null
+  recentActivity: { type: string; completedAt: string; durationMin: number | null; rpe: number | null }[]
 }
 
 export type DashboardResult = {
@@ -99,7 +101,6 @@ export type DashboardResult = {
 export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const { user, activePlanRaw, lastCompletedPlan, checkIns, recentLogs, nutritionPlan, assignedWorkout } = input
   const todayDow = jsToOurDow(new Date().getDay())
-  const weekAgo = new Date(); weekAgo.setHours(0, 0, 0, 0); weekAgo.setDate(weekAgo.getDate() - 7)
 
   // ── Plan lifecycle ────────────────────────────────────────────────
   let planIdToComplete: string | null = null
@@ -252,7 +253,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   // ── Weight progress ───────────────────────────────────────────────
   const currentWeight = lastCheckIn?.weightKg ?? user?.profile?.weightKg ?? null
   const targetWeight = user?.profile?.weightGoalKg ?? null
-  const startWeight = user?.profile?.weightKg ?? null
+  const startWeight = [...checkIns].reverse().find(c => c.weightKg != null)?.weightKg ?? user?.profile?.weightKg ?? null
   let weeklyWeightChange: number | null = null
   if (lastCheckIn?.weightKg && prevCheckIn?.weightKg) {
     const daysDiff = Math.max(1,
@@ -281,6 +282,14 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     }
   }
 
+  // ── Recent activity (para modo FREE sin plan activo) ─────────────────────
+  const recentActivity = recentLogs.slice(0, 5).map(l => ({
+    type: l.freeSessionType ?? l.plannedSession?.type ?? 'OTRO',
+    completedAt: l.completedAt.toISOString(),
+    durationMin: l.durationMin ?? null,
+    rpe: l.rpe ?? null,
+  }))
+
   return {
     planIdToComplete,
     summary: {
@@ -290,14 +299,19 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
       metrics: {
         weightKg: currentWeight,
         weightGoalKg: targetWeight,
-        hrResting: user?.profile?.hrResting ?? null,
+        hrResting: lastCheckIn?.hrResting ?? user?.profile?.hrResting ?? null,
         sleepHours: lastCheckIn?.sleepHours ?? user?.profile?.sleepHoursAvg ?? null,
       },
       weekSessions,
       nutritionTarget,
       completedCount,
       totalTraining,
-      checkinPending: !lastCheckIn || lastCheckIn.recordedAt < weekAgo,
+      checkinPending: (() => {
+        const currentWeekNum = activePlanRaw
+          ? getPlanWeekNumber(activePlanRaw.startDate, activePlanRaw.totalWeeks)
+          : getCurrentISOWeek()
+        return !lastCheckIn || lastCheckIn.weekNumber !== currentWeekNum
+      })(),
       streakDays,
       raceDays,
       isRecomp,
@@ -315,6 +329,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
       mode,
       recoveryDaysLeft,
       completedPlanName,
+      recentActivity,
     },
   }
 }

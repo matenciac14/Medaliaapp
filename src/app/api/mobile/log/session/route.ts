@@ -14,10 +14,32 @@ export async function POST(req: NextRequest) {
 
   const userId = mobile.id
   const body = await req.json()
-  const { sessionId, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes } = body
+  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes } = body
 
-  if (!sessionId) return NextResponse.json({ error: 'sessionId requerido' }, { status: 400 })
+  if (!sessionId && !sessionType) {
+    return NextResponse.json({ error: 'sessionId o sessionType requerido' }, { status: 400 })
+  }
 
+  // ── Log libre (sin plan) ──────────────────────────────────────────────────
+  if (!sessionId) {
+    if (!completed) return NextResponse.json({ ok: true, skipped: true })
+    const log = await prisma.sessionLog.create({
+      data: {
+        userId,
+        plannedSessionId: null,
+        freeSessionType: sessionType,
+        completedAt: new Date(),
+        rpe: rpe ?? null,
+        hrAvg: hrAvg ?? null,
+        durationMin: actualDurationMin ?? null,
+        distanceKm: distanceKm ?? null,
+        notes: notes ?? null,
+      },
+    })
+    return NextResponse.json({ ok: true, id: log.id })
+  }
+
+  // ── Log vinculado a plan ──────────────────────────────────────────────────
   // Verificar ownership
   const planned = await prisma.plannedSession.findFirst({
     where: { id: sessionId, week: { plan: { userId } } },

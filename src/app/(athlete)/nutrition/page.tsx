@@ -5,6 +5,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
@@ -16,7 +17,8 @@ export default async function NutritionPage() {
 
   const userId = session.user.id
 
-  const todayDow = jsToOurDow(new Date().getDay())
+  const bogotaDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }))
+  const todayDow = jsToOurDow(bogotaDate.getDay())
 
   // Get active plan first to compute currentWeek (timezone-safe — no UTC date range)
   const activePlan = await prisma.trainingPlan.findFirst({
@@ -72,8 +74,8 @@ export default async function NutritionPage() {
   const todayDayType: DayType = todaySession
     ? intensityToDayType(todaySession.intensity)
     : hasGymSessionToday
-      ? 'hard'
-      : 'easy'
+      ? 'easy'
+      : 'rest'
 
   const DAY_TYPE_LABELS = {
     hard: { label: 'Día duro',   emoji: '🔥', color: 'bg-orange-100 text-orange-700 border-orange-200' },
@@ -86,21 +88,14 @@ export default async function NutritionPage() {
   const hasMealPlan = !!mealPlan
   const hasFoodProfile = !!foodProfile
 
-  // Targets del día según tipo (para pasar al FoodGuide)
-  const todayKcal    = nutritionPlan
-    ? (todayDayType === 'hard' ? nutritionPlan.targetKcalHard
-      : todayDayType === 'rest' ? nutritionPlan.targetKcalRest
-      : todayDayType === 'low'  ? Math.round(nutritionPlan.targetKcalEasy * 0.88)
-      : nutritionPlan.targetKcalEasy)
-    : 0
-  const todayCarbs   = nutritionPlan
-    ? (todayDayType === 'hard' ? nutritionPlan.carbsHardG
-      : todayDayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7)
-      : todayDayType === 'low'  ? Math.round(nutritionPlan.carbsEasyG * 0.75)
-      : nutritionPlan.carbsEasyG)
-    : 0
-  const todayProtein = nutritionPlan?.proteinG ?? 0
-  const todayFat     = nutritionPlan?.fatG ?? 0
+  // Targets del día — fuente única de verdad: getDailyNutritionTarget
+  const todayIntensity = (todaySession?.intensity as string | null)
+    ?? (hasGymSessionToday ? 'MODERATE' : null)
+  const nt = nutritionPlan ? getDailyNutritionTarget(todayIntensity, nutritionPlan) : null
+  const todayKcal    = nt?.kcal ?? 0
+  const todayCarbs   = nt?.carbsG ?? 0
+  const todayProtein = nt?.proteinG ?? 0
+  const todayFat     = nt?.fatG ?? 0
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">

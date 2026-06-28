@@ -1410,6 +1410,258 @@ const PHASES = [
       },
     ],
   },
+  // ─── FASE 26 — TRACKER LIBRE (el núcleo que falta) ───────────────────────────
+  {
+    id: 'tracker-libre',
+    label: 'Fase 26 — Tracker Libre: El Producto Funciona Sin Plan',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Log libre sin plan — POST /api/mobile/log/session acepta sessionId: null',
+        done: false,
+        note: 'HOY: el endpoint requiere un sessionId (PlannedSession) obligatorio. Sin plan = sin log. FIX: hacer sessionId opcional. Cuando es null, requerir sessionType (RUNNING|FUERZA|OTRO) y opcionalmente sport. Crear SessionLog con plannedSessionId: null. El historial muestra la sesión igual que las vinculadas a un plan.',
+      },
+      {
+        title: 'UI mobile: pantalla de log libre sin sessionId en log.tsx',
+        done: false,
+        note: 'Hoy log.tsx requiere sessionId como URL param y redirige si no lo recibe. Cambiar para que funcione en modo libre: si no hay sessionId, mostrar selector de tipo de actividad (Correr / Gym / Otro) + campos RPE, duración, distancia (si es running), notas. POST a /api/mobile/log/session con sessionId: null.',
+      },
+      {
+        title: 'Gym tracker libre — sin AssignedWorkout ni TrainingPlan',
+        done: false,
+        note: 'Hoy gym-session.tsx arranca vacío si no hay AssignedWorkout ni FUERZA en plan. Agregar modo libre: selector de ejercicios desde la DB global (39+ ejercicios), el atleta arma su sesión manualmente. Al terminar: GymSession sin assignedWorkoutId ni plannedSessionId. Aparece en historial igual.',
+      },
+      {
+        title: 'Dashboard atleta sin plan — mostrar logs reales de la semana',
+        done: false,
+        note: 'Dashboard hoy muestra vacío para atletas sin TrainingPlan activo. Cambio: si no hay plan, renderizar los últimos 7 SessionLogs del usuario con fecha, tipo y RPE. La semana muestra actividad real aunque no haya plan estructurado. Datos ya disponibles (recentLogs ya se carga en la query del dashboard).',
+      },
+      {
+        title: 'Dashboard mobile sin plan — misma lógica que web',
+        done: false,
+        note: '/api/mobile/dashboard: cuando no hay trainingPlan activo, incluir en la respuesta los últimos 5 SessionLogs del usuario (fecha, tipo, RPE, duración). El dashboard mobile muestra actividad reciente en lugar de vacío. Reutilizar la query de SessionLog que ya existe en el endpoint.',
+      },
+      {
+        title: 'Historial de actividad unificado — plan + libre juntos',
+        done: false,
+        note: 'En /progress (web + mobile) y en el historial del dashboard: mezclar SessionLogs con plannedSessionId (del plan) y SessionLogs sin plannedSessionId (libres) en una misma vista cronológica. Ordenar por completedAt desc. Label: si tiene plan → tipo del plan; si es libre → tipo elegido por el usuario.',
+      },
+    ],
+  },
+  // ─── FASE 27 — TEMPLATES: ELIMINAR CICLA/NATACION ────────────────────────────
+  {
+    id: 'templates-fix',
+    label: 'Fase 27 — Templates: Eliminar CICLA/NATACION del Plan Running',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Reemplazar sesión CICLA (jueves) en HALF_MARATHON_18W por OTRO (cardio complementario)',
+        done: false,
+        note: 'templates.ts línea 132-137: tipo CICLA → tipo OTRO. Structure: "Cardio de bajo impacto opcional: ciclismo, natación, elíptico o caminata. Recuperación activa manteniendo base aeróbica. El atleta elige la modalidad." Elimina la prescripción de un deporte que el atleta puede no practicar.',
+      },
+      {
+        title: 'Reemplazar sesión NATACION (sábado) en HALF_MARATHON_18W por OTRO (movilidad/cardio)',
+        done: false,
+        note: 'templates.ts línea 144-149: tipo NATACION → tipo OTRO. Structure: "Movilidad activa o cardio suave opcional: natación, yoga, pilates, caminata. Recuperación activa. El atleta elige según disponibilidad." Misma filosofía: el plan sugiere el propósito, no el deporte.',
+      },
+      {
+        title: 'Verificar que TEN_K_12W, FIVE_K_8W y BODY_RECOMPOSITION_16W no tienen CICLA/NATACION',
+        done: false,
+        note: 'Hacer Grep de CICLA y NATACION en templates.ts para confirmar que solo están en HALF_MARATHON_18W. Si aparecen en otros templates, reemplazar con el mismo patrón OTRO.',
+      },
+      {
+        title: 'Actualizar getSessionIntensity en intensity.ts — CICLA/NATACION ya no necesitan mapeo especial',
+        done: false,
+        note: 'src/lib/plan/intensity.ts: CICLA y NATACION mapean a MODERATE actualmente. Verificar si el tipo OTRO ya mapea a MODERATE (debería). Si CICLA y NATACION siguen en el enum SessionType de DB, mantener el mapeo para datos históricos — no eliminar del enum.',
+      },
+    ],
+  },
+  // ─── FASE 28 — GYM: WORKOUTDAYS DE SISTEMA PARA PLANES ───────────────────────
+  {
+    id: 'gym-system-workoutdays',
+    label: 'Fase 28 — Gym: WorkoutDays de Sistema para Sesiones FUERZA en Planes',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Migración DB: WorkoutTemplate puede tener coachId null (plantilla de sistema)',
+        done: false,
+        note: 'Ya tiene coachId String? (nullable). Verificar que el schema lo permite y que WorkoutTemplate.findMany({ where: { coachId: null } }) funciona. Si hay validación de NOT NULL en DB, ajustar la migración. Las plantillas de sistema se distinguen por coachId=null.',
+      },
+      {
+        title: 'Seed: crear WorkoutTemplate de sistema con WorkoutDays para runners',
+        done: false,
+        note: 'Crear WorkoutTemplate { coachId: null, name: "Fuerza corredor", isGlobal: true } con 2 WorkoutDays: (1) "Fuerza BASE" — sentadillas, lunges, hip thrust, core (3×12). (2) "Fuerza ESPECÍFICO" — potencia: saltos, elevaciones, isométricos. Estos días se vinculan a sesiones FUERZA del plan generado.',
+      },
+      {
+        title: 'generate-plan.use-case.ts: vincular sesiones FUERZA al WorkoutDay de sistema',
+        done: false,
+        note: 'Al generar el plan, para cada sesión type=FUERZA: buscar el WorkoutDay de sistema que corresponde a la fase (BASE→"Fuerza BASE", ESPECIFICO→"Fuerza ESPECÍFICO"). Guardar PlannedSession.workoutDayId = workoutDay.id. El gym tracker podrá cargar ejercicios reales en lugar de pantalla vacía.',
+      },
+      {
+        title: 'Gym tracker: cargar ejercicios del WorkoutDay cuando hay plannedSessionId con workoutDayId',
+        done: false,
+        note: '/api/gym/session/today: el fallback plan-based ya busca PlannedSession con workoutDayId. Completar: incluir exercises del WorkoutDay vinculado en la respuesta. gym-session.tsx (mobile) y gym/session/page.tsx (web) usan estos ejercicios como punto de partida de la sesión.',
+      },
+    ],
+  },
+  // ─── FASE 29 — ALIMENTACIÓN: PLAN CON PORCIONES REALES ───────────────────────
+  {
+    id: 'meal-plan-upgrade',
+    label: 'Fase 29 — Alimentación: Plan con Porciones Reales',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'buildStaticMealPlan: incluir porciones en gramos usando Foods de la DB',
+        done: false,
+        note: 'Hoy el plan de comidas dice "Desayuno: pollo — 450 kcal" sin especificar gramos. FIX: en generate-meal-plan.ts, cuando availableFoodIds están presentes, buscar los Food de DB (macros por 100g) y calcular la porción exacta: porción = Math.round((kcalPorComida × fracProteina) / (food.protein / 100)) g. Resultado: "Pechuga de pollo — 150g (220 kcal, 34g proteína)".',
+      },
+      {
+        title: 'FoodProfile.availableFoodIds: requerir siempre IDs, no solo strings libres',
+        done: false,
+        note: 'Hoy FoodProfile guarda availableFoods: String[] (nombres libres) Y availableFoodIds: String[] (IDs de Food). El flujo FoodSetupFlow ya usa IDs correctamente. Verificar que generate-meals route siempre recibe availableFoodIds con al menos 2 elementos, y que buildStaticMealPlan los usa para calcular porciones reales.',
+      },
+      {
+        title: 'Validar MealPlan JSON con Zod antes de renderizar en NutritionContent',
+        done: false,
+        note: 'nutrition/page.tsx pasa mealPlan.data as any a NutritionContent. Si el JSON tiene estructura inesperada (plan viejo sin porciones, o generado con error), el componente puede crashear silenciosamente. Agregar schema Zod para { hard, easy, rest } → { meals[], rules[], hydrationL }. Fallback: empty state con CTA a regenerar.',
+      },
+      {
+        title: 'UI: mostrar gramos y macros por porción en NutritionContent',
+        done: false,
+        note: 'NutritionContent.tsx: cuando la comida tiene gramsPerServing, mostrar "150g · 220 kcal · 34g prot". Cuando no tiene gramos (plan legacy), mostrar el formato actual. La UI debe ser backward-compatible con planes generados sin porciones.',
+      },
+    ],
+  },
+  // ─── FASE 30 — CONSTRUCTOR VISUAL: ENDPOINT POST /CUSTOM ─────────────────────
+  {
+    id: 'plan-builder-complete',
+    label: 'Fase 30 — Constructor Visual de Planes: Implementar POST /custom',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Implementar POST /api/coach/athlete/[id]/plan/custom',
+        done: false,
+        note: 'El constructor visual (Fase 18) está completo en UI pero el endpoint POST /custom no existe. Body: { name, totalWeeks, weeks: [{ weekNumber, phase, isRecoveryWeek, sessions: [{ dayOfWeek, type, durationMin, zoneTarget, detailText }] }] }. Crea TrainingPlan + PlanWeeks + PlannedSessions en $transaction. Misma estructura que generate-plan.use-case.ts pero sin templates — usa exactamente lo que el coach construyó.',
+      },
+      {
+        title: 'Implementar PATCH /api/coach/plan/[planId]/week/[weekId]',
+        done: false,
+        note: 'Endpoint para editar metadata de una semana: phase, volumeKm, focusDescription, isRecoveryWeek. Verificar que el plan pertenece al coach antes de editar. Actualiza la intensidad de todas las sesiones de la semana si cambia la fase.',
+      },
+      {
+        title: 'Componente WeekNav: mini-overview de todas las semanas + indicador de completitud',
+        done: false,
+        note: 'En el constructor visual: barra horizontal con puntos ●/○ por semana. Clic en punto → navega a esa semana. Muestra fase y si es recovery week. El coach puede ver el plan completo de un vistazo y navegar sin usar Anterior/Siguiente.',
+      },
+      {
+        title: '"Copiar semana anterior" en el constructor visual',
+        done: false,
+        note: 'Botón en el constructor: duplica todas las sesiones de la semana anterior en la semana actual. Reduce el trabajo repetitivo de construir planes de 16-18 semanas. Operación local (en estado React) — solo se persiste cuando el coach hace Submit.',
+      },
+      {
+        title: '"Generar desde template → abrir en constructor" — precarga y edita',
+        done: false,
+        note: 'Flujo: coach selecciona un template (5K, 10K, HM, Recomposición) → el constructor se abre con todas las semanas y sesiones precargadas desde el template. El coach edita lo que necesita y guarda como plan custom. Elimina el trabajo de construir desde cero y permite personalizar sobre una base sólida.',
+      },
+    ],
+  },
+  // ─── FASE 31 — PERFORMANCE BENCHMARKS ───────────────────────────────────────
+  {
+    id: 'benchmarks-completo',
+    label: 'Fase 31 — PerformanceBenchmarks: Medición de Progreso Deportivo',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Migración DB: modelo PerformanceBenchmark',
+        done: false,
+        note: 'Campos: id, userId, coachId?, sport (RUNNING|STRENGTH), metric (5K_TIME|10K_TIME|HM_TIME|MARATHON_TIME|1RM_SQUAT|1RM_BENCH|1RM_DEADLIFT|PACE_Z2), value Float, unit (seconds|kg|min_per_km), testedAt DateTime, notes String?, createdAt. Índice en (userId, sport, metric). Aplicar con pnpm prisma migrate deploy.',
+      },
+      {
+        title: 'API CRUD: GET + POST /api/coach/athlete/[id]/benchmarks',
+        done: false,
+        note: 'GET: devuelve historial de benchmarks del atleta, agrupado por metric, ordenado por testedAt desc. POST: crea nuevo benchmark. Solo el coach asignado al atleta puede crear (verificar CoachAthlete). El atleta puede leer sus propios benchmarks en GET /api/athlete/benchmarks.',
+      },
+      {
+        title: 'UI coach: registrar test desde Tab Resumen del panel atleta',
+        done: false,
+        note: 'Botón "Registrar test" en Tab Resumen. Modal: seleccionar sport → metric → value + unidad → fecha del test → notas opcionales. Al guardar: aparece en el historial de tests del atleta. Listado de los últimos 3 tests por metric con fecha.',
+      },
+      {
+        title: 'UI atleta: ver progresión de benchmarks en /progress',
+        done: false,
+        note: 'En /progress: sección "Mis marcas" con gráfica de línea por metric. "Tu 5K bajó de 28:30 a 25:10 en 12 semanas." Para atletas sin benchmarks: empty state con CTA al coach para registrar el primero. El atleta ve evidencia objetiva de que el entrenamiento funciona.',
+      },
+      {
+        title: 'generator.ts: calibrar zonas HR con benchmark reciente de running',
+        done: false,
+        note: 'Si existe un benchmark 5K_TIME o 10K_TIME reciente (< 90 días), usar la fórmula Riegel para predecir el tiempo objetivo en la carrera meta y ajustar las intensidades del plan. "Tu 5K es 25:10 → ritmo objetivo HM estimado: 5:28/km → Z3 ajustada a 5:20-5:40/km." Más personalizado que las zonas por porcentaje de FC.',
+      },
+    ],
+  },
+  // ─── FASE 32 — QA & HARDENING PRE-LANZAMIENTO ────────────────────────────────
+  {
+    id: 'qa-hardening',
+    label: 'Fase 32 — QA & Hardening: El Sistema Está Listo para Usuarios Reales',
+    period: 'Próximo',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#d8b4fe',
+    items: [
+      {
+        title: 'Zod validation en todos los endpoints POST/PATCH',
+        done: false,
+        note: 'Hoy la mayoría de las rutas confía demasiado en el cliente. Agregar Zod schemas en: /api/gym/session/complete, /api/log/session, /api/checkin, /api/mobile/checkin, /api/mobile/log/session, /api/coach/gym/routines, /api/coach/athlete/[id]/plan/custom. Devolver 400 con detalle del error de validación.',
+      },
+      {
+        title: 'Test E2E: onboarding STRENGTH → plan → gym tracker',
+        done: false,
+        note: 'Atleta elige STRENGTH en onboarding → BODY_RECOMPOSITION_16W generado → gym tracker carga ejercicios del WorkoutDay de sistema → completa sesión → aparece en historial. Verificar que el plan tiene semanas y sesiones en DB (no queda vacío).',
+      },
+      {
+        title: 'Test E2E: atleta sin plan → log libre → historial → dashboard con actividad',
+        done: false,
+        note: 'Atleta en modo FREE: sin plan asignado → tap "Registrar sesión" → elige tipo Correr → ingresa 30min + RPE 6 → POST /api/mobile/log/session con sessionId null → aparece en historial → dashboard muestra la sesión registrada. Flujo completo del tracker libre.',
+      },
+      {
+        title: 'Test E2E: gym tracker libre → sin rutina asignada → selección de ejercicios → guardar',
+        done: false,
+        note: 'Atleta sin AssignedWorkout ni Plan → abre gym tracker → modo libre → selecciona ejercicios de la biblioteca → registra sets → finaliza → GymSession sin assignedWorkoutId → aparece en gym-history. Verificar que el historial muestra la sesión correctamente.',
+      },
+      {
+        title: 'Google OAuth activar con dominio real en producción',
+        done: false,
+        note: 'El código de Google OAuth ya está implementado en auth.ts. Pendiente: Google Cloud Console → crear OAuth Client ID con dominio medaliq.com autorizado → agregar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel → UI: botón "Continuar con Google" en /login. Reducción de fricción en registro.',
+      },
+      {
+        title: 'Sentry para monitoreo de errores en producción',
+        done: false,
+        note: '@sentry/nextjs: captura errores en server components, API routes y client components. Alertas automáticas por email/Slack cuando algo falla. Gratis hasta 5k errores/mes. Esencial para detectar bugs en producción sin que el usuario los reporte manualmente.',
+      },
+      {
+        title: 'SEO: meta tags + sitemap para páginas públicas (/coaches, /p/[slug])',
+        done: false,
+        note: 'og:image, og:title, og:description en /coaches y /p/[slug]. sitemap.xml generado dinámicamente con todos los perfiles de coach. Las páginas del marketplace deben ser indexables para búsquedas "coach running Colombia", "entrenador personal LatAm".',
+      },
+    ],
+  },
 ]
 
 function progress(items: { done: boolean }[]) {

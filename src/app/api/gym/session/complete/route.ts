@@ -50,15 +50,52 @@ export async function POST(req: NextRequest) {
   if (!dayOfWeek || !Array.isArray(sets))
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
 
-  // Pre-fetch exercise names for denormalization
+  // Pre-fetch exercise names + exerciseId for denormalization and PR detection
   const weIds = [...new Set(sets.map(s => s.workoutExerciseId).filter(Boolean))]
   const workoutExercises = weIds.length > 0
     ? await prisma.workoutExercise.findMany({
         where: { id: { in: weIds } },
-        select: { id: true, exercise: { select: { name: true } } },
+        select: { id: true, exerciseId: true, exercise: { select: { name: true } } },
       })
     : []
   const weNameMap = new Map(workoutExercises.map(we => [we.id, we.exercise.name]))
+  const weExIdMap = new Map(workoutExercises.map(we => [we.id, we.exerciseId]))
+
+  // ── PR detection: max weightKg per exercise across all sessions ──────────────
+  const exerciseIds = [...new Set(workoutExercises.map(we => we.exerciseId))]
+  const maxPerExercise = new Map<string, number>()
+
+  if (exerciseIds.length > 0) {
+    const allWE = await prisma.workoutExercise.findMany({
+      where: { exerciseId: { in: exerciseIds } },
+      select: { id: true, exerciseId: true },
+    })
+    const weToExerciseId = new Map(allWE.map(we => [we.id, we.exerciseId]))
+
+    const historicalSets = await prisma.setLog.findMany({
+      where: {
+        workoutExerciseId: { in: allWE.map(we => we.id) },
+        session: { athleteId },
+        completed: true,
+        weightKg: { not: null },
+      },
+      select: { workoutExerciseId: true, weightKg: true },
+    })
+
+    for (const sl of historicalSets) {
+      if (!sl.workoutExerciseId || sl.weightKg === null) continue
+      const exId = weToExerciseId.get(sl.workoutExerciseId)
+      if (!exId) continue
+      const cur = maxPerExercise.get(exId) ?? 0
+      if (sl.weightKg > cur) maxPerExercise.set(exId, sl.weightKg)
+    }
+  }
+
+  function isPRSet(weId: string, weightKg: number | null, completed: boolean): boolean {
+    if (!completed || weightKg === null) return false
+    const exId = weExIdMap.get(weId)
+    return exId ? weightKg > (maxPerExercise.get(exId) ?? 0) : false
+  }
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -94,14 +131,18 @@ export async function POST(req: NextRequest) {
             weightKg: s.weightKg ?? null,
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
+            isPR: isPRSet(s.workoutExerciseId, s.weightKg, s.completed),
           })),
         },
       },
       select: { id: true },
     })
 
+    const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId, s.weightKg, s.completed))
+      .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
+
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
-    return NextResponse.json({ sessionId: gymSession.id }, { status: 201 })
+    return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
 
   // ─── AssignedWorkout path ────────────────────────────────────────────────────
@@ -133,13 +174,17 @@ export async function POST(req: NextRequest) {
           weightKg: s.weightKg ?? null,
           repsCompleted: s.repsCompleted ?? null,
           completed: s.completed,
+          isPR: isPRSet(s.workoutExerciseId, s.weightKg, s.completed),
         })),
       },
     },
     select: { id: true },
   })
 
+  const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId, s.weightKg, s.completed))
+    .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
+
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
 
-  return NextResponse.json({ sessionId: gymSession.id }, { status: 201 })
+  return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
 }

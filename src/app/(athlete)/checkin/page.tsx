@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import CheckInClient, { type PrevMetrics, type CheckInState } from './_components/CheckInClient'
 import type { WeekSession } from './_components/SessionsPanel'
 
@@ -63,7 +63,7 @@ export default async function CheckinPage() {
     }),
   ])
 
-  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : 0
+  const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : getCurrentISOWeek()
 
   const thisWeekCheckIn = checkIns.find((c) => c.weekNumber === currentWeek) ?? null
   const lastWeekCheckIn = checkIns.find((c) => c.weekNumber === currentWeek - 1) ?? null

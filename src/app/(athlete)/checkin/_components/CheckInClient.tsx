@@ -70,6 +70,8 @@ export default function CheckInClient({
   const [nutritionAdherence, setNutritionAdherence] = useState(0)
   const [notes, setNotes] = useState('')
 
+  const [showWellness, setShowWellness] = useState(false)
+
   const [alerts, setAlerts] = useState<string[]>([])
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -237,18 +239,28 @@ export default function CheckInClient({
             </section>
 
             <section className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">😴 Bienestar general</h2>
-              </div>
-              <div className="px-6 py-5 space-y-5">
-                <MetricSlider label="Calidad del sueño" value={sleepQuality} onChange={setSleepQuality} color="#1a9933" lowLabel="Muy mal" highLabel="Excelente" prevValue={prevMetrics.prevSleepScore} />
-                <MetricSlider label="Nivel de estrés" value={stressLevel} onChange={setStressLevel} color="#c33" lowLabel="Sin estrés" highLabel="Muy estresado" prevValue={prevMetrics.stressLevel} />
-                <MetricSlider label="Motivación" value={motivationLevel} onChange={setMotivationLevel} color="#1a9933" lowLabel="Sin motivación" highLabel="Muy motivado" prevValue={prevMetrics.motivationLevel} />
-                <MetricSlider label="Dolor / molestias" value={painLevel} onChange={setPainLevel} color={painColor} lowLabel="Sin dolor" highLabel="Dolor intenso" prevValue={prevMetrics.painLevel} />
-                {hasNutrition && (
-                  <MetricSlider label="Adherencia al plan de comida" value={nutritionAdherence} onChange={setNutritionAdherence} color="#14b8a6" lowLabel="No lo seguí" highLabel="Al 100%" prevValue={prevMetrics.prevNutritionAdherence} />
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowWellness(v => !v)}
+                className="w-full px-6 py-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50 transition-colors"
+              >
+                <h2 className="text-[15px] font-semibold text-[#0f1e30]">😴 Bienestar general <span className="text-xs font-normal text-gray-400 ml-1">opcional</span></h2>
+                <span className={`text-gray-400 text-sm transition-transform duration-200 ${showWellness ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              {showWellness && (
+                <div className="px-6 py-5 space-y-5">
+                  <MetricSlider label="Calidad del sueño" value={sleepQuality} onChange={setSleepQuality} color="#1a9933" lowLabel="Muy mal" highLabel="Excelente" prevValue={prevMetrics.prevSleepScore} />
+                  <MetricSlider label="Nivel de estrés" value={stressLevel} onChange={setStressLevel} color="#c33" lowLabel="Sin estrés" highLabel="Muy estresado" prevValue={prevMetrics.stressLevel} />
+                  <MetricSlider label="Motivación" value={motivationLevel} onChange={setMotivationLevel} color="#1a9933" lowLabel="Sin motivación" highLabel="Muy motivado" prevValue={prevMetrics.motivationLevel} />
+                  <MetricSlider label="Dolor / molestias" value={painLevel} onChange={setPainLevel} color={painColor} lowLabel="Sin dolor" highLabel="Dolor intenso" prevValue={prevMetrics.painLevel} />
+                  {hasNutrition && (
+                    <MetricSlider label="Adherencia al plan de comida" value={nutritionAdherence} onChange={setNutritionAdherence} color="#14b8a6" lowLabel="No lo seguí" highLabel="Al 100%" prevValue={prevMetrics.prevNutritionAdherence} />
+                  )}
+                </div>
+              )}
+              {!showWellness && (
+                <p className="px-6 py-3 text-xs text-gray-400">Estrés, motivación, calidad de sueño, dolor — ayudan al sistema a ajustar mejor tu plan.</p>
+              )}
             </section>
 
             {/* Notas + CTA (mobile) */}

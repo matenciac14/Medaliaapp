@@ -118,6 +118,33 @@ const PHASE_COLORS: Record<string, string> = {
 
 export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
+
+  // ── Estado para crear plan desde cero ──────────────────────────────────────
+  const [creating, setCreating]           = useState(false)
+  const [newName, setNewName]             = useState(`Plan ${athleteName.split(' ')[0]}`)
+  const [newWeeks, setNewWeeks]           = useState(12)
+  const [newStart, setNewStart]           = useState(() => new Date().toISOString().split('T')[0])
+  const [createError, setCreateError]     = useState<string | null>(null)
+  const [createLoading, setCreateLoading] = useState(false)
+
+  async function handleCreateCustomPlan() {
+    setCreateError(null)
+    setCreateLoading(true)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/plan/custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, totalWeeks: newWeeks, startDate: newStart }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error al crear el plan')
+      setPlan(data.plan)
+    } catch (err: any) {
+      setCreateError(err.message)
+    } finally {
+      setCreateLoading(false)
+    }
+  }
   const [weekIdx, setWeekIdx] = useState(0)
   const [modal, setModal] = useState<ModalState | null>(null)
   const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
@@ -285,27 +312,97 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
     }
   }
 
-  // ── No plan ───────────────────────────────────────────────────────────────
+  // ── No plan — formulario de creación desde cero ──────────────────────────
 
   if (!plan) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
         <BuilderHeader athleteId={athleteId} athleteName={athleteName} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-5xl mb-4">📋</p>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">Sin plan activo</h2>
-            <p className="text-gray-400 text-sm mb-6">
-              Primero crea un plan desde el panel del atleta
-            </p>
-            <Link
-              href={`/coach/athlete/${athleteId}`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-              style={{ backgroundColor: '#1e3a5f' }}
-            >
-              ← Ir al panel del atleta
-            </Link>
-          </div>
+        <div className="flex-1 flex items-center justify-center p-6">
+          {!creating ? (
+            <div className="text-center">
+              <p className="text-5xl mb-4">📋</p>
+              <h2 className="text-xl font-semibold text-gray-700 mb-2">Sin plan activo</h2>
+              <p className="text-gray-400 text-sm mb-6">Crea un plan en blanco y rellénalo sesión a sesión</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => setCreating(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: '#1e3a5f' }}
+                >
+                  + Crear plan en blanco
+                </button>
+                <Link
+                  href={`/coach/athlete/${athleteId}`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
+                >
+                  ← Ir al panel del atleta
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 w-full max-w-md space-y-5">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Nuevo plan de entrenamiento</h2>
+                <p className="text-sm text-gray-400 mt-1">Se crearán las semanas vacías. Agrega las sesiones desde el builder.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del plan</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="ej. Plan Running Temporada 2026"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
+                <select
+                  value={newWeeks}
+                  onChange={(e) => setNewWeeks(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                >
+                  {[4, 6, 8, 10, 12, 16, 18, 20, 24].map((w) => (
+                    <option key={w} value={w}>{w} semanas</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                <input
+                  type="date"
+                  value={newStart}
+                  onChange={(e) => setNewStart(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                />
+              </div>
+
+              {createError && (
+                <p className="text-sm text-red-500">{createError}</p>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => { setCreating(false); setCreateError(null) }}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateCustomPlan}
+                  disabled={createLoading || !newName.trim()}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: '#1e3a5f' }}
+                >
+                  {createLoading ? 'Creando...' : 'Crear plan →'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )

@@ -1,12 +1,11 @@
 import { prisma } from '@/lib/db/prisma'
 import { parseUserConfig } from '@/lib/config/user-config'
 
-function tier(role: string, cfg: ReturnType<typeof parseUserConfig>): { label: string; color: string } {
+function tier(role: string, rawConfig: unknown): { label: string; color: string } {
   if (role === 'ADMIN')  return { label: 'Admin',  color: 'bg-red-100 text-red-700' }
   if (role === 'COACH')  return { label: 'Coach',  color: 'bg-orange-100 text-orange-700' }
-  const f = cfg.features
-  const hasFeatures = f.plan || f.checkin || f.nutrition || f.progress
-  if (hasFeatures)       return { label: 'Pro',    color: 'bg-purple-100 text-purple-700' }
+  const f = ((rawConfig as Record<string, unknown>)?.features ?? {}) as Record<string, unknown>
+  if (f.aiPlan === true || f.aiCoach === true) return { label: 'Pro', color: 'bg-purple-100 text-purple-700' }
   return                        { label: 'Free',   color: 'bg-gray-100 text-gray-600' }
 }
 
@@ -16,7 +15,7 @@ export default async function AdminSubscriptionsPage() {
     select: { id: true, name: true, email: true, role: true, createdAt: true, config: true },
   })
 
-  const parsed = users.map((u) => ({ ...u, cfg: parseUserConfig(u.config), tier: tier(u.role, parseUserConfig(u.config)) }))
+  const parsed = users.map((u) => ({ ...u, cfg: parseUserConfig(u.config), tier: tier(u.role, u.config) }))
 
   const counts = {
     Free:  parsed.filter((u) => u.tier.label === 'Free').length,

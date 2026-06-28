@@ -17,7 +17,7 @@ export async function GET(
           id: true,
           name: true,
           image: true,
-          coachProfile: { select: { headline: true, specialties: true } },
+          coachProfile: { select: { headline: true, bio: true, specialties: true } },
         },
       },
     },
@@ -36,7 +36,10 @@ export async function GET(
   return NextResponse.json({
     valid: true,
     coachName: invite.coach.name,
+    coachImage: invite.coach.image ?? null,
     coachHeadline: invite.coach.coachProfile?.headline ?? null,
+    coachBio: invite.coach.coachProfile?.bio ?? null,
+    coachSpecialties: invite.coach.coachProfile?.specialties ?? [],
   })
 }
 

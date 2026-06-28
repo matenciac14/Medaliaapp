@@ -4,6 +4,7 @@ import ProgressClient, {
   type WeightPoint,
   type HrPoint,
   type WeekData,
+  type WellbeingPoint,
 } from './_components/ProgressClient'
 
 // Adherencia real: sesiones con log / sesiones planificadas
@@ -39,13 +40,17 @@ export default async function ProgressPage() {
       weekNumber: true,
       weightKg: true,
       hrResting: true,
+      energyLevel: true,
+      stressLevel: true,
+      motivationLevel: true,
       recordedAt: true,
     },
   })
 
   // ── Fetch plan activo con semanas y sesiones ─────────────────────────────
   const plan = await prisma.trainingPlan.findFirst({
-    where: { userId: session.user.id, status: 'ACTIVE' },
+    where: { userId: session.user.id, status: { in: ['ACTIVE', 'COMPLETED'] } },
+    orderBy: { createdAt: 'desc' },
     include: {
       weeks: {
         orderBy: { weekNumber: 'asc' },
@@ -80,6 +85,15 @@ export default async function ProgressPage() {
   const hrCheckins: HrPoint[] = rawCheckIns
     .filter((c) => c.hrResting !== null)
     .map((c) => ({ week: c.weekNumber, bpm: c.hrResting as number }))
+
+  const wellbeingData: WellbeingPoint[] = rawCheckIns
+    .filter((c) => c.energyLevel != null || c.stressLevel != null || c.motivationLevel != null)
+    .map((c) => ({
+      week: c.weekNumber,
+      energyLevel: c.energyLevel ?? null,
+      stressLevel: c.stressLevel ?? null,
+      motivationLevel: c.motivationLevel ?? null,
+    }))
 
   const weeks: WeekData[] = plan
     ? plan.weeks.map((w) => ({
@@ -119,6 +133,7 @@ export default async function ProgressPage() {
     <ProgressClient
       weightCheckins={weightCheckins}
       hrCheckins={hrCheckins}
+      wellbeingData={wellbeingData}
       weeks={weeks}
       weightGoal={weightGoal ?? 0}
     />

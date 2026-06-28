@@ -34,10 +34,11 @@ type DayMeals = {
 type MealPlanData = {
   hard: DayMeals
   easy: DayMeals
+  low: DayMeals
   rest: DayMeals
 }
 
-type DayType = 'hard' | 'easy' | 'rest'
+type DayType = 'hard' | 'easy' | 'low' | 'rest'
 type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snacks'
 
 const MEAL_LABELS: Record<MealSlot, string> = {
@@ -50,10 +51,19 @@ const MEAL_LABELS: Record<MealSlot, string> = {
 const DAY_LABELS: Record<DayType, string> = {
   hard: 'Día duro',
   easy: 'Día fácil',
+  low:  'Día suave',
   rest: 'Día descanso',
 }
 
 const EMPTY_DAY: DayMeals = { breakfast: [], lunch: [], dinner: [], snacks: [] }
+
+/** Detecta si el plan viene en formato coach {breakfast[]} vs formato AI {meals[]} */
+function isCoachFormat(data: unknown): data is MealPlanData {
+  if (!data || typeof data !== 'object') return false
+  const d = data as Record<string, unknown>
+  const hard = d.hard
+  return !!hard && typeof hard === 'object' && Array.isArray((hard as Record<string, unknown>).breakfast)
+}
 
 function calcMacros(grams: number, food: FoodItem): Omit<MealEntry, 'foodId' | 'foodName' | 'grams'> {
   const ratio = grams / 100
@@ -98,8 +108,9 @@ type Props = {
 
 export default function NutritionConstructor({ athleteId, nutritionPlan, athleteFoods, initialMealPlan }: Props) {
   const [activeDay, setActiveDay] = useState<DayType>('hard')
+  const hasAutoplan = initialMealPlan !== null && !isCoachFormat(initialMealPlan)
   const [plan, setPlan] = useState<MealPlanData>(
-    initialMealPlan ?? { hard: EMPTY_DAY, easy: EMPTY_DAY, rest: EMPTY_DAY }
+    isCoachFormat(initialMealPlan) ? initialMealPlan : { hard: EMPTY_DAY, easy: EMPTY_DAY, low: EMPTY_DAY, rest: EMPTY_DAY }
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -111,9 +122,10 @@ export default function NutritionConstructor({ athleteId, nutritionPlan, athlete
   const [searchQuery, setSearchQuery] = useState('')
 
   const targets = {
-    hard: { kcal: nutritionPlan.targetKcalHard, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsHardG, fat: nutritionPlan.fatG },
-    easy: { kcal: nutritionPlan.targetKcalEasy, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG, fat: nutritionPlan.fatG },
-    rest: { kcal: nutritionPlan.targetKcalRest, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG, fat: nutritionPlan.fatG },
+    hard: { kcal: nutritionPlan.targetKcalHard,                             protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsHardG,                              fat: nutritionPlan.fatG },
+    easy: { kcal: nutritionPlan.targetKcalEasy,                             protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG,                              fat: nutritionPlan.fatG },
+    low:  { kcal: Math.round(nutritionPlan.targetKcalEasy * 0.88),          protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.75),           fat: nutritionPlan.fatG },
+    rest: { kcal: nutritionPlan.targetKcalRest,                             protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.7),            fat: nutritionPlan.fatG },
   }
 
   const currentDay = plan[activeDay]
@@ -188,6 +200,13 @@ export default function NutritionConstructor({ athleteId, nutritionPlan, athlete
         </button>
       </div>
 
+      {/* Plan automático del atleta — formato incompatible con constructor */}
+      {hasAutoplan && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+          El atleta tiene un plan generado automáticamente. Aquí puedes crear el plan del coach — se guardará por separado.
+        </div>
+      )}
+
       {/* Sin alimentos en catálogo */}
       {athleteFoods.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
@@ -197,7 +216,7 @@ export default function NutritionConstructor({ athleteId, nutritionPlan, athlete
 
       {/* Day tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-        {(['hard', 'easy', 'rest'] as DayType[]).map(day => (
+        {(['hard', 'easy', 'low', 'rest'] as DayType[]).map(day => (
           <button
             key={day}
             onClick={() => setActiveDay(day)}

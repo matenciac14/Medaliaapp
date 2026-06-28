@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
           sleepHours: body.sleepHours ?? 7,
           sleepScore: body.sleepScore,
           energyLevel: body.energyLevel ?? 5,
-          stressLevel: body.stressLevel ?? 5,
+          stressLevel: body.stressLevel || undefined,
           weight: body.weightKg,
           heartRate: body.hrResting,
           painLevel: body.painLevel,

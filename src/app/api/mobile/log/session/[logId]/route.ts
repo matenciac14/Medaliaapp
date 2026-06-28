@@ -38,3 +38,25 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true, log: updated })
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ logId: string }> }
+) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { logId } = await params
+  const userId = mobile.id
+
+  // Solo permitir borrar logs libres (plannedSessionId = null) — los de plan los gestiona el coach
+  const log = await prisma.sessionLog.findFirst({
+    where: { id: logId, userId, plannedSessionId: null },
+    select: { id: true },
+  })
+  if (!log) return NextResponse.json({ error: 'Registro no encontrado o no se puede eliminar' }, { status: 404 })
+
+  await prisma.sessionLog.delete({ where: { id: logId } })
+
+  return NextResponse.json({ ok: true })
+}

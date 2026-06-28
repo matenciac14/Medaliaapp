@@ -8,10 +8,11 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   PROTEIN:    { label: 'Proteínas',          icon: '🥩' },
   CARB:       { label: 'Carbohidratos',       icon: '🍚' },
   FAT:        { label: 'Grasas saludables',   icon: '🥑' },
-  VEG:        { label: 'Verduras y frutas',   icon: '🥦' },
+  VEGETABLE:  { label: 'Verduras',            icon: '🥦' },
   FRUIT:      { label: 'Frutas',              icon: '🍌' },
   DAIRY:      { label: 'Lácteos',             icon: '🥛' },
   LEGUME:     { label: 'Legumbres',           icon: '🫘' },
+  NUT_SEED:   { label: 'Nueces y semillas',   icon: '🥜' },
   OTHER:      { label: 'Otros',               icon: '🍽️' },
 }
 

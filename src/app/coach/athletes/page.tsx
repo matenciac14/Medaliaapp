@@ -15,7 +15,7 @@ export default async function CoachAthletesPage() {
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000)
 
-  const [coachRelations, totalCount] = await Promise.all([
+  const [coachRelations, totalCount, overduePayments] = await Promise.all([
     prisma.coachAthlete.findMany({
       where: { coachId },
       take: TAKE + 1,
@@ -32,6 +32,7 @@ export default async function CoachAthletesPage() {
                   orderBy: { weekNumber: 'asc' },
                   include: {
                     sessions: {
+                      where: { date: { lte: now } },
                       include: { log: { select: { id: true } } },
                     },
                   },
@@ -59,6 +60,7 @@ export default async function CoachAthletesPage() {
       },
     }),
     prisma.coachAthlete.count({ where: { coachId } }),
+    prisma.payment.findMany({ where: { coachId, status: 'OVERDUE' }, select: { athleteId: true } }),
   ])
 
   const hasMore = coachRelations.length > TAKE
@@ -66,6 +68,7 @@ export default async function CoachAthletesPage() {
   const nextCursor = hasMore ? page[page.length - 1].id : null
   const athletes = page.map((rel) => mapRelation(rel, now))
 
+  const overdueAthleteIds = [...new Set(overduePayments.map((p) => p.athleteId))]
   const totalAlerts = athletes.reduce((acc, a) => acc + a.alerts.length, 0)
 
   return (
@@ -119,8 +122,8 @@ export default async function CoachAthletesPage() {
 
       {athletes.length > 0 && (
         <>
-          <AlertsFeed athletes={athletes} />
-          <AthleteTabs athletes={athletes} hasMore={hasMore} nextCursor={nextCursor} />
+          <AlertsFeed athletes={athletes} overdueAthleteIds={overdueAthleteIds} />
+          <AthleteTabs athletes={athletes} hasMore={hasMore} nextCursor={nextCursor} overdueAthleteIds={overdueAthleteIds} />
         </>
       )}
     </div>
@@ -135,7 +138,8 @@ type AlertFlag = {
   adjustments: string[]
 }
 
-function AlertsFeed({ athletes }: { athletes: { id: string; name: string; alertFlags: AlertFlag }[] }) {
+function AlertsFeed({ athletes, overdueAthleteIds }: { athletes: { id: string; name: string; alertFlags: AlertFlag }[]; overdueAthleteIds: string[] }) {
+  const overdueSet = new Set(overdueAthleteIds)
   type AlertItem = { athleteId: string; name: string; type: string; message: string; color: string }
   const items: AlertItem[] = []
 
@@ -144,11 +148,13 @@ function AlertsFeed({ athletes }: { athletes: { id: string; name: string; alertF
     if (f.noCheckin)
       items.push({ athleteId: a.id, name: a.name, type: 'sin-checkin', message: 'Sin check-in hace +7 días', color: '#dc2626' })
     if (f.highRpe)
-      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'RPE ≥ 8 en última sesión dura', color: '#f97316' })
+      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'Carga/fatiga alta (RPE ≥ 8)', color: '#f97316' })
     if (f.weightDrop)
       items.push({ athleteId: a.id, name: a.name, type: 'peso', message: `Bajó ${f.weightDropKg.toFixed(1)} kg esta semana`, color: '#eab308' })
     if (f.adjustments.length > 0)
       items.push({ athleteId: a.id, name: a.name, type: 'ajuste', message: `Plan auto-ajustado: ${f.adjustments.join(', ')}`, color: '#6366f1' })
+    if (overdueSet.has(a.id))
+      items.push({ athleteId: a.id, name: a.name, type: 'mora', message: 'Pago vencido', color: '#ea580c' })
   }
 
   if (items.length === 0) return null

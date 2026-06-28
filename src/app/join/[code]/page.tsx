@@ -8,7 +8,19 @@ import Link from 'next/link'
 type InviteInfo = {
   valid: boolean
   coachName: string
+  coachImage: string | null
   coachHeadline: string | null
+  coachBio: string | null
+  coachSpecialties: string[]
+}
+
+const SPECIALTY_LABELS: Record<string, string> = {
+  RUNNING: 'Running',
+  GYM: 'Gym',
+  STRENGTH: 'Fuerza',
+  CYCLING: 'Ciclismo',
+  TRIATHLON: 'Triatlón',
+  FUNCTIONAL: 'Funcional',
 }
 
 export default function JoinPage() {
@@ -93,32 +105,72 @@ export default function JoinPage() {
         </span>
       </div>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5 text-2xl"
-          style={{ backgroundColor: '#fff7ed' }}
-        >
-          🏃
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        {/* Coach header */}
+        <div className="px-8 pt-8 pb-6 text-center border-b border-gray-100">
+          {/* Avatar */}
+          {invite?.coachImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={invite.coachImage}
+              alt={invite.coachName ?? ''}
+              width={72}
+              height={72}
+              className="rounded-full object-cover mx-auto mb-4 ring-4 ring-white shadow-md"
+              style={{ width: 72, height: 72 }}
+            />
+          ) : (
+            <div
+              className="w-18 h-18 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-white ring-4 ring-white shadow-md"
+              style={{ backgroundColor: '#1e3a5f', width: 72, height: 72 }}
+            >
+              {(invite?.coachName ?? 'C').charAt(0).toUpperCase()}
+            </div>
+          )}
+
+          <h1 className="text-xl font-bold text-gray-900 mb-0.5">
+            {invite?.coachName}
+          </h1>
+          {invite?.coachHeadline && (
+            <p className="text-gray-500 text-sm">{invite.coachHeadline}</p>
+          )}
+
+          {/* Specialties */}
+          {(invite?.coachSpecialties?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1.5 justify-center mt-3">
+              {invite!.coachSpecialties.map(s => (
+                <span
+                  key={s}
+                  className="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: '#f0f4f9', color: '#1e3a5f' }}
+                >
+                  {SPECIALTY_LABELS[s] ?? s}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        <h1 className="text-xl font-bold text-gray-900 mb-1">
-          {invite?.coachName} te invita a entrenar
-        </h1>
-        {invite?.coachHeadline && (
-          <p className="text-gray-500 text-sm mb-3">{invite.coachHeadline}</p>
-        )}
-        <p className="text-gray-400 text-sm mb-6">
-          Únete a su panel de entrenamiento en Medaliq
-        </p>
+        {/* Invite content */}
+        <div className="px-8 py-6 text-center">
+          {invite?.coachBio && (
+            <p className="text-gray-500 text-sm mb-5 leading-relaxed line-clamp-3">
+              {invite.coachBio}
+            </p>
+          )}
 
-        <div
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-semibold mb-8"
-          style={{ backgroundColor: '#f0f4f9', color: '#1e3a5f' }}
-        >
-          Código: {code}
-        </div>
+          <p className="text-gray-700 font-medium text-sm mb-5">
+            Te invita a entrenar en Medaliq
+          </p>
 
-        <div className="space-y-3">
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-semibold mb-6"
+            style={{ backgroundColor: '#f0f4f9', color: '#1e3a5f' }}
+          >
+            Código: {code}
+          </div>
+
+          <div className="space-y-3">
           {status === 'loading' ? (
             <p className="text-gray-400 text-sm py-3">Cargando...</p>
           ) : session ? (
@@ -150,9 +202,10 @@ export default function JoinPage() {
           )}
         </div>
 
-        <p className="text-xs text-gray-400 mt-6">
-          Al registrarte aceptas que este coach pueda ver tu progreso y planes de entrenamiento.
-        </p>
+          <p className="text-xs text-gray-400 mt-5">
+            Al registrarte aceptas que este coach pueda ver tu progreso y planes de entrenamiento.
+          </p>
+        </div>
       </div>
 
       <p className="text-xs text-gray-400 mt-6">

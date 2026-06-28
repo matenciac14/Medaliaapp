@@ -5,8 +5,10 @@ import { PlanSelector } from './_components/PlanSelector'
 
 type PlanTier = 'FREE' | 'PRO' | 'COACH'
 
-function inferPlanTier(role: string): PlanTier {
+function inferPlanTier(role: string, rawConfig: unknown): PlanTier {
   if (role === 'COACH') return 'COACH'
+  const f = ((rawConfig as Record<string, unknown>)?.features ?? {}) as Record<string, unknown>
+  if (f.aiPlan === true || f.aiCoach === true) return 'PRO'
   return 'FREE'
 }
 
@@ -56,7 +58,7 @@ export default async function AdminUsersPage() {
                 const cfg = parseUserConfig(u.config)
                 const sport = cfg.sport.type ?? '—'
                 const goal  = cfg.sport.goal ?? '—'
-                const planTier = inferPlanTier(u.role)
+                const planTier = inferPlanTier(u.role, u.config)
 
                 return (
                   <tr key={u.id} className="hover:bg-gray-50">

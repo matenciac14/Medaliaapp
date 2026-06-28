@@ -34,14 +34,20 @@ export async function GET(req: NextRequest) {
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { recordedAt: 'desc' },
-      take: 2,
-      select: { recordedAt: true, weightKg: true, sleepHours: true, energyLevel: true, hardestSessionRpe: true },
+      take: 12,
+      select: { recordedAt: true, weekNumber: true, weightKg: true, hrResting: true, sleepHours: true, energyLevel: true, hardestSessionRpe: true },
     }),
     prisma.sessionLog.findMany({
       where: { userId },
       orderBy: { completedAt: 'desc' },
       take: 60,
-      select: { completedAt: true },
+      select: {
+        completedAt: true,
+        freeSessionType: true,
+        durationMin: true,
+        rpe: true,
+        plannedSession: { select: { type: true } },
+      },
     }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.assignedWorkout.findFirst({

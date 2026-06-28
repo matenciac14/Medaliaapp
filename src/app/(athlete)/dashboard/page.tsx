@@ -12,6 +12,7 @@ import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
+import { getCurrentISOWeek, getPlanWeekNumber } from '@/lib/core/week-number'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -23,6 +24,55 @@ const PHASE_COLORS: Record<string, string> = {
 function phaseLabel(phase: string) {
   if (phase === 'ESPECIFICO') return 'ESPECÍFICO'
   return phase
+}
+
+function buildWeeklySummary({
+  completedCount, totalTraining, currentVolume, volumeDeltaPct,
+  streakDays, formStatus, last4WeeksAdherencePct, planPhase, isCurrentWeek,
+}: {
+  completedCount: number
+  totalTraining: number
+  currentVolume: number | null
+  volumeDeltaPct: number | null
+  streakDays: number
+  formStatus: 'good' | 'moderate' | 'rest'
+  last4WeeksAdherencePct: number | null
+  planPhase: string
+  isCurrentWeek: boolean
+}): string | null {
+  if (!isCurrentWeek || totalTraining === 0) return null
+
+  const lines: string[] = []
+
+  if (completedCount === totalTraining && totalTraining > 1) {
+    lines.push(`Completaste las ${totalTraining} sesiones de la semana. ¡Semana perfecta!`)
+  } else if (completedCount === 0) {
+    lines.push(`Aún no has completado sesiones esta semana.`)
+  } else {
+    lines.push(`Llevas ${completedCount} de ${totalTraining} sesiones completadas.`)
+  }
+
+  if (currentVolume && currentVolume > 0) {
+    if (volumeDeltaPct !== null && volumeDeltaPct > 10) {
+      lines.push(`Volumen: ${currentVolume} km — ${volumeDeltaPct}% más que la semana pasada.`)
+    } else if (volumeDeltaPct !== null && volumeDeltaPct < -10) {
+      lines.push(`Semana de recuperación: ${currentVolume} km planificados.`)
+    } else {
+      lines.push(`Volumen planificado: ${currentVolume} km.`)
+    }
+  } else if (last4WeeksAdherencePct !== null && last4WeeksAdherencePct < 60) {
+    lines.push(`Adherencia últimas 4 semanas: ${last4WeeksAdherencePct}%. La consistencia es la clave.`)
+  }
+
+  if (planPhase === 'AFINAMIENTO') {
+    lines.push(`Fase de afinamiento: intensidad controlada, prioriza el descanso.`)
+  } else if (formStatus === 'rest') {
+    lines.push(`Tus métricas sugieren priorizar recuperación antes del próximo esfuerzo.`)
+  } else if (streakDays >= 4) {
+    lines.push(`${streakDays} días seguidos entrenando. Sigue así.`)
+  }
+
+  return lines.slice(0, 2).join(' ') || null
 }
 
 function getGreeting() {
@@ -53,7 +103,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       include: {
         profile: true,
         checkIns: { orderBy: { recordedAt: 'desc' }, take: 10 },
-        dailyLogs: { orderBy: { date: 'desc' }, take: 1 },
       },
     }),
     prisma.trainingPlan.findMany({
@@ -158,7 +207,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const profile = dbUser.profile
   const lastCheckIn = dbUser.checkIns[0] ?? null
-  const lastDailyLog = dbUser.dailyLogs[0] ?? null
   const coachRelation = coachRelationRaw ?? null
   const assignedWorkout = assignedWorkoutRaw ?? null
   const todayDow = jsToOurDow(new Date().getDay())
@@ -174,10 +222,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let isCurrentWeek = true
 
   if (activePlan) {
-    const now = new Date()
-    const diffDays = Math.floor((now.getTime() - new Date(activePlan.startDate).getTime()) / 86400000)
-    const rawWeek = Math.floor(diffDays / 7) + 1
-    const currentWeek = Math.max(1, Math.min(activePlan.totalWeeks, rawWeek))
+    const currentWeek = getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks)
 
     weekOffset = Math.max(1 - currentWeek, rawWeekOffset)
     selectedWeekNum = currentWeek + weekOffset
@@ -215,9 +260,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   // ── Métricas reales ────────────────────────────────────────────────────────
-  const weightKg = lastDailyLog?.weightKg ?? lastCheckIn?.weightKg ?? profile?.weightKg ?? null
-  const hrResting = lastDailyLog?.hrResting ?? lastCheckIn?.hrResting ?? profile?.hrResting ?? null
-  const sleepHours = lastDailyLog?.sleepHours ?? lastCheckIn?.sleepHours ?? profile?.sleepHoursAvg ?? null
+  const weightKg = lastCheckIn?.weightKg ?? profile?.weightKg ?? null
+  const hrResting = lastCheckIn?.hrResting ?? profile?.hrResting ?? null
+  const sleepHours = lastCheckIn?.sleepHours ?? profile?.sleepHoursAvg ?? null
   const hasMetrics = !!(weightKg || hrResting || sleepHours)
 
   // ── Nutrición del día ────────────────────────────────────────────────────
@@ -266,7 +311,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
   const checkinWeekNumber = activePlan
     ? planData.currentWeek
-    : Math.ceil(((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000))
+    : getCurrentISOWeek()
   const thisWeekCheckIn = dbUser.checkIns.find(c => c.weekNumber === checkinWeekNumber) ?? null
   const checkinPending = !thisWeekCheckIn
 
@@ -305,7 +350,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const daysDiff = Math.max(1,
       (new Date(lastCheckIn.recordedAt).getTime() - new Date(prevCheckIn.recordedAt).getTime()) / 86400000
     )
-    weeklyWeightChange = ((lastCheckIn.weightKg - prevCheckIn.weightKg) / daysDiff) * 7
+    weeklyWeightChange = Math.round(((lastCheckIn.weightKg - prevCheckIn.weightKg) / daysDiff) * 7 * 10) / 10
   }
   const oldestCheckInWeight = [...dbUser.checkIns].reverse().find((c: { weightKg: number | null }) => c.weightKg != null)?.weightKg ?? null
   let weightProgressPct: number | null = null
@@ -335,7 +380,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     formCheckInDate = daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
   }
 
-  // ── Carga semanal (volumen planificado) ────────────────────────────────────
+  // ── Carga semanal (volumen planificado) ─────────────────────────────────────
   const currentVolume = currentWeekVolumeKm
   const prevPlanWeekData = activePlan?.weeks.find((w: { weekNumber: number }) => w.weekNumber === planData.currentWeek - 1)
   const prevVolume = prevPlanWeekData?.volumeKm ?? null
@@ -343,7 +388,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? Math.round(((currentVolume - prevVolume) / prevVolume) * 100)
     : null
 
-  // ── Adherencia últimas 4 semanas ─────────────────────────────────────────
+  // ── Adherencia últimas 4 semanas ──────────────────────────────────────────
   let last4WeeksAdherencePct: number | null = null
   if (activePlan && activePlan.weeks.length > 0) {
     const currentWeekIdx = activePlan.weeks.findIndex(w => w.weekNumber === planData.currentWeek)
@@ -354,6 +399,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       last4WeeksAdherencePct = Math.round((allSessions.filter(s => s.log).length / allSessions.length) * 100)
     }
   }
+
+  // ── Resumen semanal determinista ────────────────────────────────────────────
+  const weeklySummary = dashboardMode === 'TRAINING' ? buildWeeklySummary({
+    completedCount, totalTraining, currentVolume, volumeDeltaPct,
+    streakDays, formStatus, last4WeeksAdherencePct, planPhase: planData.phase, isCurrentWeek,
+  }) : null
 
   return (
     <div className="py-6 lg:px-8 lg:py-8 max-w-6xl mx-auto space-y-6">
@@ -560,7 +611,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         ${formStatus === 'good' ? 'bg-green-100 text-green-700' :
                           formStatus === 'moderate' ? 'bg-amber-100 text-amber-700' :
                           'bg-red-100 text-red-700'}`}>
-                        Energía {lastCheckIn.energyLevel}/5
+                        Energía {lastCheckIn.energyLevel}/10
                       </span>
                     )}
                     {lastCheckIn.hardestSessionRpe != null && (
@@ -606,6 +657,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 />
               )}
             </div>
+            {weeklySummary && (
+              <p className="text-sm text-gray-500 mb-3 leading-relaxed">{weeklySummary}</p>
+            )}
+
             <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4">
 
               {/* ── RECOVERY: banner plan completado ── */}
@@ -815,7 +870,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       )}
                       {lastCheckIn.energyLevel != null && (
                         <div className="bg-green-50 rounded-xl px-3 py-2">
-                          <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/5 ★</p>
+                          <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/10 ★</p>
                           <p className="text-[10px] text-gray-500 mt-1">Energía</p>
                         </div>
                       )}

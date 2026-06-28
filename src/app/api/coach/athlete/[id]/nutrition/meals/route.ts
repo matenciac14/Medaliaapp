@@ -18,9 +18,9 @@ export async function PATCH(
   })
   if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
-  const body = (await request.json()) as { hard?: unknown; easy?: unknown; rest?: unknown }
+  const body = (await request.json()) as { hard?: unknown; easy?: unknown; low?: unknown; rest?: unknown }
   if (!body.hard || !body.easy || !body.rest) {
-    return NextResponse.json({ error: 'Se requieren los tres tipos de día: hard, easy, rest' }, { status: 400 })
+    return NextResponse.json({ error: 'Se requieren los tipos de día: hard, easy, rest' }, { status: 400 })
   }
 
   const mealPlan = await prisma.mealPlan.upsert({

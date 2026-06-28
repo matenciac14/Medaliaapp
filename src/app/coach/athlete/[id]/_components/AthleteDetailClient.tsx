@@ -42,6 +42,7 @@ export type PlanWeekData = {
     detailText: string | null
     zoneTarget: string | null
     coachNote: string | null
+    structure: string | null
     intensity: string
     date: Date | null
   }[]
@@ -147,6 +148,7 @@ type BenchmarkItem = {
 
 const SPORT_LABELS: Record<string, string> = {
   RUNNING: 'Running', STRENGTH: 'Fuerza',
+  CYCLING: 'Ciclismo', SWIMMING: 'Natación', TRIATHLON: 'Triatlón', FOOTBALL: 'Fútbol',
 }
 
 const METRIC_OPTIONS: Record<string, { metric: string; label: string; unit: string }[]> = {
@@ -191,6 +193,8 @@ interface AthleteDetailClientProps {
   nutritionPlan: NutritionPlanData
   initialFeatures: InitialFeatures
   initialStatus: AthleteStatus
+  coachGoal: string | null
+  privateNotes: string | null
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -204,6 +208,8 @@ export default function AthleteDetailClient({
   nutritionPlan,
   initialFeatures,
   initialStatus,
+  coachGoal: initialCoachGoal,
+  privateNotes: initialPrivateNotes,
 }: AthleteDetailClientProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('Resumen')
@@ -301,6 +307,28 @@ export default function AthleteDetailClient({
       setPwdCopied(true)
       setTimeout(() => setPwdCopied(false), 2000)
     } catch { /* no-op */ }
+  }
+
+  // ── Coach goal & private notes ───────────────────────────────────────────────
+  const [coachGoal, setCoachGoal] = useState(initialCoachGoal ?? '')
+  const [privateNotes, setPrivateNotes] = useState(initialPrivateNotes ?? '')
+  const [savingCoachNotes, setSavingCoachNotes] = useState(false)
+  const [coachNotesSaved, setCoachNotesSaved] = useState(false)
+
+  async function handleSaveCoachNotes() {
+    setSavingCoachNotes(true)
+    setCoachNotesSaved(false)
+    try {
+      await fetch(`/api/coach/athlete/${athleteId}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachGoal: coachGoal.trim() || null, privateNotes: privateNotes.trim() || null }),
+      })
+      setCoachNotesSaved(true)
+      setTimeout(() => setCoachNotesSaved(false), 2500)
+    } finally {
+      setSavingCoachNotes(false)
+    }
   }
 
   // ── Athlete status (ACTIVE / PAUSED) ────────────────────────────────────────
@@ -428,8 +456,8 @@ export default function AthleteDetailClient({
 
   // Session editor state
   const [editingSession, setEditingSession] = useState<string | null>(null)
-  const [sessionDraft, setSessionDraft] = useState<{ durationMin: number; type: string; zoneTarget: string; detailText: string }>({
-    durationMin: 60, type: '', zoneTarget: '', detailText: ''
+  const [sessionDraft, setSessionDraft] = useState<{ durationMin: number; type: string; zoneTarget: string; detailText: string; structure: string }>({
+    durationMin: 60, type: '', zoneTarget: '', detailText: '', structure: ''
   })
   const [savingSession, setSavingSession] = useState(false)
 
@@ -464,7 +492,7 @@ export default function AthleteDetailClient({
       id: string; startDate: string; endDate: string | null; notes: string | null
       template: { id: string; name: string; goal: string | null; level: string | null; daysPerWeek: number; days: GymAssignedDay[] }
     } | null
-    recentSessions: { id: string; date: string; dayOfWeek: number; durationMin: number | null; rpe: number | null; overridesCount: number }[]
+    recentSessions: { id: string; date: string; dayOfWeek: number; durationMin: number | null; rpe: number | null; overridesCount: number; source: 'assignment' | 'plan'; label: string | null }[]
     runningSessions: Record<number, { type: string; durationMin: number | null; intensity: string }>
   }
   const [gymAssigned, setGymAssigned] = useState<GymAssignedData>({ assignment: null, recentSessions: [], runningSessions: {} })
@@ -811,6 +839,42 @@ export default function AthleteDetailClient({
             )}
           </div>
 
+          {/* Meta del coach + notas privadas */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <h2 className="font-semibold text-gray-900">Seguimiento del coach</h2>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Meta pactada con el atleta</label>
+              <input
+                type="text"
+                value={coachGoal}
+                onChange={(e) => setCoachGoal(e.target.value)}
+                placeholder="ej. Bajar 5 kg en 16 semanas, completar 10K en menos de 50 min"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Notas privadas del coach <span className="text-gray-400">(el atleta no las ve)</span></label>
+              <textarea
+                rows={3}
+                value={privateNotes}
+                onChange={(e) => setPrivateNotes(e.target.value)}
+                placeholder="Observaciones internas, contexto personal, historial de lesiones..."
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveCoachNotes}
+                disabled={savingCoachNotes}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                {savingCoachNotes ? 'Guardando...' : 'Guardar'}
+              </button>
+              {coachNotesSaved && <span className="text-sm text-green-600">✓ Guardado</span>}
+            </div>
+          </div>
+
           {/* Zonas FC */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-semibold text-gray-900 mb-4">Zonas de frecuencia cardíaca</h2>
@@ -868,7 +932,7 @@ export default function AthleteDetailClient({
                     <th className="pb-2 font-medium">Estrés</th>
                     <th className="pb-2 font-medium">Motivación</th>
                     <th className="pb-2 font-medium">Adherencia</th>
-                    <th className="pb-2 font-medium">RPE</th>
+                    <th className="pb-2 font-medium">RPE/Fatiga</th>
                     <th className="pb-2 font-medium">Dolor</th>
                     <th className="pb-2 font-medium">Ajustes</th>
                   </tr>
@@ -1178,6 +1242,19 @@ export default function AthleteDetailClient({
                               className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"
                             />
                           </div>
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">
+                              Estructura de bloques
+                              <span className="ml-1 text-gray-400 font-normal">(zona|duración|descripción — una por línea)</span>
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={sessionDraft.structure}
+                              onChange={(e) => setSessionDraft(d => ({ ...d, structure: e.target.value }))}
+                              placeholder={'Z2|20min|Calentamiento\nZ4|2×10min|Intervalos\nZ1|10min|Vuelta calma'}
+                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 font-mono"
+                            />
+                          </div>
                           <div className="flex gap-2 pt-1">
                             <button
                               onClick={() => setEditingSession(null)}
@@ -1213,6 +1290,7 @@ export default function AthleteDetailClient({
                                   type: session.type,
                                   zoneTarget: session.zoneTarget ?? '',
                                   detailText: session.detailText ?? '',
+                                  structure: session.structure ?? '',
                                 })
                                 setEditingSession(session.id)
                               }}
@@ -1223,6 +1301,20 @@ export default function AthleteDetailClient({
                           </div>
                           {session.detailText && (
                             <p className="text-xs text-gray-500 mb-2">{session.detailText}</p>
+                          )}
+                          {session.structure && (
+                            <div className="mb-2 space-y-0.5">
+                              {session.structure.split('\n').filter(Boolean).map((block, bi) => {
+                                const [zone, dur, desc] = block.split('|')
+                                return (
+                                  <p key={bi} className="text-xs text-gray-600 font-mono">
+                                    {zone && <span className="text-indigo-600 font-semibold">{zone}</span>}
+                                    {dur && <span className="text-gray-400"> · {dur}</span>}
+                                    {desc && <span className="text-gray-500"> — {desc}</span>}
+                                  </p>
+                                )
+                              })}
+                            </div>
                           )}
                           {session.zoneTarget && (
                             <p className="text-xs text-blue-600 mb-2">Zona: {session.zoneTarget}</p>
@@ -1958,10 +2050,18 @@ export default function AthleteDetailClient({
                               {DOW_LABELS[s.dayOfWeek] ?? s.dayOfWeek}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-gray-800">{s.date}</p>
-                              {s.durationMin != null && (
-                                <p className="text-xs text-gray-400">{s.durationMin} min</p>
-                              )}
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-gray-800">{s.date}</p>
+                                {s.source === 'plan' && (
+                                  <span className="text-[9px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                                    Plan
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400">
+                                {s.label ?? (s.durationMin != null ? `${s.durationMin} min` : null)}
+                                {s.label && s.durationMin != null && ` · ${s.durationMin} min`}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1990,7 +2090,7 @@ export default function AthleteDetailClient({
 
                 {recentSessions.length === 0 && (
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center">
-                    <p className="text-sm text-gray-400">El atleta aún no ha completado sesiones con esta rutina</p>
+                    <p className="text-sm text-gray-400">El atleta aún no ha completado sesiones de gym</p>
                   </div>
                 )}
               </>

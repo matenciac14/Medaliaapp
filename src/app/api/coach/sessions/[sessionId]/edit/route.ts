@@ -41,6 +41,7 @@ export async function PATCH(
   if (typeof body.durationMin === 'number' && body.durationMin > 0) data.durationMin = body.durationMin
   if (typeof body.detailText === 'string') data.detailText = body.detailText.trim() || null
   if (typeof body.zoneTarget === 'string') data.zoneTarget = body.zoneTarget.trim() || null
+  if (typeof body.structure === 'string') data.structure = body.structure.trim() || null
   // workoutDayId: null clears it, string sets it (only allowed when type=FUERZA)
   if ('workoutDayId' in body) {
     const newType = (data.type as string | undefined) ?? plannedSession.type

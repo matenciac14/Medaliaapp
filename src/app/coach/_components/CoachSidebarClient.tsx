@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Users, Dumbbell, Globe, Settings, LogOut, Plus, UserPlus, LayoutDashboard } from 'lucide-react'
+import { Users, Dumbbell, Globe, Settings, LogOut, Plus, UserPlus, LayoutDashboard, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
@@ -21,6 +21,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
     { href: '/coach/athletes',  label: s.myAthletes,     icon: Users           },
     { href: '/coach/gym',       label: s.gym,            icon: Dumbbell        },
     { href: '/coach/profile',   label: 'Mi Perfil',      icon: Globe           },
+    { href: '/coach/finanzas',  label: 'Finanzas',       icon: Wallet          },
     { href: '/coach/invite',    label: 'Invitar atleta', icon: UserPlus        },
     { href: '/coach/settings',  label: s.settings,       icon: Settings        },
   ]
@@ -35,7 +36,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
   ]
 
   function isActive(href: string) {
-    const exactMatch = ['/coach/dashboard', '/coach/athletes', '/coach/invite', '/coach/settings']
+    const exactMatch = ['/coach/dashboard', '/coach/athletes', '/coach/invite', '/coach/settings', '/coach/finanzas']
     return exactMatch.includes(href) ? pathname === href : pathname.startsWith(href)
   }
 

@@ -44,12 +44,13 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 export default function TrackingSection({ target, foods, date }: Props) {
-  const [expanded, setExpanded]     = useState(false)
-  const [showModal, setShowModal]   = useState(false)
-  const [logs, setLogs]             = useState<FoodLogEntry[]>([])
-  const [totals, setTotals]         = useState<MacroTotals>({ kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 })
-  const [loading, setLoading]       = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [expanded, setExpanded]       = useState(false)
+  const [showModal, setShowModal]     = useState(false)
+  const [logs, setLogs]               = useState<FoodLogEntry[]>([])
+  const [totals, setTotals]           = useState<MacroTotals>({ kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 })
+  const [loading, setLoading]         = useState(false)
+  const [refreshKey, setRefreshKey]   = useState(0)
+  const [deletingId, setDeletingId]   = useState<string | null>(null)
 
   const fetchLogs = useCallback(async () => {
     setLoading(true)
@@ -73,6 +74,16 @@ export default function TrackingSection({ target, foods, date }: Props) {
   function handleModalClose() {
     setShowModal(false)
     setRefreshKey(k => k + 1)
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    try {
+      await fetch(`/api/nutrition/log/${id}`, { method: 'DELETE' })
+      setRefreshKey(k => k + 1)
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const consumed = totals.kcal
@@ -147,17 +158,24 @@ export default function TrackingSection({ target, foods, date }: Props) {
             {logs.length > 0 && (
               <div className="space-y-2 pt-1">
                 <div className="h-px bg-gray-100" />
-                {logs.slice(-5).map(log => (
-                  <div key={log.id} className="flex items-center justify-between">
+                {logs.map(log => (
+                  <div key={log.id} className="flex items-center justify-between group">
                     <span className="text-sm text-gray-700 truncate flex-1">{log.food.name}</span>
-                    <span className="text-xs text-gray-400 ml-3 shrink-0">
-                      {log.grams}g · {log.kcal} kcal
-                    </span>
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
+                      <span className="text-xs text-gray-400">
+                        {log.grams}g · {log.kcal} kcal
+                      </span>
+                      <button
+                        onClick={() => handleDelete(log.id)}
+                        disabled={deletingId === log.id}
+                        className="text-gray-300 hover:text-red-400 disabled:opacity-40 transition-colors text-xs leading-none"
+                        aria-label="Eliminar registro"
+                      >
+                        {deletingId === log.id ? '…' : '✕'}
+                      </button>
+                    </div>
                   </div>
                 ))}
-                {logs.length > 5 && (
-                  <p className="text-xs text-gray-400 text-center">+{logs.length - 5} registros más</p>
-                )}
               </div>
             )}
 

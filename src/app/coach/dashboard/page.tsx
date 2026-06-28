@@ -5,8 +5,12 @@ import { prisma } from '@/lib/db/prisma'
 import { mapRelation } from '../athletes/_lib/map-athlete'
 
 const SPORT_LABELS: Record<string, string> = {
-  RUNNING: '🏃 Running',
-  STRENGTH: '🏋️ Fuerza',
+  RUNNING:   '🏃 Running',
+  STRENGTH:  '🏋️ Fuerza',
+  CYCLING:   '🚴 Ciclismo',
+  SWIMMING:  '🏊 Natación',
+  TRIATHLON: '🏅 Triatlón',
+  FOOTBALL:  '⚽ Fútbol',
 }
 
 export default async function CoachDashboardPage() {
@@ -197,7 +201,7 @@ export default async function CoachDashboardPage() {
               {athletesWithAlerts.slice(0, 5).map((a) => {
                 const alerts: { msg: string; color: string }[] = []
                 if (a.alertFlags.noCheckin) alerts.push({ msg: 'Sin check-in +7d', color: '#dc2626' })
-                if (a.alertFlags.highRpe) alerts.push({ msg: 'RPE ≥ 8', color: '#f97316' })
+                if (a.alertFlags.highRpe) alerts.push({ msg: 'Carga alta', color: '#f97316' })
                 if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#eab308' })
                 return (
                   <li key={a.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">

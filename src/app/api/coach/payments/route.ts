@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+
+// GET /api/coach/payments — todos los pagos del coach (con info del atleta)
+export async function GET(_req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id || session.user.role !== 'COACH') {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+  }
+
+  // Auto-marcar OVERDUE: pagos PENDING cuya dueDate ya pasó
+  await prisma.payment.updateMany({
+    where: {
+      coachId: session.user.id,
+      status: 'PENDING',
+      dueDate: { lt: new Date() },
+    },
+    data: { status: 'OVERDUE' },
+  })
+
+  const payments = await prisma.payment.findMany({
+    where: { coachId: session.user.id },
+    include: { athlete: { select: { id: true, name: true, email: true } } },
+    orderBy: [{ status: 'asc' }, { dueDate: 'desc' }],
+  })
+
+  return NextResponse.json({ payments })
+}
+
+// POST /api/coach/payments — registrar nuevo pago
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id || session.user.role !== 'COACH') {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+  }
+
+  const body = await req.json() as {
+    athleteId?: string
+    amount?: number
+    currency?: string
+    description?: string
+    dueDate?: string
+    notes?: string
+  }
+
+  const { athleteId, amount, currency = 'COP', description, dueDate, notes } = body
+
+  if (!athleteId || !amount || amount <= 0 || !dueDate) {
+    return NextResponse.json({ error: 'athleteId, amount y dueDate son requeridos.' }, { status: 400 })
+  }
+
+  const relation = await prisma.coachAthlete.findUnique({
+    where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
+  })
+  if (!relation) {
+    return NextResponse.json({ error: 'Atleta no encontrado.' }, { status: 404 })
+  }
+
+  const due = new Date(dueDate)
+  if (isNaN(due.getTime())) {
+    return NextResponse.json({ error: 'dueDate inválido.' }, { status: 400 })
+  }
+
+  const payment = await prisma.payment.create({
+    data: {
+      coachId: session.user.id,
+      athleteId,
+      amount,
+      currency,
+      description: description?.trim() || null,
+      dueDate: due,
+      notes: notes?.trim() || null,
+      status: due < new Date() ? 'OVERDUE' : 'PENDING',
+    },
+    include: { athlete: { select: { id: true, name: true, email: true } } },
+  })
+
+  return NextResponse.json({ payment }, { status: 201 })
+}
