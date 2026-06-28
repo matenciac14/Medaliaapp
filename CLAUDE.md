@@ -1,7 +1,7 @@
 # Medaliq — Web + Backend
 
 > Contexto del producto, modelo de negocio y arquitectura general: ver `../CLAUDE.md`
-> Backlog y prioridades: ver `BACKLOG.md`
+> Prioridades actuales: ver rama activa y commits recientes
 
 ## Stack
 - Next.js 16 App Router + TypeScript
@@ -384,11 +384,12 @@ src/app/
   select-role/  ← Google OAuth role selection
 
   api/
-    auth/         [...nextauth] · register · set-role
+    auth/         [...nextauth] · register · set-role · verify-email
     mobile/auth/  login · me · google · set-role
     mobile/       dashboard · dashboard/week-sessions · plan · checkin · checkin-status
                   log/session · progress · nutrition · nutrition/log · nutrition/generate-meals
                   gym/week · messages · messages/read · messages/unread-count
+                  coach/athletes (COACH only)
     coach/        invite · join · athlete/[id]/* · plan/[planId]/* · sessions/[id]
                   gym/* · payments · payments/[paymentId] · profile · programs · posts · clients/create
     gym/          session/today · session/complete · session/[id]
