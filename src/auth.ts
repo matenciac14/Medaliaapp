@@ -1,4 +1,5 @@
 import NextAuth, { type Session } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
@@ -66,23 +67,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, account }) {
       if (user) {
         token.id = user.id
-        token.role = (user as any).role
-        token.onboardingCompleted = (user as any).onboardingCompleted ?? false
-        token.activated = (user as any).activated ?? false
-        token.isB2B = (user as any).isB2B ?? false
-        token.userPlan = (user as any).userPlan ?? 'FREE'
-        token.features = (user as any).features ?? {}
+        token.role = user.role
+        token.onboardingCompleted = user.onboardingCompleted ?? false
+        token.activated = user.activated ?? false
+        token.isB2B = user.isB2B ?? false
+        token.userPlan = user.userPlan ?? 'FREE'
+        token.features = user.features ?? DEFAULT_USER_CONFIG.features
       }
       // Google OAuth — always load config from DB (PrismaAdapter doesn't call authorize())
-      if (account?.provider === 'google' && token.id) {
+      // Cast required: next-auth v5 beta.31 doesn't resolve JWT augmentation in callback context
+      const t = token as JWT
+      if (account?.provider === 'google' && t.id) {
         try {
           const [dbUser, coachRelation] = await Promise.all([
             prisma.user.findUnique({
-              where: { id: token.id as string },
+              where: { id: t.id },
               select: { role: true, config: true },
             }),
             prisma.coachAthlete.findFirst({
-              where: { athleteId: token.id as string },
+              where: { athleteId: t.id },
               select: { id: true },
             }),
           ])
@@ -111,15 +114,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
       // Refresh from DB on session update (called after set-role or onboarding)
-      if (trigger === 'update' && token.id) {
+      if (trigger === 'update' && t.id) {
         try {
           const [dbUser, coachRelation] = await Promise.all([
             prisma.user.findUnique({
-              where: { id: token.id as string },
+              where: { id: t.id },
               select: { role: true, config: true },
             }),
             prisma.coachAthlete.findFirst({
-              where: { athleteId: token.id as string },
+              where: { athleteId: t.id },
               select: { id: true },
             }),
           ])
@@ -140,18 +143,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.onboardingCompleted = token.onboardingCompleted as boolean
-        session.user.activated = token.activated as boolean
-        session.user.isB2B = (token.isB2B as boolean) ?? false
-        session.user.userPlan = (token.userPlan as 'FREE' | 'PRO') ?? 'FREE'
-        session.user.needsRoleSelection = (token.needsRoleSelection as boolean) ?? false
-        session.user.features = (token.features as Session['user']['features']) ?? {
-          plan: true, checkin: true, nutrition: true, progress: true,
-          log: true, coach: false, gym: true,
-        }
+      // Cast required: next-auth v5 beta.31 doesn't resolve JWT augmentation in callback context
+      const t = token as JWT
+      if (t) {
+        session.user.id = t.id ?? ''
+        session.user.role = t.role ?? 'ATHLETE'
+        session.user.onboardingCompleted = t.onboardingCompleted ?? false
+        session.user.activated = t.activated ?? false
+        session.user.isB2B = t.isB2B ?? false
+        session.user.userPlan = t.userPlan ?? 'FREE'
+        session.user.needsRoleSelection = t.needsRoleSelection ?? false
+        session.user.features = t.features ?? DEFAULT_USER_CONFIG.features
       }
       return session
     },

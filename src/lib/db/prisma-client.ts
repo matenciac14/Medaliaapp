@@ -10,5 +10,5 @@ import type { PrismaClient } from '../../generated/prisma/client'
  */
 export type PrismaDbClient = Omit<
   PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+  '$connect' | '$disconnect' | '$on' | '$use' | '$extends'
 >

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await completeOnboardingUseCase(data, mobile.id, {
-      db: prisma as any,
+      db: prisma,
       planRepo: new PrismaPlanRepository(),
       healthProfileRepo: new PrismaHealthProfileRepository(),
       userRepo: new PrismaUserRepository(),

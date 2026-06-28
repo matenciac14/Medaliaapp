@@ -17,7 +17,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 // ── Input types ───────────────────────────────────────────────────────────────
 
 type SessionLog = { id: string; log: { id: string } | null; type: string; dayOfWeek: number; durationMin: number | null; zoneTarget: string | null; intensity: string | null; detailText: string | null; coachNote?: string | null }
-type PlanWeek = { weekNumber: number; phase: string; volumeKm: number | null; sessions: SessionLog[] }
+export type PlanWeek = { weekNumber: number; phase: string; volumeKm: number | null; sessions: SessionLog[] }
 type ActivePlan = { id: string; name: string; startDate: Date; totalWeeks: number; weeks: PlanWeek[] }
 type CheckIn = { recordedAt: Date; weekNumber: number; weightKg: number | null; hrResting: number | null; sleepHours: number | null; energyLevel: number | null; hardestSessionRpe: number | null }
 type NutritionPlan = { targetKcalHard: number; targetKcalEasy: number; targetKcalRest: number; proteinG: number; carbsHardG: number; carbsEasyG: number; fatG: number }

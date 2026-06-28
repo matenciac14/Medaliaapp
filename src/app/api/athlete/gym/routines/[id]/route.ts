@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import type { SetType } from '@/generated/prisma/enums'
 
 async function getAthleteId(req: NextRequest): Promise<string | null> {
   const mobile = await getMobileUser(req)
@@ -98,7 +99,7 @@ export async function PATCH(
               sets: ex.sets ?? 4,
               repsScheme: ex.repsScheme?.trim() || '12',
               restSeconds: typeof ex.restSeconds === 'number' ? ex.restSeconds : null,
-              setType: (ex.setType as any) ?? 'NORMAL',
+              setType: (ex.setType as SetType) ?? 'NORMAL',
               notes: ex.notes?.trim() || null,
             },
           })

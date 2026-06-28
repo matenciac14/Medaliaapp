@@ -15,7 +15,7 @@ import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 export async function generatePlan(input: GeneratePlanInput) {
   return generatePlanUseCase(input, {
-    db: prisma as any,
+    db: prisma,
     planRepo: new PrismaPlanRepository(),
     userRepo: new PrismaUserRepository(),
   })

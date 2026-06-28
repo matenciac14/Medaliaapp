@@ -23,10 +23,10 @@ import {
 } from '@/domain/plan/session-builder'
 import { calculateHRZones, calculateMacros, calculateTDEE, estimateHRMax } from '@/lib/plan/formulas'
 import { getTemplate } from '@/lib/plan/templates'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { WizardData } from '@/app/onboarding/_types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export type GeneratePlanResult = {
 export async function generatePlanUseCase(
   input: GeneratePlanInput,
   deps: {
-    db: PrismaClient
+    db: PrismaDbClient
     planRepo: IPlanRepository
     userRepo: IUserRepository
   }
@@ -88,9 +88,8 @@ export async function generatePlanUseCase(
   // ── Phase 2: all writes inside $transaction ───────────────────────────────
 
   const planId = await deps.db.$transaction(async (tx) => {
-    // Create a tx-scoped repo — accepts PrismaDbClient which $transaction tx satisfies
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new PrismaPlanRepository(tx as any)
+    // Create a tx-scoped repo — tx satisfies PrismaDbClient (Prisma 7 keeps $transaction for nested tx)
+    const repo = new PrismaPlanRepository(tx)
 
     await repo.deactivateUserPlans(input.userId)
 
@@ -164,25 +163,14 @@ export async function generatePlanUseCase(
 
   // ── Phase 3: update user config (outside tx) ──────────────────────────────
 
-  const existingUser = await deps.db.user.findUnique({
-    where: { id: input.userId },
-    select: { config: true },
-  })
-  const currentConfig = parseUserConfig(existingUser?.config)
-  const { sportType, sportGoal } = resolveSportConfig(input.goalType, {} as any)
+  const { sportType, sportGoal } = resolveSportConfig(input.goalType, {} as unknown as WizardData)
 
-  const newConfig = {
-    ...currentConfig,
-    features: {
-      ...currentConfig.features,
-      ...(isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : {}),
-    },
+  await deps.userRepo.completeOnboarding(input.userId, {
+    features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,
     onboarding: { completed: true, completedAt: new Date().toISOString() },
-    plan: { activePlanId: planId, currentWeek: 1, totalWeeks, phase: 'BASE' as const },
+    plan: { currentWeek: 1, totalWeeks, phase: 'BASE' },
     sport: { type: sportType, goal: sportGoal },
-  }
-
-  await deps.userRepo.updateConfig(input.userId, newConfig)
+  })
 
   return { planId, hrZones, hrMax, tdee }
 }

@@ -12,8 +12,10 @@ import type { PlannedSession, PlannedSessionUpdate } from '@/domain/plan/plan.ty
 import type { BuiltSession, GymExercise } from '@/domain/plan/session-builder'
 import type { NutritionTargets } from '@/domain/ports/health-profile.repository'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { Prisma } from '@/generated/prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
+import type { Phase, SessionType as PrismaSessionType } from '../../generated/prisma/enums'
 
 export class PrismaPlanRepository implements IPlanRepository {
   constructor(private db: PrismaDbClient = prisma) {}
@@ -90,8 +92,7 @@ export class PrismaPlanRepository implements IPlanRepository {
         ...(data.durationMin !== undefined && { durationMin: data.durationMin }),
         ...(data.description !== undefined && { detailText: data.description }),  // domain: description → DB: detailText
         ...(data.coachNotes !== undefined && { coachNote: data.coachNotes }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(data.type !== undefined && { type: data.type as any }),
+        ...(data.type !== undefined && { type: data.type as PrismaSessionType }),
         ...(data.zone !== undefined && { zoneTarget: data.zone }),
       },
     })
@@ -101,8 +102,8 @@ export class PrismaPlanRepository implements IPlanRepository {
 
   async deactivateUserPlans(userId: string): Promise<void> {
     await this.db.trainingPlan.updateMany({
-      where: { userId, status: 'ACTIVE' as any },
-      data: { status: 'COMPLETED' as any },
+      where: { userId, status: 'ACTIVE' },
+      data: { status: 'COMPLETED' },
     })
   }
 
@@ -112,12 +113,12 @@ export class PrismaPlanRepository implements IPlanRepository {
         userId: data.userId,
         name: data.name,
         totalWeeks: data.totalWeeks,
-        status: 'ACTIVE' as any,
+        status: 'ACTIVE',
         // 'TEMPLATE' is not in PlanSource enum — map to 'AI' as closest equivalent
-        generatedBy: (data.generatedBy === 'TEMPLATE' ? 'AI' : data.generatedBy) as any,
+        generatedBy: data.generatedBy === 'TEMPLATE' ? 'AI' : data.generatedBy,
         startDate: data.startDate,
         endDate: data.endDate,
-        hrZones: data.hrZones as any,
+        hrZones: data.hrZones as unknown as Prisma.InputJsonValue,
       },
     })
     return { id: plan.id, totalWeeks: plan.totalWeeks }
@@ -130,7 +131,7 @@ export class PrismaPlanRepository implements IPlanRepository {
           data: {
             planId: w.planId,
             weekNumber: w.weekNumber,
-            phase: w.phase as any,
+            phase: w.phase as Phase,
             volumeKm: w.volumeKm,
             focusDescription: w.focusDescription,
             isRecoveryWeek: w.isRecoveryWeek,
@@ -148,8 +149,8 @@ export class PrismaPlanRepository implements IPlanRepository {
       data: sessions.map(s => ({
         weekId: s.weekId,
         dayOfWeek: s.dayOfWeek,
-        type: s.type as any,
-        intensity: s.intensity as any,
+        type: s.type as PrismaSessionType,
+        intensity: s.intensity,
         durationMin: s.durationMin,
         zoneTarget: s.zoneTarget,
         detailText: s.detailText,

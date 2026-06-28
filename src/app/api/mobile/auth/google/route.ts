@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
           name: googleUser.name,
           image: googleUser.picture ?? null,
           role: 'ATHLETE',
-          config: null as any,
+          config: undefined,
         },
         select: { id: true, email: true, name: true, role: true, config: true, image: true },
       })
@@ -103,10 +103,11 @@ export async function POST(req: NextRequest) {
         features: config?.features ?? DEFAULT_USER_CONFIG.features,
       },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[mobile/auth/google]', err)
-    const message = err.message?.includes('inválido') || err.message?.includes('aplicación')
-      ? err.message
+    const errMessage = err instanceof Error ? err.message : ''
+    const message = errMessage.includes('inválido') || errMessage.includes('aplicación')
+      ? errMessage
       : 'Error al autenticar con Google.'
     return NextResponse.json({ error: message }, { status: 400 })
   }

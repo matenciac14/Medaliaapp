@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDashboardSummary, type DashboardInput } from './get-dashboard-summary.use-case'
+import { getDashboardSummary, type DashboardInput, type PlanWeek } from './get-dashboard-summary.use-case'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ function makePlan(startDaysAgo: number, totalWeeks = 8) {
     name: 'Test Plan',
     startDate: start,
     totalWeeks,
-    weeks: [] as any[],
+    weeks: [] as PlanWeek[],
   }
 }
 
