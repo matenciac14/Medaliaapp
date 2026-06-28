@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
 import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 const USER_SELECT = {
   id: true, email: true, name: true, role: true, image: true,
@@ -53,6 +54,10 @@ export async function POST(req: NextRequest) {
     }
 
     const googleUser = await verifyGoogleToken(idToken)
+
+    // Rate limit por email verificado: 20 intentos/min
+    const { allowed } = await rateLimitAsync(`mobile-google-${googleUser.email}`, { limit: 20, windowMs: 60_000 })
+    if (!allowed) return NextResponse.json({ error: 'Demasiados intentos. Intenta en un minuto.' }, { status: 429 })
 
     if (googleUser.email_verified !== 'true') {
       return NextResponse.json({ error: 'Correo de Google no verificado.' }, { status: 400 })

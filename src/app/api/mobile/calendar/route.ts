@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { buildCalendarWeek } from '@/domain/calendar/build-calendar-week'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const user = await getMobileUser(req)
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { allowed } = await rateLimitAsync(`mobile-${user.id}:calendar`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0', 10)
   if (isNaN(weekOffset) || weekOffset < -52 || weekOffset > 52) {

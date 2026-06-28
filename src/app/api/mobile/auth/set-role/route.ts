@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) {
     return NextResponse.json({ error: 'No autenticado.' }, { status: 401 })
   }
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:set-role`, { limit: 20, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const { role } = await req.json()
   if (role !== 'ATHLETE' && role !== 'COACH') {
