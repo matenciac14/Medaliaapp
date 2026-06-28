@@ -6,7 +6,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   const session = await auth()
 
   if (!session?.user?.id) redirect('/login')
-  if ((session.user as any).role !== 'COACH') redirect('/dashboard')
+  if (session.user.role !== 'COACH') redirect('/dashboard')
 
   const coachName = session.user.name ?? session.user.email ?? 'Coach'
 

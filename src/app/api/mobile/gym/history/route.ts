@@ -1,50 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:gym-history`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const athleteId = mobile.id
 
-  const sessions = await prisma.gymSession.findMany({
-    where: { athleteId },
-    orderBy: { date: 'desc' },
-    take: 50,
-    include: {
-      setLogs: {
-        include: {
-          workoutExercise: {
-            include: { exercise: { select: { name: true } } },
+  // Fetch en paralelo: sesiones de rutina asignada + logs libres de FUERZA
+  const [gymSessions, freeLogs] = await Promise.all([
+    prisma.gymSession.findMany({
+      where: { athleteId },
+      orderBy: { date: 'desc' },
+      take: 50,
+      include: {
+        setLogs: {
+          include: {
+            workoutExercise: {
+              include: { exercise: { select: { name: true } } },
+            },
           },
+          orderBy: [{ workoutExercise: { order: 'asc' } }, { setNumber: 'asc' }],
         },
-        orderBy: [{ workoutExercise: { order: 'asc' } }, { setNumber: 'asc' }],
-      },
-      assignedWorkout: {
-        include: {
-          template: {
-            include: {
-              days: { select: { dayOfWeek: true, label: true, muscleGroups: true } },
+        assignedWorkout: {
+          include: {
+            template: {
+              include: {
+                days: { select: { dayOfWeek: true, label: true, muscleGroups: true } },
+              },
             },
           },
         },
       },
-    },
-  })
+    }),
+    prisma.sessionLog.findMany({
+      where: { userId: athleteId, plannedSessionId: null, freeSessionType: 'FUERZA' },
+      orderBy: { completedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        completedAt: true,
+        durationMin: true,
+        rpe: true,
+        notes: true,
+      },
+    }),
+  ])
 
-  const formatted = sessions.map(gs => {
-    const workoutDay = gs.assignedWorkout.template.days.find(d => d.dayOfWeek === gs.dayOfWeek)
+  const formattedGym = gymSessions.map(gs => {
+    const workoutDay = gs.assignedWorkout?.template.days.find(d => d.dayOfWeek === gs.dayOfWeek)
 
-    const exerciseMap: Record<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }> = {}
+    const exerciseMap: Record<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean; isPR: boolean }[] }> = {}
     for (const sl of gs.setLogs) {
-      const key = sl.workoutExerciseId
-      if (!exerciseMap[key]) exerciseMap[key] = { name: sl.workoutExercise.exercise.name, sets: [] }
+      const key = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
+      if (!exerciseMap[key]) exerciseMap[key] = { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] }
       exerciseMap[key].sets.push({
         setNumber: sl.setNumber,
         weightKg: sl.weightKg,
         repsCompleted: sl.repsCompleted,
         completed: sl.completed,
+        isPR: sl.isPR,
       })
     }
 
@@ -66,17 +85,40 @@ export async function GET(req: NextRequest) {
       completedSets,
       volumeKg: Math.round(volume),
       exercises: Object.values(exerciseMap),
+      isFree: false,
     }
   })
 
-  const totalVolume = formatted.reduce((acc, s) => acc + s.volumeKg, 0)
+  const formattedFree = freeLogs.map(fl => ({
+    id: fl.id,
+    date: fl.completedAt.toISOString(),
+    dayOfWeek: (fl.completedAt.getDay() + 6) % 7 + 1, // 1=lun…7=dom
+    label: 'Fuerza libre',
+    muscleGroups: [] as string[],
+    durationMin: fl.durationMin,
+    rpe: fl.rpe,
+    completed: true,
+    notes: fl.notes,
+    completedSets: 0,
+    volumeKg: 0,
+    exercises: [] as { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean; isPR: boolean }[] }[],
+    isFree: true,
+  }))
+
+  // Unificar y ordenar por fecha desc
+  const all = [...formattedGym, ...formattedFree].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  ).slice(0, 60)
+
+  const totalVolume = all.reduce((acc, s) => acc + s.volumeKg, 0)
+  const totalSets = gymSessions.reduce((acc, s) => acc + s.setLogs.filter(sl => sl.completed).length, 0)
 
   return NextResponse.json({
-    sessions: formatted,
+    sessions: all,
     stats: {
-      total: sessions.length,
-      completed: sessions.filter(s => s.completed).length,
-      totalSets: sessions.reduce((acc, s) => acc + s.setLogs.filter(sl => sl.completed).length, 0),
+      total: all.length,
+      completed: all.filter(s => s.completed).length,
+      totalSets,
       totalVolumeKg: totalVolume,
     },
   })

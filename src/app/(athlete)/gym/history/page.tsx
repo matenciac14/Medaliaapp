@@ -2,11 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-
-
+import { DAY_LABELS } from '@/lib/constants/sessions'
 import { ChevronLeft, CheckCircle2, Dumbbell, Clock, Zap } from 'lucide-react'
-
-const DOW_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-CO', {
@@ -29,13 +26,13 @@ export default async function GymHistoryPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  if (!(session.user as any).features?.gym) {
+  if (!session.user.features?.gym) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Historial de gym disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Accede a tu historial completo de sesiones con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
       </div>
     )
   }
@@ -105,7 +102,7 @@ export default async function GymHistoryPage() {
       ) : (
         <div className="space-y-4">
           {sessions.map((gs) => {
-            const workoutDay = gs.assignedWorkout.template.days.find(
+            const workoutDay = gs.assignedWorkout?.template.days.find(
               (d) => d.dayOfWeek === gs.dayOfWeek
             )
 
@@ -116,8 +113,8 @@ export default async function GymHistoryPage() {
             }> = {}
 
             for (const sl of gs.setLogs) {
-              const exName = sl.workoutExercise.exercise.name
-              const exId = sl.workoutExerciseId
+              const exName = sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio'
+              const exId = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
               if (!exerciseGroups[exId]) {
                 exerciseGroups[exId] = { name: exName, sets: [] }
               }
@@ -126,6 +123,7 @@ export default async function GymHistoryPage() {
 
             const exerciseList = Object.values(exerciseGroups)
             const completedSets = gs.setLogs.filter((sl) => sl.completed).length
+            const prCount = gs.setLogs.filter((sl) => sl.isPR).length
             const sessionVolume = gs.setLogs
               .filter((sl) => sl.completed)
               .reduce((acc, sl) => acc + (sl.weightKg ?? 0) * (sl.repsCompleted ?? 0), 0)
@@ -146,7 +144,7 @@ export default async function GymHistoryPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-gray-900 truncate">
-                      {workoutDay?.label ?? `${DOW_LABELS[gs.dayOfWeek]} — Sesión`}
+                      {workoutDay?.label ?? `${DAY_LABELS[gs.dayOfWeek]} — Sesión`}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5 capitalize">{formatDate(gs.date)}</p>
                   </div>
@@ -168,6 +166,11 @@ export default async function GymHistoryPage() {
                       <span className="flex items-center gap-1 text-xs font-semibold text-[#f97316]">
                         <Zap size={11} />
                         {Math.round(sessionVolume).toLocaleString()}kg
+                      </span>
+                    )}
+                    {prCount > 0 && (
+                      <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                        🏆 {prCount} PR
                       </span>
                     )}
                     <span className="text-xs text-gray-400">{completedSets} series</span>
@@ -219,9 +222,16 @@ export default async function GymHistoryPage() {
                               ) : (
                                 <span className="text-gray-400">— reps</span>
                               )}
-                              {sl.completed && (
-                                <CheckCircle2 size={13} className="text-green-500 ml-auto" />
-                              )}
+                              <span className="ml-auto flex items-center gap-1.5">
+                                {sl.isPR && (
+                                  <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                                    🏆 PR
+                                  </span>
+                                )}
+                                {sl.completed && !sl.isPR && (
+                                  <CheckCircle2 size={13} className="text-green-500" />
+                                )}
+                              </span>
                             </div>
                           ))}
                         </div>

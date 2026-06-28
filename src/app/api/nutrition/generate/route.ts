@@ -1,11 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import Anthropic from '@anthropic-ai/sdk'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { parseUserConfig } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(_req: Request) {
   const session = await auth()
@@ -33,27 +30,6 @@ export async function POST(_req: Request) {
   // Calcular TDEE con fórmulas
   const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)
   const macros = calculateMacros(tdee, profile.weightKg, !!profile.weightGoalKg)
-
-  // Usar AI para generar notas personalizadas
-  let aiNotes = ''
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'user',
-          content: `Atleta corredor: ${profile.age} años, ${profile.weightKg}kg, objetivo ${goal?.type ?? 'GENERAL_FITNESS'}.
-TDEE calculado: ${tdee} kcal. Proteína: ${macros.hard.protein}g, Carbos día duro: ${macros.hard.carbs}g.
-Lesiones: ${profile.injuries.join(', ') || 'ninguna'}. Medicamentos: ${profile.medications.join(', ') || 'ninguno'}.
-Genera 2-3 recomendaciones nutricionales específicas en español (sin diagnosticar, solo coaching). Máximo 3 oraciones.`,
-        },
-      ],
-    })
-    aiNotes = (response.content[0] as { type: string; text: string }).text ?? ''
-  } catch {
-    aiNotes = ''
-  }
 
   // Guardar en DB
   const nutritionPlan = await prisma.nutritionPlan.upsert({
@@ -94,5 +70,5 @@ Genera 2-3 recomendaciones nutricionales específicas en español (sin diagnosti
     },
   })
 
-  return Response.json({ ok: true, plan: nutritionPlan, aiNotes })
+  return Response.json({ ok: true, plan: nutritionPlan })
 }

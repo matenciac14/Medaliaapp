@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if ((session.user as any).role !== 'ATHLETE') {
+  if (session.user.role !== 'ATHLETE') {
     return NextResponse.json({ error: 'Only athletes can join programs' }, { status: 403 })
   }
 

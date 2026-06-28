@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { SignJWT } from 'jose'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
@@ -13,9 +14,18 @@ function generateTempPassword(length = 8): string {
   return result
 }
 
+async function generateResetLink(athleteId: string): Promise<string> {
+  const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET)
+  const token = await new SignJWT({ sub: athleteId, purpose: 'set-password' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d')
+    .sign(secret)
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://medaliq.com'}/set-password?token=${token}`
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -76,29 +86,32 @@ export async function POST(req: NextRequest) {
       },
     }
 
-    // Create athlete user
-    const athlete = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: 'ATHLETE',
-        config: athleteConfig,
-      },
+    // Create athlete user and link to coach atomically
+    const athlete = await prisma.$transaction(async (tx) => {
+      const newAthlete = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          role: 'ATHLETE',
+          config: athleteConfig,
+        },
+      })
+      await tx.coachAthlete.create({
+        data: {
+          coachId,
+          athleteId: newAthlete.id,
+        },
+      })
+      return newAthlete
     })
 
-    // Link coach <> athlete
-    await prisma.coachAthlete.create({
-      data: {
-        coachId,
-        athleteId: athlete.id,
-      },
-    })
+    const resetLink = await generateResetLink(athlete.id)
 
     return NextResponse.json({
       ok: true,
       email: athlete.email,
-      tempPassword,
+      resetLink,
       athleteId: athlete.id,
       athleteName: athlete.name,
     }, { status: 201 })

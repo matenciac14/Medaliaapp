@@ -33,12 +33,10 @@ async function getAthleteCounts(profileIds: string[]) {
   return result
 }
 
-const SPORTS = ['Todos', 'Running', 'Gym', 'Ciclismo', 'Triatlón', 'Funcional'] as const
+const SPORTS = ['Todos', 'Running', 'Gym', 'Funcional'] as const
 const SPORT_MAP: Record<string, string> = {
   Running: 'RUNNING',
   Gym: 'GYM',
-  Ciclismo: 'CYCLING',
-  Triatlón: 'TRIATHLON',
   Funcional: 'FUNCTIONAL',
 }
 
@@ -61,8 +59,6 @@ function sportLabel(s: string): string {
   const map: Record<string, string> = {
     RUNNING: 'Running',
     GYM: 'Gym',
-    CYCLING: 'Ciclismo',
-    TRIATHLON: 'Triatlón',
     FUNCTIONAL: 'Funcional',
   }
   return map[s] ?? s
@@ -113,7 +109,7 @@ export default async function CoachesPage({
             Encuentra tu coach ideal
           </h1>
           <p className="text-blue-100 text-lg max-w-xl mx-auto">
-            Coaches especializados en running, gym, ciclismo y más. O entrena con nuestro AI Coach.
+            Coaches especializados en running y gym.
           </p>
         </div>
       </section>
@@ -140,38 +136,7 @@ export default async function CoachesPage({
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* AI Coach card — always first */}
-          {(activeSport === 'Todos' || true) && (
-            <div className="bg-[#1e3a5f] text-white rounded-2xl border-2 border-[#f97316] shadow-lg p-6 flex flex-col">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-full bg-[#f97316] flex items-center justify-center text-white font-extrabold text-lg shrink-0">
-                  AI
-                </div>
-                <div>
-                  <div className="font-bold text-lg leading-tight">Coach Inteligente Medaliq</div>
-                  <div className="text-blue-200 text-sm">Tu entrenador, siempre disponible</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {['Running', 'Gym', 'Ciclismo', 'Triatlón'].map((s) => (
-                  <span key={s} className="bg-white/20 text-white text-xs rounded-full px-2 py-0.5">{s}</span>
-                ))}
-              </div>
-              <p className="text-blue-100 text-sm mb-4">
-                Disponible 24/7 · Planes personalizados · Ajuste automático semanal
-              </p>
-              <div className="mt-auto flex items-center justify-between">
-                <span className="text-blue-200 text-sm">Desde <span className="text-white font-bold text-lg">$15</span>/mes</span>
-                <Link href="/onboarding">
-                  <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-                    Empezar con AI Coach
-                  </span>
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* Real coach cards */}
+          {/* Coach cards */}
           {filtered.map((coach) => {
             const price = minPrice(coach.programs)
             const athletes = athleteCounts[coach.id] ?? 0
@@ -240,7 +205,7 @@ export default async function CoachesPage({
           {filtered.length === 0 && (
             <div className="col-span-full py-16 text-center text-gray-400">
               <p className="text-lg font-medium mb-2">No hay coaches en esta categoría aún.</p>
-              <p className="text-sm">Prueba con el AI Coach — disponible en todos los deportes.</p>
+              <p className="text-sm">Pronto habrá coaches disponibles en esta categoría.</p>
             </div>
           )}
         </div>

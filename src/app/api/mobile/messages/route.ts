@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db/prisma'
+import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
+
+// GET /api/mobile/messages?with=[userId] — paginada, asc
+export async function GET(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:messages-get`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+
+  const withId = req.nextUrl.searchParams.get('with')
+  if (!withId) return NextResponse.json({ error: 'Falta parámetro with' }, { status: 400 })
+
+  const messages = await prisma.message.findMany({
+    where: {
+      OR: [
+        { fromId: mobile.id, toId: withId },
+        { fromId: withId, toId: mobile.id },
+      ],
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 100,
+  })
+
+  return NextResponse.json({ messages })
+}
+
+// POST /api/mobile/messages — { toId, content }
+export async function POST(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:messages-post`, { limit: 100, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+
+  const body = await req.json()
+  const { toId, content } = body
+  if (!toId || !content?.trim()) return NextResponse.json({ error: 'toId y content requeridos' }, { status: 400 })
+
+  const message = await prisma.message.create({
+    data: { fromId: mobile.id, toId, content: content.trim() },
+  })
+
+  return NextResponse.json({ message }, { status: 201 })
+}

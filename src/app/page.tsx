@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+
 import RevealOnScroll from "./_components/RevealOnScroll";
 import { getT } from "@/lib/i18n/server";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
@@ -56,9 +56,9 @@ export default async function Home() {
               Iniciar sesión
             </a>
             <a href="/register">
-              <Button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95">
+              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95">
                 {l.nav.cta}
-              </Button>
+              </button>
             </a>
           </div>
         </div>
@@ -91,17 +91,16 @@ export default async function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center anim-fade-up delay-400">
             <a href="/register">
-              <Button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-8 py-4 rounded-xl text-lg w-full sm:w-auto transition-transform hover:scale-105 active:scale-95">
+              <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-8 py-4 rounded-xl text-lg w-full sm:w-auto transition-transform hover:scale-105 active:scale-95">
                 {l.hero.cta1}
-              </Button>
+              </button>
             </a>
             <a href="#como-funciona">
-              <Button
-                variant="outline"
+              <button
                 className="border-white/30 text-white bg-white/10 hover:bg-white/20 font-semibold px-8 py-4 rounded-xl text-lg w-full sm:w-auto transition-transform hover:scale-105 active:scale-95 backdrop-blur-sm"
               >
                 {l.hero.cta2}
-              </Button>
+              </button>
             </a>
           </div>
 
@@ -251,7 +250,7 @@ export default async function Home() {
                 ))}
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
-                <span className="text-[#f97316] font-semibold">Coach AI: </span>
+                <span className="text-[#f97316] font-semibold">Medaliq: </span>
                 {l.features.aiMsg}
               </div>
             </div>
@@ -290,9 +289,9 @@ export default async function Home() {
           </div>
           <RevealOnScroll delay={200}>
             <a href="/register">
-              <Button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
+              <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
                 {l.forCoaches.cta}
-              </Button>
+              </button>
             </a>
           </RevealOnScroll>
         </div>
@@ -311,38 +310,7 @@ export default async function Home() {
               </p>
             </div>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* AI Coach card */}
-            <RevealOnScroll>
-              <div className="bg-[#1e3a5f] text-white rounded-2xl border-2 border-[#f97316] shadow-lg p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-[#f97316] flex items-center justify-center text-white font-extrabold text-base shrink-0 anim-pulse-cta">
-                    AI
-                  </div>
-                  <div>
-                    <div className="font-bold text-base leading-tight">{l.coachSection.aiCoachName}</div>
-                    <div className="text-blue-200 text-xs">{l.coachSection.aiCoachAvail}</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {["Running", "Gym", "Ciclismo", "Triatlón"].map((s) => (
-                    <span key={s} className="bg-white/20 text-white text-xs rounded-full px-2 py-0.5">{s}</span>
-                  ))}
-                </div>
-                <p className="text-blue-100 text-sm mb-4 flex-1">
-                  {l.coachSection.aiCoachDesc}
-                </p>
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="text-blue-200 text-sm">{l.coachSection.aiCoachFrom} <span className="text-white font-bold">$15</span>/mes</span>
-                  <a href="/p/ai-coach">
-                    <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">
-                      {l.coachSection.viewProfile}
-                    </span>
-                  </a>
-                </div>
-              </div>
-            </RevealOnScroll>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Placeholder coach 1 */}
             <RevealOnScroll delay={100}>
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full">
@@ -355,7 +323,7 @@ export default async function Home() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Running</span>
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Triatlón</span>
+                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Gym</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-4 flex-1">{l.coachSection.comingSoon}</p>
                 <div className="flex items-center justify-between mt-auto">
@@ -424,9 +392,9 @@ export default async function Home() {
                   <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> {l.pricing.freeF5}</li>
                 </ul>
                 <a href="/register">
-                  <Button variant="outline" className="w-full border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold">
+                  <button className="w-full border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold">
                     {l.pricing.freeCta}
-                  </Button>
+                  </button>
                 </a>
               </div>
             </RevealOnScroll>
@@ -453,9 +421,9 @@ export default async function Home() {
                   <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF5}</li>
                 </ul>
                 <a href="/register">
-                  <Button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold anim-pulse-cta">
+                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold anim-pulse-cta">
                     {l.pricing.trialCta}
-                  </Button>
+                  </button>
                 </a>
               </div>
             </RevealOnScroll>
@@ -481,9 +449,9 @@ export default async function Home() {
                   <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.proF5}</li>
                 </ul>
                 <a href="/register">
-                  <Button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold">
+                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold">
                     {l.pricing.proCta}
-                  </Button>
+                  </button>
                 </a>
               </div>
             </RevealOnScroll>
@@ -514,9 +482,9 @@ export default async function Home() {
                 </div>
                 <div className="shrink-0">
                   <a href="/register">
-                    <Button variant="outline" className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap">
+                    <button className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap">
                       {l.pricing.coachCta}
-                    </Button>
+                    </button>
                   </a>
                 </div>
               </div>
@@ -531,9 +499,9 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{l.finalCta.title}</h2>
           <p className="text-blue-200 mb-8 text-base max-w-md mx-auto">{l.finalCta.subtitle}</p>
           <a href="/register">
-            <Button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
+            <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
               {l.finalCta.cta}
-            </Button>
+            </button>
           </a>
         </RevealOnScroll>
       </section>

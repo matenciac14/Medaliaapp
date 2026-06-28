@@ -45,7 +45,7 @@ interface Props {
 export default async function ExercisesPage({ searchParams }: Props) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     redirect('/dashboard')
   }
 

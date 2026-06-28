@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 export async function GET(_req: NextRequest) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
@@ -37,6 +37,7 @@ interface DayExerciseInput {
   setType?: string
   notes?: string
   order: number
+  supersetWithOrder?: number | null  // order del ejercicio par en el mismo día (no ID — el PATCH recrea IDs)
 }
 
 interface DayInput {
@@ -61,7 +62,7 @@ interface CreateRoutineBody {
 export async function POST(req: NextRequest) {
   const session = await auth()
 
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
@@ -135,20 +136,36 @@ export async function POST(req: NextRequest) {
       if (!day.isRestDay && day.exercises && day.exercises.length > 0) {
         const validExs = day.exercises.filter((e) => e.exerciseId)
 
+        // Phase 1: create exercises, collect order → id
+        const orderToId = new Map<number, string>()
         for (let j = 0; j < validExs.length; j++) {
           const ex = validExs[j]
-          await tx.workoutExercise.create({
+          const exOrder = ex.order ?? j
+          const created = await tx.workoutExercise.create({
             data: {
               dayId: wDay.id,
               exerciseId: ex.exerciseId,
-              order: ex.order ?? j,
+              order: exOrder,
               sets: ex.sets ?? 4,
               repsScheme: ex.repsScheme?.trim() || '12',
               restSeconds: typeof ex.restSeconds === 'number' ? ex.restSeconds : null,
               setType: (ex.setType as any) ?? 'NORMAL',
               notes: ex.notes?.trim() || null,
             },
+            select: { id: true },
           })
+          orderToId.set(exOrder, created.id)
+        }
+
+        // Phase 2: resolve supersetWith by order → fresh ID
+        for (let j = 0; j < validExs.length; j++) {
+          const ex = validExs[j]
+          if (ex.supersetWithOrder == null) continue
+          const thisId = orderToId.get(ex.order ?? j)
+          const pairedId = orderToId.get(ex.supersetWithOrder)
+          if (thisId && pairedId) {
+            await tx.workoutExercise.update({ where: { id: thisId }, data: { supersetWith: pairedId } })
+          }
         }
       }
     }

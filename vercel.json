@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "src/app/api/onboarding/generate/route.ts": { "maxDuration": 60 },
+    "src/app/api/coach/athlete/[id]/plan/route.ts": { "maxDuration": 60 }
+  }
+}

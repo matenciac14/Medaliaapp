@@ -1,46 +1,13 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 
+// Downgrade is a no-op while AI tiers are not implemented.
+// Kept as a stub to avoid 404s from existing links.
 export async function POST() {
   const session = await auth()
   if (!session?.user?.id || session.user.role !== 'ATHLETE') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
-
-  const existing = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { config: true },
-  })
-  const currentConfig = parseUserConfig(existing?.config)
-
-  const newConfig = {
-    ...currentConfig,
-    features: {
-      ...currentConfig.features,
-      plan: false,
-      checkin: false,
-      nutrition: false,
-      progress: false,
-      gym: false,
-      log: true,        // log manual disponible en Free
-      coach: false,
-    },
-    trial: {
-      plan: 'INACTIVE' as const,
-      endsAt: currentConfig.trial?.endsAt ?? null,
-    },
-    ai: {
-      ...currentConfig.ai,
-      monthlyLimit: 0,
-    },
-  }
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { config: newConfig },
-  })
 
   return NextResponse.json({ ok: true })
 }

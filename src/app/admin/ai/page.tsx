@@ -1,97 +1,161 @@
-import { getAIConfig } from '@/lib/ai/config'
-import { prisma } from '@/lib/db/prisma'
-import { parseAIProfile } from '@/lib/ai/profile'
-import AIProfileEditor from './_components/AIProfileEditor'
+'use client'
 
-export default async function AdminAIPage() {
-  const config = getAIConfig()
-  const sysConfig = await prisma.systemConfig.findUnique({ where: { id: 'singleton' } })
-  const aiProfile = parseAIProfile(sysConfig?.aiProfile)
+import { useEffect, useState, useCallback } from 'react'
+
+type AIProfile = {
+  coachingPhilosophy: string
+  periodizationPrinciples: string
+  injuryProtocol: string
+  nutritionGuidelines: string
+  goalNotes: string
+}
+
+const FIELDS: { key: keyof AIProfile; label: string; desc: string; rows: number }[] = [
+  {
+    key: 'coachingPhilosophy',
+    label: 'Filosofía de coaching',
+    desc: 'Principios generales que guían las recomendaciones del AI Coach al atleta.',
+    rows: 4,
+  },
+  {
+    key: 'periodizationPrinciples',
+    label: 'Principios de periodización',
+    desc: 'Cómo el AI estructura las fases del plan (BASE, DESARROLLO, ESPECÍFICO, AFINAMIENTO).',
+    rows: 4,
+  },
+  {
+    key: 'injuryProtocol',
+    label: 'Protocolo de lesiones',
+    desc: 'Qué hacer cuando el atleta reporta dolor o banderas rojas. Incluye escalamiento.',
+    rows: 3,
+  },
+  {
+    key: 'nutritionGuidelines',
+    label: 'Guías de nutrición',
+    desc: 'Principios nutricionales que el AI puede usar en el chat. Sin prescripción médica.',
+    rows: 3,
+  },
+  {
+    key: 'goalNotes',
+    label: 'Notas por tipo de objetivo',
+    desc: 'Contexto adicional según el objetivo: carrera, recomposición, gym general.',
+    rows: 3,
+  },
+]
+
+const EMPTY: AIProfile = {
+  coachingPhilosophy: '',
+  periodizationPrinciples: '',
+  injuryProtocol: '',
+  nutritionGuidelines: '',
+  goalNotes: '',
+}
+
+export default function AdminAIPage() {
+  const [profile, setProfile] = useState<AIProfile>(EMPTY)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/ai-profile')
+      const data = await res.json()
+      setProfile(data.aiProfile ?? EMPTY)
+    } catch {
+      setError('Error al cargar el perfil AI.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    try {
+      const res = await fetch('/api/admin/ai-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      })
+      if (!res.ok) throw new Error()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      setError('Error al guardar. Intenta de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>Configuración IA</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Perfil y parámetros del AI coach. El perfil define cómo la AI genera planes y responde a atletas.
-        </p>
+    <div className="max-w-3xl">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Perfil AI Coach</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Estos campos se inyectan en el system prompt del AI Coach chat. Cambios aplican en minutos sin deploy.
+          </p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving || loading}
+          className="shrink-0 px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: '#1e3a5f' }}
+        >
+          {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
       </div>
 
-      <div className="space-y-6">
-
-        {/* AI Profile — editable desde DB */}
-        <AIProfileEditor initialProfile={aiProfile} />
-
-        {/* Modelo — read only */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Modelo de IA</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Configurado via variables de entorno en Vercel</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Chat del atleta</p>
-                <p className="text-xs text-gray-400 mt-0.5">AI_CHAT_MODEL</p>
-              </div>
-              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.chatModel}</span>
-            </div>
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Generación de planes</p>
-                <p className="text-xs text-gray-400 mt-0.5">AI_PLAN_MODEL</p>
-              </div>
-              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.planModel}</span>
-            </div>
-          </div>
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+          {error}
         </div>
+      )}
 
-        {/* Límites */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Límites de mensajes</h2>
-          </div>
-          <div className="divide-y divide-gray-100">
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Límite mensual — Pro</p>
-                <p className="text-xs text-gray-400 mt-0.5">AI_MONTHLY_LIMIT_PRO</p>
+      {loading ? (
+        <div className="text-sm text-gray-400 py-8 text-center">Cargando...</div>
+      ) : (
+        <div className="space-y-5">
+          {FIELDS.map(({ key, label, desc, rows }) => (
+            <div key={key} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100">
+                <p className="font-semibold text-gray-900 text-sm">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
               </div>
-              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.monthlyLimitPro} msgs/mes</span>
-            </div>
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Límite mensual — Inactive</p>
-                <p className="text-xs text-gray-400 mt-0.5">AI_MONTHLY_LIMIT_INACTIVE</p>
+              <div className="px-5 py-4">
+                <textarea
+                  value={profile[key]}
+                  onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+                  rows={rows}
+                  placeholder={`Escribe las instrucciones para "${label.toLowerCase()}"...`}
+                  className="w-full text-sm text-gray-800 placeholder-gray-300 resize-y border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 transition"
+                />
+                <p className="text-[11px] text-gray-300 mt-1 text-right">
+                  {profile[key].length} caracteres
+                </p>
               </div>
-              <span className="text-sm font-mono bg-gray-50 px-3 py-1 rounded-lg border border-gray-200 text-gray-700">{config.monthlyLimitInactive} msgs/mes</span>
             </div>
-          </div>
+          ))}
         </div>
+      )}
 
-        {/* Costos */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Estimación de costos</h2>
-          </div>
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">Costo por mensaje (Haiku)</p>
-                <p className="text-xl font-bold" style={{ color: '#1e3a5f' }}>~$0.0009</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">100 usuarios Pro · 50 msgs/mes</p>
-                <p className="text-xl font-bold text-green-600">~$4.50/mes</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">1,000 usuarios Pro · 50 msgs/mes</p>
-                <p className="text-xl font-bold text-green-600">~$45/mes</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          El caché se invalida automáticamente al guardar (TTL 1h → revalidate inmediato).
+        </p>
+        <button
+          onClick={handleSave}
+          disabled={saving || loading}
+          className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: '#1e3a5f' }}
+        >
+          {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
       </div>
     </div>
   )

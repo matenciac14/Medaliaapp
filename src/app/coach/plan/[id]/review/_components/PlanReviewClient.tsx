@@ -82,7 +82,7 @@ const PLAN_STATUS_LABEL: Record<string, string> = {
 }
 
 const GENERATED_BY_LABEL: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  AI:                { label: 'Generado por AI',    bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
+  AI:                { label: 'Generado por Medaliq', bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
   COACH:             { label: 'Creado por coach',   bg: '#f0fdf4', text: '#14532d', border: '#bbf7d0' },
   AI_COACH_APPROVED: { label: 'Aprobado por coach', bg: '#f0fdf4', text: '#14532d', border: '#86efac' },
 }

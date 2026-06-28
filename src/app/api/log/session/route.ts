@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
   const userId = session.user.id
   const body: LogSessionBody = await req.json()
 
+  // Si completed === false, no registrar (la sesión queda pendiente)
+  if (body.completed === false) {
+    return NextResponse.json({ ok: true, skipped: true })
+  }
+
   // Verificar ownership si viene plannedSessionId
   if (body.plannedSessionId) {
     const planned = await prisma.plannedSession.findFirst({
@@ -31,6 +36,13 @@ export async function POST(req: NextRequest) {
     if (!planned) {
       return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
     }
+
+    // Idempotente: si ya existe log, devolver éxito
+    const existing = await prisma.sessionLog.findUnique({
+      where: { plannedSessionId: body.plannedSessionId },
+      select: { id: true },
+    })
+    if (existing) return NextResponse.json({ ok: true, id: existing.id, alreadyLogged: true })
   }
 
   const log = await prisma.sessionLog.create({

@@ -55,9 +55,10 @@ export default async function AthleteDetailPage({
         where: { userId: athleteId },
       }),
 
-      // Verify coach-athlete relation (security)
+      // Verify coach-athlete relation (security) + coach notes
       prisma.coachAthlete.findFirst({
         where: { coachId: session.user.id, athleteId },
+        select: { id: true, status: true, coachGoal: true, privateNotes: true },
       }),
     ])
 
@@ -94,6 +95,9 @@ export default async function AthleteDetailPage({
         heightCm: healthProfile.heightCm,
         injuries: healthProfile.injuries,
         conditions: healthProfile.conditions,
+        sport: healthProfile.sport,
+        experienceLevel: healthProfile.experienceLevel,
+        ftp: healthProfile.ftp,
       }
     : null
 
@@ -117,7 +121,9 @@ export default async function AthleteDetailPage({
             detailText: s.detailText,
             zoneTarget: s.zoneTarget,
             coachNote: s.coachNote,
-            intensity: (s as any).intensity ?? 'MODERATE',
+            structure: s.structure,
+            intensity: s.intensity ?? 'MODERATE',
+            date: s.date,
           })),
         })),
       }
@@ -131,6 +137,9 @@ export default async function AthleteDetailPage({
     hrResting: c.hrResting,
     sleepScore: c.sleepScore,
     energyLevel: c.energyLevel,
+    stressLevel: c.stressLevel ?? null,
+    motivationLevel: c.motivationLevel ?? null,
+    painLevel: c.painLevel ?? null,
     dietAdherencePct: c.dietAdherencePct,
     painFlag: c.painFlag,
     hardestSessionRpe: c.hardestSessionRpe,
@@ -160,6 +169,9 @@ export default async function AthleteDetailPage({
       recentCheckIns={checkInsData}
       nutritionPlan={nutritionPlanData}
       initialFeatures={initialFeatures}
+      initialStatus={(coachRelation.status as 'ACTIVE' | 'PAUSED') ?? 'ACTIVE'}
+      coachGoal={coachRelation.coachGoal ?? null}
+      privateNotes={coachRelation.privateNotes ?? null}
     />
   )
 }

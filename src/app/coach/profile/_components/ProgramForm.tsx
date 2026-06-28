@@ -9,8 +9,6 @@ type Props = {
 const SPORTS = [
   { value: 'RUNNING', label: 'Running' },
   { value: 'GYM', label: 'Gym / Fuerza' },
-  { value: 'CYCLING', label: 'Ciclismo' },
-  { value: 'TRIATHLON', label: 'Triatlón' },
   { value: 'FUNCTIONAL', label: 'Funcional' },
 ]
 

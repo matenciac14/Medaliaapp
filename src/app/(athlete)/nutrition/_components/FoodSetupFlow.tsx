@@ -3,39 +3,18 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const FOOD_CATEGORIES = [
-  {
-    label: 'Proteínas',
-    icon: '🥩',
-    foods: [
-      'Huevos', 'Pechuga de pollo', 'Muslo de pollo',
-      'Carne de res (molida)', 'Chata / Punta de anca', 'Lomo de cerdo / Cañón',
-      'Costillas de cerdo', 'Pierna de cerdo', 'Salmón', 'Tilapia',
-      'Róbalo / Corvina', 'Atún en lata', 'Queso campesino',
-    ],
-  },
-  {
-    label: 'Carbohidratos',
-    icon: '🍚',
-    foods: [
-      'Arroz blanco', 'Papa', 'Yuca', 'Plátano maduro', 'Plátano verde',
-      'Pan blanco', 'Arepa', 'Avena', 'Frijoles', 'Lentejas',
-    ],
-  },
-  {
-    label: 'Grasas saludables',
-    icon: '🥑',
-    foods: ['Aguacate', 'Aceite de oliva', 'Crema de maní', 'Mantequilla', 'Almendras / Nueces'],
-  },
-  {
-    label: 'Verduras y frutas',
-    icon: '🥦',
-    foods: [
-      'Brócoli', 'Espárragos', 'Espinaca', 'Lechuga / Ensalada',
-      'Tomate', 'Pepino', 'Zanahoria', 'Banano', 'Mango', 'Papaya', 'Fresas / Arándanos',
-    ],
-  },
-]
+// Category display metadata — maps DB category key → label + icon
+const CATEGORY_META: Record<string, { label: string; icon: string }> = {
+  PROTEIN:    { label: 'Proteínas',          icon: '🥩' },
+  CARB:       { label: 'Carbohidratos',       icon: '🍚' },
+  FAT:        { label: 'Grasas saludables',   icon: '🥑' },
+  VEGETABLE:  { label: 'Verduras',            icon: '🥦' },
+  FRUIT:      { label: 'Frutas',              icon: '🍌' },
+  DAIRY:      { label: 'Lácteos',             icon: '🥛' },
+  LEGUME:     { label: 'Legumbres',           icon: '🫘' },
+  NUT_SEED:   { label: 'Nueces y semillas',   icon: '🥜' },
+  OTHER:      { label: 'Otros',               icon: '🍽️' },
+}
 
 const RESTRICTION_OPTIONS = [
   'Sin lácteos', 'Sin gluten', 'Sin cerdo', 'Sin mariscos',
@@ -44,12 +23,37 @@ const RESTRICTION_OPTIONS = [
 
 type Step = 'foods' | 'prefs' | 'generating' | 'done'
 
+type FoodItem = { id: string; name: string; category?: string }
+
 interface Props {
   hasFoodProfile: boolean
+  allFoods?: FoodItem[]
 }
 
-export default function FoodSetupFlow({ hasFoodProfile }: Props) {
+/** Build display categories from DB foods, preserving CATEGORY_META order */
+function buildFoodCategories(foods: FoodItem[]): { label: string; icon: string; foods: string[] }[] {
+  const groups: Record<string, string[]> = {}
+  for (const food of foods) {
+    const key = food.category ?? 'OTHER'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(food.name)
+  }
+  return Object.entries(groups)
+    .sort(([a], [b]) => {
+      const order = Object.keys(CATEGORY_META)
+      return (order.indexOf(a) ?? 99) - (order.indexOf(b) ?? 99)
+    })
+    .map(([key, names]) => ({
+      ...(CATEGORY_META[key] ?? { label: key, icon: '🍽️' }),
+      foods: names,
+    }))
+}
+
+
+export default function FoodSetupFlow({ hasFoodProfile, allFoods = [] }: Props) {
   const router = useRouter()
+  const foodCategories = buildFoodCategories(allFoods)
+  const dbFoodNames = new Set(allFoods.map(f => f.name))
   const [step, setStep] = useState<Step>(hasFoodProfile ? 'prefs' : 'foods')
   const [open, setOpen] = useState(false)
 
@@ -88,11 +92,17 @@ export default function FoodSetupFlow({ hasFoodProfile }: Props) {
     setStep('generating')
     setError(null)
     try {
+      const foodNames = Array.from(selectedFoods)
+      // Map selected names to DB IDs directly (no fuzzy matching needed — names come from DB)
+      const availableFoodIds = allFoods
+        .filter(f => selectedFoods.has(f.name))
+        .map(f => f.id)
       const res = await fetch('/api/nutrition/generate-meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          availableFoods: Array.from(selectedFoods),
+          availableFoods: foodNames,
+          availableFoodIds,
           restrictions: Array.from(restrictions),
           mealsPerDay,
           weighsFood,
@@ -124,7 +134,7 @@ export default function FoodSetupFlow({ hasFoodProfile }: Props) {
           <div>
             <h3 className="font-bold text-base">Configura tu plan de comidas</h3>
             <p className="text-white/70 text-xs mt-0.5">
-              Dinos qué alimentos tienes y la AI arma tu menú semanal personalizado
+              Dinos qué alimentos tienes y Medaliq arma tu menú semanal personalizado
             </p>
           </div>
         </div>
@@ -168,7 +178,7 @@ export default function FoodSetupFlow({ hasFoodProfile }: Props) {
           {/* STEP 1: Selección de alimentos */}
           {step === 'foods' && (
             <div className="space-y-5">
-              {FOOD_CATEGORIES.map(cat => (
+              {foodCategories.map(cat => (
                 <div key={cat.label}>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     {cat.icon} {cat.label}
@@ -213,10 +223,10 @@ export default function FoodSetupFlow({ hasFoodProfile }: Props) {
                   </button>
                 </div>
                 {/* Alimentos custom seleccionados */}
-                {Array.from(selectedFoods).filter(f => !FOOD_CATEGORIES.flatMap(c => c.foods).includes(f)).length > 0 && (
+                {Array.from(selectedFoods).filter(f => !dbFoodNames.has(f)).length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {Array.from(selectedFoods)
-                      .filter(f => !FOOD_CATEGORIES.flatMap(c => c.foods).includes(f))
+                      .filter(f => !dbFoodNames.has(f))
                       .map(f => (
                         <span key={f} className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#1e3a5f] text-white border border-[#1e3a5f]">
                           {f}
@@ -330,7 +340,7 @@ export default function FoodSetupFlow({ hasFoodProfile }: Props) {
               </div>
               <div className="text-center">
                 <p className="font-semibold text-gray-900">Analizando tu perfil...</p>
-                <p className="text-sm text-gray-500 mt-1">La AI está armando tu menú personalizado con tus alimentos</p>
+                <p className="text-sm text-gray-500 mt-1">Medaliq está armando tu menú personalizado con tus alimentos</p>
               </div>
             </div>
           )}

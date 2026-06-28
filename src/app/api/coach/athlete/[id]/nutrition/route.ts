@@ -2,6 +2,43 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id || session.user.role !== 'COACH') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const { id: athleteId } = await params
+
+  const link = await prisma.coachAthlete.findFirst({
+    where: { coachId: session.user.id, athleteId },
+  })
+  if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+
+  const [mealPlan, foodProfile] = await Promise.all([
+    prisma.mealPlan.findUnique({ where: { userId: athleteId } }),
+    prisma.foodProfile.findUnique({ where: { userId: athleteId } }),
+  ])
+
+  // Resolver alimentos del atleta desde el catálogo (para el constructor visual)
+  const athleteFoods = foodProfile?.availableFoodIds?.length
+    ? await prisma.food.findMany({
+        where: { id: { in: foodProfile.availableFoodIds }, isActive: true },
+        select: {
+          id: true, name: true, category: true,
+          kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true,
+          servingG: true, servingLabel: true,
+        },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      })
+    : []
+
+  return NextResponse.json({ mealPlan, foodProfile, athleteFoods })
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

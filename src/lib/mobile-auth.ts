@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { NextRequest } from 'next/server'
+import type { UserConfig } from '@/lib/config/user-config'
 
 export type MobileTokenPayload = {
   id: string
@@ -7,7 +8,8 @@ export type MobileTokenPayload = {
   name: string
   role: string
   onboardingCompleted: boolean
-  userPlan: string
+  userPlan: 'FREE' | 'PRO'
+  features: UserConfig['features']
 }
 
 function getSecret() {

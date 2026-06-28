@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.id || session.user.role !== 'COACH') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { sessionId } = await params
   const { note } = await req.json()

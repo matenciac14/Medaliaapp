@@ -3,9 +3,9 @@
 // Diseñado para soportar múltiples deportes y futuras integraciones
 // ---------------------------------------------------------------------------
 
-export type MainGoal = 'SPORT' | 'BODY' | 'GYM'
-export type HealthGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION'
-export type Sport = 'RUNNING' | 'CYCLING' | 'SWIMMING' | 'TRIATHLON' | 'FOOTBALL' | 'STRENGTH'
+export type MainGoal = 'SPORT' | 'BODY' | 'GYM' | 'FREE'
+export type HealthGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION' | 'FREE'
+export type Sport = 'RUNNING' | 'STRENGTH'
 export type BodyGoal = 'FAT_LOSS' | 'MUSCLE_GAIN' | 'RECOMPOSITION'
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
 export type HRSource = 'known' | 'estimated'
@@ -82,24 +82,6 @@ export type WizardData = {
   targetTime: string | null
   recentBestTime: string | null
 
-  // Ciclismo
-  cyclingModality: 'ROAD' | 'MTB' | null
-  hasPowerMeter: boolean | null
-  ftp: number | null
-
-  // Natación
-  swimStroke: 'FREESTYLE' | 'BACKSTROKE' | 'BREASTSTROKE' | 'BUTTERFLY' | 'MIXED' | null
-  recentSwimTime: string | null
-
-  // Triatlón
-  triathlonDistance: 'SPRINT' | 'OLYMPIC' | 'HALF' | 'FULL' | null
-  weakestSegment: 'SWIM' | 'BIKE' | 'RUN' | null
-
-  // Fútbol
-  footballPosition: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null
-  competitionLevel: 'RECREATIONAL' | 'AMATEUR' | 'SEMIPRO' | null
-  seasonPhase: 'PRESEASON' | 'INSEASON' | 'OFFSEASON' | null
-
   // Fuerza
   strengthStyle: 'POWERLIFTING' | 'HYPERTROPHY' | 'FUNCTIONAL' | null
 
@@ -148,16 +130,6 @@ export const INITIAL_DATA: WizardData = {
   raceDate: null,
   targetTime: null,
   recentBestTime: null,
-  cyclingModality: null,
-  hasPowerMeter: null,
-  ftp: null,
-  swimStroke: null,
-  recentSwimTime: null,
-  triathlonDistance: null,
-  weakestSegment: null,
-  footballPosition: null,
-  competitionLevel: null,
-  seasonPhase: null,
   strengthStyle: null,
   age: null,
   heightCm: null,
@@ -166,7 +138,7 @@ export const INITIAL_DATA: WizardData = {
   weightGoalKg: null,
   hrResting: null,
   hrMax: null,
-  hrSource: null,
+  hrSource: 'estimated',
   experienceLevel: null,
   daysPerWeek: 4,
   hoursPerSession: 1,
@@ -185,36 +157,40 @@ export const INITIAL_DATA: WizardData = {
 export type StepId =
   | 'health-goal'
   | 'has-sport'
-  | 'main-goal'
   | 'sport-select'
-  | 'body-goal'
-  | 'gym-goal'
   | 'sport-details'
   | 'physical'
   | 'hr-fitness'
   | 'schedule'
-  | 'day-schedule'
   | 'health'
   | 'plan-method'
   | 'generating'
 
 export function getSteps(data: WizardData): StepId[] {
-  if (!data.healthGoal) return ['health-goal']
-  if (data.hasSport === null) return ['health-goal', 'has-sport']
+  const steps: StepId[] = ['health-goal']
 
-  const common: StepId[] = ['physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating']
+  if (!data.healthGoal) return steps
+
+  if (data.healthGoal === 'FREE') {
+    return [...steps, 'physical', 'generating']
+  }
+
+  steps.push('has-sport')
+
+  if (data.hasSport === null) return steps
 
   if (data.hasSport) {
-    if (!data.sport) return ['health-goal', 'has-sport', 'sport-select']
-    return ['health-goal', 'has-sport', 'sport-select', 'sport-details', ...common]
+    steps.push('sport-select')
+    if (!data.sport) return steps
+    steps.push('sport-details', 'physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
+  } else {
+    if (data.healthGoal === 'MUSCLE_GAIN') {
+      steps.push('physical', 'plan-method', 'generating')
+    } else {
+      // WEIGHT_LOSS | FITNESS | RECOMPOSITION
+      steps.push('physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
+    }
   }
 
-  // Sin deporte — plan de salud puro
-  if (data.healthGoal === 'MUSCLE_GAIN') {
-    // Flujo gym simplificado: datos físicos básicos → plan-method → generar
-    return ['health-goal', 'has-sport', 'physical', 'plan-method', 'generating']
-  }
-
-  // Pérdida de peso, condición, recomposición → plan corporal completo
-  return ['health-goal', 'has-sport', ...common]
+  return steps
 }

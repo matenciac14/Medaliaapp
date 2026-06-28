@@ -12,7 +12,6 @@ export default async function ProfilePage() {
       where: { id: session.user.id },
       include: {
         profile: true,
-        goals: { where: { status: 'ACTIVE' }, take: 1 },
       },
     }),
     prisma.trainingPlan.findFirst({
@@ -46,10 +45,9 @@ export default async function ProfilePage() {
           injuries: p.injuries,
           conditions: p.conditions,
           sleepHoursAvg: p.sleepHoursAvg ?? null,
-        } : null,
-        goal: dbUser.goals[0] ? {
-          type: dbUser.goals[0].type,
-          raceDate: dbUser.goals[0].raceDate?.toISOString() ?? null,
+          sport: p.sport ?? null,
+          experienceLevel: p.experienceLevel ?? null,
+          sportDetails: p.sportDetails as Record<string, string | number | null>,
         } : null,
         plan: plan ? { name: plan.name, totalWeeks: plan.totalWeeks } : null,
         dailyLogs: logs.map(l => ({

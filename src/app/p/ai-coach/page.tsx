@@ -1,204 +1,169 @@
 import Link from 'next/link'
 import { auth } from '@/auth'
 
-const AI_PROGRAMS = [
-  {
-    id: 'ai-pro',
-    name: 'AI Coach Pro',
-    sport: 'Running, Gym, Ciclismo',
-    level: 'Todos los niveles',
-    price: 15,
-    currency: 'USD',
-    includes: [
-      'Plan periodizado completo',
-      'Check-in semanal automático',
-      'Chat ilimitado con el AI Coach',
-      'Nutrición personalizada por sesión',
-      'Ajuste automático del plan',
-    ],
-  },
-  {
-    id: 'ai-gym',
-    name: 'AI Coach + Gym',
-    sport: 'Running, Gym, Ciclismo',
-    level: 'Todos los niveles',
-    price: 15,
-    currency: 'USD',
-    includes: [
-      'Plan periodizado completo',
-      'Check-in semanal automático',
-      'Chat ilimitado con el AI Coach',
-      'Nutrición personalizada por sesión',
-      'Ajuste automático del plan',
-      'Rutinas de gym con tracking de sets',
-    ],
-  },
-]
+export const metadata = {
+  title: 'Coach AI — Medaliq',
+  description: 'Entrenamiento deportivo personalizado con inteligencia artificial. Planes adaptativos, nutrición y coaching 24/7.',
+}
 
-const SPECIALTIES = ['Running', 'Gym', 'Ciclismo', 'Triatlón', 'Recomposición']
-const STATS = [
-  { value: '500+', label: 'Planes generados' },
-  { value: '24/7', label: 'Disponible' },
-  { value: '100%', label: 'Ajuste automático' },
-]
-
-export default async function AICoachPage() {
+export default async function AICoachProfilePage() {
   const session = await auth()
   const isLoggedIn = !!session?.user
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans">
+    <div className="min-h-screen bg-white text-gray-900">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-[#1e3a5f]">Medaliq</Link>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <Link href="/coaches" className="hover:text-[#1e3a5f] transition-colors">Coaches</Link>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>Medaliq</Link>
+          <div className="flex items-center gap-3">
+            <Link href="/coaches" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+              Ver todos los coaches
+            </Link>
             {isLoggedIn ? (
-              <Link href="/dashboard" className="hover:text-[#1e3a5f]">Mi panel</Link>
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Mi dashboard
+              </Link>
             ) : (
-              <Link href="/login" className="hover:text-[#1e3a5f]">Iniciar sesión</Link>
+              <Link
+                href="/register"
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#f97316' }}
+              >
+                Empieza gratis
+              </Link>
             )}
           </div>
-          <Link href="/onboarding">
-            <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors">
-              Empieza gratis
-            </span>
-          </Link>
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-20">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-6 items-start mb-8">
-          <div className="w-24 h-24 rounded-full bg-[#f97316] flex items-center justify-center text-white font-extrabold text-2xl shrink-0">
-            AI
+      {/* Hero */}
+      <section className="py-16 px-4" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2240 100%)' }}>
+        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-8">
+          {/* Avatar */}
+          <div
+            className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl shrink-0 shadow-lg"
+            style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '2px solid rgba(255,255,255,0.2)' }}
+          >
+            🤖
           </div>
-          <div className="flex-1">
-            <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-2 uppercase tracking-widest">
-              Medaliq
+          <div className="text-center sm:text-left text-white">
+            <div className="flex items-center gap-2 justify-center sm:justify-start mb-2 flex-wrap">
+              <h1 className="text-3xl font-extrabold">Coach AI</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">
+                Powered by Claude
+              </span>
             </div>
-            <h1 className="text-3xl font-extrabold text-[#1e3a5f] mb-1">AI Coach Medaliq</h1>
-            <p className="text-gray-500 text-base mb-3">Tu entrenador inteligente, disponible 24/7</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SPECIALTIES.map((s) => (
-                <span key={s} className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">
+            <p className="text-blue-100 text-base leading-relaxed max-w-xl">
+              Tu entrenador deportivo con inteligencia artificial. Genera planes periodizados personalizados,
+              ajusta la carga según tu check-in semanal y responde tus preguntas las 24 horas.
+            </p>
+            <div className="flex gap-2 flex-wrap mt-4 justify-center sm:justify-start">
+              {['Running', 'Gym'].map((s) => (
+                <span
+                  key={s}
+                  className="px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: 'rgba(249,115,22,0.25)', color: '#fdba74' }}
+                >
                   {s}
                 </span>
               ))}
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Bio */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-[#1e3a5f] mb-2">Sobre el AI Coach</h2>
-          <p className="text-gray-600 leading-relaxed">
-            El AI Coach de Medaliq genera planes periodizados basados en ciencia del deporte, los ajusta cada semana según tus datos reales y responde tus preguntas en cualquier momento. Sin citas, sin esperas.
-          </p>
-        </div>
+      {/* Content */}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-10">
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          {STATS.map((s) => (
-            <div key={s.label} className="bg-gray-50 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-extrabold text-[#1e3a5f]">{s.value}</div>
-              <div className="text-xs text-gray-400 mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Programs */}
-        <div className="mb-10">
-          <h2 className="text-lg font-bold text-[#1e3a5f] mb-4">Programas disponibles</h2>
-          <div className="flex flex-col gap-4">
-            {AI_PROGRAMS.map((program) => (
-              <div
-                key={program.id}
-                className="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-bold text-[#1e3a5f] text-base mb-1">{program.name}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">
-                        {program.sport}
-                      </span>
-                      <span className="bg-gray-100 text-gray-600 text-xs rounded-full px-2 py-0.5">
-                        {program.level}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-2xl font-extrabold text-[#1e3a5f]">${program.price}</div>
-                    <div className="text-xs text-gray-400">{program.currency}/mes</div>
-                  </div>
-                </div>
-                <ul className="space-y-1 mb-4">
-                  {program.includes.map((item) => (
-                    <li key={item} className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="text-[#f97316]">✓</span> {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/onboarding">
-                  <span className="inline-block bg-[#f97316] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
-                    Empezar con AI Coach
-                  </span>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* How it works */}
-        <div className="bg-gray-50 rounded-2xl p-6 mb-8">
-          <h2 className="text-lg font-bold text-[#1e3a5f] mb-4">Cómo funciona</h2>
+        {/* Qué incluye */}
+        <section>
+          <h2 className="text-xl font-bold text-gray-900 mb-5">Qué incluye el Coach AI</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { step: '01', title: 'Intake personalizado', desc: 'Cuéntale al AI tus objetivos, historial y disponibilidad.' },
-              { step: '02', title: 'Plan en minutos', desc: 'Recibes un plan periodizado semana a semana, adaptado a ti.' },
-              { step: '03', title: 'Entrena con guía', desc: 'Cada día tienes tu sesión, nutrición y métricas clave.' },
-              { step: '04', title: 'Ajuste automático', desc: 'Cada semana el AI analiza tus datos y actualiza el plan.' },
+              { icon: '📋', title: 'Plan periodizado', desc: 'Generado según tu deporte, objetivo, nivel y disponibilidad horaria.' },
+              { icon: '🔄', title: 'Ajuste automático', desc: 'El plan se adapta cada semana según tu check-in de RPE, peso y energía.' },
+              { icon: '🥗', title: 'Nutrición integrada', desc: 'Macros y kcal sincronizados con la carga del entrenamiento del día.' },
+              { icon: '💬', title: 'Chat 24/7', desc: 'Pregunta sobre tu plan, lesiones leves, nutrición o progresión de cargas.' },
+              { icon: '💪', title: 'Módulo de Gym', desc: 'Tracker de series y pesos con detección de récords personales.' },
+              { icon: '📈', title: 'Progresión visible', desc: 'Gráficas de peso, FC reposo, adherencia y volumen semanal.' },
             ].map((item) => (
-              <div key={item.step} className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1e3a5f] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                  {item.step}
-                </div>
+              <div key={item.title} className="flex gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-2xl shrink-0">{item.icon}</span>
                 <div>
-                  <div className="font-semibold text-[#1e3a5f] text-sm mb-0.5">{item.title}</div>
-                  <div className="text-gray-500 text-xs leading-relaxed">{item.desc}</div>
+                  <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
+                  <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="text-center">
-          <Link href="/onboarding">
-            <span className="inline-block bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-8 py-3 rounded-xl text-base transition-colors">
-              Empezar con AI Coach
-            </span>
-          </Link>
-          <p className="text-gray-400 text-xs mt-3">Sin tarjeta de crédito. Cancela cuando quieras.</p>
-        </div>
-      </div>
-
-      {/* Sticky bar — non-logged-in */}
-      {!isLoggedIn && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-4 py-3 z-50">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-            <p className="text-sm text-gray-600 hidden sm:block">
-              Empieza a entrenar con inteligencia artificial desde hoy.
-            </p>
-            <Link href="/onboarding">
-              <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">
-                Crear cuenta gratis
-              </span>
-            </Link>
+        {/* Precios */}
+        <section>
+          <h2 className="text-xl font-bold text-gray-900 mb-5">Planes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-5 border border-gray-200 rounded-2xl">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Trial</p>
+              <p className="text-3xl font-black text-gray-900 mb-1">Gratis</p>
+              <p className="text-xs text-gray-400 mb-4">30 días · acceso completo</p>
+              <ul className="space-y-1.5 text-sm text-gray-600">
+                {['Plan AI completo', 'Check-in + nutrición', 'Gym tracker', 'Chat AI (ilimitado en trial)'].map((f) => (
+                  <li key={f} className="flex items-center gap-2">
+                    <span className="text-green-500 text-xs">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="p-5 border-2 rounded-2xl" style={{ borderColor: '#1e3a5f', backgroundColor: '#f0f4f9' }}>
+              <p className="text-sm font-semibold uppercase tracking-wide mb-1" style={{ color: '#1e3a5f' }}>Pro</p>
+              <p className="text-3xl font-black mb-1" style={{ color: '#1e3a5f' }}>$15<span className="text-base font-normal text-gray-500">/mes</span></p>
+              <p className="text-xs text-gray-400 mb-4">después del trial</p>
+              <ul className="space-y-1.5 text-sm text-gray-700">
+                {['Todo del trial', 'Plan adaptativo continuo', 'Chat AI (100 mensajes/mes)', 'Historial ilimitado'].map((f) => (
+                  <li key={f} className="flex items-center gap-2">
+                    <span className="text-xs" style={{ color: '#1e3a5f' }}>✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
-      )}
+        </section>
+
+        {/* CTA */}
+        <section className="text-center py-6">
+          <p className="text-gray-500 text-sm mb-4">Sin tarjeta de crédito para empezar. Cancela cuando quieras.</p>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-block px-8 py-3.5 rounded-xl font-semibold text-white text-base transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              Ir a mi dashboard
+            </Link>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/register"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-white text-base transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#f97316' }}
+              >
+                Empezar 30 días gratis
+              </Link>
+              <Link
+                href="/login"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-base border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Ya tengo cuenta
+              </Link>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

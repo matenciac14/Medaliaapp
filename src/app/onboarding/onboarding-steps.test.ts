@@ -40,7 +40,7 @@ describe('getSteps — flujo SPORT (hasSport = true)', () => {
     expect(steps[steps.length - 1]).toBe('generating')
   })
 
-  it.each(['RUNNING', 'CYCLING', 'SWIMMING', 'TRIATHLON', 'FOOTBALL', 'STRENGTH'] as const)(
+  it.each(['RUNNING', 'STRENGTH'] as const)(
     'flujo completo con %s termina en generating',
     (sport) => {
       const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true, sport }))
@@ -106,7 +106,7 @@ describe('getSteps — invariantes', () => {
   it('generating siempre es el último paso', () => {
     const cases = [
       make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }),
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'CYCLING' }),
+      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'STRENGTH' }),
       make({ healthGoal: 'WEIGHT_LOSS', hasSport: false }),
       make({ healthGoal: 'MUSCLE_GAIN', hasSport: false }),
       make({ healthGoal: 'RECOMPOSITION', hasSport: false }),

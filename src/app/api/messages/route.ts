@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+
+// GET /api/messages?with=[userId] — conversación paginada (más recientes primero)
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const withId = req.nextUrl.searchParams.get('with')
+  if (!withId) return NextResponse.json({ error: 'Param ?with= requerido' }, { status: 400 })
+
+  const userId = session.user.id
+  const take = Math.min(parseInt(req.nextUrl.searchParams.get('take') ?? '50'), 100)
+  const cursor = req.nextUrl.searchParams.get('cursor') ?? undefined
+
+  const messages = await prisma.message.findMany({
+    where: {
+      OR: [
+        { fromId: userId, toId: withId },
+        { fromId: withId, toId: userId },
+      ],
+    },
+    orderBy: { createdAt: 'asc' },
+    take,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: { id: true, fromId: true, toId: true, content: true, readAt: true, createdAt: true },
+  })
+
+  return NextResponse.json({ messages })
+}
+
+// POST /api/messages — { toId, content }
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { toId, content } = await req.json()
+  if (!toId || !content?.trim()) {
+    return NextResponse.json({ error: 'toId y content requeridos' }, { status: 400 })
+  }
+
+  const fromId = session.user.id
+  if (fromId === toId) return NextResponse.json({ error: 'No puedes enviarte mensajes a ti mismo' }, { status: 400 })
+
+  const recipient = await prisma.user.findUnique({ where: { id: toId }, select: { id: true } })
+  if (!recipient) return NextResponse.json({ error: 'Destinatario no encontrado' }, { status: 404 })
+
+  const message = await prisma.message.create({
+    data: { fromId, toId, content: content.trim() },
+    select: { id: true, fromId: true, toId: true, content: true, readAt: true, createdAt: true },
+  })
+
+  return NextResponse.json({ message }, { status: 201 })
+}

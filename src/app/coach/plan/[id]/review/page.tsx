@@ -11,7 +11,7 @@ export default async function PlanReviewPage({
   const { id: planId } = await params
 
   const session = await auth()
-  if (!session?.user?.id || (session.user as any).role !== 'COACH') {
+  if (!session?.user?.id || session.user.role !== 'COACH') {
     redirect('/login')
   }
 

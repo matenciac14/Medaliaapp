@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 const { auth } = NextAuth(authConfig)
 
-const PUBLIC_ROUTES = ['/', '/login', '/register']
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/set-password', '/forgot-password']
 
 export default auth((req) => {
   const { nextUrl, auth: session } = req
@@ -13,8 +13,7 @@ export default auth((req) => {
 
   const isPublicRoute =
     PUBLIC_ROUTES.includes(pathname) ||
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/mobile') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/coaches') ||
     pathname.startsWith('/p/')
@@ -28,32 +27,20 @@ export default auth((req) => {
     const onboardingCompleted = (session.user as any).onboardingCompleted ?? true
     const role = (session.user as any).role
     const activated = (session.user as any).activated ?? false
-    const trialEndsAt = (session.user as any).trialEndsAt as string | null
-    const userPlan = ((session.user as any).userPlan as string) ?? 'INACTIVE'
+    const isB2B = (session.user as any).isB2B ?? false
+    const userPlan = ((session.user as any).userPlan as string) ?? 'FREE'
 
     // Redirige a onboarding si no lo completó
     if (!onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !isPublicRoute) {
       return NextResponse.redirect(new URL('/onboarding', nextUrl))
     }
 
-    // Atleta activado pero con trial expirado → /upgrade
-    if (
-      role === 'ATHLETE' &&
-      activated &&
-      userPlan === 'TRIAL' &&
-      trialEndsAt &&
-      new Date(trialEndsAt) < new Date() &&
-      !pathname.startsWith('/upgrade') &&
-      !pathname.startsWith('/api') &&
-      !isPublicRoute
-    ) {
-      return NextResponse.redirect(new URL('/upgrade', nextUrl))
-    }
-
-    // Atleta que completó onboarding pero no fue activado → /pending
+    // Atleta B2B que completó onboarding pero no fue activado por su coach → /pending
+    // Solo aplica si isB2B=true, evita capturar atletas B2C con features.plan=false (ej. downgrade)
     if (
       role === 'ATHLETE' &&
       onboardingCompleted &&
+      isB2B &&
       !activated &&
       !pathname.startsWith('/pending') &&
       !pathname.startsWith('/api') &&

@@ -11,6 +11,15 @@ export async function POST(req: NextRequest) {
 
   if (!templateId) return NextResponse.json({ error: 'templateId requerido' }, { status: 400 })
 
+  // Atletas con coach activo no pueden auto-asignarse rutinas
+  const activeCoach = await prisma.coachAthlete.findFirst({
+    where: { athleteId, status: 'ACTIVE' },
+    select: { id: true },
+  })
+  if (activeCoach) {
+    return NextResponse.json({ error: 'Tu coach gestiona tu rutina. Pídele que te asigne una.' }, { status: 403 })
+  }
+
   // Verificar que la plantilla existe y es pública
   const template = await prisma.workoutTemplate.findFirst({
     where: { id: templateId, isPublic: true, isActive: true },

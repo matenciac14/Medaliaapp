@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { requireFeature } from '@/lib/guards/feature-gate'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 function adherencePct(sessions: { log: { id: string } | null }[]): number {
   if (sessions.length === 0) return 0
@@ -10,6 +12,10 @@ function adherencePct(sessions: { log: { id: string } | null }[]): number {
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:progress`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'progress')
+  if (featureGuard) return featureGuard
 
   const userId = mobile.id
 
@@ -17,14 +23,24 @@ export async function GET(req: NextRequest) {
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
-      select: { weekNumber: true, weightKg: true, hrResting: true, recordedAt: true },
+      select: {
+        weekNumber: true,
+        weightKg: true,
+        hrResting: true,
+        energyLevel: true,
+        stressLevel: true,
+        motivationLevel: true,
+        sleepHours: true,
+        recordedAt: true,
+      },
     }),
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
-          include: { sessions: { include: { log: true } } },
+          include: { sessions: { where: { date: { lte: new Date() } }, include: { log: true } } },
         },
       },
     }),
@@ -43,6 +59,16 @@ export async function GET(req: NextRequest) {
     .filter(c => c.hrResting !== null)
     .map(c => ({ week: c.weekNumber, bpm: c.hrResting as number }))
 
+  const wellbeingPoints = checkIns
+    .filter(c => c.energyLevel !== null || c.stressLevel !== null || c.motivationLevel !== null)
+    .map(c => ({
+      week: c.weekNumber,
+      energyLevel: c.energyLevel ?? null,
+      stressLevel: c.stressLevel ?? null,
+      motivationLevel: c.motivationLevel ?? null,
+      sleepHours: c.sleepHours ?? null,
+    }))
+
   const weeks = plan?.weeks.map(w => ({
     weekNumber: w.weekNumber,
     phase: w.phase,
@@ -57,6 +83,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     weightPoints,
     hrPoints,
+    wellbeingPoints,
     weeks,
     weightGoal: profile?.weightGoalKg ?? null,
     gymSessionsCompleted: gymCount,

@@ -8,6 +8,12 @@ import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
 
 export type WeightPoint = { week: number; kg: number }
 export type HrPoint = { week: number; bpm: number }
+export type WellbeingPoint = {
+  week: number
+  energyLevel: number | null
+  stressLevel: number | null
+  motivationLevel: number | null
+}
 export type WeekData = {
   weekNumber: number
   phase: string
@@ -18,6 +24,7 @@ export type WeekData = {
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
+  wellbeingData: WellbeingPoint[]
   weeks: WeekData[]
   weightGoal: number
 }
@@ -46,25 +53,11 @@ function adherenceBarColor(pct: number): string {
   return '#dc2626'
 }
 
-function estimate5k(hrResting: number): string {
-  const total = 27 + (hrResting - 52) * 0.3
-  const mins = Math.floor(total)
-  const secs = Math.round((total - mins) * 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-function estimatePaceZ2(hrResting: number): string {
-  const totalSecs = 330 + (hrResting - 52) * 4
-  const mins = Math.floor(totalSecs / 60)
-  const secs = totalSecs % 60
-  return `${mins}:${secs.toString().padStart(2, '0')} min/km`
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden card-hover">
       <div className="px-5 py-3 border-b border-gray-100">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
       </div>
@@ -289,6 +282,59 @@ function AdherenceVerticalChart({ data }: { data: WeekData[] }) {
   )
 }
 
+// ─── Wellbeing ────────────────────────────────────────────────────────────────
+
+function WellbeingChart({ data }: { data: WellbeingPoint[] }) {
+  const rows = [
+    { key: 'energyLevel' as const, label: 'Energía', color: '#f97316' },
+    { key: 'motivationLevel' as const, label: 'Motivación', color: '#22c55e' },
+    { key: 'stressLevel' as const, label: 'Estrés', color: '#8b5cf6' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {rows.map(({ key, label, color }) => {
+        const points = data.filter(d => d[key] != null) as (WellbeingPoint & Record<string, number>)[]
+        if (points.length === 0) return null
+        const avg = Math.round(points.reduce((s, p) => s + (p[key] as number), 0) / points.length * 10) / 10
+        const latest = points[points.length - 1][key] as number
+        return (
+          <div key={key}>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-sm font-semibold text-gray-700">{label}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">Prom. {avg}/10</span>
+                <span className="text-sm font-bold" style={{ color }}>{latest}/10</span>
+              </div>
+            </div>
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${(latest / 10) * 100}%`, backgroundColor: color }} />
+            </div>
+          </div>
+        )
+      })}
+
+      {data.length > 1 && (
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-[10px] text-gray-400 mb-2">Historial por semana</p>
+          <div className="flex gap-2 flex-wrap">
+            {data.slice(-8).map((p, i) => (
+              <div key={i} className="text-center">
+                <div className="flex flex-col gap-0.5 mb-0.5">
+                  {p.energyLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#f97316', opacity: p.energyLevel / 10 + 0.2 }} />}
+                  {p.motivationLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#22c55e', opacity: p.motivationLevel / 10 + 0.2 }} />}
+                  {p.stressLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#8b5cf6', opacity: p.stressLevel / 10 + 0.2 }} />}
+                </div>
+                <span className="text-[9px] text-gray-400">S{p.week}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Periods ──────────────────────────────────────────────────────────────────
 
 const PERIODS = [
@@ -304,17 +350,19 @@ type Period = 4 | 8 | 12
 export default function ProgressClient({
   weightCheckins,
   hrCheckins,
+  wellbeingData,
   weeks,
   weightGoal,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
-  const weightData = weightCheckins.slice(-period)
-  const hrData     = hrCheckins.slice(-period)
-  const weekData   = weeks.slice(0, period)
+  const weightData   = weightCheckins.slice(-period)
+  const hrData       = hrCheckins.slice(-period)
+  const wellbeingSlice = wellbeingData.slice(-period)
+  const weekData     = weeks.slice(0, period)
 
   // Guard: si no hay datos suficientes, mostrar mensaje
-  if (weightData.length === 0 || hrData.length === 0) {
+  if (weightData.length === 0 && hrData.length === 0) {
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
@@ -439,6 +487,13 @@ export default function ProgressClient({
         />
       </SectionCard>
 
+      {/* Bienestar */}
+      {wellbeingSlice.length > 0 && (
+        <SectionCard title="Bienestar — Últimas semanas">
+          <WellbeingChart data={wellbeingSlice} />
+        </SectionCard>
+      )}
+
       {/* Km semanales */}
       {weekData.length > 0 && (
         <SectionCard title="Km Semanales por Fase">
@@ -466,22 +521,10 @@ export default function ProgressClient({
       )}
 
       {/* Benchmarks */}
-      <SectionCard title="Benchmarks de Rendimiento">
+      <SectionCard title="Métricas Clave">
         {/* Mobile: cards */}
         <div className="sm:hidden space-y-3">
           {[
-            {
-              label: 'Tiempo 5k estimado',
-              start: estimate5k(hrStart),
-              end: estimate5k(hrEnd),
-              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
-            },
-            {
-              label: 'Pace Z2',
-              start: estimatePaceZ2(hrStart),
-              end: estimatePaceZ2(hrEnd),
-              status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
-            },
             {
               label: 'Peso vs objetivo',
               start: `${weightStart} kg`,
@@ -522,26 +565,6 @@ export default function ProgressClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              <tr>
-                <td className="py-3 pr-4 font-medium text-gray-900">Tiempo 5k estimado</td>
-                <td className="py-3 pr-4 text-gray-500">{estimate5k(hrStart)}</td>
-                <td className="py-3 pr-4 font-semibold text-gray-900">{estimate5k(hrEnd)}</td>
-                <td className="py-3">
-                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
-                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
-                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-3 pr-4 font-medium text-gray-900">Pace Z2</td>
-                <td className="py-3 pr-4 text-gray-500">{estimatePaceZ2(hrStart)}</td>
-                <td className="py-3 pr-4 font-semibold text-gray-900">{estimatePaceZ2(hrEnd)}</td>
-                <td className="py-3">
-                  {hrEnd < hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Mejorando</span>
-                  : hrEnd === hrStart ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Sin cambio</span>
-                  : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
-                </td>
-              </tr>
               <tr>
                 <td className="py-3 pr-4 font-medium text-gray-900">Peso actual vs objetivo</td>
                 <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>

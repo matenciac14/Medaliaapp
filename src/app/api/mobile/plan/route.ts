@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
-
-function getCurrentWeekNumber(startDate: Date): number {
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  return Math.max(1, Math.floor((Date.now() - startDate.getTime()) / msPerWeek) + 1)
-}
+import { rateLimitAsync } from '@/lib/rate-limit'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:plan`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const plan = await prisma.trainingPlan.findFirst({
     where: { userId: mobile.id, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
     include: {
       weeks: {
         orderBy: { weekNumber: 'asc' },
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   if (!plan) return NextResponse.json(null)
 
-  const currentWeek = getCurrentWeekNumber(plan.startDate)
+  const currentWeek = getPlanWeekNumber(plan.startDate, plan.totalWeeks)
 
   return NextResponse.json({
     id: plan.id,
@@ -46,8 +46,17 @@ export async function GET(req: NextRequest) {
         zoneTarget: s.zoneTarget ?? '',
         dayOfWeek: s.dayOfWeek,
         coachNote: s.coachNote ?? null,
-        sportLabel: (s as any).sportLabel ?? null,
+        detailText: s.detailText ?? null,
+        structure: s.structure ?? null,
+        intensity: s.intensity ?? null,
         completed: !!s.log,
+        log: s.log ? {
+          id: s.log.id,
+          durationMin: s.log.durationMin ?? null,
+          rpe: s.log.rpe ?? null,
+          hrAvg: s.log.hrAvg ?? null,
+          notes: s.log.notes ?? null,
+        } : null,
       })),
     })),
   })

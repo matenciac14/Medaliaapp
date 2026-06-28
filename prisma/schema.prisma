@@ -33,11 +33,12 @@ model User {
   coachedBy         CoachAthlete[]    @relation("AthleteRelation")
 
   // Gym feature
-  exercises          Exercise[]        @relation("CoachExercises")
-  workoutTemplates   WorkoutTemplate[] @relation("CoachTemplates")
-  coachAssignments   AssignedWorkout[] @relation("CoachAssignments")
-  athleteAssignments AssignedWorkout[] @relation("AthleteAssignments")
-  gymSessions        GymSession[]
+  exercises            Exercise[]        @relation("CoachExercises")
+  workoutTemplates     WorkoutTemplate[] @relation("CoachTemplates")
+  athleteTemplates     WorkoutTemplate[] @relation("AthleteTemplates")
+  coachAssignments     AssignedWorkout[] @relation("CoachAssignments")
+  athleteAssignments   AssignedWorkout[] @relation("AthleteAssignments")
+  gymSessions          GymSession[]
 
   // Marketplace
   coachProfile       CoachProfile?
@@ -52,6 +53,17 @@ model User {
 
   // Invite codes
   inviteCodes        InviteCode[]  @relation("CoachInvites")
+
+  // Benchmarks de rendimiento
+  benchmarks         PerformanceBenchmark[]
+
+  // Mensajería
+  sentMessages       Message[] @relation("SentMessages")
+  receivedMessages   Message[] @relation("ReceivedMessages")
+
+  // Finanzas
+  coachPayments      Payment[] @relation("CoachPayments")
+  athletePayments    Payment[] @relation("AthletePayments")
 }
 
 enum UserRole {
@@ -98,15 +110,23 @@ model VerificationToken {
 // ─── COACH <> ATHLETE ───────────────────────────────────────────────────────
 
 model CoachAthlete {
-  id        String   @id @default(cuid())
-  coachId   String
-  athleteId String
-  createdAt DateTime @default(now())
+  id           String        @id @default(cuid())
+  coachId      String
+  athleteId    String
+  status       AthleteStatus @default(ACTIVE)
+  coachGoal    String?       // meta visible para el atleta (ej. "Bajar 5kg en 16 semanas")
+  privateNotes String?       // notas privadas del coach — el atleta nunca las ve
+  createdAt    DateTime      @default(now())
 
-  coach   User @relation("CoachRelation", fields: [coachId], references: [id])
-  athlete User @relation("AthleteRelation", fields: [athleteId], references: [id])
+  coach   User @relation("CoachRelation",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("AthleteRelation", fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@unique([coachId, athleteId])
+}
+
+enum AthleteStatus {
+  ACTIVE
+  PAUSED
 }
 
 // ─── INVITE CODES ───────────────────────────────────────────────────────────
@@ -180,6 +200,9 @@ enum GoalType {
   RACE_MARATHON
   RACE_TRIATHLON
   RACE_CYCLING
+  RACE_SWIMMING
+  FOOTBALL_GPP
+  STRENGTH_TRAINING
   BODY_RECOMPOSITION
   WEIGHT_LOSS
   GENERAL_FITNESS
@@ -252,20 +275,27 @@ enum Phase {
 }
 
 model PlannedSession {
-  id          String           @id @default(cuid())
-  weekId      String
-  dayOfWeek   Int
-  type        SessionType
-  intensity   SessionIntensity @default(MODERATE)
-  durationMin Int
-  zoneTarget  String?
-  structure   String?
-  detailText  String?
-  coachNote   String?
-  date        DateTime
+  id           String           @id @default(cuid())
+  weekId       String
+  dayOfWeek    Int
+  type         SessionType
+  intensity    SessionIntensity @default(MODERATE)
+  durationMin  Int
+  zoneTarget   String?
+  structure    String?
+  detailText   String?
+  sportLabel   String?          // etiqueta libre por deporte: "Sweet Spot 2×20min", "CSS 400m × 8"
+  coachNote    String?
+  date         DateTime
+  workoutDayId String?          // link to WorkoutDay when type=FUERZA
 
-  week PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  log  SessionLog?
+  week       PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  log        SessionLog?
+  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id])
+  gymSession GymSession?
+
+  @@index([weekId])
+  @@index([date])
 }
 
 enum SessionIntensity {
@@ -304,6 +334,7 @@ model SessionLog {
   durationMin      Int?
   notes            String?
   garminActivityId String?
+  freeSessionType  String?   // solo para logs libres (plannedSessionId = null): RODAJE_Z2 | FUERZA | OTRO
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
@@ -343,14 +374,20 @@ model WeeklyCheckIn {
   sleepScore           Float?
   hardestSessionRpe    Int?
   dietAdherencePct     Int?
+  painLevel            Int?     // 1-10: intensidad de dolor/molestia. painFlag derivado: painLevel >= 5
   painFlag             Boolean  @default(false)
-  energyLevel          Int?
+  painDescription      String?  // descripción libre de la molestia/lesión reportada
+  energyLevel          Int?     // 1-10 (normalizado desde ambas plataformas)
+  stressLevel          Int?     // 1-10
+  motivationLevel      Int?     // 1-10
+  nutritionAdherencePct Int?    // 0-100: % adherencia al plan de comida (subjetivo)
   notes                String?
   adjustmentsTriggered String[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, weekNumber])
+  @@index([userId])
 }
 
 // ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
@@ -395,7 +432,8 @@ enum ExerciseCategory {
 
 model WorkoutTemplate {
   id          String  @id @default(cuid())
-  coachId     String?  // null = plantilla pública del sistema
+  coachId     String?   // null = plantilla pública del sistema o rutina del atleta
+  athleteId   String?   // null = coach/sistema. string = rutina propia del atleta sin coach
   name        String
   description String?
   goal        String? // "HYPERTROPHY", "STRENGTH", "TONING", "FUNCTIONAL"
@@ -406,6 +444,7 @@ model WorkoutTemplate {
   category    String? // "PPL", "FULL_BODY", "UPPER_LOWER", "STRENGTH", "BEGINNER"
 
   coach       User?            @relation("CoachTemplates", fields: [coachId], references: [id])
+  athlete     User?            @relation("AthleteTemplates", fields: [athleteId], references: [id])
   days        WorkoutDay[]
   assignments AssignedWorkout[]
 
@@ -424,8 +463,9 @@ model WorkoutDay {
   cardioNotes  String?
   order        Int      @default(0)
 
-  template  WorkoutTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  exercises WorkoutExercise[]
+  template         WorkoutTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercises        WorkoutExercise[]
+  plannedSessions  PlannedSession[]
 }
 
 model WorkoutExercise {
@@ -477,7 +517,8 @@ model AssignedWorkout {
 model GymSession {
   id                String   @id @default(cuid())
   athleteId         String
-  assignedWorkoutId String
+  assignedWorkoutId String?  // null when session comes from a TrainingPlan (plannedSessionId set)
+  plannedSessionId  String?  @unique  // link to PlannedSession — exclusive with assignedWorkoutId
   dayOfWeek         Int
   date              DateTime
   durationMin       Int?
@@ -485,27 +526,38 @@ model GymSession {
   notes             String?
   completed         Boolean  @default(false)
 
-  athlete         User            @relation(fields: [athleteId], references: [id])
-  assignedWorkout AssignedWorkout @relation(fields: [assignedWorkoutId], references: [id])
+  exerciseOverrides Json?   // [{ originalWorkoutExerciseId, replacedWithExerciseId, replacedExerciseName, reason? }]
+
+  athlete         User             @relation(fields: [athleteId], references: [id])
+  assignedWorkout AssignedWorkout? @relation(fields: [assignedWorkoutId], references: [id])
+  plannedSession  PlannedSession?  @relation(fields: [plannedSessionId], references: [id])
   setLogs         SetLog[]
 
   createdAt DateTime @default(now())
 
+  @@unique([athleteId, date, assignedWorkoutId])  // legacy template-based sessions
+  @@unique([athleteId, date, plannedSessionId])   // plan-based sessions
   @@index([athleteId, completed])
+  @@index([athleteId, date])
 }
 
 model SetLog {
   id                String  @id @default(cuid())
   sessionId         String
-  workoutExerciseId String
+  workoutExerciseId String?  // nullable — SetNull when coach edits/deletes exercise from routine
+  exerciseName      String?  // desnormalized — preserves name even if WorkoutExercise is deleted
   setNumber         Int
   weightKg          Float?
   repsCompleted     Int?
   completed         Boolean @default(false)
+  isPR              Boolean @default(false)
   notes             String?
 
-  session         GymSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id])
+  session         GymSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutExercise WorkoutExercise? @relation(fields: [workoutExerciseId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([workoutExerciseId])
 }
 
 // ─── MARKETPLACE DE COACHES ─────────────────────────────────────────────────
@@ -605,8 +657,9 @@ model NutritionPlan {
 model FoodProfile {
   id             String   @id @default(cuid())
   userId         String   @unique
-  availableFoods String[]
-  restrictions   String[]
+  availableFoods   String[]
+  availableFoodIds String[]  // IDs linkeados a Food.id — para cálculo de macros
+  restrictions     String[]
   mealsPerDay    Int      @default(3)
   weighsFood     Boolean  @default(false)
   notes          String?
@@ -674,5 +727,72 @@ model FoodLog {
 
   createdAt DateTime @default(now())
 
+  @@unique([userId, foodId, date, mealType])
   @@index([userId, date])
+}
+
+model PerformanceBenchmark {
+  id        String   @id @default(cuid())
+  userId    String
+  coachId   String?
+  sport     String   // RUNNING | CYCLING | SWIMMING | STRENGTH | TRIATHLON
+  metric    String   // 5K_TIME | 10K_TIME | HALF_MARATHON_TIME | MARATHON_TIME | FTP_WATTS | CSS_PACE | 1RM_SQUAT | 1RM_DEADLIFT | 1RM_BENCH | VO2MAX
+  value     Float
+  unit      String   // seconds | watts | kg | ml_kg_min
+  testedAt  DateTime
+  notes     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, sport])
+  @@index([userId, metric, testedAt])
+}
+
+// ─── FINANZAS ────────────────────────────────────────────────────────────────
+
+model Payment {
+  id          String        @id @default(cuid())
+  coachId     String
+  athleteId   String
+  amount      Float
+  currency    String        @default("COP")
+  description String?
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      PaymentStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  coach   User @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, status])
+  @@index([coachId, athleteId])
+  @@index([dueDate, status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+// ─── MENSAJERÍA ──────────────────────────────────────────────────────────────
+
+model Message {
+  id        String    @id @default(cuid())
+  fromId    String
+  toId      String
+  content   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  from User @relation("SentMessages",     fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: Cascade)
+
+  @@index([fromId, toId, createdAt])
+  @@index([toId, readAt])
 }

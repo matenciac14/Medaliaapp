@@ -44,7 +44,8 @@ type PreviousLog = {
 }
 
 type SessionData = {
-  assignedWorkoutId: string
+  assignedWorkoutId: string | null
+  plannedSessionId: string | null
   templateName: string
   dayOfWeek: number
   isRestDay: boolean
@@ -231,6 +232,14 @@ function parseTargetReps(scheme: string): number | null {
   return isNaN(n) ? null : n
 }
 
+// ─── Superset Styles ─────────────────────────────────────────────────────────
+
+const SUPERSET_STYLES: Record<string, { hexColor: string; bgClass: string; textClass: string; label: string }> = {
+  SUPERSET: { hexColor: '#a78bfa', bgClass: 'bg-purple-50', textClass: 'text-purple-700', label: 'Superset' },
+  BISERIE:  { hexColor: '#818cf8', bgClass: 'bg-indigo-50', textClass: 'text-indigo-700', label: 'Biserie'  },
+  DROPSET:  { hexColor: '#fb7185', bgClass: 'bg-rose-50',   textClass: 'text-rose-500',   label: 'Drop Set' },
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GymSessionPage() {
@@ -238,17 +247,6 @@ export default function GymSessionPage() {
   const { data: authSession } = useSession()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
-
-  if (!(authSession?.user as any)?.features?.gym) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">🏋️</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0e] transition-colors">Ver planes → Pro $15/mes</a>
-      </div>
-    )
-  }
   const [error, setError] = useState<string | null>(null)
 
   const { display: timerDisplay, minutes: elapsedMinutes } = useSessionTimer()
@@ -265,6 +263,7 @@ export default function GymSessionPage() {
   // modal
   const [showModal, setShowModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [newPRs, setNewPRs] = useState<{ exerciseName: string | null; weightKg: number | null }[]>([])
 
   // Fetch session data on mount
   useEffect(() => {
@@ -395,7 +394,8 @@ export default function GymSessionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assignedWorkoutId: sessionData.assignedWorkoutId,
+          assignedWorkoutId: sessionData.assignedWorkoutId ?? undefined,
+          plannedSessionId: sessionData.plannedSessionId ?? undefined,
           dayOfWeek: sessionData.dayOfWeek,
           rpe,
           durationMin,
@@ -406,12 +406,29 @@ export default function GymSessionPage() {
 
       if (!res.ok) throw new Error('Error guardando sesión')
 
-      router.push('/gym?completed=1')
+      const data = await res.json()
+      if (data.newPRs?.length > 0) {
+        setNewPRs(data.newPRs)
+        setTimeout(() => router.push('/gym?completed=1'), 3000)
+      } else {
+        router.push('/gym?completed=1')
+      }
     } catch {
       setSubmitting(false)
       alert('Error al guardar la sesión. Intenta de nuevo.')
     }
   }, [sessionData, setsMap, router])
+
+  if (!authSession?.user?.features?.gym) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
+        <span className="text-5xl">🏋️</span>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Gym tracker disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de gym con el plan Pro.</p>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -456,6 +473,21 @@ export default function GymSessionPage() {
   }
 
   const { workoutDay, exercises } = sessionData
+
+  // Compute superset pairs for bracket rendering
+  const supersetInfo = new Map<string, { isFirst: boolean; setType: string }>()
+  for (const ex of exercises) {
+    if (ex.supersetWith && !supersetInfo.has(ex.id)) {
+      supersetInfo.set(ex.id, { isFirst: true, setType: ex.setType })
+      if (!supersetInfo.has(ex.supersetWith)) {
+        supersetInfo.set(ex.supersetWith, { isFirst: false, setType: ex.setType })
+      }
+    }
+    if (!supersetInfo.has(ex.id)) {
+      const initiator = exercises.find((e) => e.supersetWith === ex.id)
+      if (initiator) supersetInfo.set(ex.id, { isFirst: false, setType: initiator.setType })
+    }
+  }
 
   return (
     <div className="px-4 py-6 md:px-8 max-w-3xl mx-auto pb-40 md:pb-8 space-y-5">
@@ -525,13 +557,23 @@ export default function GymSessionPage() {
               return !isNaN(reps) && reps >= targetReps
             })
 
+          const ssInfo = supersetInfo.get(we.id)
+          const ssStyle = ssInfo ? (SUPERSET_STYLES[ssInfo.setType] ?? SUPERSET_STYLES.SUPERSET) : null
+
           return (
             <div
               key={we.id}
               className={`bg-white border rounded-xl overflow-hidden transition-colors ${
                 allDone ? 'border-green-200' : 'border-gray-200'
               }`}
+              style={ssInfo && ssStyle ? { borderLeftWidth: 4, borderLeftColor: ssStyle.hexColor } : undefined}
             >
+              {/* Superset label */}
+              {ssInfo?.isFirst && ssStyle && (
+                <div className={`px-4 py-1.5 flex items-center gap-1.5 border-b border-gray-100 ${ssStyle.bgClass}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${ssStyle.textClass}`}>↕ {ssStyle.label}</span>
+                </div>
+              )}
               {/* Exercise header */}
               <button
                 onClick={() => toggleExpanded(we.id)}
@@ -725,6 +767,27 @@ export default function GymSessionPage() {
           {canFinish ? '🏁 Finalizar sesión' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
         </button>
       </div>
+
+      {/* PR celebration banner */}
+      {newPRs.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+            <div className="text-5xl mb-4">🏆</div>
+            <h2 className="text-xl font-black text-gray-900 mb-2">¡Nuevo récord personal!</h2>
+            <div className="space-y-2 mb-6">
+              {newPRs.map((pr, i) => (
+                <div key={i} className="bg-orange-50 rounded-xl px-4 py-2">
+                  <p className="font-semibold text-gray-800 text-sm">{pr.exerciseName}</p>
+                  {pr.weightKg && (
+                    <p className="text-[#f97316] font-black text-lg">{pr.weightKg} kg</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">Redirigiendo...</p>
+          </div>
+        </div>
+      )}
 
       {/* Complete modal */}
       {showModal && (

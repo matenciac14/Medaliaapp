@@ -28,8 +28,10 @@ type Props = {
       injuries: string[]
       conditions: string[]
       sleepHoursAvg: number | null
+      sport: string | null
+      experienceLevel: string | null
+      sportDetails: Record<string, string | number | null>
     } | null
-    goal: { type: string; raceDate: string | null } | null
     plan: { name: string; totalWeeks: number } | null
     dailyLogs: DailyLog[]
   }
@@ -324,6 +326,23 @@ export default function ProfileClient({ user }: Props) {
                 </p>
               </div>
             </div>
+            {(p.sport || p.experienceLevel) && (
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deporte</p>
+                <div className="flex flex-wrap gap-2">
+                  {p.sport && (
+                    <span className="text-xs bg-[#1e3a5f]/10 text-[#1e3a5f] font-semibold px-2.5 py-1 rounded-full capitalize">
+                      {p.sport.toLowerCase().replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  {p.experienceLevel && (
+                    <span className="text-xs bg-gray-100 text-gray-600 font-semibold px-2.5 py-1 rounded-full capitalize">
+                      {p.experienceLevel === 'BEGINNER' ? 'Principiante' : p.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' : 'Avanzado'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             {(p.injuries.length > 0 || p.conditions.length > 0) && (
               <div className="pt-3 border-t border-gray-100 space-y-2">
                 {p.injuries.length > 0 && (

@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { X, Camera, PenLine, Loader2, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { X, Loader2, AlertCircle } from 'lucide-react'
 import type { FoodItem } from './FoodGuide'
-
-type Tab = 'photo' | 'manual'
 
 type FormData = {
   name: string
@@ -81,76 +79,13 @@ export default function AddFoodModal({
   onClose: () => void
   onAdd: (food: FoodItem) => void
 }) {
-  const [tab, setTab] = useState<Tab>('photo')
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageBase64, setImageBase64] = useState<string | null>(null)
-  const [imageMime, setImageMime] = useState<string>('image/jpeg')
-  const [scanning, setScanning] = useState(false)
-  const [scanError, setScanError] = useState<string | null>(null)
-  const [scanned, setScanned] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const updateField = useCallback((name: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [name]: value }))
   }, [])
-
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setImageMime(file.type || 'image/jpeg')
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string
-      setImagePreview(dataUrl)
-      // Extract base64 part (after "data:image/...;base64,")
-      const base64 = dataUrl.split(',')[1]
-      setImageBase64(base64)
-      setScanned(false)
-      setScanError(null)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  async function handleScan() {
-    if (!imageBase64) return
-    setScanning(true)
-    setScanError(null)
-    try {
-      const res = await fetch('/api/nutrition/foods/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64, mimeType: imageMime }),
-      })
-      if (!res.ok) throw new Error('No se pudo procesar la imagen')
-      const data = await res.json()
-
-      setForm({
-        name:           data.name          ?? '',
-        category:       data.category      ?? 'PROTEIN',
-        kcalPer100g:    data.kcalPer100g   != null ? String(data.kcalPer100g)    : '',
-        proteinPer100g: data.proteinPer100g != null ? String(data.proteinPer100g) : '',
-        carbsPer100g:   data.carbsPer100g  != null ? String(data.carbsPer100g)   : '',
-        fatPer100g:     data.fatPer100g    != null ? String(data.fatPer100g)     : '',
-        fiberPer100g:   data.fiberPer100g  != null ? String(data.fiberPer100g)   : '',
-        calciumMg:      data.calciumMg     != null ? String(data.calciumMg)      : '',
-        ironMg:         data.ironMg        != null ? String(data.ironMg)         : '',
-        potassiumMg:    data.potassiumMg   != null ? String(data.potassiumMg)    : '',
-        vitaminCMg:     data.vitaminCMg    != null ? String(data.vitaminCMg)     : '',
-        magnesiumMg:    data.magnesiumMg   != null ? String(data.magnesiumMg)    : '',
-        servingG:       data.servingG      != null ? String(data.servingG)       : '100',
-        servingLabel:   data.servingLabel  ?? '',
-      })
-      setScanned(true)
-    } catch {
-      setScanError('No se pudo leer la etiqueta. Intenta con una imagen más clara o ingresa los datos manualmente.')
-    } finally {
-      setScanning(false)
-    }
-  }
 
   async function handleSave() {
     if (!form.name || !form.kcalPer100g || !form.proteinPer100g || !form.carbsPer100g || !form.fatPer100g) {
@@ -189,8 +124,6 @@ export default function AddFoodModal({
     }
   }
 
-  const showForm = tab === 'manual' || scanned
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
@@ -209,113 +142,9 @@ export default function AddFoodModal({
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 px-5 pt-4">
-          <button
-            onClick={() => setTab('photo')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              tab === 'photo' ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Camera size={15} />
-            Escanear foto
-          </button>
-          <button
-            onClick={() => setTab('manual')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              tab === 'manual' ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <PenLine size={15} />
-            Manual
-          </button>
-        </div>
-
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-
-          {/* Photo tab */}
-          {tab === 'photo' && (
-            <div className="space-y-3">
-              {/* Upload area */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleImageSelect}
-              />
-
-              {!imagePreview ? (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-[#1e3a5f]/40 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-12 h-12 rounded-full bg-[#1e3a5f]/10 flex items-center justify-center">
-                    <Upload size={22} className="text-[#1e3a5f]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">Sube una foto de la etiqueta</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Toca para tomar foto o seleccionar archivo</p>
-                  </div>
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  {/* Preview */}
-                  <div className="relative rounded-xl overflow-hidden bg-gray-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imagePreview} alt="Etiqueta nutricional" className="w-full max-h-48 object-contain" />
-                    <button
-                      onClick={() => { setImagePreview(null); setImageBase64(null); setScanned(false); setScanError(null) }}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-                    >
-                      <X size={13} className="text-white" />
-                    </button>
-                  </div>
-
-                  {/* Scan button */}
-                  {!scanned && (
-                    <button
-                      onClick={handleScan}
-                      disabled={scanning}
-                      className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {scanning ? (
-                        <><Loader2 size={15} className="animate-spin" /> Analizando etiqueta...</>
-                      ) : (
-                        <><Camera size={15} /> Extraer datos nutricionales</>
-                      )}
-                    </button>
-                  )}
-
-                  {scanned && (
-                    <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                      <CheckCircle2 size={16} className="text-green-600 shrink-0" />
-                      <p className="text-sm text-green-700 font-medium">Datos extraídos — revisa y guarda</p>
-                      <button
-                        onClick={() => { setScanned(false); setScanError(null) }}
-                        className="ml-auto text-xs text-green-600 hover:underline"
-                      >
-                        Volver a escanear
-                      </button>
-                    </div>
-                  )}
-
-                  {scanError && (
-                    <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
-                      <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-red-700">{scanError}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Form — shown in manual tab OR after a successful scan */}
-          {showForm && (
-            <div className="space-y-5">
+          <div className="space-y-5">
               {/* Name */}
               <div>
                 <label className="text-xs font-semibold text-gray-600 block mb-1">
@@ -393,19 +222,10 @@ export default function AddFoodModal({
                 </div>
               )}
             </div>
-          )}
-
-          {/* Empty manual state hint */}
-          {tab === 'photo' && !showForm && !imagePreview && (
-            <p className="text-xs text-gray-400 text-center pt-1">
-              O cambia a la pestaña <span className="font-semibold">Manual</span> para ingresar los datos directamente
-            </p>
-          )}
-        </div>
+          </div>
 
         {/* Footer */}
-        {showForm && (
-          <div className="px-5 py-4 border-t border-gray-100">
+        <div className="px-5 py-4 border-t border-gray-100">
             <button
               onClick={handleSave}
               disabled={saving}
@@ -418,7 +238,6 @@ export default function AddFoodModal({
               Quedará pendiente de verificación · Visible de inmediato para ti y otros usuarios
             </p>
           </div>
-        )}
       </div>
     </div>
   )

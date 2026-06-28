@@ -23,8 +23,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Medaliq — Coaching deportivo con AI",
-  description: "La plataforma de coaching deportivo inteligente para LatAm. Entrena con tu coach o con AI.",
+  title: "Medaliq — Coaching deportivo inteligente",
+  description: "La plataforma de coaching deportivo para LatAm. Planes periodizados, nutrición y seguimiento en tiempo real.",
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

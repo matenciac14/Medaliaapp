@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, LayoutDashboard, CalendarDays, ClipboardCheck, Apple, TrendingUp, Dumbbell, UserCircle, MessageCircle, AlertTriangle } from 'lucide-react'
+import { ChevronRight, LayoutDashboard, CalendarDays, ClipboardCheck, Apple, TrendingUp, Dumbbell, UserCircle, AlertTriangle } from 'lucide-react'
 
 const SECTIONS = [
   {
@@ -21,7 +21,7 @@ const SECTIONS = [
     items: [
       { q: '¿Cómo está estructurado mi plan?', a: 'Tu plan está dividido en fases (BASE → DESARROLLO → ESPECÍFICO → AFINAMIENTO) con semanas de carga progresiva y semanas de recuperación intercaladas.' },
       { q: '¿Qué son las zonas de FC (Z1, Z2, Z3...)?', a: 'Son rangos de frecuencia cardíaca calculados con la fórmula Karvonen usando tu FC reposo y FC máxima. Z2 es intensidad aeróbica baja (puedes hablar), Z4-Z5 son alta intensidad.' },
-      { q: '¿Puedo cambiar una sesión de día?', a: 'Por ahora el plan es fijo. Si necesitas mover una sesión, coméntaselo a tu coach o al AI Coach para que te oriente.' },
+      { q: '¿Puedo cambiar una sesión de día?', a: 'Por ahora el plan es fijo. Si necesitas mover una sesión, coméntaselo a tu coach para que lo ajuste.' },
     ],
   },
   {
@@ -30,9 +30,9 @@ const SECTIONS = [
     href: '/checkin',
     color: '#059669',
     items: [
-      { q: '¿Por qué debo hacer el check-in?', a: 'El check-in alimenta al AI con datos reales de tu semana (peso, sueño, energía, RPE). Sin él, el plan no puede ajustarse a cómo estás respondiendo realmente.' },
+      { q: '¿Por qué debo hacer el check-in?', a: 'El check-in registra datos reales de tu semana (peso, sueño, energía, RPE). Sin él, el plan no puede ajustarse a cómo estás respondiendo realmente.' },
       { q: '¿Cuándo debo hacerlo?', a: 'Una vez por semana, idealmente el mismo día (ej: domingo por la noche o lunes en la mañana antes de entrenar).' },
-      { q: '¿Qué pasa si tengo dolor o lesión?', a: 'Marca "bandera roja de dolor" en el check-in. El sistema alerta a tu coach y el AI ajusta la carga para la próxima semana.' },
+      { q: '¿Qué pasa si tengo dolor o lesión?', a: 'Marca "bandera roja de dolor" en el check-in. El sistema alerta a tu coach y ajusta la carga para la próxima semana.' },
     ],
   },
   {
@@ -43,7 +43,7 @@ const SECTIONS = [
     items: [
       { q: '¿Cómo se calcula mi plan nutricional?', a: 'Se calcula con Mifflin-St Jeor para tu TDEE (gasto energético total), ajustado por tu nivel de actividad y objetivo (déficit, mantenimiento o superávit).' },
       { q: '¿Los macros cambian según el día?', a: 'Sí. Los días de sesión de alta intensidad o larga duración tienen más carbohidratos. Los días de descanso tienen menos.' },
-      { q: '¿Puedo pedir un plan vegano/sin gluten?', a: 'Cuéntaselo al AI Coach — puede orientarte sobre ajustes dentro de tu plan, aunque para dietas especiales complejas siempre recomendamos un nutricionista.' },
+      { q: '¿Puedo pedir un plan vegano/sin gluten?', a: 'Cuéntaselo a tu coach — puede orientarte sobre ajustes dentro de tu plan, aunque para dietas especiales complejas siempre recomendamos un nutricionista.' },
     ],
   },
   {
@@ -65,7 +65,7 @@ const SECTIONS = [
     items: [
       { q: '¿Cómo empiezo una sesión de gym?', a: 'Ve a Gym → selecciona el día de hoy → toca "Iniciar sesión". Registra el peso y repeticiones de cada serie. El timer de descanso se activa automáticamente.' },
       { q: '¿Qué significa el badge "+2.5 kg recomendado"?', a: 'Completaste todos los sets con las repeticiones objetivo — eso indica que el peso ya no es un estímulo suficiente. La próxima sesión sube 2.5 kg en ese ejercicio.' },
-      { q: '¿Quién asigna mi rutina de gym?', a: 'Tu coach crea la rutina y te la asigna. Si no tienes coach, puedes pedirle al AI Coach que te oriente sobre rutinas.' },
+      { q: '¿Quién asigna mi rutina de gym?', a: 'Tu coach crea la rutina y te la asigna. Si no tienes coach, puedes escribirnos a hola@medaliq.com para que te ayudemos.' },
     ],
   },
   {
@@ -76,18 +76,7 @@ const SECTIONS = [
     items: [
       { q: '¿Qué datos puedo editar en mi perfil?', a: 'Fecha de nacimiento (calcula edad automáticamente), altura, peso actual y objetivo, FC reposo, FC máxima real, lesiones activas y condiciones médicas.' },
       { q: '¿Por qué me pide la fecha de nacimiento y no la edad?', a: 'La fecha de nacimiento permite que la edad se calcule automáticamente y siempre esté actualizada. También se estima la FC máxima con la fórmula Tanaka (208 − 0.7×edad).' },
-      { q: '¿Para qué sirven las métricas diarias?', a: 'Puedes registrar peso, FC reposo, sueño y nivel de energía cada día. Estos datos aparecen en tu dashboard y alimentan al AI Coach para darte recomendaciones más precisas.' },
-    ],
-  },
-  {
-    icon: MessageCircle,
-    title: 'AI Coach',
-    href: '/dashboard',
-    color: '#7c3aed',
-    items: [
-      { q: '¿Qué puede hacer el AI Coach?', a: 'Orientarte sobre tu plan de entrenamiento, recuperación, nutrición general, zonas de FC, carga semanal y cualquier duda de rendimiento deportivo.' },
-      { q: '¿Qué NO puede hacer el AI Coach?', a: 'No puede diagnosticar enfermedades, recetar medicamentos ni reemplazar a un médico o nutricionista clínico. Si tienes síntomas médicos, consulta a un profesional de salud.' },
-      { q: '¿El AI Coach conoce mis datos?', a: 'Sí. Cada conversación carga tu perfil completo: peso, FC, lesiones, condiciones médicas, plan activo y último check-in. Sus recomendaciones respetan tus restricciones de salud.' },
+      { q: '¿Para qué sirven las métricas diarias?', a: 'Puedes registrar peso, FC reposo, sueño y nivel de energía cada día. Estos datos aparecen en tu dashboard y permiten ajustar el plan según cómo estás respondiendo.' },
     ],
   },
 ]
@@ -105,7 +94,7 @@ export default function AthleteHelpPage() {
         <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-amber-800">Medaliq es coaching deportivo, no medicina</p>
-          <p className="text-xs text-amber-700 mt-0.5">Consulta siempre a un médico antes de iniciar un programa de entrenamiento si tienes condiciones de salud preexistentes. El AI Coach no puede diagnosticar ni tratar enfermedades.</p>
+          <p className="text-xs text-amber-700 mt-0.5">Consulta siempre a un médico antes de iniciar un programa de entrenamiento si tienes condiciones de salud preexistentes. Medaliq no puede diagnosticar ni tratar enfermedades.</p>
         </div>
       </div>
 
@@ -137,7 +126,7 @@ export default function AthleteHelpPage() {
       </div>
 
       <div className="text-center py-4">
-        <p className="text-xs text-gray-400">¿Tienes más preguntas? Pregúntale directamente al <Link href="/dashboard" className="text-[#f97316] font-medium underline">AI Coach</Link> en tu dashboard.</p>
+        <p className="text-xs text-gray-400">¿Tienes más preguntas? Escríbenos a <a href="mailto:hola@medaliq.com" className="text-[#f97316] font-medium underline">hola@medaliq.com</a></p>
       </div>
     </div>
   )

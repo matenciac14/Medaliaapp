@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------------------
-// athlete-formulas.ts — Capa determinista sin dependencia de AI
+// athlete-formulas.ts — Capa determinista
 // Todas las funciones son puras: mismos inputs → mismos outputs.
-// Importar desde aquí garantiza cero llamadas a Anthropic.
 // ---------------------------------------------------------------------------
 
 // Re-exporta todas las fórmulas de entrenamiento existentes
@@ -17,67 +16,20 @@ export {
   type Macros,
 } from '@/lib/plan/formulas'
 
-import type { UserConfig, UserPlan } from '@/lib/config/user-config'
+import type { UserPlan } from '@/lib/config/user-config'
 
 // ---------------------------------------------------------------------------
-// Estado de cuenta — determina TRIAL / PRO / INACTIVE sin leer la DB
+// Estado de cuenta — FREE | PRO
 // ---------------------------------------------------------------------------
 
-export type AccountStatus = 'TRIAL_ACTIVE' | 'TRIAL_EXPIRED' | 'PRO' | 'INACTIVE'
+export type AccountStatus = 'FREE' | 'PRO'
 
-/**
- * Determina el estado real de la cuenta a partir del JWT/config.
- * No hace llamadas externas — pura lógica de fechas.
- */
-export function getAccountStatus(
-  userPlan: UserPlan,
-  trialEndsAt: string | null,
-  now: Date = new Date()
-): AccountStatus {
-  if (userPlan === 'PRO') return 'PRO'
-  if (userPlan === 'INACTIVE') return 'INACTIVE'
-  // TRIAL
-  if (!trialEndsAt) return 'TRIAL_ACTIVE'
-  return new Date(trialEndsAt) >= now ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED'
-}
-
-/**
- * Devuelve cuántos días quedan de trial. Negativo = ya expiró.
- */
-export function trialDaysRemaining(trialEndsAt: string | null, now: Date = new Date()): number {
-  if (!trialEndsAt) return 0
-  const diff = new Date(trialEndsAt).getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+export function getAccountStatus(userPlan: UserPlan): AccountStatus {
+  return userPlan === 'PRO' ? 'PRO' : 'FREE'
 }
 
 // ---------------------------------------------------------------------------
-// AI allowance — cuántos mensajes quedan este mes
-// ---------------------------------------------------------------------------
-
-export type AIAllowance = {
-  remaining: number      // mensajes disponibles (-1 = ilimitado)
-  limit: number          // límite mensual configurado
-  isUnlimited: boolean
-}
-
-/**
- * Calcula mensajes AI disponibles a partir del config del usuario.
- * No consulta la DB — usa los valores del JWT/config ya cargado.
- */
-export function getAIAllowance(ai: UserConfig['ai']): AIAllowance {
-  const { monthlyLimit, messagesThisMonth } = ai
-  if (monthlyLimit >= 999999) {
-    return { remaining: -1, limit: monthlyLimit, isUnlimited: true }
-  }
-  return {
-    remaining: Math.max(0, monthlyLimit - messagesThisMonth),
-    limit: monthlyLimit,
-    isUnlimited: false,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Nutrición por día — reflejo del entrenamiento sin AI
+// Nutrición por día — reflejo del entrenamiento
 // ---------------------------------------------------------------------------
 
 export type DayLoad = 'HIGH' | 'MODERATE' | 'LOW' | 'REST' | 'NONE'

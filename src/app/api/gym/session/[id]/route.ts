@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getMobileUser } from '@/lib/mobile-auth'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  const mobile = await getMobileUser(req)
+  const athleteId = mobile?.id ?? (await auth())?.user?.id
+  if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { id } = await params
-  const athleteId = session.user.id
 
   const gymSession = await prisma.gymSession.findFirst({
     where: { id, athleteId },
@@ -45,7 +44,7 @@ export async function GET(
     return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
   }
 
-  const workoutDay = gymSession.assignedWorkout.template.days.find(
+  const workoutDay = gymSession.assignedWorkout?.template.days.find(
     (d) => d.dayOfWeek === gymSession.dayOfWeek
   )
 
@@ -59,7 +58,7 @@ export async function GET(
     rpe: gymSession.rpe,
     notes: gymSession.notes,
     completed: gymSession.completed,
-    templateName: gymSession.assignedWorkout.template.name,
+    templateName: gymSession.assignedWorkout?.template.name ?? '',
     setLogs: gymSession.setLogs.map((sl) => ({
       id: sl.id,
       setNumber: sl.setNumber,
@@ -67,7 +66,7 @@ export async function GET(
       repsCompleted: sl.repsCompleted,
       completed: sl.completed,
       notes: sl.notes,
-      exercise: sl.workoutExercise.exercise,
+      exercise: sl.workoutExercise?.exercise ?? { name: sl.exerciseName ?? 'Ejercicio', id: sl.workoutExerciseId ?? '' },
       workoutExerciseId: sl.workoutExerciseId,
     })),
   })
