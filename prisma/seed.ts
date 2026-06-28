@@ -178,16 +178,20 @@ async function main() {
     { wn: 5, wkg: 74.0, hr: 52, sleep: 7.5, score: 83, rpe: 8, adh: 88, pain: false, energy: 4, notes: 'Tempo duro pero bien. Ritmo manejable' },
     { wn: 6, wkg: 73.8, hr: 53, sleep: 7.2, score: 80, rpe: 9, adh: 85, pain: false, energy: 3, notes: 'Intervalos muy exigentes — mañana descansaré bien' },
   ]) {
-    await prisma.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId: athlete1.id, weekNumber: ci.wn } },
-      update: {},
-      create: {
-        userId: athlete1.id, weekNumber: ci.wn,
-        weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
-        hardestSessionRpe: ci.rpe, dietAdherencePct: ci.adh, painFlag: ci.pain,
-        energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
-      },
+    const _existsCi1 = await prisma.weeklyCheckIn.findFirst({
+      where: { userId: athlete1.id, planId: null, weekNumber: ci.wn },
+      select: { id: true },
     })
+    if (!_existsCi1) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId: athlete1.id, planId: null, weekNumber: ci.wn,
+          weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
+          hardestSessionRpe: ci.rpe, painFlag: ci.pain,
+          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+        },
+      })
+    }
   }
 
   // ── Atleta 2 — ana (B2C, recién registrada, sin plan) ────────────────────
@@ -1088,16 +1092,20 @@ async function seedRunningPlan(
   }
 
   for (const ci of checkIns) {
-    await prisma.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId, weekNumber: ci.wn } },
-      update: {},
-      create: {
-        userId, weekNumber: ci.wn,
-        weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
-        hardestSessionRpe: ci.rpe, dietAdherencePct: ci.adh, painFlag: ci.pain,
-        energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
-      },
+    const _existsCi = await prisma.weeklyCheckIn.findFirst({
+      where: { userId, planId: null, weekNumber: ci.wn },
+      select: { id: true },
     })
+    if (!_existsCi) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId, planId: null, weekNumber: ci.wn,
+          weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
+          hardestSessionRpe: ci.rpe, painFlag: ci.pain,
+          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+        },
+      })
+    }
   }
 }
 
@@ -1168,16 +1176,20 @@ async function seedBodyPlan(
   }
 
   for (const ci of checkIns) {
-    await prisma.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId, weekNumber: ci.wn } },
-      update: {},
-      create: {
-        userId, weekNumber: ci.wn,
-        weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
-        hardestSessionRpe: ci.rpe, dietAdherencePct: ci.adh, painFlag: ci.pain,
-        energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
-      },
+    const _existsCi = await prisma.weeklyCheckIn.findFirst({
+      where: { userId, planId: null, weekNumber: ci.wn },
+      select: { id: true },
     })
+    if (!_existsCi) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId, planId: null, weekNumber: ci.wn,
+          weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
+          hardestSessionRpe: ci.rpe, painFlag: ci.pain,
+          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+        },
+      })
+    }
   }
 }
 
@@ -1255,16 +1267,20 @@ async function seedCyclingPlan(
   }
 
   for (const ci of checkIns) {
-    await prisma.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId, weekNumber: ci.wn } },
-      update: {},
-      create: {
-        userId, weekNumber: ci.wn,
-        weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
-        hardestSessionRpe: ci.rpe, dietAdherencePct: ci.adh, painFlag: ci.pain,
-        energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
-      },
+    const _existsCi = await prisma.weeklyCheckIn.findFirst({
+      where: { userId, planId: null, weekNumber: ci.wn },
+      select: { id: true },
     })
+    if (!_existsCi) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId, planId: null, weekNumber: ci.wn,
+          weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
+          hardestSessionRpe: ci.rpe, painFlag: ci.pain,
+          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+        },
+      })
+    }
   }
 }
 
@@ -1336,16 +1352,20 @@ async function seedTriathlonPlan(
   }
 
   for (const ci of checkIns) {
-    await prisma.weeklyCheckIn.upsert({
-      where: { userId_weekNumber: { userId, weekNumber: ci.wn } },
-      update: {},
-      create: {
-        userId, weekNumber: ci.wn,
-        weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
-        hardestSessionRpe: ci.rpe, dietAdherencePct: ci.adh, painFlag: ci.pain,
-        energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
-      },
+    const _existsCi = await prisma.weeklyCheckIn.findFirst({
+      where: { userId, planId: null, weekNumber: ci.wn },
+      select: { id: true },
     })
+    if (!_existsCi) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId, planId: null, weekNumber: ci.wn,
+          weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
+          hardestSessionRpe: ci.rpe, painFlag: ci.pain,
+          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+        },
+      })
+    }
   }
 
   // Librería de alimentos

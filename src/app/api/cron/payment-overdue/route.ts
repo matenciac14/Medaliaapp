@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { sendPaymentOverdueCoachEmail } from '@/infrastructure/email/resend'
 
 // Cron: diario 14:00 UTC = 09:00 COT
-// Marca PENDING→OVERDUE y notifica a cada coach con pagos vencidos nuevos
+// Notifica a cada coach con pagos PENDING vencidos (OVERDUE es estado derivado — no se almacena)
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -12,10 +12,10 @@ export async function GET(req: NextRequest) {
 
   const now = new Date()
 
-  // Encontrar pagos PENDING vencidos antes de actualizar (para saber a quién notificar)
   const newlyOverdue = await prisma.payment.findMany({
     where: { status: 'PENDING', dueDate: { lt: now } },
     select: {
+      id: true,
       coachId: true,
       amount: true,
       currency: true,
@@ -26,14 +26,8 @@ export async function GET(req: NextRequest) {
   })
 
   if (newlyOverdue.length === 0) {
-    return NextResponse.json({ marked: 0, sent: 0 })
+    return NextResponse.json({ notified: 0, sent: 0 })
   }
-
-  // Marcar todos como OVERDUE
-  await prisma.payment.updateMany({
-    where: { status: 'PENDING', dueDate: { lt: now } },
-    data: { status: 'OVERDUE' },
-  })
 
   // Agrupar por coach y enviar un email por coach
   const byCoach = new Map<string, typeof newlyOverdue>()
@@ -45,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   let sent = 0
   let failed = 0
-  for (const [, items] of byCoach) {
+  for (const [coachId, items] of byCoach) {
     const { email, name } = items[0].coach
     if (!email) continue
     try {
@@ -59,11 +53,15 @@ export async function GET(req: NextRequest) {
           dueDate: i.dueDate,
         })),
       )
+      // Registrar audit log por cada pago recordado (fire-and-forget, no bloquea el cron)
+      prisma.paymentAuditLog.createMany({
+        data: items.map(i => ({ paymentId: i.id, action: 'REMINDED', actorId: coachId })),
+      }).catch(() => {})
       sent++
     } catch {
       failed++
     }
   }
 
-  return NextResponse.json({ marked: newlyOverdue.length, sent, failed })
+  return NextResponse.json({ notified: newlyOverdue.length, sent, failed })
 }

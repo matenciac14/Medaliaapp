@@ -95,8 +95,8 @@ export async function generatePlanUseCase(
 
     const { id } = await repo.createPlan({
       userId: input.userId,
-      // goalType is embedded in the name for later retrieval (no goalType column in TrainingPlan)
       name: `Plan ${input.goalType} — ${planStart.toLocaleDateString('es-CO')}`,
+      goalType: input.goalType,
       totalWeeks,
       startDate: planStart,
       endDate: planEnd,
@@ -168,7 +168,6 @@ export async function generatePlanUseCase(
   await deps.userRepo.completeOnboarding(input.userId, {
     features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,
     onboarding: { completed: true, completedAt: new Date().toISOString() },
-    plan: { currentWeek: 1, totalWeeks, phase: 'BASE' },
     sport: { type: sportType, goal: sportGoal },
   })
 

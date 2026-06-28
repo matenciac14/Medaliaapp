@@ -1,15 +1,12 @@
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { ChangeRoleButton } from './_components/ChangeRoleButton'
 import { PlanSelector } from './_components/PlanSelector'
 
 type PlanTier = 'FREE' | 'PRO' | 'COACH'
 
-function inferPlanTier(role: string, rawConfig: unknown): PlanTier {
-  if (role === 'COACH') return 'COACH'
-  const f = ((rawConfig as Record<string, unknown>)?.features ?? {}) as Record<string, unknown>
-  if (f.aiPlan === true || f.aiCoach === true) return 'PRO'
-  return 'FREE'
+function inferPlanTier(role: string, featureCoach: boolean): PlanTier {
+  if (role === 'COACH' || featureCoach) return 'COACH'
+  return 'PRO'
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -22,12 +19,9 @@ export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      config: true,
+      id: true, name: true, email: true, role: true, createdAt: true,
+      featureCoach: true, onboardingCompleted: true,
+      profile: { select: { sport: true, sportGoal: true } },
     },
   })
 
@@ -55,10 +49,9 @@ export default async function AdminUsersPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {users.map((u) => {
-                const cfg = parseUserConfig(u.config)
-                const sport = cfg.sport.type ?? '—'
-                const goal  = cfg.sport.goal ?? '—'
-                const planTier = inferPlanTier(u.role, u.config)
+                const sport = u.profile?.sport ?? '—'
+                const goal  = u.profile?.sportGoal ?? '—'
+                const planTier = inferPlanTier(u.role, u.featureCoach)
 
                 return (
                   <tr key={u.id} className="hover:bg-gray-50">
@@ -75,7 +68,7 @@ export default async function AdminUsersPage() {
                       <PlanSelector userId={u.id} currentTier={planTier} />
                     </td>
                     <td className="px-5 py-3">
-                      {cfg.onboarding.completed ? (
+                      {u.onboardingCompleted ? (
                         <span className="text-green-600 text-xs font-medium">✓ Completado</span>
                       ) : (
                         <span className="text-gray-400 text-xs">Pendiente</span>

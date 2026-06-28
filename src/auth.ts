@@ -1,11 +1,45 @@
-import NextAuth, { type Session } from 'next-auth'
+import NextAuth from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
-import { parseUserConfig, getUserPlan, DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+
+// Shape de columnas de User que se leen en auth
+const USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  image: true,
+  role: true,
+  password: true,
+  featurePlan: true,
+  featureCheckin: true,
+  featureNutrition: true,
+  featureProgress: true,
+  featureLog: true,
+  featureCoach: true,
+  featureGym: true,
+  onboardingCompleted: true,
+  needsRoleSelection: true,
+} as const
+
+function buildFeaturesFromUser(u: {
+  featurePlan: boolean; featureCheckin: boolean; featureNutrition: boolean;
+  featureProgress: boolean; featureLog: boolean; featureCoach: boolean; featureGym: boolean;
+}) {
+  return {
+    plan:      u.featurePlan,
+    checkin:   u.featureCheckin,
+    nutrition: u.featureNutrition,
+    progress:  u.featureProgress,
+    log:       u.featureLog,
+    coach:     u.featureCoach,
+    gym:       u.featureGym,
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -30,6 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
+          select: USER_SELECT,
         })
 
         if (!user || !user.password) return null
@@ -38,10 +73,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           credentials.password as string,
           user.password
         )
-
         if (!isValid) return null
 
-        const config = parseUserConfig(user.config)
+        const features = buildFeaturesFromUser(user)
 
         const coachRelation = await prisma.coachAthlete.findFirst({
           where: { athleteId: user.id },
@@ -54,11 +88,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
-          onboardingCompleted: config.onboarding.completed,
-          activated: config.features.plan,
+          onboardingCompleted: user.onboardingCompleted,
+          activated: user.featurePlan,
           isB2B: !!coachRelation,
-          userPlan: getUserPlan(config.features),
-          features: config.features,
+          userPlan: 'PRO' as const,
+          features,
+          needsRoleSelection: user.needsRoleSelection,
         }
       },
     }),
@@ -73,25 +108,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.isB2B = user.isB2B ?? false
         token.userPlan = user.userPlan ?? 'FREE'
         token.features = user.features ?? DEFAULT_USER_CONFIG.features
+        token.needsRoleSelection = user.needsRoleSelection ?? false
       }
-      // Google OAuth — always load config from DB (PrismaAdapter doesn't call authorize())
-      // Cast required: next-auth v5 beta.31 doesn't resolve JWT augmentation in callback context
+
+      // Google OAuth — siempre leer desde DB (PrismaAdapter no llama authorize())
       const t = token as JWT
       if (account?.provider === 'google' && t.id) {
         try {
           const [dbUser, coachRelation] = await Promise.all([
-            prisma.user.findUnique({
-              where: { id: t.id },
-              select: { role: true, config: true },
-            }),
-            prisma.coachAthlete.findFirst({
-              where: { athleteId: t.id },
-              select: { id: true },
-            }),
+            prisma.user.findUnique({ where: { id: t.id }, select: USER_SELECT }),
+            prisma.coachAthlete.findFirst({ where: { athleteId: t.id }, select: { id: true } }),
           ])
           if (dbUser) {
-            if (!dbUser.config) {
-              // First time — user hasn't selected role yet
+            if (dbUser.needsRoleSelection) {
               token.needsRoleSelection = true
               token.onboardingCompleted = false
               token.activated = false
@@ -99,51 +128,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               token.userPlan = 'FREE'
               token.features = DEFAULT_USER_CONFIG.features
             } else {
-              const config = parseUserConfig(dbUser.config)
+              const features = buildFeaturesFromUser(dbUser)
               token.role = dbUser.role
               token.needsRoleSelection = false
-              token.onboardingCompleted = config.onboarding.completed
-              token.activated = config.features.plan
+              token.onboardingCompleted = dbUser.onboardingCompleted
+              token.activated = dbUser.featurePlan
               token.isB2B = !!coachRelation
-              token.userPlan = getUserPlan(config.features)
-              token.features = config.features
+              token.userPlan = 'PRO'
+              token.features = features
             }
           }
         } catch {
           // silently fail
         }
       }
-      // Refresh from DB on session update (called after set-role or onboarding)
+
+      // Refresh desde DB al actualizar sesión (post set-role o onboarding)
       if (trigger === 'update' && t.id) {
         try {
           const [dbUser, coachRelation] = await Promise.all([
-            prisma.user.findUnique({
-              where: { id: t.id },
-              select: { role: true, config: true },
-            }),
-            prisma.coachAthlete.findFirst({
-              where: { athleteId: t.id },
-              select: { id: true },
-            }),
+            prisma.user.findUnique({ where: { id: t.id }, select: USER_SELECT }),
+            prisma.coachAthlete.findFirst({ where: { athleteId: t.id }, select: { id: true } }),
           ])
           if (dbUser) {
-            const config = parseUserConfig(dbUser.config)
+            const features = buildFeaturesFromUser(dbUser)
             token.role = dbUser.role
-            token.activated = config.features.plan
+            token.activated = dbUser.featurePlan
             token.isB2B = !!coachRelation
-            token.onboardingCompleted = config.onboarding.completed
-            token.userPlan = getUserPlan(config.features)
-            token.features = config.features
+            token.onboardingCompleted = dbUser.onboardingCompleted
+            token.userPlan = 'PRO'
+            token.features = features
             token.needsRoleSelection = false
           }
         } catch {
           // silently fail — token retains last known value
         }
       }
+
       return token
     },
     async session({ session, token }) {
-      // Cast required: next-auth v5 beta.31 doesn't resolve JWT augmentation in callback context
       const t = token as JWT
       if (t) {
         session.user.id = t.id ?? ''

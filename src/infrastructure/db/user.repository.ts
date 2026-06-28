@@ -1,25 +1,30 @@
 /**
  * Infrastructure — Prisma implementation of IUserRepository.
+ * Escribe directamente a columnas de User (no al JSON blob config).
  */
 import type { IUserRepository, FeatureKey } from '@/domain/ports/user.repository'
-import type { UserConfig } from '@/lib/config/user-config'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
-import type { Prisma } from '@/generated/prisma/client'
 import { prisma } from '@/lib/db/prisma'
+
+const FEATURE_COLUMN: Record<FeatureKey, string> = {
+  plan:      'featurePlan',
+  checkin:   'featureCheckin',
+  nutrition: 'featureNutrition',
+  progress:  'featureProgress',
+  log:       'featureLog',
+  coach:     'featureCoach',
+  gym:       'featureGym',
+}
 
 export class PrismaUserRepository implements IUserRepository {
   constructor(private db: PrismaDbClient = prisma) {}
 
   async enableFeature(userId: string, feature: FeatureKey): Promise<void> {
-    await this.db.$executeRaw`
-      UPDATE "User"
-      SET config = jsonb_set(
-        COALESCE(config, '{}')::jsonb,
-        '{features}'::text[],
-        (COALESCE(config->'features', '{}') || jsonb_build_object(${feature}, true))::jsonb
-      )
-      WHERE id = ${userId}
-    `
+    const col = FEATURE_COLUMN[feature]
+    await this.db.$executeRawUnsafe(
+      `UPDATE "User" SET "${col}" = true WHERE id = $1`,
+      userId
+    )
   }
 
   async enableFeatures(userId: string, features: FeatureKey[]): Promise<void> {
@@ -28,17 +33,14 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   async mergeFeatures(userId: string, patch: Partial<Record<FeatureKey, boolean>>): Promise<void> {
-    if (Object.keys(patch).length === 0) return
-    const patchJson = JSON.stringify(patch)
-    await this.db.$executeRaw`
-      UPDATE "User"
-      SET config = jsonb_set(
-        COALESCE(config, '{}')::jsonb,
-        '{features}'::text[],
-        (COALESCE(config->'features', '{}') || ${patchJson}::jsonb)::jsonb
-      )
-      WHERE id = ${userId}
-    `
+    const entries = Object.entries(patch) as [FeatureKey, boolean][]
+    if (entries.length === 0) return
+
+    const sets = entries.map(([k, v]) => `"${FEATURE_COLUMN[k]}" = ${v}`).join(', ')
+    await this.db.$executeRawUnsafe(
+      `UPDATE "User" SET ${sets} WHERE id = $1`,
+      userId
+    )
   }
 
   async completeOnboarding(
@@ -47,51 +49,33 @@ export class PrismaUserRepository implements IUserRepository {
       features?: Partial<Record<FeatureKey, boolean>>
       onboarding: { completed: boolean; completedAt: string }
       sport: { type: string; goal: string }
-      plan?: { currentWeek: number; totalWeeks: number; phase: string }
     }
   ): Promise<void> {
-    const top: Record<string, unknown> = { onboarding: opts.onboarding, sport: opts.sport }
-    if (opts.plan) top.plan = opts.plan
-    const topJson = JSON.stringify(top)
+    const featureSets = opts.features
+      ? (Object.entries(opts.features) as [FeatureKey, boolean][])
+          .map(([k, v]) => `"${FEATURE_COLUMN[k]}" = ${v}`)
+          .join(', ') + ', '
+      : ''
 
-    if (opts.features && Object.keys(opts.features).length > 0) {
-      const featJson = JSON.stringify(opts.features)
-      // Deep-merge features (preserves existing flags); replace onboarding/sport/plan at top level
-      await this.db.$executeRaw`
-        UPDATE "User"
-        SET config = jsonb_set(
-          COALESCE(config, '{}')::jsonb || ${topJson}::jsonb,
-          '{features}'::text[],
-          (COALESCE(config->'features', '{}') || ${featJson}::jsonb)::jsonb
-        )
-        WHERE id = ${userId}
-      `
-    } else {
-      await this.db.$executeRaw`
-        UPDATE "User"
-        SET config = COALESCE(config, '{}')::jsonb || ${topJson}::jsonb
-        WHERE id = ${userId}
-      `
-    }
-  }
+    await this.db.$executeRawUnsafe(
+      `UPDATE "User" SET
+        ${featureSets}
+        "onboardingCompleted"   = $2,
+        "onboardingCompletedAt" = $3
+       WHERE id = $1`,
+      userId,
+      opts.onboarding.completed,
+      new Date(opts.onboarding.completedAt)
+    )
 
-  async updatePlanState(userId: string, plan: { currentWeek: number; totalWeeks: number; phase: string }): Promise<void> {
-    const planJson = JSON.stringify(plan)
-    await this.db.$executeRaw`
-      UPDATE "User"
-      SET config = jsonb_set(
-        COALESCE(config, '{}')::jsonb,
-        '{plan}'::text[],
-        ${planJson}::jsonb
-      )
-      WHERE id = ${userId}
-    `
-  }
-
-  async updateConfig(userId: string, config: UserConfig): Promise<void> {
-    await this.db.user.update({
-      where: { id: userId },
-      data: { config: config as unknown as Prisma.InputJsonValue },
-    })
+    // sport type + goal → HealthProfile
+    await this.db.$executeRawUnsafe(
+      `UPDATE "HealthProfile"
+       SET sport = $2, "sportGoal" = $3
+       WHERE "userId" = $1`,
+      userId,
+      opts.sport.type,
+      opts.sport.goal
+    )
   }
 }

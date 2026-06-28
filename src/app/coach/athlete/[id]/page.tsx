@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 import AthleteDetailClient from './_components/AthleteDetailClient'
 
 export default async function AthleteDetailPage({
@@ -20,7 +19,10 @@ export default async function AthleteDetailPage({
       // Basic user data
       prisma.user.findUnique({
         where: { id: athleteId },
-        select: { id: true, name: true, email: true, createdAt: true, config: true },
+        select: {
+          id: true, name: true, email: true, createdAt: true,
+          featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true,
+        },
       }),
 
       // Health profile
@@ -67,13 +69,12 @@ export default async function AthleteDetailPage({
     redirect('/coach/dashboard')
   }
 
-  // ─── Parse athlete features from UserConfig ───────────────────────────────
-  const athleteConfig = parseUserConfig(athlete.config)
+  // ─── Read athlete features from columns ──────────────────────────────────
   const initialFeatures = {
-    plan: athleteConfig.features.plan,
-    checkin: athleteConfig.features.checkin,
-    nutrition: athleteConfig.features.nutrition,
-    progress: athleteConfig.features.progress,
+    plan:      athlete.featurePlan,
+    checkin:   athlete.featureCheckin,
+    nutrition: athlete.featureNutrition,
+    progress:  athlete.featureProgress,
   }
 
   // ─── Shape data for client component ─────────────────────────────────────

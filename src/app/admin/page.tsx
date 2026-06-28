@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 
 const ROLE_BADGE: Record<string, string> = {
   ATHLETE: 'bg-blue-100 text-blue-700',
@@ -25,18 +24,15 @@ export default async function AdminOverviewPage() {
     prisma.user.count({ where: { role: 'ATHLETE' } }),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
     prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-    prisma.user.findMany({ select: { config: true } }),
+    prisma.user.findMany({ select: { onboardingCompleted: true } }),
     prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       take: 10,
-      select: { id: true, name: true, email: true, role: true, createdAt: true, config: true },
+      select: { id: true, name: true, email: true, role: true, createdAt: true, onboardingCompleted: true },
     }),
   ])
 
-  const onboardingDone = completedOnboarding.filter((u) => {
-    const cfg = parseUserConfig(u.config)
-    return cfg.onboarding.completed
-  }).length
+  const onboardingDone = completedOnboarding.filter((u) => u.onboardingCompleted).length
 
   const stats = [
     { label: 'Usuarios totales',       value: totalUsers,       icon: '👥', color: '#1e3a5f' },
@@ -92,7 +88,6 @@ export default async function AdminOverviewPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {recentUsers.map((u) => {
-                const cfg = parseUserConfig(u.config)
                 return (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-3 font-medium text-gray-900">{u.name ?? '—'}</td>
@@ -103,7 +98,7 @@ export default async function AdminOverviewPage() {
                       </span>
                     </td>
                     <td className="px-6 py-3">
-                      {cfg.onboarding.completed
+                      {u.onboardingCompleted
                         ? <span className="text-green-600 text-xs font-medium">Completado</span>
                         : <span className="text-gray-400 text-xs">Pendiente</span>
                       }

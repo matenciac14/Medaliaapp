@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
-import { parseUserConfig, getUserPlan, COACH_CONFIG, DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -14,24 +13,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rol inválido.' }, { status: 400 })
   }
 
-  const initialConfig = role === 'COACH' ? COACH_CONFIG : DEFAULT_USER_CONFIG
+  const isCoach = role === 'COACH'
+  const now = new Date()
 
   const updatedUser = await prisma.user.update({
     where: { id: mobile.id },
-    data: { role, config: initialConfig as object },
-    select: { id: true, email: true, name: true, role: true, config: true },
+    data: {
+      role,
+      needsRoleSelection: false,
+      // Coach: onboarding marcado como completado, solo feature coach activa
+      ...(isCoach ? {
+        featurePlan:      false,
+        featureCheckin:   false,
+        featureNutrition: false,
+        featureProgress:  false,
+        featureLog:       false,
+        featureCoach:     true,
+        featureGym:       false,
+        onboardingCompleted:   true,
+        onboardingCompletedAt: now,
+      } : {
+        // Athlete: defaults (all features=true) son correctos ya en columnas
+      }),
+    },
+    select: {
+      id: true, email: true, name: true, role: true,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+      onboardingCompleted: true,
+    },
   })
 
-  const config = parseUserConfig(updatedUser.config)
+  const features = {
+    plan:      updatedUser.featurePlan,
+    checkin:   updatedUser.featureCheckin,
+    nutrition: updatedUser.featureNutrition,
+    progress:  updatedUser.featureProgress,
+    log:       updatedUser.featureLog,
+    coach:     updatedUser.featureCoach,
+    gym:       updatedUser.featureGym,
+  }
 
   const token = await signMobileToken({
     id: updatedUser.id,
     email: updatedUser.email,
     name: updatedUser.name ?? '',
     role: updatedUser.role,
-    onboardingCompleted: config.onboarding.completed,
-    userPlan: getUserPlan(config.features),
-    features: config.features,
+    onboardingCompleted: updatedUser.onboardingCompleted,
+    userPlan: 'PRO',
+    features,
   })
 
   return NextResponse.json({
@@ -41,9 +71,9 @@ export async function POST(req: NextRequest) {
       email: updatedUser.email,
       name: updatedUser.name,
       role: updatedUser.role,
-      onboardingCompleted: config.onboarding.completed,
-      userPlan: getUserPlan(config.features),
-      features: config.features,
+      onboardingCompleted: updatedUser.onboardingCompleted,
+      userPlan: 'PRO',
+      features,
     },
   })
 }

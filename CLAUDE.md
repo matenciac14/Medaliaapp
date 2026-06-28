@@ -185,7 +185,7 @@ PlanSource:        AI | COACH | AI_COACH_APPROVED   ← 'TEMPLATE' NO existe
 SessionType:       RODAJE_Z2 | FARTLEK | TEMPO | INTERVALOS | TIRADA_LARGA |
                    FUERZA | CICLA | NATACION | DESCANSO | TEST | SIMULACRO | OTRO
 SessionIntensity:  HIGH | MODERATE | LOW | REST
-PaymentStatus:     PENDING | PAID | OVERDUE
+PaymentStatus:     PENDING | PAID   ← OVERDUE es estado derivado (dueDate < now && PENDING), NO en DB
 AthleteStatus:     ACTIVE | PAUSED
 ```
 
@@ -216,10 +216,22 @@ AthleteStatus:     ACTIVE | PAUSED
 
 | Severidad | Problema |
 |-----------|---------|
-| 🔴 CRÍTICO | `User.config` JSON blob — `plan.activePlanId` sin FK real. Bloquea integración de pagos. Migrar a `UserSubscription` model antes del primer cobro. |
-| 🔴 CRÍTICO | `WeeklyCheckIn` `@@unique([userId, weekNumber])` — bug latente cuando atleta completa un plan y empieza otro. Fix: agregar `planId` al unique constraint. |
-| 🟠 ALTO | `PaymentStatus.OVERDUE` es estado derivado — si el cron falla, el estado queda inconsistente. Computar dinámicamente en app. |
-| 🟡 MEDIO | `FoodProfile.availableFoods` (texto libre) vs `availableFoodIds` (IDs) — usar solo IDs. |
+| 🔴 CRÍTICO | `User.config` JSON blob — Migrar a `UserSubscription` model antes del primer cobro (Phase 2 — pendiente Stripe/Wompi). |
+| ✅ RESUELTO | `WeeklyCheckIn` — `planId` agregado + partial indexes. |
+| ✅ RESUELTO | `PaymentStatus.OVERDUE` — eliminado del enum. Derivado en app layer. |
+| ✅ RESUELTO | `FoodProfile` — lookup por `id: { in: availableFoodIds }`. Fuzzy matching eliminado. |
+| ✅ RESUELTO | `User.config` race conditions — todos los writes a `features`, `plan`, `onboarding`, `sport` son ahora atómicos vía `IUserRepository`. `updateConfig` (full replace) sin callers activos. |
+
+### IUserRepository — métodos atómicos
+
+```ts
+enableFeature(userId, feature)           // single flag → true
+enableFeatures(userId, features[])       // array → todos true
+mergeFeatures(userId, patch)             // Record<key, bool> — soporta false
+updatePlanState(userId, plan)            // reemplaza config.plan.*
+completeOnboarding(userId, opts)         // onboarding + sport + optional plan + optional features
+updateConfig(userId, config)             // full replace — sin callers activos, disponible para emergencias
+```
 
 ---
 
@@ -294,7 +306,7 @@ FASE 3 — $transaction:
   deactivateUserPlans → createPlan → createWeeks → createSessions → upsertNutrition
 
 FASE 4 — Config update (fuera del tx):
-  updateConfig({ plan.activePlanId, sport, onboarding.completed })
+  updateConfig({ plan.{currentWeek,totalWeeks,phase}, sport, onboarding.completed })
 ```
 
 ---

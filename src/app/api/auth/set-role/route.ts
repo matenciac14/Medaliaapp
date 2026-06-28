@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { COACH_CONFIG, DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -14,11 +13,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rol inválido.' }, { status: 400 })
   }
 
-  const initialConfig = role === 'COACH' ? COACH_CONFIG : DEFAULT_USER_CONFIG
+  const isCoach = role === 'COACH'
+  const now = new Date()
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { role, config: initialConfig as object },
+    data: {
+      role,
+      needsRoleSelection: false,
+      ...(isCoach ? {
+        featurePlan:      false,
+        featureCheckin:   false,
+        featureNutrition: false,
+        featureProgress:  false,
+        featureLog:       false,
+        featureCoach:     true,
+        featureGym:       false,
+        onboardingCompleted:   true,
+        onboardingCompletedAt: now,
+      } : {
+        // Athlete: defaults de columnas son correctos
+      }),
+    },
   })
 
   return NextResponse.json({ ok: true, role })

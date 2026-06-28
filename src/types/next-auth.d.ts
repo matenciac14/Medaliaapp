@@ -31,6 +31,7 @@ declare module 'next-auth' {
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    needsRoleSelection?: boolean
     features?: {
       plan: boolean
       checkin: boolean

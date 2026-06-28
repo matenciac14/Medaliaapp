@@ -334,9 +334,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const raceDays = raceDate
     ? Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000)
     : null
-  const sportGoal = ((dbUser.config as Record<string, unknown>)?.sport as Record<string, unknown>)?.goal as string | undefined
   const isRecomp = !!(
-    sportGoal?.includes('BODY') ||
+    (dbUser?.profile?.sportGoal ?? '').includes('BODY') ||
     activePlan?.name?.toLowerCase().includes('recomp') ||
     activePlan?.name?.toLowerCase().includes('body')
   )

@@ -4,6 +4,7 @@ export type SaveCheckInPayload = CheckInInput & {
   trainingAdherence: number    // calculated server-side from session logs
   triggers: string[]           // adjustment triggers from rule evaluation
   weekNumber: number
+  planId: string | null        // null = sin plan activo (check-in usa ISO week)
 }
 
 /**

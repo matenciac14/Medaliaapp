@@ -11,7 +11,7 @@ function daysAgo(n: number): Date {
 
 function baseInput(overrides: Partial<DashboardInput> = {}): DashboardInput {
   return {
-    user: { name: 'Ana López', config: null, profile: null },
+    user: { name: 'Ana López', profile: null },
     activePlanRaw: null,
     lastCompletedPlan: null,
     checkIns: [],
@@ -141,7 +141,7 @@ describe('recentActivity', () => {
 
 describe('firstName', () => {
   it('extrae primer nombre', () => {
-    const { summary } = getDashboardSummary(baseInput({ user: { name: 'María José García', config: null, profile: null } }))
+    const { summary } = getDashboardSummary(baseInput({ user: { name: 'María José García', profile: null } }))
     expect(summary.firstName).toBe('María')
   })
 

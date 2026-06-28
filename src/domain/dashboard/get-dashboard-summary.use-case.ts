@@ -11,7 +11,6 @@
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { jsToOurDow } from '@/lib/core/date-utils'
 
 // ── Input types ───────────────────────────────────────────────────────────────
@@ -30,13 +29,13 @@ export type AssignedWorkoutInput = {
 export type DashboardInput = {
   user: {
     name: string | null
-    config: unknown
     profile: {
       weightKg: number | null
       hrResting: number | null
       weightGoalKg: number | null
       sleepHoursAvg: number | null
       sportDetails: unknown
+      sportGoal: string | null
     } | null
   } | null
   activePlanRaw: ActivePlan | null
@@ -215,9 +214,6 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const nt = nutritionPlan ? getDailyNutritionTarget(intensity, nutritionPlan) : null
   const nutritionTarget = nt ? { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label } : null
 
-  // ── Config ────────────────────────────────────────────────────────
-  const config = parseUserConfig(user?.config)
-
   // ── Streak ────────────────────────────────────────────────────────
   const logDateSet = new Set(recentLogs.map(l => new Date(l.completedAt).toDateString()))
   let streakDays = 0
@@ -233,7 +229,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const raceDateStr = sportDetails?.raceDate as string | undefined
   const raceDays = raceDateStr ? Math.ceil((new Date(raceDateStr).getTime() - Date.now()) / 86400000) : null
   const isRecomp = !!(
-    config.sport?.goal?.includes('BODY') ||
+    user?.profile?.sportGoal?.includes('BODY') ||
     activePlan?.name?.toLowerCase().includes('recomp') ||
     activePlan?.name?.toLowerCase().includes('body')
   )

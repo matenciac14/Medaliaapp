@@ -121,6 +121,7 @@ export async function processCheckIn(
       trainingAdherence,
       triggers,
       weekNumber,
+      planId: activePlan?.id ?? null,
     })
 
     // 2. Apply session adjustments to next week (if triggers fired)

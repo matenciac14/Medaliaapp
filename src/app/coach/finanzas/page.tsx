@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type PaymentStatus = 'PENDING' | 'PAID' | 'OVERDUE'
+// OVERDUE no existe en DB — se deriva de dueDate + status en la capa de presentación
+type StoredStatus = 'PENDING' | 'PAID'
+type DisplayStatus = 'PENDING' | 'PAID' | 'OVERDUE'
 
 type Payment = {
   id: string
@@ -14,10 +16,15 @@ type Payment = {
   description: string | null
   dueDate: string
   paidAt: string | null
-  status: PaymentStatus
+  status: StoredStatus
   notes: string | null
   createdAt: string
   athlete: { id: string; name: string | null; email: string }
+}
+
+function getDisplayStatus(p: Payment): DisplayStatus {
+  if (p.status === 'PAID') return 'PAID'
+  return new Date(p.dueDate) < new Date() ? 'OVERDUE' : 'PENDING'
 }
 
 type Athlete = {
@@ -28,7 +35,7 @@ type Athlete = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<PaymentStatus, { label: string; bg: string; text: string }> = {
+const STATUS_CONFIG: Record<DisplayStatus, { label: string; bg: string; text: string }> = {
   PENDING:  { label: 'Pendiente', bg: '#fef9c3', text: '#854d0e' },
   PAID:     { label: 'Pagado',    bg: '#dcfce7', text: '#166534' },
   OVERDUE:  { label: 'Vencido',   bg: '#fee2e2', text: '#991b1b' },
@@ -61,7 +68,7 @@ export default function FinanzasPage() {
   const [notes, setNotes] = useState('')
 
   // Filter
-  const [filterStatus, setFilterStatus] = useState<PaymentStatus | 'ALL'>('ALL')
+  const [filterStatus, setFilterStatus] = useState<DisplayStatus | 'ALL'>('ALL')
 
   const fetchPayments = useCallback(async () => {
     setLoading(true)
@@ -130,8 +137,8 @@ export default function FinanzasPage() {
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
 
-  const overdue  = payments.filter(p => p.status === 'OVERDUE')
-  const pending  = payments.filter(p => p.status === 'PENDING')
+  const overdue  = payments.filter(p => getDisplayStatus(p) === 'OVERDUE')
+  const pending  = payments.filter(p => getDisplayStatus(p) === 'PENDING')
   const paid     = payments.filter(p => p.status === 'PAID')
   const totalOverdue  = overdue.reduce((s, p) => s + p.amount, 0)
   const totalPending  = pending.reduce((s, p) => s + p.amount, 0)
@@ -139,7 +146,7 @@ export default function FinanzasPage() {
     .filter(p => p.paidAt && new Date(p.paidAt).getMonth() === new Date().getMonth())
     .reduce((s, p) => s + p.amount, 0)
 
-  const filtered = filterStatus === 'ALL' ? payments : payments.filter(p => p.status === filterStatus)
+  const filtered = filterStatus === 'ALL' ? payments : payments.filter(p => getDisplayStatus(p) === filterStatus)
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto" style={{ backgroundColor: '#f8fafc' }}>
@@ -297,7 +304,7 @@ export default function FinanzasPage() {
           <p className="text-gray-400 text-sm">
             {filterStatus === 'ALL'
               ? 'Registra el primer pago para hacer seguimiento de tus cobros.'
-              : `No hay pagos con estado "${STATUS_CONFIG[filterStatus as PaymentStatus]?.label}".`}
+              : `No hay pagos con estado "${STATUS_CONFIG[filterStatus as DisplayStatus]?.label}".`}
           </p>
         </div>
       )}
@@ -306,7 +313,7 @@ export default function FinanzasPage() {
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
             {filtered.map(p => {
-              const cfg = STATUS_CONFIG[p.status]
+              const cfg = STATUS_CONFIG[getDisplayStatus(p)]
               return (
                 <div key={p.id} className="px-5 py-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">

@@ -16,12 +16,12 @@ export type ActivePlanContext = {
 export type CreatePlanData = {
   userId: string
   name: string
+  goalType?: string
   totalWeeks: number
   startDate: Date
   endDate: Date
   hrZones: HRZones
   generatedBy: 'AI' | 'COACH' | 'TEMPLATE'
-  // goalType is not a DB column — it's encoded in the name field ("Plan GOAL_TYPE — date")
 }
 
 export type CreateWeekData = {

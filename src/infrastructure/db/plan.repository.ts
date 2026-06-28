@@ -36,8 +36,9 @@ export class PrismaPlanRepository implements IPlanRepository {
 
     const sessions = await this.findWeekSessions(plan.id, currentWeek)
 
-    // goalType is encoded in the plan name: "Plan GOAL_TYPE — date"
-    const goalType = plan.name.split(' — ')[0].replace(/^Plan /, '') || ''
+    // Prefer goalType column; fall back to parsing name for legacy plans
+    const goalType = plan.goalType
+      ?? (plan.name.split(' — ')[0].replace(/^Plan /, '') || '')
 
     return {
       id: plan.id,
@@ -112,6 +113,7 @@ export class PrismaPlanRepository implements IPlanRepository {
       data: {
         userId: data.userId,
         name: data.name,
+        goalType: data.goalType ?? null,
         totalWeeks: data.totalWeeks,
         status: 'ACTIVE',
         // 'TEMPLATE' is not in PlanSource enum — map to 'AI' as closest equivalent

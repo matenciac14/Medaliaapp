@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
-// PATCH /api/coach/payments/[paymentId] — actualizar estado (PAID/PENDING/OVERDUE)
+// PATCH /api/coach/payments/[paymentId] — actualizar estado (PAID/PENDING)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
@@ -23,17 +23,23 @@ export async function PATCH(
   }
 
   const { status, paidAt } = body
-  if (!status || !['PENDING', 'PAID', 'OVERDUE'].includes(status)) {
+  if (!status || !['PENDING', 'PAID'].includes(status)) {
     return NextResponse.json({ error: 'status inválido.' }, { status: 400 })
   }
 
-  const updated = await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: status as 'PENDING' | 'PAID' | 'OVERDUE',
-      paidAt: status === 'PAID' ? (paidAt ? new Date(paidAt) : new Date()) : null,
-    },
-    include: { athlete: { select: { id: true, name: true, email: true } } },
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: status as 'PENDING' | 'PAID',
+        paidAt: status === 'PAID' ? (paidAt ? new Date(paidAt) : new Date()) : null,
+      },
+      include: { athlete: { select: { id: true, name: true, email: true } } },
+    })
+    await tx.paymentAuditLog.create({
+      data: { paymentId, action: 'MARKED_PAID', actorId: session.user.id },
+    })
+    return result
   })
 
   return NextResponse.json({ payment: updated })

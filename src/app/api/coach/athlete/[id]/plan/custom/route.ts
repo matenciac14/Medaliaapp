@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { buildCustomPlanWeeks, calcPlanEndDate } from '@/domain/plan/custom-plan'
 
 export async function POST(
@@ -56,20 +55,6 @@ export async function POST(
 
     return plan.id
   }, { timeout: 15_000 })
-
-  // ── Actualizar UserConfig fuera de la tx ───────────────────────────────────
-
-  const athlete = await prisma.user.findUnique({ where: { id: athleteId }, select: { config: true } })
-  const cfg = parseUserConfig(athlete?.config)
-  await prisma.user.update({
-    where: { id: athleteId },
-    data: {
-      config: {
-        ...cfg,
-        plan: { activePlanId: planId, currentWeek: 1, totalWeeks, phase: 'BASE' as const },
-      },
-    },
-  })
 
   // ── Retornar plan completo para el builder ─────────────────────────────────
 

@@ -87,11 +87,11 @@ describe('parseUserConfig', () => {
 })
 
 // ---------------------------------------------------------------------------
-// getUserPlan — siempre devuelve FREE mientras no haya tiers activos
+// getUserPlan — siempre devuelve PRO hasta que se integre billing (Stripe/Wompi)
 // ---------------------------------------------------------------------------
 describe('getUserPlan', () => {
-  it('siempre devuelve FREE', () => {
-    expect(getUserPlan(DEFAULT_USER_CONFIG.features)).toBe('FREE')
+  it('siempre devuelve PRO mientras no haya billing activo', () => {
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features)).toBe('PRO')
   })
 })
 

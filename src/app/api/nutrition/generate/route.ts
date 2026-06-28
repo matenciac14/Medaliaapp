@@ -1,8 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
-import { parseUserConfig } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 export async function POST(_req: Request) {
   const session = await auth()
@@ -57,18 +57,7 @@ export async function POST(_req: Request) {
     },
   })
 
-  // Activar feature nutrition en config
-  const existing = await prisma.user.findUnique({ where: { id: userId }, select: { config: true } })
-  const config = parseUserConfig(existing?.config)
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      config: {
-        ...config,
-        features: { ...config.features, nutrition: true, progress: true },
-      },
-    },
-  })
+  await new PrismaUserRepository().enableFeatures(userId, ['nutrition', 'progress'])
 
   return Response.json({ ok: true, plan: nutritionPlan })
 }

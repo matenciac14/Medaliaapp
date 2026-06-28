@@ -1,24 +1,32 @@
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig } from '@/lib/config/user-config'
 
-function tier(role: string, rawConfig: unknown): { label: string; color: string } {
+function tier(role: string, featureCoach: boolean): { label: string; color: string } {
   if (role === 'ADMIN')  return { label: 'Admin',  color: 'bg-red-100 text-red-700' }
-  if (role === 'COACH')  return { label: 'Coach',  color: 'bg-orange-100 text-orange-700' }
-  const f = ((rawConfig as Record<string, unknown>)?.features ?? {}) as Record<string, unknown>
-  if (f.aiPlan === true || f.aiCoach === true) return { label: 'Pro', color: 'bg-purple-100 text-purple-700' }
-  return                        { label: 'Free',   color: 'bg-gray-100 text-gray-600' }
+  if (role === 'COACH' || featureCoach) return { label: 'Coach',  color: 'bg-orange-100 text-orange-700' }
+  return { label: 'Pro', color: 'bg-purple-100 text-purple-700' }
 }
 
 export default async function AdminSubscriptionsPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
-    select: { id: true, name: true, email: true, role: true, createdAt: true, config: true },
+    select: {
+      id: true, name: true, email: true, role: true, createdAt: true,
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+      onboardingCompleted: true,
+    },
   })
 
-  const parsed = users.map((u) => ({ ...u, cfg: parseUserConfig(u.config), tier: tier(u.role, u.config) }))
+  const parsed = users.map((u) => ({
+    ...u,
+    features: {
+      plan: u.featurePlan, checkin: u.featureCheckin, nutrition: u.featureNutrition,
+      progress: u.featureProgress, log: u.featureLog, coach: u.featureCoach, gym: u.featureGym,
+    },
+    tier: tier(u.role, u.featureCoach),
+  }))
 
   const counts = {
-    Free:  parsed.filter((u) => u.tier.label === 'Free').length,
     Pro:   parsed.filter((u) => u.tier.label === 'Pro').length,
     Coach: parsed.filter((u) => u.tier.label === 'Coach').length,
     Admin: parsed.filter((u) => u.tier.label === 'Admin').length,
@@ -60,7 +68,7 @@ export default async function AdminSubscriptionsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {parsed.map((u) => {
-                const activeFeatures = Object.entries(u.cfg.features)
+                const activeFeatures = Object.entries(u.features)
                   .filter(([, v]) => v)
                   .map(([k]) => k)
 
@@ -87,7 +95,7 @@ export default async function AdminSubscriptionsPage() {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      {u.cfg.onboarding.completed
+                      {u.onboardingCompleted
                         ? <span className="text-green-600 text-xs">✓ Sí</span>
                         : <span className="text-gray-400 text-xs">No</span>
                       }
@@ -104,7 +112,7 @@ export default async function AdminSubscriptionsPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-4">
-        * Los tiers se infieren del rol y las features activas en el config del usuario. Cuando se integre billing, este dato vendrá de la tabla de pagos.
+        * Los tiers se infieren del rol y las features activas en columnas del usuario. Cuando se integre billing, este dato vendrá de UserSubscription.
       </p>
     </div>
   )

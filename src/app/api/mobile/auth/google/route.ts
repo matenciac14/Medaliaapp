@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
-import { parseUserConfig, getUserPlan, DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+
+const USER_SELECT = {
+  id: true, email: true, name: true, role: true, image: true,
+  featurePlan: true, featureCheckin: true, featureNutrition: true,
+  featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+  onboardingCompleted: true, needsRoleSelection: true,
+} as const
 
 type GoogleTokenInfo = {
   sub: string
@@ -20,7 +27,6 @@ async function verifyGoogleToken(idToken: string): Promise<GoogleTokenInfo> {
   const data = await res.json()
   if (data.error) throw new Error(data.error_description ?? 'Token de Google inválido.')
 
-  // Verificar que el token es para nuestra app
   const validAudiences = [
     process.env.GOOGLE_CLIENT_ID,
     process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -52,42 +58,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Correo de Google no verificado.' }, { status: 400 })
     }
 
-    // Buscar usuario existente por email
     let dbUser = await prisma.user.findUnique({
       where: { email: googleUser.email },
-      select: { id: true, email: true, name: true, role: true, config: true, image: true },
+      select: USER_SELECT,
     })
 
     let needsRoleSelection = false
 
     if (!dbUser) {
-      // Usuario nuevo — crear con config null, role ATHLETE por defecto
+      // Usuario nuevo — crear con needsRoleSelection = true
       dbUser = await prisma.user.create({
         data: {
           email: googleUser.email,
           name: googleUser.name,
           image: googleUser.picture ?? null,
           role: 'ATHLETE',
-          config: undefined,
+          needsRoleSelection: true,
+          onboardingCompleted: false,
         },
-        select: { id: true, email: true, name: true, role: true, config: true, image: true },
+        select: USER_SELECT,
       })
       needsRoleSelection = true
-    } else if (!dbUser.config) {
-      // Existe pero nunca completó selección de rol
+    } else if (dbUser.needsRoleSelection) {
       needsRoleSelection = true
     }
 
-    const config = dbUser.config ? parseUserConfig(dbUser.config) : null
+    const features = dbUser.needsRoleSelection
+      ? DEFAULT_USER_CONFIG.features
+      : {
+          plan:      dbUser.featurePlan,
+          checkin:   dbUser.featureCheckin,
+          nutrition: dbUser.featureNutrition,
+          progress:  dbUser.featureProgress,
+          log:       dbUser.featureLog,
+          coach:     dbUser.featureCoach,
+          gym:       dbUser.featureGym,
+        }
 
     const token = await signMobileToken({
       id: dbUser.id,
       email: dbUser.email,
       name: dbUser.name ?? '',
       role: dbUser.role,
-      onboardingCompleted: config?.onboarding.completed ?? false,
-      userPlan: config ? getUserPlan(config.features) : 'FREE',
-      features: config?.features ?? DEFAULT_USER_CONFIG.features,
+      onboardingCompleted: dbUser.onboardingCompleted,
+      userPlan: 'PRO',
+      features,
     })
 
     return NextResponse.json({
@@ -98,9 +113,9 @@ export async function POST(req: NextRequest) {
         email: dbUser.email,
         name: dbUser.name,
         role: dbUser.role,
-        onboardingCompleted: config?.onboarding.completed ?? false,
-        userPlan: config ? getUserPlan(config.features) : 'FREE',
-        features: config?.features ?? DEFAULT_USER_CONFIG.features,
+        onboardingCompleted: dbUser.onboardingCompleted,
+        userPlan: 'PRO',
+        features,
       },
     })
   } catch (err: unknown) {
