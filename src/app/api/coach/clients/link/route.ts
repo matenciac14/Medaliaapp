@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { sendAthleteCoachAssignedEmail } from '@/infrastructure/email/resend'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
   }
 
   await prisma.coachAthlete.create({ data: { coachId, athleteId } })
+
+  const loginUrl = `${process.env.NEXTAUTH_URL ?? 'https://medaliq.com'}/login`
+  sendAthleteCoachAssignedEmail(athlete.email!, athlete.name!, session.user.name ?? 'Tu coach', loginUrl).catch(() => {})
 
   return NextResponse.json({
     ok: true,
