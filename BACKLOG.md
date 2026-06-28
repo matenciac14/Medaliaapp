@@ -1,6 +1,6 @@
 # Medaliq — Backlog
 
-*Ultima actualizacion: 2026-06-27*
+*Ultima actualizacion: 2026-06-28*
 
 ---
 
@@ -68,9 +68,10 @@
   - API: GET (auto-marca OVERDUE) · POST · PATCH · DELETE
   - UI: `/coach/finanzas` — KPIs + form + filtros + lista
 
-- [ ] **Email transaccional (Resend)**
-  - Templates: check-in recordatorio (dom 18:00), sesion del dia (lun 7am), pago vencido
-  - Implementar con Vercel Cron
+- [x] **Infraestructura email (Resend)**
+  - Dominio verificado, DNS en Route53, RESEND_API_KEY en Vercel
+  - Templates enviados: welcome coach, welcome atleta B2B, asignacion coach, forgot password
+  - Pendiente: cron templates (check-in dom, sesion lun, pago vencido)
 
 - [x] **`/join/[code]` con branding del coach**
   - Muestra avatar · headline · bio · especialidades del coach
@@ -182,14 +183,19 @@
 - [x] Resumen semana determinista en dashboard (sin AI) — `buildWeeklySummary()` en dashboard/page.tsx
 - [ ] Fallback plan de comidas sin AI (plantillas estaticas)
 - [ ] `sportLabel String?` en PlannedSession — migracion pendiente
-- [ ] Email: welcome, activacion B2B, trial expirando
-- [ ] Forgot password (web + mobile)
+- [x] Email: welcome coach (registro), welcome atleta B2B (nuevo), asignacion coach (atleta existente) — trial expirando pendiente
+- [x] Forgot password web — mobile pendiente
 - [ ] AI Coach contextualizado: inyectar semana del plan + sesion hoy + ultimo check-in + prompts sugeridos
 
 ---
 
 ## Completado reciente
 
+- [x] **Infraestructura email** — Resend configurado, dominio verificado, DNS en Route53, RESEND_API_KEY en Vercel
+- [x] **Registro coach publico** — selector Atleta/Coach en /register, redirect correcto por rol
+- [x] **Emails transaccionales** — welcome coach, welcome atleta B2B (nuevo), asignacion coach (atleta existente), forgot password
+- [x] **Banner first-time experience coach** — dashboard cuando no tiene atletas con CTA de invitacion
+- [x] **Branch naming convention** — CLAUDE.md + `.githooks/pre-push` + GitHub ruleset
 - [x] Scope reduction: solo Running + Gym · DB intacta · UI limpia (web + mobile)
 - [x] FoodLog, GymSession, TrainingPlan → constraints de unicidad (migracion 20260623000002)
 - [x] CheckInClient.tsx dividido en componentes

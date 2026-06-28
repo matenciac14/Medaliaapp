@@ -2,5 +2,10 @@
   "functions": {
     "src/app/api/onboarding/generate/route.ts": { "maxDuration": 60 },
     "src/app/api/coach/athlete/[id]/plan/route.ts": { "maxDuration": 60 }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/checkin-reminder", "schedule": "0 23 * * 0" },
+    { "path": "/api/cron/session-reminder", "schedule": "0 12 * * 1" },
+    { "path": "/api/cron/payment-overdue",  "schedule": "0 14 * * *" }
+  ]
 }

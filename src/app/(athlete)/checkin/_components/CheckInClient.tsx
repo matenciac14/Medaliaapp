@@ -100,6 +100,22 @@ export default function CheckInClient({
     }
   }
 
+  async function handleQuickSave() {
+    await doSave({
+      weightKg: undefined,
+      hrResting: undefined,
+      sleepHours: undefined,
+      sleepScore: undefined,
+      hardestRpe: 6,
+      painLevel: undefined,
+      energyLevel: 7,
+      stressLevel: undefined,
+      motivationLevel: undefined,
+      nutritionAdherencePct: undefined,
+      notes: undefined,
+    })
+  }
+
   function handleSubmit() {
     if (!energyLevel || !hardestRpe) {
       setFormError('Completa al menos la energía percibida y el RPE de la sesión más dura.')
@@ -219,6 +235,21 @@ export default function CheckInClient({
         <div className="mb-5">
           <h1 className="text-2xl font-bold text-[#0f1e30]">Check-in Semanal</h1>
           <p className="text-sm text-gray-400 mt-0.5">{weekLabel} · Cuéntanos cómo te fue</p>
+        </div>
+
+        {/* Check-in rápido */}
+        <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-green-800">¿Semana sin novedades?</p>
+            <p className="text-xs text-green-600 mt-0.5">Energía normal, sin dolores, cumpliste el plan.</p>
+          </div>
+          <button
+            onClick={handleQuickSave}
+            disabled={saving}
+            className="shrink-0 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
+          >
+            {saving ? '...' : 'Todo bien →'}
+          </button>
         </div>
 
         <div className="lg:grid lg:grid-cols-[1fr_340px] lg:gap-5 space-y-5 lg:space-y-0">

@@ -647,6 +647,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div>
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Esta semana</h2>
                 <p className="text-xs text-gray-400 mt-0.5">{weekDateLabel}</p>
+                {dashboardMode === 'TRAINING' && (totalTraining > 0 || currentVolume) && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {totalTraining > 0 && (
+                      <span className="text-[11px] font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        {completedCount}/{totalTraining} sesiones
+                      </span>
+                    )}
+                    {currentVolume && (
+                      <span className="text-[11px] font-semibold bg-[#1e3a5f]/5 text-[#1e3a5f] border border-[#1e3a5f]/10 px-2 py-0.5 rounded-full">
+                        {currentVolume} km planificados
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {dashboardMode === 'TRAINING' && (
                 <WeekNavBar
