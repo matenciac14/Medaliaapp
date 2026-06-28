@@ -184,7 +184,7 @@
 - [ ] Fallback plan de comidas sin AI (plantillas estaticas)
 - [ ] `sportLabel String?` en PlannedSession — migracion pendiente
 - [x] Email: welcome coach (registro), welcome atleta B2B (nuevo), asignacion coach (atleta existente) — trial expirando pendiente
-- [x] Forgot password web — mobile pendiente
+- [x] Forgot password web + mobile — flujo completo (JWT 1h + Resend + pantalla mobile)
 - [ ] AI Coach contextualizado: inyectar semana del plan + sesion hoy + ultimo check-in + prompts sugeridos
 
 ---
