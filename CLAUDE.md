@@ -75,9 +75,9 @@ import type { PrismaClient } from '../../generated/prisma/client'  // NUNCA @pri
 
 ## Google OAuth web
 
-- Nuevo usuario Google → `config === null` → `needsRoleSelection = true` en JWT
+- Nuevo usuario Google → `needsRoleSelection = true` en columna DB → JWT
 - Middleware redirige a `/select-role` antes de cualquier otro check
-- `POST /api/auth/set-role` aplica `COACH_CONFIG` o `DEFAULT_USER_CONFIG`
+- `POST /api/auth/set-role` setea columnas individuales por rol (COACH/ATHLETE)
 - `session.update()` limpia `needsRoleSelection` y recarga el JWT desde DB
 
 ---
@@ -122,7 +122,7 @@ src/
     plan/templates.ts            4 templates base
     plan/generator.ts            legado — migrar gradualmente a domain/plan/
     ai/profile.ts                AIProfile type, buildPlanSystemPrompt, buildChatSystemPrompt
-    config/user-config.ts        UserConfig type, parseUserConfig, COACH_CONFIG, DEFAULT_USER_CONFIG
+    config/user-config.ts        getUserPlan · DEFAULT_USER_CONFIG (referencia — columnas DB son fuente canónica)
     nutrition/daily-target.ts    getDailyNutritionTarget(intensity, plan)
     mobile-auth.ts               signMobileToken · getMobileUser
 
@@ -162,9 +162,9 @@ if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { s
 ```
 User (coach)
   └── CoachAthlete → User (atleta)
-        ├── TrainingPlan → PlanWeek → PlannedSession → SessionLog
+        ├── TrainingPlan (goalType) → PlanWeek → PlannedSession → SessionLog
         ├── WeeklyCheckIn
-        ├── NutritionPlan + FoodProfile → MealPlan | FoodLog → Food
+        ├── NutritionPlan + FoodProfile → MealPlan (version) | FoodLog → Food
         ├── WorkoutTemplate → WorkoutDay → WorkoutExercise
         ├── AssignedWorkout → GymSession → SetLog (isPR)
         └── PerformanceBenchmark
@@ -172,7 +172,11 @@ User (coach)
 User (coach)
   ├── CoachProfile → CoachProgram | CoachPost
   ├── InviteCode (7 días, redimible una vez)
-  └── Payment (PENDING | PAID | OVERDUE)
+  ├── Payment (PENDING | PAID) → PaymentAuditLog (CREATED|MARKED_PAID|REMINDED)
+  └── UserSubscription (TRIAL | FREE | PRO)
+
+HealthProfile
+  └── sportGoal String? — meta del deporte (RACE | BODY_RECOMPOSITION | GENERAL_FITNESS)
 
 Message (coach ↔ atleta)
 SystemConfig (singleton id="singleton" — almacena AIProfile)
@@ -181,12 +185,13 @@ SystemConfig (singleton id="singleton" — almacena AIProfile)
 ### Enums — valores exactos
 
 ```
-PlanSource:        AI | COACH | AI_COACH_APPROVED   ← 'TEMPLATE' NO existe
-SessionType:       RODAJE_Z2 | FARTLEK | TEMPO | INTERVALOS | TIRADA_LARGA |
-                   FUERZA | CICLA | NATACION | DESCANSO | TEST | SIMULACRO | OTRO
-SessionIntensity:  HIGH | MODERATE | LOW | REST
-PaymentStatus:     PENDING | PAID   ← OVERDUE es estado derivado (dueDate < now && PENDING), NO en DB
-AthleteStatus:     ACTIVE | PAUSED
+PlanSource:         AI | COACH | AI_COACH_APPROVED   ← 'TEMPLATE' NO existe
+SessionType:        RODAJE_Z2 | FARTLEK | TEMPO | INTERVALOS | TIRADA_LARGA |
+                    FUERZA | CICLA | NATACION | DESCANSO | TEST | SIMULACRO | OTRO
+SessionIntensity:   HIGH | MODERATE | LOW | REST
+PaymentStatus:      PENDING | PAID   ← OVERDUE derivado en app (dueDate < now && PENDING), NO en DB
+AthleteStatus:      ACTIVE | PAUSED
+SubscriptionTier:   TRIAL | FREE | PRO
 ```
 
 ### Mapeo dominio ↔ DB
@@ -202,10 +207,15 @@ AthleteStatus:     ACTIVE | PAUSED
 
 ### Campos especiales
 
+- `User`: feature flags como columnas Boolean tipadas — NO JSON blob
+  - `featurePlan | featureCheckin | featureNutrition | featureProgress | featureLog | featureCoach | featureGym`
+  - `onboardingCompleted | onboardingCompletedAt | needsRoleSelection`
+- `HealthProfile.sportGoal` — meta del deporte (fuente canónica, no config.sport.goal)
+- `TrainingPlan.goalType` — tipo de objetivo del plan (RACE_5K, BODY_RECOMPOSITION, etc.)
+- `MealPlan.version Int @default(1)` — trazabilidad de versiones del plan nutricional
 - `SetLog.workoutExerciseId` nullable + `exerciseName String?` — preserva historial aunque el coach elimine ejercicios
 - `SetLog.isPR Boolean @default(false)` — detectado en `gym/session/complete/route.ts`
 - `CoachAthlete`: `onDelete: Cascade` en ambas relaciones
-- `Payment` model vía `db push` (sin migration file propio)
 - Partial index único no expresable en Prisma schema:
   ```sql
   CREATE UNIQUE INDEX "TrainingPlan_userId_active_unique"
@@ -216,44 +226,55 @@ AthleteStatus:     ACTIVE | PAUSED
 
 | Severidad | Problema |
 |-----------|---------|
-| 🔴 CRÍTICO | `User.config` JSON blob — Migrar a `UserSubscription` model antes del primer cobro (Phase 2 — pendiente Stripe/Wompi). |
+| 🟡 PENDIENTE | `UserSubscription` esqueleto listo — conectar a Stripe/Wompi cuando llegue billing. `getUserPlan()` hardcodea `'PRO'` hasta entonces. |
+| ✅ RESUELTO | `User.config` JSON blob — eliminado. Reemplazado por columnas tipadas + `UserSubscription`. |
 | ✅ RESUELTO | `WeeklyCheckIn` — `planId` agregado + partial indexes. |
 | ✅ RESUELTO | `PaymentStatus.OVERDUE` — eliminado del enum. Derivado en app layer. |
 | ✅ RESUELTO | `FoodProfile` — lookup por `id: { in: availableFoodIds }`. Fuzzy matching eliminado. |
-| ✅ RESUELTO | `User.config` race conditions — todos los writes a `features`, `plan`, `onboarding`, `sport` son ahora atómicos vía `IUserRepository`. `updateConfig` (full replace) sin callers activos. |
 
 ### IUserRepository — métodos atómicos
 
 ```ts
-enableFeature(userId, feature)           // single flag → true
+enableFeature(userId, feature)           // single flag → true (columna featureX)
 enableFeatures(userId, features[])       // array → todos true
 mergeFeatures(userId, patch)             // Record<key, bool> — soporta false
-updatePlanState(userId, plan)            // reemplaza config.plan.*
-completeOnboarding(userId, opts)         // onboarding + sport + optional plan + optional features
-updateConfig(userId, config)             // full replace — sin callers activos, disponible para emergencias
+completeOnboarding(userId, opts)         // onboardingCompleted + sportGoal en HealthProfile + optional features
 ```
 
 ---
 
-## UserConfig — implementación
+## Feature flags — fuente canónica
+
+Las features viven en columnas Boolean de `User`, NO en JSON:
 
 ```ts
-// src/lib/config/user-config.ts
-COACH_CONFIG:         onboarding.completed=true, solo features.coach=true
-DEFAULT_USER_CONFIG:  todas las features en true excepto coach
+// Leer desde DB → construir objeto features:
+const features = {
+  plan:      user.featurePlan,
+  checkin:   user.featureCheckin,
+  nutrition: user.featureNutrition,
+  progress:  user.featureProgress,
+  log:       user.featureLog,
+  coach:     user.featureCoach,
+  gym:       user.featureGym,
+}
 
-getUserPlan(features) → 'PRO' si aiPlan||aiCoach, 'FREE' sino
-parseUserConfig(raw)  → merge con DEFAULT_USER_CONFIG
+// getUserPlan — hardcodea 'PRO' hasta que se conecte Stripe/Wompi
+getUserPlan(features) → siempre 'PRO' por ahora
 ```
+
+**Defaults por rol:**
+- ATHLETE: todas `true` excepto `featureCoach = false`
+- COACH: solo `featureCoach = true`, resto `false`
+- B2B sin activar: todas `false` hasta que el coach active con `enableFeatures()`
 
 ### Feature gating
 
-| Feature | FREE | Trial/B2C | PRO |
-|---------|------|-----------|-----|
-| Dashboard / Log manual | ✅ | ✅ | ✅ |
-| Plan / Check-in / Nutrición / Gym | ✅ default | ✅ | ✅ |
-| AI Plan generation | ❌ | ✅ aiPlan=true | ✅ |
-| AI Coach chat | ❌ limit=0 | ✅ limit=999999 | ✅ limit=100 |
+| Feature | Sin activar (B2B) | Normal |
+|---------|-------------------|--------|
+| Dashboard / Log manual | ✅ | ✅ |
+| Plan / Check-in / Nutrición / Gym | ❌ | ✅ |
+| AI Coach chat | ❌ | ✅ |
 
 ---
 
@@ -305,8 +326,8 @@ FASE 2 — AI: AI_ONBOARDING_ENABLED = false → recommendations = []
 FASE 3 — $transaction:
   deactivateUserPlans → createPlan → createWeeks → createSessions → upsertNutrition
 
-FASE 4 — Config update (fuera del tx):
-  updateConfig({ plan.{currentWeek,totalWeeks,phase}, sport, onboarding.completed })
+FASE 4 — Post-tx (fuera del tx):
+  completeOnboarding → onboardingCompleted=true + sportGoal en HealthProfile
 ```
 
 ---
