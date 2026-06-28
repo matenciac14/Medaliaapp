@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function RegisterPage() {
+type Role = 'ATHLETE' | 'COACH'
+
+function RegisterForm() {
   const searchParams = useSearchParams()
   const inviteCode = searchParams.get('code')
+
+  const [role, setRole] = useState<Role | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,22 +23,16 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
-      return
-    }
-
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
-      return
-    }
+    if (!role) { setError('Selecciona si eres atleta o coach.'); return }
+    if (password !== confirmPassword) { setError('Las contraseñas no coinciden.'); return }
+    if (password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return }
 
     setLoading(true)
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, role }),
     })
 
     const data = await res.json()
@@ -45,7 +43,10 @@ export default function RegisterPage() {
       return
     }
 
-    const callbackUrl = inviteCode ? `/join/${inviteCode}` : '/onboarding'
+    const callbackUrl = role === 'COACH'
+      ? '/coach/dashboard'
+      : inviteCode ? `/join/${inviteCode}` : '/onboarding'
+
     await signIn('credentials', { email, password, callbackUrl, redirect: true })
   }
 
@@ -56,6 +57,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f1e30] py-10">
       <div className="w-full max-w-md px-8 py-10 bg-white rounded-2xl shadow-xl">
+
         {/* Logo */}
         <div className="mb-8 text-center">
           <span className="text-3xl font-bold text-[#1e3a5f]">Medal</span>
@@ -66,6 +68,36 @@ export default function RegisterPage() {
           Crea tu cuenta
         </h1>
 
+        {/* Role selector */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => setRole('ATHLETE')}
+            className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-4 py-4 text-sm font-semibold transition-all ${
+              role === 'ATHLETE'
+                ? 'border-[#f97316] bg-orange-50 text-[#f97316]'
+                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+            }`}
+          >
+            <span className="text-2xl">🏃</span>
+            <span>Soy atleta</span>
+            <span className="text-[10px] font-normal text-gray-400 text-center leading-tight">Entreno y quiero mejorar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole('COACH')}
+            className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-4 py-4 text-sm font-semibold transition-all ${
+              role === 'COACH'
+                ? 'border-[#1e3a5f] bg-blue-50 text-[#1e3a5f]'
+                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+            }`}
+          >
+            <span className="text-2xl">📋</span>
+            <span>Soy coach</span>
+            <span className="text-[10px] font-normal text-gray-400 text-center leading-tight">Asesoro atletas</span>
+          </button>
+        </div>
+
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
             {error}
@@ -74,9 +106,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre completo
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
             <input
               type="text"
               required
@@ -88,9 +118,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Correo electrónico
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
             <input
               type="email"
               required
@@ -102,9 +130,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contraseña
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
             <input
               type="password"
               required
@@ -116,9 +142,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Confirmar contraseña
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
             <input
               type="password"
               required
@@ -131,8 +155,8 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold hover:bg-[#16304f] transition-colors disabled:opacity-60"
+            disabled={loading || !role}
+            className="w-full rounded-lg bg-[#1e3a5f] text-white py-2.5 text-sm font-semibold hover:bg-[#16304f] transition-colors disabled:opacity-50"
           >
             {loading ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
@@ -157,14 +181,7 @@ export default function RegisterPage() {
           Continuar con Google
         </button>
 
-        <p className="mt-4 text-center text-xs text-gray-400">
-          ¿Eres entrenador?{' '}
-          <a href="mailto:hola@medaliq.com" className="text-[#1e3a5f] font-medium hover:underline">
-            Contáctanos
-          </a>
-        </p>
-
-        <p className="mt-3 text-center text-sm text-gray-500">
+        <p className="mt-4 text-center text-sm text-gray-500">
           ¿Ya tienes cuenta?{' '}
           <Link href="/login" className="text-[#f97316] font-medium hover:underline">
             Inicia sesión
@@ -172,5 +189,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   )
 }

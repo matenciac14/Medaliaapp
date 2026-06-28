@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
 import { DEFAULT_USER_CONFIG, COACH_CONFIG } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { sendCoachWelcomeEmail } from '@/infrastructure/email/resend'
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, email, password } = await req.json()
+    const { name, email, password, role } = await req.json()
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -30,8 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 })
     }
 
-    // COACH solo se crea desde admin — el registro público siempre es ATHLETE
-    const userRole = 'ATHLETE'
+    const userRole = role === 'COACH' ? 'COACH' : 'ATHLETE'
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -42,9 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Registro público siempre es ATHLETE — espera onboarding para activar features
-    const initialConfig = DEFAULT_USER_CONFIG
+    const initialConfig = userRole === 'COACH' ? COACH_CONFIG : DEFAULT_USER_CONFIG
 
     await prisma.user.create({
       data: {
@@ -55,6 +53,11 @@ export async function POST(req: NextRequest) {
         config: initialConfig,
       },
     })
+
+    if (userRole === 'COACH') {
+      const loginUrl = `${process.env.NEXTAUTH_URL ?? 'https://medaliq.com'}/login`
+      sendCoachWelcomeEmail(email, name, loginUrl).catch(() => {})
+    }
 
     return NextResponse.json({ success: true }, { status: 201 })
   } catch (err) {
