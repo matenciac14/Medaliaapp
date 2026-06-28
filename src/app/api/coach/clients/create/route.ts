@@ -4,6 +4,7 @@ import { SignJWT } from 'jose'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { sendAthleteWelcomeEmail } from '@/infrastructure/email/resend'
 
 function generateTempPassword(length = 8): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
@@ -107,6 +108,8 @@ export async function POST(req: NextRequest) {
     })
 
     const resetLink = await generateResetLink(athlete.id)
+
+    sendAthleteWelcomeEmail(athlete.email!, athlete.name!, session.user.name ?? 'Tu coach', resetLink).catch(() => {})
 
     return NextResponse.json({
       ok: true,
