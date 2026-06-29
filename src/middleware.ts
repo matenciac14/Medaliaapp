@@ -82,6 +82,11 @@ export default auth((req) => {
     if (role === 'COACH' && pathname.startsWith('/onboarding')) {
       return NextResponse.redirect(new URL('/coach/dashboard', nextUrl))
     }
+
+    // ATHLETE con onboarding ya completado que intenta volver a /onboarding → dashboard
+    if (role === 'ATHLETE' && onboardingCompleted && pathname.startsWith('/onboarding')) {
+      return NextResponse.redirect(new URL('/dashboard', nextUrl))
+    }
   }
 
   return NextResponse.next()

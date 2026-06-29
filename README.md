@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Medaliq — Web + Backend
 
-## Getting Started
+SaaS de coaching deportivo con AI para LatAm. Este directorio contiene el backend y la web app.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router + TypeScript
+- PostgreSQL (Neon serverless) + Prisma 7
+- Tailwind CSS v4 + shadcn/ui
+- Auth.js v5 — JWT strategy
+- Claude API (Anthropic) — Haiku + Sonnet
+- Resend — emails transaccionales
+- pnpm
+
+## Configuración local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 1. Instalar dependencias
+pnpm install
+
+# 2. Variables de entorno
+cp .env.example .env.local
+# Rellenar DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY
+
+# 3. Migraciones + seed
+pnpm prisma migrate dev
+pnpm prisma db seed
+
+# 4. Levantar dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usuarios seed
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Email | Password | Rol |
+|-------|----------|-----|
+| `admin@medaliq.com` | `admin123!` | ADMIN |
+| `coach@medaliq.com` | `coach123` | COACH |
+| `miguel@medaliq.com` | `atleta123` | ATHLETE (con plan + coach) |
+| `ana@medaliq.com` | `atleta123` | ATHLETE (B2C, sin coach) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Rutas principales
 
-## Learn More
+| Ruta | Descripción |
+|------|-------------|
+| `/dashboard` | Dashboard atleta |
+| `/plan` | Plan de entrenamiento semanal |
+| `/checkin` | Check-in semanal |
+| `/nutrition` | Nutrición + food log |
+| `/progress` | Gráficas de progreso |
+| `/gym` | Rutina de gym |
+| `/coach/dashboard` | Panel del coach |
+| `/coach/finanzas` | Pagos y facturación |
+| `/admin` | Panel de administración |
 
-To learn more about Next.js, take a look at the following resources:
+## Arquitectura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Hexagonal (Ports & Adapters). Ver `CLAUDE.md` para detalles completos de capas, schema y convenciones.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy
 
-## Deploy on Vercel
+Auto-deploy en Vercel desde `main`. No pushear sin autorización explícita.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Hecho en Colombia — [medaliq.com](https://medaliq.com)

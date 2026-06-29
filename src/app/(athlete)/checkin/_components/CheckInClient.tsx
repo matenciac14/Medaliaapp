@@ -117,6 +117,7 @@ export default function CheckInClient({
   }
 
   function handleSubmit() {
+    if (saving) return
     if (!energyLevel || !hardestRpe) {
       setFormError('Completa al menos la energía percibida y el RPE de la sesión más dura.')
       return

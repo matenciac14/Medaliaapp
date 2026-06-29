@@ -231,9 +231,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     selectedWeekNum = currentWeek + weekOffset
     isCurrentWeek = weekOffset === 0
 
-    const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek)
-      ?? activePlan.weeks[activePlan.weeks.length - 1]
-      ?? null
+    const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek) ?? null
 
     const selectedPlanWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
 

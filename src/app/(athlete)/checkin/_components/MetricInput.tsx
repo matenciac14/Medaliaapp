@@ -52,6 +52,7 @@ export default function MetricInput({
           type="number"
           inputMode={inputMode}
           step={step}
+          min="0"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={prevValue ? String(prevValue) : placeholder}

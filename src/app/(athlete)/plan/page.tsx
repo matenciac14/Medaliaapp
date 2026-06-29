@@ -15,15 +15,22 @@ export default async function PlanPage() {
   if (!session?.user?.id) redirect('/login')
 
   if (!session.user.features?.plan) {
-    // GYM user with assigned workout → redirect to gym module
-    const gymRoutine = await prisma.assignedWorkout.findFirst({
-      where: { athleteId: session.user.id, isActive: true },
+    // JWT may be stale post-onboarding — verify DB before showing empty state
+    const hasActivePlan = await prisma.trainingPlan.findFirst({
+      where: { userId: session.user.id, status: 'ACTIVE' },
       select: { id: true },
     })
-    if (gymRoutine) redirect('/gym')
 
-    // Sin plan activo — modo libre
-    return (
+    if (!hasActivePlan) {
+      // GYM user with assigned workout → redirect to gym module
+      const gymRoutine = await prisma.assignedWorkout.findFirst({
+        where: { athleteId: session.user.id, isActive: true },
+        select: { id: true },
+      })
+      if (gymRoutine) redirect('/gym')
+
+      // Sin plan activo — modo libre
+      return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <div className="text-5xl mb-4">🎯</div>
@@ -40,7 +47,8 @@ export default async function PlanPage() {
           </a>
         </div>
       </div>
-    )
+      )
+    }
   }
 
   const userId = session.user.id
@@ -176,20 +184,23 @@ export default async function PlanPage() {
   }
 
   if (!plan) {
+    const isB2B = session.user.isB2B
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <div className="text-5xl mb-4">📅</div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Sin plan activo</h2>
           <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            Tu coach aún no ha asignado un plan. Si no tienes coach, activa el plan Pro para obtener uno.
+            {isB2B
+              ? 'Tu coach aún no ha asignado un plan de entrenamiento.'
+              : 'Aún no tienes un plan activo. Genera uno nuevo para empezar.'}
           </p>
           <a
-            href="/new-goal"
+            href={isB2B ? '/dashboard' : '/new-goal'}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#f97316' }}
           >
-            Generar mi plan →
+            {isB2B ? 'Volver al inicio →' : 'Generar mi plan →'}
           </a>
         </div>
       </div>
