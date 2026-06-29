@@ -1206,6 +1206,14 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
           <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
             {realCurrentPhase} · Semana {plan.currentWeek}/{plan.totalWeeks}
           </div>
+
+          <button
+            onClick={() => window.open(`/api/plan/week-print?week=${selectedWeekNum}`, '_blank')}
+            title="Descargar semana como PDF"
+            className="hidden md:flex items-center gap-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            ⬇ PDF
+          </button>
         </div>
       </div>
 

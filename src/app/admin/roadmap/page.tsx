@@ -497,7 +497,7 @@ const PHASES = [
       { title: '[HECHO] Simplificar onboarding: objetivo de salud primero, deporte opcional', done: true, note: 'Rediseño completo: healthGoal (Perder grasa/Ganar músculo/Condición/Recomposición) → hasSport (sí/no) → deporte opcional. Sin day-schedule. Flujo sin deporte: 5 pasos. Con deporte: 7 pasos. Peso objetivo condicionado por healthGoal, no mainGoal.' },
       { title: 'AI Chat con prompts sugeridos', done: false, note: 'El chat está vacío y el atleta no sabe qué preguntar. Agregar 4-5 prompts sugeridos según el deporte y fase del plan.' },
       { title: 'Ocultar Marketplace de coaches hasta 20+ coaches activos', done: false, note: 'Directorio vacío genera fricción. Mantener la infraestructura pero no promocionar hasta tener contenido.' },
-      { title: 'Export PDF del plan semanal (ver Fase 23)', done: false, note: 'Coaches lo piden para compartir con atletas que no usan la app. Detalle de implementación en Fase 23.' },
+      { title: 'Export PDF del plan semanal (ver Fase 23)', done: true, note: 'GET /api/plan/week-print?week=N → HTML print-optimized. Auto-print si se abre desde la app. Botón PDF en /plan. Sin dependencias externas.' },
       { title: 'Notificación al coach cuando atleta completa sesión (ver Fase 23)', done: false, note: 'Refuerza el loop coach-atleta dentro de la app. Compite con WhatsApp como canal de comunicación. Detalle en Fase 23.' },
     ],
   },
@@ -764,8 +764,8 @@ const PHASES = [
       },
       {
         title: 'Export PDF del plan semanal',
-        done: false,
-        note: 'Generar PDF con las sesiones de la semana actual: tipo, duración, zona objetivo, descripción. Librería: @react-pdf/renderer (client-side) o puppeteer (server-side). Botón "Descargar semana" en /plan y en Tab Plan del coach. Coaches lo usan para compartir con atletas que no usan la app.',
+        done: true,
+        note: 'GET /api/plan/week-print?week=N → HTML con print CSS + auto-print. Botón PDF en header de /plan. Sin dependencias (no react-pdf ni puppeteer).',
       },
       {
         title: 'Notificación in-app al coach cuando atleta completa una sesión',
