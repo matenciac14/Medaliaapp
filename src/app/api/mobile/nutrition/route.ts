@@ -5,6 +5,7 @@ import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
+import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -74,6 +75,6 @@ export async function GET(req: NextRequest) {
     hasNutritionPlan: true,
     dayType,
     macros,
-    mealPlan: mealPlan?.data ?? null,
+    mealPlan: parseMealPlanData(mealPlan?.data ?? null),
   })
 }

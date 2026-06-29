@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
+import { z } from 'zod'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendAthleteWelcomeEmail } from '@/infrastructure/email/resend'
+import { nameSchema, emailSchema, parseBody } from '@/lib/validation'
+
+const CreateAthleteSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  sport: z.string().max(50).nullable().optional(),
+  goal: z.string().max(100).nullable().optional(),
+})
 
 function generateTempPassword(length = 8): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
@@ -32,25 +41,10 @@ export async function POST(req: NextRequest) {
   const coachId = session.user.id
 
   try {
-    const body = await req.json()
-    const {
-      name,
-      email,
-      sport,
-      goal,
-    } = body as {
-      name: string
-      email: string
-      sport: string | null
-      goal: string | null
-    }
-
-    if (!name || !email) {
-      return NextResponse.json(
-        { error: 'Nombre y correo son obligatorios.' },
-        { status: 400 }
-      )
-    }
+    const raw = await req.json().catch(() => null)
+    const parsed = parseBody(CreateAthleteSchema, raw)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+    const { name, email, sport = null, goal = null } = parsed.data
 
     // Check email not already registered
     const existing = await prisma.user.findUnique({ where: { email } })

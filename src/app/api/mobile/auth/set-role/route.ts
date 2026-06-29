@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { roleSchema, parseBody } from '@/lib/validation'
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -11,10 +13,10 @@ export async function POST(req: NextRequest) {
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:set-role`, { limit: 20, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
-  const { role } = await req.json()
-  if (role !== 'ATHLETE' && role !== 'COACH') {
-    return NextResponse.json({ error: 'Rol inválido.' }, { status: 400 })
-  }
+  const raw = await req.json().catch(() => null)
+  const parsed = parseBody(z.object({ role: roleSchema }), raw)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+  const { role } = parsed.data
 
   const isCoach = role === 'COACH'
   const now = new Date()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { translateMuscleGroup } from '@/lib/gym-labels'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
@@ -507,7 +508,7 @@ export default function GymSessionPage() {
             <div className="flex flex-wrap gap-1.5 mt-2">
               {workoutDay.muscleGroups.map((mg) => (
                 <span key={mg} className="text-xs font-medium bg-[#1e3a5f]/10 text-[#1e3a5f] px-2 py-0.5 rounded-full">
-                  {mg}
+                  {translateMuscleGroup(mg)}
                 </span>
               ))}
             </div>

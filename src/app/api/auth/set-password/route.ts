@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { jwtVerify } from 'jose'
+import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
+import { passwordSchema, parseBody } from '@/lib/validation'
+
+const SetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token requerido.'),
+  newPassword: passwordSchema,
+})
 
 export async function POST(req: NextRequest) {
-  const { token, newPassword } = await req.json()
+  const raw = await req.json().catch(() => null)
+  const parsed = parseBody(SetPasswordSchema, raw)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-  if (!token || !newPassword || newPassword.length < 8) {
-    return NextResponse.json({ error: 'Token y contraseña (mín. 8 caracteres) requeridos.' }, { status: 400 })
-  }
+  const { token, newPassword } = parsed.data
 
   const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET)
   let userId: string

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
+import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { sendCoachWelcomeEmail, sendEmailVerification } from '@/infrastructure/email/resend'
+import { emailSchema, passwordSchema, nameSchema, roleSchema, parseBody } from '@/lib/validation'
+
+const RegisterSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: passwordSchema,
+  role: roleSchema.optional().default('ATHLETE'),
+})
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
@@ -13,25 +22,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, email, password, role } = await req.json()
+    const raw = await req.json().catch(() => null)
+    const parsed = parseBody(RegisterSchema, raw)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'Nombre, correo y contraseña son obligatorios.' },
-        { status: 400 }
-      )
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'El correo no es válido.' }, { status: 400 })
-    }
-
-    if (typeof password !== 'string' || password.length < 8) {
-      return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 })
-    }
-
-    const userRole = role === 'COACH' ? 'COACH' : 'ATHLETE'
+    const { name, email, password, role } = parsed.data
+    const userRole = role
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {

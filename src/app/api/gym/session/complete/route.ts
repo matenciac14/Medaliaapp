@@ -54,11 +54,12 @@ export async function POST(req: NextRequest) {
   const workoutExercises = weIds.length > 0
     ? await prisma.workoutExercise.findMany({
         where: { id: { in: weIds } },
-        select: { id: true, exerciseId: true, exercise: { select: { name: true } } },
+        select: { id: true, exerciseId: true, sets: true, exercise: { select: { name: true } } },
       })
     : []
   const weNameMap = new Map(workoutExercises.map(we => [we.id, we.exercise.name]))
   const weExIdMap = new Map(workoutExercises.map(we => [we.id, we.exerciseId]))
+  const weSetsCountMap = new Map(workoutExercises.map(we => [we.id, we.sets]))
 
   // ── PR detection: max weightKg per exercise across all sessions ──────────────
   const exerciseIds = [...new Set(workoutExercises.map(we => we.exerciseId))]
@@ -94,6 +95,28 @@ export async function POST(req: NextRequest) {
     if (!completed || weightKg === null) return false
     const exId = weExIdMap.get(weId)
     return exId ? weightKg > (maxPerExercise.get(exId) ?? 0) : false
+  }
+
+  // Persiste suggestedNextWeightKg: si todos los sets de un ejercicio se completaron → max+2.5kg
+  function persistProgression(completedSets: SetPayload[]) {
+    const byWeId = new Map<string, SetPayload[]>()
+    for (const s of completedSets) {
+      if (!s.workoutExerciseId) continue
+      const arr = byWeId.get(s.workoutExerciseId) ?? []
+      arr.push(s)
+      byWeId.set(s.workoutExerciseId, arr)
+    }
+    const updates: Promise<unknown>[] = []
+    for (const [weId, weSets] of byWeId) {
+      const targetSets = weSetsCountMap.get(weId) ?? weSets.length
+      const allDone = weSets.length >= targetSets && weSets.every(s => s.completed)
+      if (!allDone) continue
+      const weights = weSets.map(s => s.weightKg ?? 0).filter(w => w > 0)
+      if (weights.length === 0) continue
+      const suggested = Math.max(...weights) + 2.5
+      updates.push(prisma.workoutExercise.update({ where: { id: weId }, data: { suggestedNextWeightKg: suggested } }))
+    }
+    if (updates.length > 0) Promise.all(updates).catch(() => {})
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -141,6 +164,7 @@ export async function POST(req: NextRequest) {
       .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
 
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
+    persistProgression(sets)
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
 
@@ -184,6 +208,7 @@ export async function POST(req: NextRequest) {
     .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
 
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
+  persistProgression(sets)
 
   return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
 }

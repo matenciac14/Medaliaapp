@@ -76,8 +76,10 @@ export async function GET(req: NextRequest) {
   })) ?? []
 
   const totalSessions = checkIns.length
-  const overallAdherence = weeks.length > 0
-    ? Math.round(weeks.reduce((acc, w) => acc + w.adherencePct, 0) / weeks.length)
+  // Solo promediar semanas con sesiones pasadas — semanas futuras (0 sesiones) no deben arrastrar el promedio
+  const weeksWithPastSessions = plan?.weeks.filter(w => w.sessions.length > 0) ?? []
+  const overallAdherence = weeksWithPastSessions.length > 0
+    ? Math.round(weeksWithPastSessions.reduce((acc, w) => acc + adherencePct(w.sessions), 0) / weeksWithPastSessions.length)
     : 0
 
   return NextResponse.json({

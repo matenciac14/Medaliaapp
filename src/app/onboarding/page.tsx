@@ -1171,16 +1171,31 @@ export default function OnboardingPage() {
     setError(null)
 
     try {
-      // Simplified onboarding: GYM goal stays GYM, everything else goes FREE path
-      // (profile-only — no plan generation; AI plan is a paid CTA shown post-onboarding)
+      // Derive mainGoal from the user's actual choices:
+      //   hasSport=true           → SPORT  (running/strength plan)
+      //   MUSCLE_GAIN + no sport  → GYM    (gym tracking, no training plan)
+      //   everything else         → BODY if planMethod=AI, FREE otherwise
       const isGym = data.healthGoal === 'MUSCLE_GAIN' && !data.hasSport
-      const derivedMainGoal = isGym ? 'GYM' : 'FREE'
+      const wantsAIPlan = data.planMethod === 'AI' || data.planMethod === 'TEMPLATE'
+
+      let derivedMainGoal: 'SPORT' | 'BODY' | 'GYM' | 'FREE'
+      let derivedHealthGoal = data.healthGoal ?? ('FREE' as const)
+
+      if (isGym) {
+        derivedMainGoal = 'GYM'
+      } else if (data.hasSport) {
+        derivedMainGoal = 'SPORT'
+      } else if (wantsAIPlan) {
+        derivedMainGoal = 'BODY'
+      } else {
+        derivedMainGoal = 'FREE'
+        derivedHealthGoal = 'FREE'
+      }
 
       const submissionData = {
         ...data,
         mainGoal: derivedMainGoal,
-        // Force FREE healthGoal so the use case takes the profile-only path for non-GYM
-        healthGoal: isGym ? data.healthGoal : ('FREE' as const),
+        healthGoal: derivedHealthGoal,
         // Defaults para pasos eliminados del wizard simplificado
         experienceLevel: data.experienceLevel ?? 'INTERMEDIATE',
         hrSource: data.hrSource ?? 'estimated',

@@ -69,6 +69,7 @@ export default async function PlanBuildPage({
           phase: w.phase as string,
           focusDescription: w.focusDescription,
           isRecoveryWeek: w.isRecoveryWeek,
+          volumeKm: w.volumeKm ?? null,
           startDate: w.startDate.toISOString(),
           endDate: w.endDate.toISOString(),
           sessions: w.sessions.map((s) => ({

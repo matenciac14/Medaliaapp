@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { sendSessionReminderEmail } from '@/infrastructure/email/resend'
+import { sendPushNotification } from '@/lib/push'
 
 const SESSION_LABELS: Record<string, string> = {
   RODAJE_Z2: 'Rodaje Z2',
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     select: {
       startDate: true,
       totalWeeks: true,
-      user: { select: { email: true, name: true } },
+      user: { select: { email: true, name: true, pushToken: true } },
       weeks: {
         select: {
           weekNumber: true,
@@ -53,11 +54,16 @@ export async function GET(req: NextRequest) {
     if (!session || session.type === 'DESCANSO') continue
 
     try {
+      const typeLabel = SESSION_LABELS[session.type] ?? session.type
       await sendSessionReminderEmail(plan.user.email!, plan.user.name ?? 'Atleta', {
-        typeLabel: SESSION_LABELS[session.type] ?? session.type,
+        typeLabel,
         durationMin: session.durationMin,
         detail: session.detailText,
       })
+      const pushBody = session.durationMin
+        ? `${typeLabel} · ${session.durationMin} min — ¡a entrenar!`
+        : `${typeLabel} — ¡a entrenar!`
+      sendPushNotification(plan.user.pushToken, 'Sesión de hoy 🏃', pushBody, { screen: 'plan' }).catch(() => {})
       sent++
     } catch {
       failed++

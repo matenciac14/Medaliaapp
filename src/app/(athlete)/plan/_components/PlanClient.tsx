@@ -72,6 +72,7 @@ const PLAN_NAME_MAP: Record<string, string> = {
   RACE_HALF_MARATHON: 'Media Maratón', RACE_MARATHON: 'Maratón',
   RACE_10K: '10K', RACE_5K: '5K',
   BODY_RECOMPOSITION: 'Recomposición Corporal',
+  STRENGTH_TRAINING: 'Entrenamiento de Fuerza',
   WEIGHT_LOSS: 'Pérdida de Peso', GENERAL_FITNESS: 'Fitness General',
   // Template name aliases
   HALF_MARATHON_18W: 'Media Maratón', TEN_K_12W: '10K',
@@ -1206,6 +1207,14 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
           <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
             {realCurrentPhase} · Semana {plan.currentWeek}/{plan.totalWeeks}
           </div>
+
+          <button
+            onClick={() => window.open(`/api/plan/week-print?week=${selectedWeekNum}`, '_blank')}
+            title="Descargar semana como PDF"
+            className="hidden md:flex items-center gap-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            ⬇ PDF
+          </button>
         </div>
       </div>
 

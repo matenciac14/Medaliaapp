@@ -14,6 +14,8 @@ import {
   Dumbbell,
   UserCircle,
   MessageSquare,
+  MoreHorizontal,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -31,6 +33,9 @@ export default function SidebarClient({ user, config }: Props) {
   const { t } = useLanguage()
   const s = t.app.sidebar
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showMore, setShowMore] = useState(false)
+
+  useEffect(() => { setShowMore(false) }, [pathname])
 
   useEffect(() => {
     const load = () =>
@@ -54,13 +59,19 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
-  // Mobile: 5 tabs fijos — las páginas manejan paywall internamente
+  // Mobile: 4 tabs principales + "Más" para el resto
   const mobileNavLinks = [
-    { href: '/dashboard', label: s.dashboard, icon: LayoutDashboard },
-    { href: '/plan',      label: s.plan,       icon: CalendarDays },
-    { href: '/gym',       label: s.gym,        icon: Dumbbell },
-    { href: '/checkin',   label: s.checkin,    icon: ClipboardCheck },
-    { href: '/profile',   label: s.profile,    icon: UserCircle },
+    { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard },
+    { href: '/plan',      label: s.plan,        icon: CalendarDays },
+    { href: '/nutrition', label: s.nutrition,   icon: Apple },
+    { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck },
+  ]
+
+  const moreLinks = [
+    { href: '/gym',      label: s.gym,      icon: Dumbbell },
+    { href: '/progress', label: s.progress, icon: TrendingUp },
+    { href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount },
+    { href: '/profile',  label: s.profile,  icon: UserCircle },
   ]
 
   function isActive(href: string) {
@@ -149,13 +160,50 @@ export default function SidebarClient({ user, config }: Props) {
       </header>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20 pb-safe">
+      {showMore && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/30"
+          onClick={() => setShowMore(false)}
+        />
+      )}
+      {showMore && (
+        <div className="lg:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-xl rounded-t-2xl py-3 px-4">
+          <div className="grid grid-cols-4 gap-2">
+            {moreLinks.map(({ href, label, icon: Icon, badge }) => {
+              const active = isActive(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setShowMore(false)}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-semibold transition-colors relative',
+                    active ? 'bg-[#1e3a5f]/8 text-[#1e3a5f]' : 'text-gray-500 hover:bg-gray-50'
+                  )}
+                >
+                  <div className="relative">
+                    <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+                    {badge != null && badge > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#f97316] text-white text-[9px] font-bold flex items-center justify-center">
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
+                  </div>
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40 pb-safe">
         {mobileNavLinks.map(({ href, label, icon: Icon }) => {
           const active = isActive(href)
           return (
             <Link
               key={href}
               href={href}
+              onClick={() => setShowMore(false)}
               className={cn(
                 'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors relative',
                 active ? 'text-[#1e3a5f]' : 'text-gray-400 hover:text-gray-600'
@@ -169,6 +217,20 @@ export default function SidebarClient({ user, config }: Props) {
             </Link>
           )
         })}
+        {/* Tab "Más" */}
+        <button
+          onClick={() => setShowMore(v => !v)}
+          className={cn(
+            'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors relative',
+            showMore || moreLinks.some(l => isActive(l.href)) ? 'text-[#1e3a5f]' : 'text-gray-400'
+          )}
+        >
+          {showMore
+            ? <X size={22} strokeWidth={2} />
+            : <MoreHorizontal size={22} strokeWidth={2} />
+          }
+          Más
+        </button>
       </nav>
     </>
   )

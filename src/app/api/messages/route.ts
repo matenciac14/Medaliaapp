@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { sendPushNotification } from '@/lib/push'
 
 // GET /api/messages?with=[userId] — conversación paginada (más recientes primero)
 export async function GET(req: NextRequest) {
@@ -43,13 +44,16 @@ export async function POST(req: NextRequest) {
   const fromId = session.user.id
   if (fromId === toId) return NextResponse.json({ error: 'No puedes enviarte mensajes a ti mismo' }, { status: 400 })
 
-  const recipient = await prisma.user.findUnique({ where: { id: toId }, select: { id: true } })
+  const recipient = await prisma.user.findUnique({ where: { id: toId }, select: { id: true, name: true, pushToken: true } })
   if (!recipient) return NextResponse.json({ error: 'Destinatario no encontrado' }, { status: 404 })
 
   const message = await prisma.message.create({
     data: { fromId, toId, content: content.trim() },
     select: { id: true, fromId: true, toId: true, content: true, readAt: true, createdAt: true },
   })
+
+  const senderName = session.user.name ?? 'Tu coach'
+  sendPushNotification(recipient.pushToken, `Mensaje de ${senderName}`, content.trim(), { screen: 'messages' }).catch(() => {})
 
   return NextResponse.json({ message }, { status: 201 })
 }
