@@ -18,6 +18,12 @@ type GymDay = {
   exercises: unknown[]
 }
 
+type RoutineDay = {
+  activity: 'GYM' | 'RUN' | 'REST'
+  split?: string | null
+  runType?: string | null
+}
+
 type Props = {
   dashboardMode: 'TRAINING' | 'RECOVERY' | 'FREE'
   isCurrentWeek: boolean
@@ -32,12 +38,33 @@ type Props = {
   totalWeeks?: number | null
   completedCount?: number | null
   totalTraining?: number | null
+  // Self-directed mode
+  todayRoutineDay?: RoutineDay | null
+  weekSessionCount?: number
+  weekSessionTarget?: number
+}
+
+const RUN_TYPE_LABELS: Record<string, string> = {
+  RODAJE_Z2:    'Rodaje Z2 — fácil',
+  FARTLEK:      'Fartlek',
+  TEMPO:        'Tempo',
+  INTERVALOS:   'Intervalos',
+  TIRADA_LARGA: 'Tirada larga',
+  OTRO:         'Sesión libre',
+}
+
+const SPLIT_LABELS: Record<string, string> = {
+  PUSH:      'Push — Pecho / Hombros / Tríceps',
+  PULL:      'Pull — Espalda / Bíceps',
+  LEGS:      'Piernas — Cuádriceps / Glúteos',
+  FULL_BODY: 'Full Body',
 }
 
 export default function DailySessionCard({
   dashboardMode, isCurrentWeek, todaySession, hasActivePlan,
   hasGymToday, todayGymDay, planPhase, phaseDisplay, phaseColors,
   selectedWeekNum, totalWeeks, completedCount, totalTraining,
+  todayRoutineDay, weekSessionCount = 0, weekSessionTarget = 4,
 }: Props) {
   return (
     <>
@@ -120,13 +147,73 @@ export default function DailySessionCard({
         </div>
       )}
 
-      {/* FREE footer */}
-      {dashboardMode === 'FREE' && (
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-500">Entrenamiento libre — sin estructura fija</p>
-          <Link href="/log" className="text-xs font-semibold text-[#f97316] hover:opacity-80 whitespace-nowrap">
-            + Registrar sesión
-          </Link>
+      {/* FREE: hoy según rutina + acciones */}
+      {dashboardMode === 'FREE' && isCurrentWeek && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+
+          {/* Actividad de hoy según rutina */}
+          {todayRoutineDay && todayRoutineDay.activity !== 'REST' ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">
+                  {todayRoutineDay.activity === 'GYM' ? '💪' : '🏃'}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {todayRoutineDay.activity === 'GYM'
+                      ? (todayRoutineDay.split ? SPLIT_LABELS[todayRoutineDay.split] ?? todayRoutineDay.split : 'Gym')
+                      : (todayRoutineDay.runType ? RUN_TYPE_LABELS[todayRoutineDay.runType] ?? todayRoutineDay.runType : 'Running')}
+                  </p>
+                  <p className="text-xs text-gray-400">Según tu rutina semanal</p>
+                </div>
+              </div>
+              {todayRoutineDay.activity === 'GYM' ? (
+                <Link href="/gym/session" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
+                  Empezar
+                </Link>
+              ) : (
+                <Link href="/log/run" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
+                  Registrar
+                </Link>
+              )}
+            </div>
+          ) : todayRoutineDay?.activity === 'REST' ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span>😴</span>
+              <span>Día de descanso según tu rutina</span>
+            </div>
+          ) : (
+            /* Sin rutina configurada */
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-400">¿Qué entrenas hoy?</p>
+              <div className="flex gap-2">
+                <Link href="/gym/session" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
+                  💪 Gym
+                </Link>
+                <Link href="/log/run" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
+                  🏃 Correr
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Consistencia semanal */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: weekSessionTarget }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full ${i < weekSessionCount ? 'bg-[#f97316]' : 'bg-gray-200'}`}
+                />
+              ))}
+              <span className="text-[11px] text-gray-500 ml-1">
+                {weekSessionCount}/{weekSessionTarget} días esta semana
+              </span>
+            </div>
+            <Link href="/gym/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">
+              Ver historial →
+            </Link>
+          </div>
         </div>
       )}
 

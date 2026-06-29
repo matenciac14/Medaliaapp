@@ -100,7 +100,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const rawWeekOffset = parseInt(weekOffsetParam ?? '0') || 0
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -134,6 +134,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       take: 60,
       select: { completedAt: true },
     }),
+    prisma.weeklyRoutine.findUnique({ where: { userId } }),
   ])
 
   if (!dbUser) redirect('/login')
@@ -215,6 +216,41 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const todayDow = jsToOurDow(new Date().getDay())
   const todayGymDay = assignedWorkout?.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
   const hasGymToday = !!(todayGymDay && !todayGymDay.isRestDay)
+
+  // ── Self-directed: today's routine day + weekly session count ─────────────
+  type RoutineDayConfig = { dow: number; activity: 'GYM' | 'RUN' | 'REST'; split?: string; runType?: string }
+  const routineDays = (weeklyRoutine?.days ?? []) as RoutineDayConfig[]
+  const todayRoutineDay = routineDays.find((d) => d.dow === todayDow) ?? null
+
+  // Count distinct days with any activity this week (Mon=start)
+  const weekStart = (() => {
+    const today = new Date()
+    const dow = today.getDay() === 0 ? 7 : today.getDay()
+    const monday = new Date(today)
+    monday.setHours(0, 0, 0, 0)
+    monday.setDate(today.getDate() - (dow - 1))
+    return monday
+  })()
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const [weekFreeLogs, weekGymSessions] = activePlan ? [[], []] : await Promise.all([
+    prisma.sessionLog.findMany({
+      where: { userId, plannedSessionId: null, completedAt: { gte: weekStart, lte: weekEnd } },
+      select: { completedAt: true },
+    }),
+    prisma.gymSession.findMany({
+      where: { athleteId: userId, completed: true, date: { gte: weekStart, lte: weekEnd } },
+      select: { date: true },
+    }),
+  ])
+  const activeDaysThisWeek = new Set([
+    ...weekFreeLogs.map((l) => new Date(l.completedAt).toDateString()),
+    ...weekGymSessions.map((g) => new Date(g.date).toDateString()),
+  ])
+  const weekSessionCount = activeDaysThisWeek.size
+  const weekSessionTarget = weeklyRoutine?.daysPerWeek ?? 4
 
   // ── Plan y semana actual ───────────────────────────────────────────────────
   let planData = { name: 'Sin plan', totalWeeks: 0, currentWeek: 0, phase: 'BASE' }
@@ -730,6 +766,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 totalWeeks={planData.totalWeeks}
                 completedCount={completedCount}
                 totalTraining={totalTraining}
+                todayRoutineDay={todayRoutineDay}
+                weekSessionCount={weekSessionCount}
+                weekSessionTarget={weekSessionTarget}
               />
             </div>
           </section>
