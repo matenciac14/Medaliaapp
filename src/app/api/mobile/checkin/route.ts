@@ -9,6 +9,7 @@ import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profil
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError } from '@/lib/api/responses'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
+import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
 
 /** Mobile sends energy and stress on a 1-5 scale — normalize to 1-10 for consistency. */
 function scale5to10(v: number): number {
@@ -105,6 +106,10 @@ export async function POST(req: NextRequest) {
         userRepo: new PrismaUserRepository(),
       }
     )
+
+    if (result.adjustments.length > 0) {
+      sendPlanUpdatedEmail(mobile.email, mobile.name, result.adjustments).catch(() => {})
+    }
 
     return ok({
       ok: true,

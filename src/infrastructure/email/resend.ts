@@ -416,3 +416,56 @@ export async function sendEmailVerification(to: string, name: string, verifyUrl:
 </html>`,
   })
 }
+
+export async function sendPlanUpdatedEmail(to: string, name: string, adjustments: string[]) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const adjustmentList = adjustments
+    .map(a => `<li style="margin:0 0 6px;font-size:14px;color:#374151;line-height:1.5">${a}</li>`)
+    .join('')
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: 'Tu plan se ajustó según tu check-in — Medaliq',
+    html: `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px">
+            <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e3a5f">Tu plan fue actualizado</h1>
+            <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.6">
+              Hola ${name}, procesamos tu check-in semanal y ajustamos tu plan para la próxima semana:
+            </p>
+            <ul style="margin:0 0 24px;padding-left:20px">
+              ${adjustmentList}
+            </ul>
+            <p style="margin:0 0 24px;font-size:13px;color:#64748b;line-height:1.6">
+              Estos cambios ya están en tu plan. El objetivo es que entrenes con la intensidad correcta según tu estado real.
+            </p>
+            <a href="https://medaliq.com/plan" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+              Ver mi plan actualizado →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #f1f5f9;text-align:center">
+            <p style="margin:0;font-size:12px;color:#94a3b8">© 2026 Medaliq · Coaching deportivo inteligente</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}

@@ -7,6 +7,7 @@ import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
+import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
 // prisma is passed as `db` so the use case can open $transaction
 
 export async function GET(_req: NextRequest) {
@@ -74,6 +75,10 @@ export async function POST(req: NextRequest) {
         userRepo: new PrismaUserRepository(),
       }
     )
+
+    if (result.adjustments.length > 0 && session.user.email && session.user.name) {
+      sendPlanUpdatedEmail(session.user.email, session.user.name, result.adjustments).catch(() => {})
+    }
 
     return ok({
       ok: true,

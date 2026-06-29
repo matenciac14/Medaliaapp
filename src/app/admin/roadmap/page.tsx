@@ -488,7 +488,7 @@ const PHASES = [
     bgColor: '#faf5ff',
     borderColor: '#d8b4fe',
     items: [
-      { title: 'Notificaciones email post-lanzamiento: check-in semanal + plan actualizado', done: false, note: 'CRÍTICO para retención. (1) recordatorio check-in semanal, (2) "tu plan fue actualizado" post check-in — cierra el loop. Implementar después de emails base de Fase 13.' },
+      { title: 'Notificaciones email post-lanzamiento: check-in semanal + plan actualizado', done: true, note: 'Implementado. (1) cron checkin-reminder existente. (2) sendPlanUpdatedEmail() — se envía fire-and-forget desde /api/checkin y /api/mobile/checkin cuando result.adjustments.length > 0.' },
       { title: 'Quick-log de sesión desde el dashboard (1 click)', done: true, note: 'Implementado. QuickLog.tsx — botón "¡Completé!" en DailySessionCard cuando hay sesión pendiente. POST /api/log/session con plannedSessionId + router.refresh(). Estado optimista local.' },
       { title: 'Gráficas de progreso visuales (no tablas)', done: true, note: 'Implementado. progress/_components/ProgressClient.tsx tiene LineChart (peso + FC reposo), HorizontalKmChart, AdherenceVerticalChart, WellbeingChart — SVG puro, sin dependencias externas.' },
       { title: 'Mensajería coach → atleta (notas simples, no chat)', done: true, note: 'Implementado. Modelo Message + 4 endpoints web + 4 mobile + badge unread. Coach envía desde /coach/athlete/[id], atleta ve en /messages. Detalle completo en Fase 8.' },
