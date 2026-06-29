@@ -222,7 +222,7 @@ export default function DailySessionCard({
               <Link href="/routine/edit" className="text-[11px] text-gray-400 hover:text-[#f97316]">
                 Editar rutina
               </Link>
-              <Link href="/gym/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">
+              <Link href="/log/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">
                 Ver historial →
               </Link>
             </div>
