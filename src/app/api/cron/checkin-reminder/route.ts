@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { sendCheckinReminderEmail } from '@/infrastructure/email/resend'
+import { sendPushNotification } from '@/lib/push'
 
 // Cron: domingo 23:00 UTC = 18:00 COT
 // Envia recordatorio a atletas con plan activo que no hicieron check-in esta semana
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   // Atletas con plan activo
   const activePlanRows = await prisma.trainingPlan.findMany({
     where: { status: 'ACTIVE' },
-    select: { userId: true, user: { select: { email: true, name: true } } },
+    select: { userId: true, user: { select: { email: true, name: true, pushToken: true } } },
     distinct: ['userId'],
   })
 
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     if (checkedInIds.has(row.userId)) continue
     try {
       await sendCheckinReminderEmail(row.user.email!, row.user.name ?? 'Atleta')
+      sendPushNotification(row.user.pushToken, '¿Cómo fue tu semana? 💪', 'Completa tu check-in semanal en Medaliq.', { screen: 'checkin' }).catch(() => {})
       sent++
     } catch {
       failed++

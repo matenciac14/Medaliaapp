@@ -37,6 +37,9 @@ model User {
   timezone   String?  // IANA tz, e.g. 'America/Mexico_City'. null = America/Bogota
   locale     String?  // BCP 47, e.g. 'es-MX'. null = es-CO
 
+  // Push notifications (Expo Push Token del dispositivo mobile)
+  pushToken  String?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

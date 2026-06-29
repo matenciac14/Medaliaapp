@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { sendPushNotification } from '@/lib/push'
 
 // GET /api/mobile/messages?with=[userId] — paginada, asc
 export async function GET(req: NextRequest) {
@@ -38,9 +39,16 @@ export async function POST(req: NextRequest) {
   const { toId, content } = body
   if (!toId || !content?.trim()) return NextResponse.json({ error: 'toId y content requeridos' }, { status: 400 })
 
+  const [recipient] = await Promise.all([
+    prisma.user.findUnique({ where: { id: toId }, select: { pushToken: true, name: true } }),
+  ])
+
   const message = await prisma.message.create({
     data: { fromId: mobile.id, toId, content: content.trim() },
   })
+
+  const senderName = mobile.name ?? 'Tu atleta'
+  sendPushNotification(recipient?.pushToken, `Mensaje de ${senderName}`, content.trim(), { screen: 'messages' }).catch(() => {})
 
   return NextResponse.json({ message }, { status: 201 })
 }
