@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
@@ -29,7 +30,7 @@ export default async function NutritionPage() {
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   // Cargar datos en paralelo
-  const [nutritionPlan, mealPlan, foodProfile, todaySession, gymToday, allFoods] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, allFoods, healthProfile] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     prisma.foodProfile.findUnique({ where: { userId } }),
@@ -55,6 +56,10 @@ export default async function NutritionPage() {
         },
       },
     }),
+    prisma.healthProfile.findUnique({
+      where: { userId },
+      select: { weightKg: true, heightCm: true, age: true, gender: true, weightGoalKg: true },
+    }),
     prisma.food.findMany({
       where: { isActive: true },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
@@ -67,6 +72,34 @@ export default async function NutritionPage() {
       },
     }),
   ])
+
+  // Lazy init: si no hay NutritionPlan pero sí HealthProfile, calcularlo y persistirlo
+  let nutritionPlan = nutritionPlanRaw
+  if (!nutritionPlan && healthProfile?.weightKg && healthProfile?.heightCm && healthProfile?.age) {
+    const tdee = calculateTDEE(
+      healthProfile.weightKg,
+      healthProfile.heightCm,
+      healthProfile.age,
+      (healthProfile.gender ?? 'male') as 'male' | 'female',
+      4
+    )
+    const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)
+    nutritionPlan = await prisma.nutritionPlan.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        tdee,
+        targetKcalHard: macros.hard.kcal,
+        targetKcalEasy: macros.easy.kcal,
+        targetKcalRest: macros.rest.kcal,
+        proteinG: macros.hard.protein,
+        carbsHardG: macros.hard.carbs,
+        carbsEasyG: macros.easy.carbs,
+        fatG: macros.hard.fat,
+      },
+    })
+  }
 
   const gymDayToday = gymToday?.template.days[0]
   const hasGymSessionToday = !!gymDayToday && !gymDayToday.isRestDay

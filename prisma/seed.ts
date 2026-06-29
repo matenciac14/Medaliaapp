@@ -177,6 +177,23 @@ async function main() {
     }
   }
 
+  // NutritionPlan para Miguel — calculado con Mifflin-St Jeor (age=30, 175cm, 75kg, male, 4d/sem, déficit -500)
+  await prisma.nutritionPlan.upsert({
+    where: { userId: athlete1.id },
+    update: {},
+    create: {
+      userId: athlete1.id,
+      tdee: 2633,
+      targetKcalHard: 2133,
+      targetKcalEasy: 1933,
+      targetKcalRest: 1733,
+      proteinG: 150,
+      carbsHardG: 267,
+      carbsEasyG: 169,
+      fatG: 52,
+    },
+  })
+
   for (const ci of [
     { wn: 1, wkg: 75.2, hr: 55, sleep: 7.5, score: 82, rpe: 7, adh: 85, pain: false, energy: 4, notes: 'Semana bien, piernas respondieron al volumen' },
     { wn: 2, wkg: 74.8, hr: 54, sleep: 7.0, score: 79, rpe: 7, adh: 80, pain: false, energy: 4, notes: 'Un poco de cansancio acumulado en el fartlek' },

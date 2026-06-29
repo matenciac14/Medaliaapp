@@ -6,7 +6,7 @@ import { PrismaCheckInRepository } from '@/infrastructure/db/check-in.repository
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { unauthorized, ok, serverError } from '@/lib/api/responses'
+import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 // prisma is passed as `db` so the use case can open $transaction
 
 export async function GET(_req: NextRequest) {
@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return unauthorized()
 
   const body = await req.json()
+
+  if (body.energyLevel == null && body.hardestRpe == null) {
+    return badRequest('Completa al menos la energía percibida o el RPE.')
+  }
 
   try {
     const result = await processCheckIn(
