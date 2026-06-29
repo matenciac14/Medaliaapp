@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
 import { DAY_LABELS } from '@/lib/constants/sessions'
+import { translateMuscleGroup } from '@/lib/gym-labels'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
 import PublicTemplates from './_components/PublicTemplates'
@@ -365,7 +366,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {todayWorkoutDay.muscleGroups.map((mg) => (
                         <span key={mg} className="text-xs font-medium bg-[#1e3a5f]/10 text-[#1e3a5f] px-2 py-0.5 rounded-full">
-                          {mg}
+                          {translateMuscleGroup(mg)}
                         </span>
                       ))}
                     </div>
@@ -478,7 +479,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                   <span className={`text-[10px] font-semibold leading-tight px-0.5 ${
                     isSelected ? 'text-white/80' : isToday ? 'text-gray-700' : isRest ? 'text-gray-400' : 'text-gray-700'
                   }`}>
-                    {isRest ? 'Descanso' : workoutDay?.muscleGroups?.[0] ?? '—'}
+                    {isRest ? 'Descanso' : translateMuscleGroup(workoutDay?.muscleGroups?.[0] ?? '') || '—'}
                   </span>
                 </Link>
               )

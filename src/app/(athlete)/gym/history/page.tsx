@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { DAY_LABELS } from '@/lib/constants/sessions'
+import { translateMuscleGroup } from '@/lib/gym-labels'
 import { ChevronLeft, CheckCircle2, Dumbbell, Clock, Zap } from 'lucide-react'
 
 function formatDate(date: Date) {
@@ -244,7 +245,7 @@ export default async function GymHistoryPage() {
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {workoutDay.muscleGroups.map((mg) => (
                         <span key={mg} className="text-xs bg-[#1e3a5f]/8 text-[#1e3a5f] px-2 py-0.5 rounded-full font-medium">
-                          {mg}
+                          {translateMuscleGroup(mg)}
                         </span>
                       ))}
                     </div>

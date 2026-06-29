@@ -55,7 +55,7 @@ export default function DailySessionCard({
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                     {todaySession.durationMin} min
                   </span>
-                  {todaySession.zoneTarget && todaySession.zoneTarget !== '—' && todaySession.zoneTarget !== '' && (
+                  {todaySession.zoneTarget && todaySession.zoneTarget !== '—' && todaySession.zoneTarget !== '' && todaySession.zoneTarget !== 'N/A' && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                       Zona {todaySession.zoneTarget}
                     </span>
