@@ -1,37 +1,8 @@
 /**
- * Pure helpers shared between web and mobile onboarding routes.
- * Eliminates duplication between /api/onboarding/generate and /api/mobile/onboarding/generate.
+ * Pure helpers shared by plan-generation flows (coach plan builder, /new-goal).
+ * Not used by the simplified onboarding wizard.
  * No I/O, no Prisma, no Next.js.
  */
-import type { WizardData } from '@/app/onboarding/_types'
-
-/** Maps WizardData to the goalType used by templates and the plan generator. */
-export function resolveGoalType(data: WizardData): string {
-  if (data.mainGoal === 'SPORT') {
-    switch (data.sport) {
-      case 'RUNNING':  return data.raceDistance ?? 'RACE_HALF_MARATHON'
-      case 'STRENGTH': return 'STRENGTH_TRAINING'
-      default:         return 'BODY_RECOMPOSITION'
-    }
-  }
-  if (data.mainGoal === 'GYM' || data.mainGoal === 'BODY') return 'BODY_RECOMPOSITION'
-  return 'GENERAL_FITNESS'
-}
-
-/** Builds the sportDetails JSON stored in HealthProfile. */
-export function buildSportDetails(data: WizardData): Record<string, unknown> {
-  if (data.mainGoal === 'SPORT') {
-    switch (data.sport) {
-      case 'RUNNING':
-        return { raceDistance: data.raceDistance, raceDate: data.raceDate, targetTime: data.targetTime, recentBestTime: data.recentBestTime }
-      case 'STRENGTH':
-        return { strengthStyle: data.strengthStyle }
-    }
-  }
-  if (data.mainGoal === 'GYM')  return { gymGoal: data.gymGoal }
-  if (data.mainGoal === 'BODY') return { bodyGoal: data.bodyGoal, targetDate: data.raceDate }
-  return {}
-}
 
 /** Converts "MM:SS" or "HH:MM:SS" time strings to total seconds. */
 export function timeStringToSecs(timeStr: string | null | undefined): number | null {
@@ -43,8 +14,8 @@ export function timeStringToSecs(timeStr: string | null | undefined): number | n
   return null
 }
 
-/** Maps goalType string to UserConfig sport fields. */
-export function resolveSportConfig(goalType: string, _data: WizardData): {
+/** Maps a goalType string to sport config fields used when completing onboarding after plan generation. */
+export function resolveSportConfig(goalType: string): {
   sportType: 'RUNNING' | 'STRENGTH' | 'GENERAL'
   sportGoal: 'RACE' | 'BODY_RECOMPOSITION' | 'GENERAL_FITNESS'
 } {

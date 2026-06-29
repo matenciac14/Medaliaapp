@@ -1,154 +1,135 @@
 import { describe, it, expect } from 'vitest'
-import { getSteps, INITIAL_DATA, type WizardData } from './_types'
+import { getSteps, isStepValid, INITIAL_DATA, type WizardData } from './_types'
 
 function make(overrides: Partial<WizardData>): WizardData {
   return { ...INITIAL_DATA, ...overrides }
 }
 
 // ---------------------------------------------------------------------------
-// Estado inicial — sin responder nada
+// getSteps — estado inicial
 // ---------------------------------------------------------------------------
 describe('getSteps — estado inicial', () => {
-  it('solo health-goal si no hay healthGoal', () => {
-    expect(getSteps(INITIAL_DATA)).toEqual(['health-goal'])
-  })
-
-  it('health-goal + has-sport si healthGoal está pero hasSport es null', () => {
-    expect(getSteps(make({ healthGoal: 'FITNESS' }))).toEqual(['health-goal', 'has-sport'])
-    expect(getSteps(make({ healthGoal: 'WEIGHT_LOSS' }))).toEqual(['health-goal', 'has-sport'])
-    expect(getSteps(make({ healthGoal: 'RECOMPOSITION' }))).toEqual(['health-goal', 'has-sport'])
+  it('solo goal si no hay activityType', () => {
+    expect(getSteps(INITIAL_DATA)).toEqual(['goal'])
   })
 })
 
 // ---------------------------------------------------------------------------
-// Flujo con deporte (hasSport = true)
+// getSteps — flujos por activityType
 // ---------------------------------------------------------------------------
-describe('getSteps — flujo SPORT (hasSport = true)', () => {
-  it('agrega sport-select si aún no hay deporte elegido', () => {
-    const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true }))
-    expect(steps).toEqual(['health-goal', 'has-sport', 'sport-select'])
+describe('getSteps — activityType FREE', () => {
+  it('goal → physical → generating', () => {
+    const data = make({ activityType: 'FREE', age: 30, heightCm: 170, weightKg: 70, gender: 'male' })
+    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
   })
 
-  it('flujo completo con RUNNING incluye todos los pasos', () => {
-    const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }))
-    expect(steps).toContain('sport-details')
-    expect(steps).toContain('physical')
-    expect(steps).toContain('hr-fitness')
-    expect(steps).toContain('schedule')
-    expect(steps).toContain('health')
-    expect(steps).toContain('plan-method')
-    expect(steps[steps.length - 1]).toBe('generating')
+  it('se detiene en physical si faltan datos físicos', () => {
+    const data = make({ activityType: 'FREE' })
+    expect(getSteps(data)).toEqual(['goal', 'physical'])
+  })
+})
+
+describe('getSteps — activityType RUNNING', () => {
+  it('goal → physical → generating cuando datos completos', () => {
+    const data = make({ activityType: 'RUNNING', age: 28, heightCm: 175, weightKg: 68, gender: 'female' })
+    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+  })
+})
+
+describe('getSteps — activityType GYM', () => {
+  it('se detiene en goal si falta gymGoal', () => {
+    const data = make({ activityType: 'GYM' })
+    expect(getSteps(data)).toEqual(['goal'])
   })
 
-  it.each(['RUNNING', 'STRENGTH'] as const)(
-    'flujo completo con %s termina en generating',
-    (sport) => {
-      const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true, sport }))
-      expect(steps[steps.length - 1]).toBe('generating')
-      expect(steps).toContain('sport-details')
-    }
-  )
+  it('goal → physical → generating con gymGoal y datos completos', () => {
+    const data = make({ activityType: 'GYM', gymGoal: 'MUSCLE_GAIN', age: 25, heightCm: 180, weightKg: 80, gender: 'male' })
+    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+  })
+})
 
-  it('sport-details viene antes que physical', () => {
-    const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }))
-    expect(steps.indexOf('sport-details')).toBeLessThan(steps.indexOf('physical'))
+describe('getSteps — activityType BOTH', () => {
+  it('se detiene en goal si falta gymGoal', () => {
+    const data = make({ activityType: 'BOTH' })
+    expect(getSteps(data)).toEqual(['goal'])
   })
 
-  it('no incluye body-goal ni gym-goal en flujo SPORT', () => {
-    const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }))
-    expect(steps).not.toContain('body-goal')
-    expect(steps).not.toContain('gym-goal')
+  it('goal → physical → generating con gymGoal y datos completos', () => {
+    const data = make({ activityType: 'BOTH', gymGoal: 'RECOMPOSITION', age: 30, heightCm: 165, weightKg: 60, gender: 'female' })
+    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
   })
 })
 
 // ---------------------------------------------------------------------------
-// Flujo sin deporte (hasSport = false)
-// ---------------------------------------------------------------------------
-describe('getSteps — flujo sin deporte (hasSport = false)', () => {
-  it('MUSCLE_GAIN — flujo GYM simplificado (sin hr-fitness ni schedule)', () => {
-    const steps = getSteps(make({ healthGoal: 'MUSCLE_GAIN', hasSport: false }))
-    expect(steps).not.toContain('sport-select')
-    expect(steps).not.toContain('sport-details')
-    expect(steps).not.toContain('hr-fitness')
-    expect(steps).not.toContain('schedule')
-    expect(steps).toContain('physical')
-    expect(steps).toContain('plan-method')
-    expect(steps[steps.length - 1]).toBe('generating')
-  })
-
-  it('WEIGHT_LOSS — flujo corporal completo con hr-fitness y schedule', () => {
-    const steps = getSteps(make({ healthGoal: 'WEIGHT_LOSS', hasSport: false }))
-    expect(steps).not.toContain('sport-select')
-    expect(steps).not.toContain('sport-details')
-    expect(steps).toContain('physical')
-    expect(steps).toContain('hr-fitness')
-    expect(steps).toContain('schedule')
-    expect(steps[steps.length - 1]).toBe('generating')
-  })
-
-  it('RECOMPOSITION — flujo corporal completo', () => {
-    const steps = getSteps(make({ healthGoal: 'RECOMPOSITION', hasSport: false }))
-    expect(steps).toContain('hr-fitness')
-    expect(steps[steps.length - 1]).toBe('generating')
-  })
-
-  it('FITNESS sin deporte — flujo corporal completo', () => {
-    const steps = getSteps(make({ healthGoal: 'FITNESS', hasSport: false }))
-    expect(steps).toContain('hr-fitness')
-    expect(steps[steps.length - 1]).toBe('generating')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Invariantes del flujo
+// getSteps — invariantes
 // ---------------------------------------------------------------------------
 describe('getSteps — invariantes', () => {
-  it('generating siempre es el último paso', () => {
+  it('goal siempre es el primer paso', () => {
     const cases = [
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }),
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'STRENGTH' }),
-      make({ healthGoal: 'WEIGHT_LOSS', hasSport: false }),
-      make({ healthGoal: 'MUSCLE_GAIN', hasSport: false }),
-      make({ healthGoal: 'RECOMPOSITION', hasSport: false }),
+      INITIAL_DATA,
+      make({ activityType: 'FREE' }),
+      make({ activityType: 'RUNNING', age: 25, heightCm: 170, weightKg: 65, gender: 'male' }),
+      make({ activityType: 'GYM', gymGoal: 'FAT_LOSS', age: 25, heightCm: 170, weightKg: 65, gender: 'male' }),
     ]
-    cases.forEach(data => {
+    cases.forEach((data) => {
+      expect(getSteps(data)[0]).toBe('goal')
+    })
+  })
+
+  it('generating siempre es el último cuando los datos están completos', () => {
+    const cases = [
+      make({ activityType: 'FREE',    age: 30, heightCm: 170, weightKg: 70, gender: 'male' }),
+      make({ activityType: 'RUNNING', age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
+      make({ activityType: 'GYM',  gymGoal: 'MUSCLE_GAIN', age: 30, heightCm: 170, weightKg: 70, gender: 'male' }),
+      make({ activityType: 'BOTH', gymGoal: 'FAT_LOSS',    age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
+    ]
+    cases.forEach((data) => {
       const steps = getSteps(data)
       expect(steps[steps.length - 1]).toBe('generating')
     })
   })
 
-  it('plan-method siempre está justo antes de generating', () => {
-    const cases = [
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }),
-      make({ healthGoal: 'WEIGHT_LOSS', hasSport: false }),
-      make({ healthGoal: 'MUSCLE_GAIN', hasSport: false }),
-    ]
-    cases.forEach(data => {
-      const steps = getSteps(data)
-      const genIdx = steps.indexOf('generating')
-      expect(steps[genIdx - 1]).toBe('plan-method')
-    })
+  it('siempre tiene exactamente 3 pasos cuando está completo', () => {
+    const data = make({ activityType: 'RUNNING', age: 25, heightCm: 170, weightKg: 65, gender: 'male' })
+    expect(getSteps(data)).toHaveLength(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// isStepValid
+// ---------------------------------------------------------------------------
+describe('isStepValid — goal', () => {
+  it('false si activityType es null', () => {
+    expect(isStepValid('goal', INITIAL_DATA)).toBe(false)
   })
 
-  it('health-goal siempre es el primer paso', () => {
-    const cases = [
-      INITIAL_DATA,
-      make({ healthGoal: 'FITNESS' }),
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }),
-    ]
-    cases.forEach(data => {
-      expect(getSteps(data)[0]).toBe('health-goal')
-    })
+  it('false si GYM sin gymGoal', () => {
+    expect(isStepValid('goal', make({ activityType: 'GYM' }))).toBe(false)
+    expect(isStepValid('goal', make({ activityType: 'BOTH' }))).toBe(false)
   })
 
-  it('no incluye day-schedule (step huérfano no usado)', () => {
-    const cases = [
-      make({ healthGoal: 'FITNESS', hasSport: true, sport: 'RUNNING' }),
-      make({ healthGoal: 'WEIGHT_LOSS', hasSport: false }),
-      make({ healthGoal: 'MUSCLE_GAIN', hasSport: false }),
-    ]
-    cases.forEach(data => {
-      expect(getSteps(data)).not.toContain('day-schedule')
-    })
+  it('true si FREE o RUNNING', () => {
+    expect(isStepValid('goal', make({ activityType: 'FREE' }))).toBe(true)
+    expect(isStepValid('goal', make({ activityType: 'RUNNING' }))).toBe(true)
+  })
+
+  it('true si GYM con gymGoal', () => {
+    expect(isStepValid('goal', make({ activityType: 'GYM', gymGoal: 'FAT_LOSS' }))).toBe(true)
+  })
+})
+
+describe('isStepValid — physical', () => {
+  it('false si faltan datos obligatorios', () => {
+    expect(isStepValid('physical', make({ age: 30, heightCm: 170, weightKg: 70 }))).toBe(false) // falta gender
+    expect(isStepValid('physical', make({ age: 30, heightCm: 170, gender: 'male' }))).toBe(false) // falta weightKg
+  })
+
+  it('true si todos los datos obligatorios están', () => {
+    expect(isStepValid('physical', make({ age: 25, heightCm: 170, weightKg: 65, gender: 'female' }))).toBe(true)
+  })
+
+  it('true aunque weightGoalKg y experienceLevel sean null', () => {
+    const data = make({ age: 25, heightCm: 170, weightKg: 65, gender: 'male', weightGoalKg: null, experienceLevel: null })
+    expect(isStepValid('physical', data)).toBe(true)
   })
 })

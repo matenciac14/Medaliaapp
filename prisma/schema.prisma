@@ -91,6 +91,9 @@ model User {
 
   // Auditoría de pagos (acciones como actor)
   paymentAuditLogs   PaymentAuditLog[]
+
+  // Rutina semanal self-directed (sin plan)
+  weeklyRoutine      WeeklyRoutine?
 }
 
 enum UserRole {
@@ -369,6 +372,23 @@ model SessionLog {
   plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
 
   @@index([userId])
+}
+
+// ─── RUTINA SEMANAL SELF-DIRECTED ───────────────────────────────────────────
+
+model WeeklyRoutine {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  daysPerWeek Int      @default(4)
+  // [{dow:1, activity:"GYM", split:"PUSH"}, {dow:2, activity:"RUN", runType:"RODAJE_Z2"}, ...]
+  // activity: "GYM" | "RUN" | "REST"
+  // split (gym): "PUSH" | "PULL" | "LEGS" | "FULL_BODY" | null
+  // runType (run): "RODAJE_Z2" | "TEMPO" | "INTERVALOS" | "TIRADA_LARGA" | null
+  days        Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ─── MÉTRICAS DIARIAS ───────────────────────────────────────────────────────
