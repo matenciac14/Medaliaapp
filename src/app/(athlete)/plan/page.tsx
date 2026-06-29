@@ -15,15 +15,22 @@ export default async function PlanPage() {
   if (!session?.user?.id) redirect('/login')
 
   if (!session.user.features?.plan) {
-    // GYM user with assigned workout → redirect to gym module
-    const gymRoutine = await prisma.assignedWorkout.findFirst({
-      where: { athleteId: session.user.id, isActive: true },
+    // JWT may be stale post-onboarding — verify DB before showing empty state
+    const hasActivePlan = await prisma.trainingPlan.findFirst({
+      where: { userId: session.user.id, status: 'ACTIVE' },
       select: { id: true },
     })
-    if (gymRoutine) redirect('/gym')
 
-    // Sin plan activo — modo libre
-    return (
+    if (!hasActivePlan) {
+      // GYM user with assigned workout → redirect to gym module
+      const gymRoutine = await prisma.assignedWorkout.findFirst({
+        where: { athleteId: session.user.id, isActive: true },
+        select: { id: true },
+      })
+      if (gymRoutine) redirect('/gym')
+
+      // Sin plan activo — modo libre
+      return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <div className="text-5xl mb-4">🎯</div>
@@ -40,7 +47,8 @@ export default async function PlanPage() {
           </a>
         </div>
       </div>
-    )
+      )
+    }
   }
 
   const userId = session.user.id
