@@ -38,7 +38,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
     targetWeekNumber = Math.floor(diffDays / 7) + 1
   }
 
-  const [plannedSessions, assignedWorkout, gymSessions] = await Promise.all([
+  const [plannedSessions, assignedWorkout, gymSessions, freeRunLogs] = await Promise.all([
     // Sport sessions by weekNumber — matches Plan page logic, avoids date misalignment
     activePlan && targetWeekNumber !== null && targetWeekNumber >= 1
       ? prisma.plannedSession.findMany({
@@ -84,6 +84,24 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
         plannedSessionId: true,
       },
     }),
+
+    // Free run logs this week (SessionLog without plannedSessionId)
+    prisma.sessionLog.findMany({
+      where: {
+        userId,
+        plannedSessionId: null,
+        freeSessionType: { not: null },
+        completedAt: { gte: monday, lte: sunday },
+      },
+      select: {
+        id: true,
+        completedAt: true,
+        freeSessionType: true,
+        durationMin: true,
+        distanceKm: true,
+        rpe: true,
+      },
+    }),
   ])
 
   // ── 2. Build lookup maps ─────────────────────────────────────────────────────
@@ -108,6 +126,13 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
     gymSessionByDow.set(gs.dayOfWeek, gs)
   }
 
+  // dow → free SessionLog (most recent if multiple that day)
+  const freeRunByDow = new Map<number, typeof freeRunLogs[number]>()
+  for (const fl of freeRunLogs) {
+    const dow = fl.completedAt.getDay() === 0 ? 7 : fl.completedAt.getDay() // JS Sun=0 → our 7
+    freeRunByDow.set(dow, fl)
+  }
+
   // ── 3. Build 7 CalendarDay objects (Mon–Sun) ─────────────────────────────────
   const days: CalendarDay[] = []
 
@@ -122,6 +147,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
     const sport = sportByDow.get(dow) ?? null
     const gymDay = gymDayByDow.get(dow) ?? null
     const gymSession = gymSessionByDow.get(dow) ?? null
+    const freeRun = freeRunByDow.get(dow) ?? null
 
     days.push({
       date: dateStr,
@@ -154,6 +180,16 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
             done: gymSession?.completed ?? false,
             durationMin: gymSession?.durationMin ?? null,
             rpe: gymSession?.rpe ?? null,
+          }
+        : null,
+
+      freeRun: freeRun
+        ? {
+            sessionLogId: freeRun.id,
+            type: freeRun.freeSessionType!,
+            durationMin: freeRun.durationMin ?? null,
+            distanceKm: freeRun.distanceKm ?? null,
+            rpe: freeRun.rpe ?? null,
           }
         : null,
     })

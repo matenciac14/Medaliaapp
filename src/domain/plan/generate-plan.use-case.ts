@@ -26,7 +26,6 @@ import { getTemplate } from '@/lib/plan/templates'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
-import type { WizardData } from '@/app/onboarding/_types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,7 +162,7 @@ export async function generatePlanUseCase(
 
   // ── Phase 3: update user config (outside tx) ──────────────────────────────
 
-  const { sportType, sportGoal } = resolveSportConfig(input.goalType, {} as unknown as WizardData)
+  const { sportType, sportGoal } = resolveSportConfig(input.goalType)
 
   await deps.userRepo.completeOnboarding(input.userId, {
     features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,

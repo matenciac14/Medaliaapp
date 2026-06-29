@@ -1,24 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-
-import { estimateHRMax, calculateHRZones, calculateTDEE } from '@/lib/plan/formulas'
 import {
   WizardData,
   INITIAL_DATA,
   getSteps,
   StepId,
-  HealthGoal,
-  Sport,
+  ActivityType,
   GymGoal,
-  CardioMachine,
-  DayType,
-  MuscleGroupSplit,
-  DayConfig,
-  WeekSchedule,
-  getDefaultSchedule,
+  ExperienceLevel,
+  isStepValid,
 } from './_types'
 
 // ---------------------------------------------------------------------------
@@ -80,24 +73,15 @@ function SelectCard({
   )
 }
 
-function CheckCard({ selected, onClick, label }: { selected: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150',
-        selected
-          ? 'border-[#f97316] bg-[#f97316]/8 text-[#f97316]'
-          : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
-      )}
-    >
-      {label}
-    </button>
-  )
-}
-
-function ToggleBtn({ selected, onClick, label }: { selected: boolean; onClick: () => void; label: string }) {
+function ToggleBtn({
+  selected,
+  onClick,
+  label,
+}: {
+  selected: boolean
+  onClick: () => void
+  label: string
+}) {
   return (
     <button
       type="button"
@@ -127,46 +111,47 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-function StepTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">{children}</h2>
-}
-
-function StepSubtitle({ children }: { children: React.ReactNode }) {
-  return <p className="text-gray-500 text-sm mb-6">{children}</p>
-}
-
 // ---------------------------------------------------------------------------
 // Step components
 // ---------------------------------------------------------------------------
 
-function StepHealthGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const sports: { value: Sport; icon: string; label: string }[] = [
-    { value: 'RUNNING',  icon: '🏃', label: 'Running' },
-    { value: 'STRENGTH', icon: '🏋️', label: 'Fuerza' },
+function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  const activities: { value: ActivityType; icon: string; label: string; subtext: string }[] = [
+    { value: 'GYM',     icon: '🏋️', label: 'Gym',            subtext: 'Rutinas de pesas, recomposición corporal' },
+    { value: 'RUNNING', icon: '🏃', label: 'Running',         subtext: 'Correr, mejorar ritmo y resistencia' },
+    { value: 'BOTH',    icon: '🏅', label: 'Gym + Running',   subtext: 'Combino entrenamiento de fuerza y cardio' },
+    { value: 'FREE',    icon: '📊', label: 'Solo trackear',   subtext: 'Registro libre — sin plan estructurado' },
   ]
+
+  const gymGoals: { value: GymGoal; icon: string; label: string }[] = [
+    { value: 'MUSCLE_GAIN',   icon: '📈', label: 'Ganar músculo' },
+    { value: 'FAT_LOSS',      icon: '🔥', label: 'Perder grasa' },
+    { value: 'RECOMPOSITION', icon: '⚖️', label: 'Los dos (recomposición)' },
+  ]
+
+  const showGymGoal = data.activityType === 'GYM' || data.activityType === 'BOTH'
 
   return (
     <div className="flex flex-col gap-3">
-      <StepTitle>¿Qué quieres lograr?</StepTitle>
-      <StepSubtitle>En 2 pasos más estarás listo.</StepSubtitle>
+      <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">¿Cómo quieres entrenar?</h2>
+      <p className="text-gray-500 text-sm mb-4">Medalliq se adapta a tu forma de entrenar — sin obligarte a seguir un plan.</p>
 
-      <SelectCard
-        selected={data.healthGoal === 'MUSCLE_GAIN' && data.hasSport !== true}
-        onClick={() => update({ healthGoal: 'MUSCLE_GAIN', hasSport: false, sport: null, gymGoal: null })}
-        icon="🏋️"
-        label="Gym"
-        subtext="Ganar músculo, perder grasa o recomposición"
-      />
+      {activities.map((a) => (
+        <SelectCard
+          key={a.value}
+          selected={data.activityType === a.value}
+          onClick={() => update({ activityType: a.value, gymGoal: null })}
+          icon={a.icon}
+          label={a.label}
+          subtext={a.subtext}
+        />
+      ))}
 
-      {data.healthGoal === 'MUSCLE_GAIN' && data.hasSport !== true && (
-        <div className="p-4 rounded-2xl border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/3">
-          <p className="text-sm font-medium text-[#1e3a5f] mb-3">¿Cuál es tu meta en el gym?</p>
+      {showGymGoal && (
+        <div className="mt-1 p-4 rounded-2xl border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/3">
+          <p className="text-sm font-semibold text-[#1e3a5f] mb-3">¿Cuál es tu meta en el gym?</p>
           <div className="flex flex-col gap-2">
-            {([
-              { value: 'MUSCLE_GAIN' as const,   icon: '💪', label: 'Ganar músculo' },
-              { value: 'FAT_LOSS' as const,       icon: '🔥', label: 'Perder grasa' },
-              { value: 'RECOMPOSITION' as const,  icon: '⚖️', label: 'Ambos — recomposición' },
-            ] as { value: GymGoal; icon: string; label: string }[]).map((g) => (
+            {gymGoals.map((g) => (
               <button
                 key={g.value}
                 type="button"
@@ -185,314 +170,23 @@ function StepHealthGoal({ data, update }: { data: WizardData; update: (d: Partia
           </div>
         </div>
       )}
-
-      <SelectCard
-        selected={data.hasSport === true}
-        onClick={() => update({ healthGoal: 'FITNESS', hasSport: true })}
-        icon="🏅"
-        label="Deporte"
-        subtext="Running o Fuerza / Gimnasio"
-      />
-      <SelectCard
-        selected={data.healthGoal === 'RECOMPOSITION' && data.hasSport !== true}
-        onClick={() => update({ healthGoal: 'RECOMPOSITION', hasSport: false, sport: null })}
-        icon="🔥"
-        label="Cambio corporal"
-        subtext="Mejorar composición, peso y condición física general"
-      />
-      <SelectCard
-        selected={data.healthGoal === 'FREE'}
-        onClick={() => update({ healthGoal: 'FREE', hasSport: false, sport: null })}
-        icon="📊"
-        label="Solo trackear mi progreso"
-        subtext="Registro libre — sin plan estructurado"
-      />
-
-      {data.hasSport === true && (
-        <div className="mt-1 p-4 rounded-2xl border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/3">
-          <p className="text-sm font-medium text-[#1e3a5f] mb-3">¿Cuál es tu deporte?</p>
-          <div className="grid grid-cols-2 gap-2">
-            {sports.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => update({ sport: s.value })}
-                className={cn(
-                  'px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center gap-2',
-                  data.sport === s.value
-                    ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
-                    : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
-                )}
-              >
-                <span>{s.icon}</span>
-                <span>{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
-}
-
-function StepHasSport({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>¿Practicas algún deporte?</StepTitle>
-      <StepSubtitle>Si quieres mejorar tu rendimiento en un deporte, lo incorporamos al plan.</StepSubtitle>
-      <SelectCard
-        selected={data.hasSport === true}
-        onClick={() => update({ hasSport: true, sport: null })}
-        icon="🏅"
-        label="Sí, quiero mejorar en un deporte"
-        subtext="Running o Fuerza / Gimnasio"
-      />
-      <SelectCard
-        selected={data.hasSport === false}
-        onClick={() => update({ hasSport: false, sport: null })}
-        icon="🌿"
-        label="No, me enfoco en salud y bienestar"
-        subtext="Plan de entrenamiento general sin deporte específico"
-      />
-    </div>
-  )
-}
-
-function StepMainGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>¿Cuál es tu objetivo?</StepTitle>
-      <StepSubtitle>Esto define el tipo de plan que vamos a construir para ti.</StepSubtitle>
-      <SelectCard
-        selected={data.mainGoal === 'GYM'}
-        onClick={() => update({ mainGoal: 'GYM', sport: null, bodyGoal: null })}
-        icon="🏋️"
-        label="Gym — ganar músculo o perder grasa"
-        subtext="Rutina de pesas personalizada + guía nutricional"
-      />
-      <SelectCard
-        selected={data.mainGoal === 'BODY'}
-        onClick={() => update({ mainGoal: 'BODY', sport: null, gymGoal: null })}
-        icon="🔥"
-        label="Cambio corporal integral"
-        subtext="Plan mixto cardio + fuerza para recomposición"
-      />
-      <SelectCard
-        selected={data.mainGoal === 'SPORT'}
-        onClick={() => update({ mainGoal: 'SPORT', bodyGoal: null, gymGoal: null })}
-        icon="🏅"
-        label="Mejorar en un deporte"
-        subtext="Running o Fuerza / Gimnasio"
-      />
-    </div>
-  )
-}
-
-function StepGymGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const goals: { value: GymGoal; icon: string; label: string; subtext: string }[] = [
-    { value: 'MUSCLE_GAIN',    icon: '📈', label: 'Ganar músculo',     subtext: 'Aumentar masa muscular y fuerza' },
-    { value: 'FAT_LOSS',       icon: '🔥', label: 'Perder grasa',      subtext: 'Reducir grasa corporal manteniendo músculo' },
-    { value: 'RECOMPOSITION',  icon: '⚖️', label: 'Ambos a la vez',    subtext: 'Recomposición corporal — bajar grasa y ganar músculo' },
-  ]
-  return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>¿Cuál es tu meta principal?</StepTitle>
-      <StepSubtitle>Esto ajusta tu plan de entrenamiento y tus metas nutricionales.</StepSubtitle>
-      {goals.map((g) => (
-        <SelectCard
-          key={g.value}
-          selected={data.gymGoal === g.value}
-          onClick={() => update({ gymGoal: g.value })}
-          icon={g.icon}
-          label={g.label}
-          subtext={g.subtext}
-        />
-      ))}
-    </div>
-  )
-}
-
-function StepSportSelect({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const sports: { value: Sport; icon: string; label: string; subtext: string }[] = [
-    { value: 'RUNNING',  icon: '🏃', label: 'Running', subtext: '5K, 10K, media maratón, maratón' },
-    { value: 'STRENGTH', icon: '🏋️', label: 'Fuerza',  subtext: 'Powerlifting, hipertrofia o funcional' },
-  ]
-
-  return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>¿Practicas algún deporte?</StepTitle>
-      <StepSubtitle>Opcional — si no tienes uno, el plan igual funciona.</StepSubtitle>
-      {sports.map((s) => (
-        <SelectCard
-          key={s.value}
-          selected={data.hasSport === true && data.sport === s.value}
-          onClick={() => update({ hasSport: true, sport: s.value })}
-          icon={s.icon}
-          label={s.label}
-          subtext={s.subtext}
-        />
-      ))}
-      <SelectCard
-        selected={data.hasSport === false}
-        onClick={() => update({ hasSport: false, sport: null })}
-        icon="🌿"
-        label="No tengo deporte"
-        subtext="Me enfoco en salud y bienestar general"
-      />
-    </div>
-  )
-}
-
-function StepBodyGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>¿Qué tipo de cambio?</StepTitle>
-      <StepSubtitle>Sé específico para que el plan sea más preciso.</StepSubtitle>
-      <SelectCard
-        selected={data.bodyGoal === 'FAT_LOSS'}
-        onClick={() => update({ bodyGoal: 'FAT_LOSS' })}
-        icon="🔥"
-        label="Bajar grasa"
-        subtext="Reducir % de grasa corporal"
-      />
-      <SelectCard
-        selected={data.bodyGoal === 'MUSCLE_GAIN'}
-        onClick={() => update({ bodyGoal: 'MUSCLE_GAIN' })}
-        icon="📈"
-        label="Ganar músculo"
-        subtext="Aumentar masa muscular"
-      />
-      <SelectCard
-        selected={data.bodyGoal === 'RECOMPOSITION'}
-        onClick={() => update({ bodyGoal: 'RECOMPOSITION' })}
-        icon="⚖️"
-        label="Los dos (recomposición)"
-        subtext="Bajar grasa y ganar músculo simultáneamente"
-      />
-    </div>
-  )
-}
-
-function StepSportDetails({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const sport = data.hasSport ? data.sport : null
-
-  // RUNNING
-  if (sport === 'RUNNING') {
-    const distances = [
-      { value: 'RACE_5K' as const, label: '5K' },
-      { value: 'RACE_10K' as const, label: '10K' },
-      { value: 'RACE_HALF_MARATHON' as const, label: 'Media maratón' },
-      { value: 'RACE_MARATHON' as const, label: 'Maratón' },
-    ]
-    return (
-      <div className="flex flex-col gap-5">
-        <StepTitle>Detalles de running</StepTitle>
-        <StepSubtitle>Cuéntanos sobre tu meta de carrera.</StepSubtitle>
-        <div>
-          <Label>Distancia objetivo</Label>
-          <div className="flex flex-col gap-2 mt-1">
-            {distances.map((d) => (
-              <SelectCard
-                key={d.value}
-                selected={data.raceDistance === d.value}
-                onClick={() => update({ raceDistance: d.value })}
-                icon="🏅"
-                label={d.label}
-              />
-            ))}
-          </div>
-        </div>
-        <div>
-          <Label>Fecha de la carrera (opcional)</Label>
-          <Input
-            type="date"
-            value={data.raceDate ?? ''}
-            onChange={(e) => update({ raceDate: e.target.value || null })}
-          />
-        </div>
-        <div>
-          <Label>Tiempo objetivo (HH:MM:SS) — opcional</Label>
-          <Input
-            type="text"
-            placeholder="01:45:00"
-            value={data.targetTime ?? ''}
-            onChange={(e) => update({ targetTime: e.target.value || null })}
-          />
-        </div>
-        <div>
-          <Label>Mejor tiempo reciente en esa distancia — opcional</Label>
-          <Input
-            type="text"
-            placeholder="28:30"
-            value={data.recentBestTime ?? ''}
-            onChange={(e) => update({ recentBestTime: e.target.value || null })}
-          />
-          <p className="text-xs text-gray-400 mt-1">Formato MM:SS o HH:MM:SS</p>
-        </div>
-      </div>
-    )
-  }
-
-  // STRENGTH
-  if (sport === 'STRENGTH') {
-    const styles = [
-      { value: 'POWERLIFTING' as const, icon: '🏋️', label: 'Powerlifting', subtext: 'Sentadilla, press banca, peso muerto' },
-      { value: 'HYPERTROPHY' as const, icon: '💪', label: 'Hipertrofia', subtext: 'Ganar tamaño muscular' },
-      { value: 'FUNCTIONAL' as const, icon: '⚡', label: 'Funcional', subtext: 'Crossfit, calistenia, fuerza general' },
-    ]
-    return (
-      <div className="flex flex-col gap-5">
-        <StepTitle>Detalles de fuerza</StepTitle>
-        <StepSubtitle>¿Cuál es tu enfoque de entrenamiento?</StepSubtitle>
-        {styles.map((s) => (
-          <SelectCard
-            key={s.value}
-            selected={data.strengthStyle === s.value}
-            onClick={() => update({ strengthStyle: s.value })}
-            icon={s.icon}
-            label={s.label}
-            subtext={s.subtext}
-          />
-        ))}
-      </div>
-    )
-  }
-
-  // BODY goal (no sport)
-  if (data.mainGoal === 'BODY') {
-    return (
-      <div className="flex flex-col gap-5">
-        <StepTitle>Tu meta de composición corporal</StepTitle>
-        <StepSubtitle>Estos datos nos ayudan a calcular la velocidad de cambio saludable.</StepSubtitle>
-        <div>
-          <Label>Peso objetivo (kg)</Label>
-          <Input
-            type="number"
-            placeholder="68"
-            value={data.weightGoalKg ?? ''}
-            onChange={(e) => update({ weightGoalKg: e.target.value ? Number(e.target.value) : null })}
-          />
-        </div>
-        <div>
-          <Label>Fecha aproximada para alcanzarlo (opcional)</Label>
-          <Input
-            type="date"
-            value={data.raceDate ?? ''}
-            onChange={(e) => update({ raceDate: e.target.value || null })}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  return null
 }
 
 function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  const hasGym = data.activityType === 'GYM' || data.activityType === 'BOTH'
+  const levels: { value: ExperienceLevel; label: string; subtext: string }[] = [
+    { value: 'BEGINNER',     label: 'Principiante', subtext: 'Menos de 1 año' },
+    { value: 'INTERMEDIATE', label: 'Intermedio',   subtext: '1–3 años' },
+    { value: 'ADVANCED',     label: 'Avanzado',     subtext: 'Más de 3 años' },
+  ]
+
   return (
     <div className="flex flex-col gap-5">
-      <StepTitle>Casi listo — datos básicos</StepTitle>
-      <StepSubtitle>Con esto calculamos tus zonas de entrenamiento y nutrición.</StepSubtitle>
+      <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Datos básicos</h2>
+      <p className="text-gray-500 text-sm mb-2">Con esto calculamos tus calorías y macros.</p>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Edad (años)</Label>
@@ -513,6 +207,7 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
           />
         </div>
       </div>
+
       <div>
         <Label>Peso actual (kg)</Label>
         <Input
@@ -522,6 +217,7 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
           onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : null })}
         />
       </div>
+
       <div>
         <Label>Género</Label>
         <div className="flex gap-3 mt-1">
@@ -529,6 +225,7 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
           <ToggleBtn selected={data.gender === 'female'} onClick={() => update({ gender: 'female' })} label="Mujer" />
         </div>
       </div>
+
       <div>
         <Label>Días disponibles para entrenar por semana</Label>
         <div className="flex gap-2 mt-1 flex-wrap">
@@ -542,7 +239,32 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
           ))}
         </div>
       </div>
-      {(data.healthGoal === 'WEIGHT_LOSS' || data.healthGoal === 'RECOMPOSITION') && (
+
+      {/* Nivel de experiencia — opcional pero útil para intensidades */}
+      <div>
+        <Label>Nivel de experiencia (opcional)</Label>
+        <div className="flex flex-col gap-2 mt-1">
+          {levels.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              onClick={() => update({ experienceLevel: data.experienceLevel === l.value ? null : l.value })}
+              className={cn(
+                'px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center justify-between',
+                data.experienceLevel === l.value
+                  ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              )}
+            >
+              <span className="font-semibold">{l.label}</span>
+              <span className="text-xs text-gray-400">{l.subtext}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Peso objetivo — opcional, solo si tiene sentido */}
+      {(hasGym || data.activityType === 'FREE') && (
         <div>
           <Label>Peso objetivo (kg) — opcional</Label>
           <Input
@@ -557,322 +279,6 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
   )
 }
 
-function StepHRFitness({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const showHR = data.hasSport === true && data.sport !== 'STRENGTH'
-
-  return (
-    <div className="flex flex-col gap-5">
-      <StepTitle>Condición física</StepTitle>
-      <StepSubtitle>Datos para personalizar las zonas e intensidades del plan.</StepSubtitle>
-
-      <div>
-        <Label>Nivel de experiencia</Label>
-        <div className="flex flex-col gap-2 mt-1">
-          <SelectCard
-            selected={data.experienceLevel === 'BEGINNER'}
-            onClick={() => update({ experienceLevel: 'BEGINNER' })}
-            icon="🌱"
-            label="Principiante"
-            subtext="Menos de 1 año entrenando este deporte"
-          />
-          <SelectCard
-            selected={data.experienceLevel === 'INTERMEDIATE'}
-            onClick={() => update({ experienceLevel: 'INTERMEDIATE' })}
-            icon="📈"
-            label="Intermedio"
-            subtext="1–3 años con entrenamiento regular"
-          />
-          <SelectCard
-            selected={data.experienceLevel === 'ADVANCED'}
-            onClick={() => update({ experienceLevel: 'ADVANCED' })}
-            icon="🏆"
-            label="Avanzado"
-            subtext="Más de 3 años y experiencia en competencias"
-          />
-        </div>
-      </div>
-
-      {showHR && (
-        <>
-          <div>
-            <Label>FC máxima (bpm)</Label>
-            <div className="flex gap-3 mt-1 mb-3">
-              <ToggleBtn
-                selected={data.hrSource === 'known'}
-                onClick={() => update({ hrSource: 'known' })}
-                label="La conozco"
-              />
-              <ToggleBtn
-                selected={data.hrSource === 'estimated'}
-                onClick={() => update({ hrSource: 'estimated', hrMax: null })}
-                label="Que la estime el sistema"
-              />
-            </div>
-            {data.hrSource === 'known' && (
-              <Input
-                type="number"
-                placeholder="185"
-                value={data.hrMax ?? ''}
-                onChange={(e) => update({ hrMax: e.target.value ? Number(e.target.value) : null })}
-              />
-            )}
-            {data.hrSource === 'estimated' && data.age && (
-              <p className="text-xs text-gray-400 mt-1">
-                Estimaremos: 211 − 0.64 × {data.age} = <strong>{Math.round(211 - 0.64 * data.age)} bpm</strong>
-              </p>
-            )}
-          </div>
-          <div>
-            <Label>FC en reposo (bpm) — opcional</Label>
-            <Input
-              type="number"
-              placeholder="58"
-              value={data.hrResting ?? ''}
-              onChange={(e) => update({ hrResting: e.target.value ? Number(e.target.value) : null })}
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Si tienes reloj deportivo o pulsómetro, agrega este dato para mayor precisión.
-            </p>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function StepSchedule({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const daysOptions = [3, 4, 5, 6]
-  const hoursOptions = [
-    { label: '45 min', value: 0.75 },
-    { label: '1h', value: 1 },
-    { label: '1h 30', value: 1.5 },
-    { label: '2h', value: 2 },
-  ]
-
-  return (
-    <div className="flex flex-col gap-5">
-      <StepTitle>Tu disponibilidad</StepTitle>
-      <StepSubtitle>El plan se adapta a tu tiempo real disponible.</StepSubtitle>
-      <div>
-        <Label>Días disponibles para entrenar por semana</Label>
-        <div className="flex gap-2 mt-1 flex-wrap">
-          {daysOptions.map((d) => (
-            <ToggleBtn
-              key={d}
-              selected={data.daysPerWeek === d}
-              onClick={() => update({ daysPerWeek: d })}
-              label={`${d} días`}
-            />
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label>Duración por sesión</Label>
-        <div className="flex gap-2 flex-wrap mt-1">
-          {hoursOptions.map((h) => (
-            <ToggleBtn
-              key={h.value}
-              selected={data.hoursPerSession === h.value}
-              onClick={() => update({ hoursPerSession: h.value })}
-              label={h.label}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const INJURY_OPTIONS = ['Rodilla', 'Tobillo', 'Cadera', 'Hombro', 'Espalda/lumbar', 'Fascitis plantar', 'Ninguna']
-const CONDITION_OPTIONS = ['Hipertensión', 'Diabetes', 'Problemas cardíacos', 'Asma', 'Tiroides', 'Ninguna']
-
-function StepHealth({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  function toggleInjury(item: string) {
-    if (item === 'Ninguna') {
-      update({ injuries: data.injuries.includes('Ninguna') ? [] : ['Ninguna'] })
-      return
-    }
-    const next = data.injuries.includes(item)
-      ? data.injuries.filter((i) => i !== item)
-      : [...data.injuries.filter((i) => i !== 'Ninguna'), item]
-    update({ injuries: next })
-  }
-
-  function toggleCondition(item: string) {
-    if (item === 'Ninguna') {
-      update({ conditions: data.conditions.includes('Ninguna') ? [] : ['Ninguna'] })
-      return
-    }
-    const next = data.conditions.includes(item)
-      ? data.conditions.filter((c) => c !== item)
-      : [...data.conditions.filter((c) => c !== 'Ninguna'), item]
-    update({ conditions: next })
-  }
-
-  const hasCardiacRisk = data.conditions.includes('Problemas cardíacos')
-
-  return (
-    <div className="flex flex-col gap-5">
-      <StepTitle>Salud y compromiso</StepTitle>
-      <StepSubtitle>Información confidencial — solo se usa para ajustar el plan de forma segura.</StepSubtitle>
-
-      <div>
-        <Label>Lesiones o molestias actuales</Label>
-        <div className="flex flex-wrap gap-2 mt-1">
-          {INJURY_OPTIONS.map((item) => (
-            <CheckCard
-              key={item}
-              selected={data.injuries.includes(item)}
-              onClick={() => toggleInjury(item)}
-              label={item}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label>Condiciones médicas relevantes</Label>
-        <div className="flex flex-wrap gap-2 mt-1">
-          {CONDITION_OPTIONS.map((item) => (
-            <CheckCard
-              key={item}
-              selected={data.conditions.includes(item)}
-              onClick={() => toggleCondition(item)}
-              label={item}
-            />
-          ))}
-        </div>
-      </div>
-
-      {hasCardiacRisk && (
-        <div className="px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm">
-          ⚠️ Recomendamos consultar con tu médico antes de iniciar. Puedes continuar — el plan incluirá una nota al respecto.
-        </div>
-      )}
-
-      <div className="flex flex-col gap-3">
-        <p className="font-semibold text-[#1e3a5f] text-sm">¿Qué tan dispuesto estás a ajustar tu alimentación?</p>
-        <SelectCard
-          selected={data.nutritionCommitment === 'strict'}
-          onClick={() => update({ nutritionCommitment: 'strict' })}
-          icon="🎯"
-          label="Total"
-          subtext="Puedo seguir un plan estricto"
-        />
-        <SelectCard
-          selected={data.nutritionCommitment === 'moderate'}
-          onClick={() => update({ nutritionCommitment: 'moderate' })}
-          icon="👍"
-          label="Moderado"
-          subtext="Puedo hacer algunos ajustes"
-        />
-        <SelectCard
-          selected={data.nutritionCommitment === 'flexible'}
-          onClick={() => update({ nutritionCommitment: 'flexible' })}
-          icon="🙌"
-          label="Flexible"
-          subtext="Prefiero solo recomendaciones generales"
-        />
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Step — Plan Method (AI vs Template)
-// ---------------------------------------------------------------------------
-
-function StepPlanMethod({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  // Calculamos preview con fórmulas deterministas usando los datos del usuario
-  const age = data.age ?? 25
-  const weightKg = data.weightKg ?? 70
-  const heightCm = data.heightCm ?? 170
-  const gender = data.gender ?? 'male'
-  const daysPerWeek = data.daysPerWeek ?? 4
-  const hrResting = data.hrResting ?? 0
-  const hrMax = data.hrMax ?? (data.hrSource === 'estimated' || !data.hrMax
-    ? estimateHRMax(age)
-    : data.hrMax)
-
-  const tdee = calculateTDEE(weightKg, heightCm, age, gender, daysPerWeek)
-  const zones = calculateHRZones(hrMax, hrResting)
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <div className="text-4xl mb-2">📊</div>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Tu perfil calculado</h2>
-        <p className="text-sm text-gray-500 mt-1">Basado en tus datos, esto es lo que sabemos de ti</p>
-      </div>
-
-      {/* Preview calculado */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-blue-50 rounded-xl p-3 text-center">
-          <p className="text-xs text-blue-500 font-medium uppercase tracking-wide">FC Máx.</p>
-          <p className="text-2xl font-bold text-blue-700 mt-0.5">{hrMax}</p>
-          <p className="text-xs text-blue-400">lpm</p>
-        </div>
-        <div className="bg-orange-50 rounded-xl p-3 text-center">
-          <p className="text-xs text-orange-500 font-medium uppercase tracking-wide">TDEE</p>
-          <p className="text-2xl font-bold text-orange-700 mt-0.5">{tdee.toLocaleString()}</p>
-          <p className="text-xs text-orange-400">kcal/día</p>
-        </div>
-        <div className="bg-green-50 rounded-xl p-3 text-center">
-          <p className="text-xs text-green-500 font-medium uppercase tracking-wide">Zona 2</p>
-          <p className="text-lg font-bold text-green-700 mt-0.5">{zones.z2.min}–{zones.z2.max}</p>
-          <p className="text-xs text-green-400">lpm base aeróbica</p>
-        </div>
-        <div className="bg-red-50 rounded-xl p-3 text-center">
-          <p className="text-xs text-red-500 font-medium uppercase tracking-wide">Zona 4</p>
-          <p className="text-lg font-bold text-red-700 mt-0.5">{zones.z4.min}–{zones.z4.max}</p>
-          <p className="text-xs text-red-400">lpm umbral</p>
-        </div>
-      </div>
-
-      {/* Elección de método */}
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold text-gray-700">¿Cómo quieres generar tu plan?</p>
-        <button
-          type="button"
-          onClick={() => update({ planMethod: 'AI' })}
-          className={cn(
-            'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
-            data.planMethod === 'AI'
-              ? 'border-[#f97316] bg-[#f97316]/8'
-              : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
-          )}
-        >
-          <span className="text-2xl leading-none mt-0.5">⚡</span>
-          <span className="flex flex-col gap-0.5">
-            <span className={cn('font-semibold text-base', data.planMethod === 'AI' ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
-              Plan personalizado
-            </span>
-            <span className="text-sm text-gray-500">Medaliq analiza tu perfil y añade recomendaciones específicas para ti</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => update({ planMethod: 'TEMPLATE' })}
-          className={cn(
-            'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
-            data.planMethod === 'TEMPLATE'
-              ? 'border-[#f97316] bg-[#f97316]/8'
-              : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
-          )}
-        >
-          <span className="text-2xl leading-none mt-0.5">📋</span>
-          <span className="flex flex-col gap-0.5">
-            <span className={cn('font-semibold text-base', data.planMethod === 'TEMPLATE' ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
-              Template estándar
-            </span>
-            <span className="text-sm text-gray-500">Plan periodizado basado en tus zonas de FC y disponibilidad. Instantáneo.</span>
-          </span>
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function StepGenerating() {
   return (
     <div className="flex flex-col items-center justify-center gap-8 py-12">
@@ -882,257 +288,30 @@ function StepGenerating() {
         <span className="absolute inset-0 flex items-center justify-center text-2xl">⚡</span>
       </div>
       <div className="text-center">
-        <p className="text-lg font-semibold text-[#1e3a5f]">Guardando tu perfil...</p>
-        <p className="text-sm text-gray-400 mt-1">Calculando TDEE, macros y configurando tu cuenta</p>
+        <p className="text-lg font-semibold text-[#1e3a5f]">Configurando tu cuenta...</p>
+        <p className="text-sm text-gray-400 mt-1">Calculando calorías, macros y preparando tu espacio</p>
       </div>
     </div>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Step — Day Schedule
-// ---------------------------------------------------------------------------
-
-const DOW_LABELS: Record<number, string> = {
-  1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom',
-}
-
-const MACHINE_OPTIONS: { value: CardioMachine; label: string }[] = [
-  { value: 'TREADMILL', label: '🏃 Cinta' },
-  { value: 'ELLIPTICAL', label: '🔄 Elíptica' },
-  { value: 'BIKE', label: '🚴 Bici' },
-  { value: 'ROWING', label: '🚣 Remo' },
-  { value: 'ANY', label: '⚡ Cualquiera' },
-]
-
-const SPLIT_OPTIONS: { value: MuscleGroupSplit; label: string; subtext: string }[] = [
-  { value: 'PUSH', label: '🔴 Push', subtext: 'Pecho / Hombros / Tríceps' },
-  { value: 'PULL', label: '🔵 Pull', subtext: 'Espalda / Bíceps' },
-  { value: 'LEGS', label: '🟡 Piernas', subtext: 'Cuádriceps / Glúteos' },
-  { value: 'FULL_BODY', label: '🟢 Full Body', subtext: 'Todos los grupos' },
-]
-
-function StepDaySchedule({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  const schedule: WeekSchedule = data.weekSchedule ?? getDefaultSchedule(data.daysPerWeek)
-
-  const activeDays = (Object.values(schedule) as DayConfig[]).filter(d => d.type !== 'rest').length
-  const required = data.daysPerWeek
-  const isOk = activeDays === required
-
-  function updateDay(dow: number, config: DayConfig) {
-    update({ weekSchedule: { ...schedule, [dow as 1 | 2 | 3 | 4 | 5 | 6 | 7]: config } })
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <StepTitle>¿Cómo quieres organizar tu semana?</StepTitle>
-      <StepSubtitle>Define cada día como fuerza, cardio o descanso.</StepSubtitle>
-
-      <div className={cn(
-        'text-sm font-semibold px-3 py-2 rounded-xl text-center',
-        isOk ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-      )}>
-        {activeDays} de {required} días de entrenamiento seleccionados
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {([1, 2, 3, 4, 5, 6, 7] as const).map((dow) => {
-          const day = schedule[dow]
-          return (
-            <div key={dow} className={cn(
-              'rounded-2xl border-2 transition-all',
-              day.type === 'strength' ? 'border-[#1e3a5f]/30 bg-[#1e3a5f]/3' :
-              day.type === 'cardio'   ? 'border-[#f97316]/30 bg-[#f97316]/3' :
-              'border-gray-200 bg-gray-50'
-            )}>
-              <div className="flex items-center gap-3 px-4 py-3">
-                <span className="text-sm font-bold text-[#1e3a5f] w-8 flex-shrink-0">{DOW_LABELS[dow]}</span>
-                <div className="flex gap-2 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => updateDay(dow, { type: 'strength', split: day.split })}
-                    className={cn(
-                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
-                      day.type === 'strength'
-                        ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                    )}
-                  >💪 Fuerza</button>
-                  <button
-                    type="button"
-                    onClick={() => updateDay(dow, { type: 'cardio', cardioMachine: day.cardioMachine ?? 'ANY' })}
-                    className={cn(
-                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
-                      day.type === 'cardio'
-                        ? 'border-[#f97316] bg-[#f97316] text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                    )}
-                  >🏃 Cardio</button>
-                  <button
-                    type="button"
-                    onClick={() => updateDay(dow, { type: 'rest' })}
-                    className={cn(
-                      'flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all',
-                      day.type === 'rest'
-                        ? 'border-gray-400 bg-gray-100 text-gray-600'
-                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                    )}
-                  >😴 Descanso</button>
-                </div>
-              </div>
-
-              {day.type === 'cardio' && (
-                <div className="px-4 pb-3">
-                  <p className="text-xs text-gray-400 mb-1.5 ml-11">¿Qué máquina usas?</p>
-                  <div className="ml-11 flex gap-2 flex-wrap">
-                    {MACHINE_OPTIONS.map(m => (
-                      <button
-                        key={m.value}
-                        type="button"
-                        onClick={() => updateDay(dow, { type: 'cardio', cardioMachine: m.value })}
-                        className={cn(
-                          'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
-                          day.cardioMachine === m.value
-                            ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
-                        )}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {day.type === 'strength' && (
-                <div className="px-4 pb-3">
-                  <p className="text-xs text-gray-400 mb-1.5 ml-11">¿Qué grupo muscular?</p>
-                  <div className="ml-11 flex gap-2 flex-wrap">
-                    {SPLIT_OPTIONS.map(s => (
-                      <button
-                        key={s.value}
-                        type="button"
-                        onClick={() => updateDay(dow, { type: 'strength', split: s.value })}
-                        className={cn(
-                          'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all flex flex-col items-start',
-                          day.split === s.value
-                            ? 'border-[#1e3a5f] bg-[#1e3a5f]/10 text-[#1e3a5f]'
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
-                        )}
-                      >
-                        <span>{s.label}</span>
-                        <span className="text-[10px] opacity-70">{s.subtext}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Step validation
-// ---------------------------------------------------------------------------
-
-function isStepValid(stepId: StepId, data: WizardData): boolean {
-  switch (stepId) {
-    case 'health-goal':
-      if (data.hasSport === true) return data.sport !== null
-      if (data.healthGoal === 'MUSCLE_GAIN' && !data.hasSport) return data.gymGoal !== null
-      return data.healthGoal !== null
-    case 'has-sport':
-      return data.hasSport !== null
-    case 'sport-select':
-      return data.hasSport === false || data.sport !== null
-    case 'sport-details': {
-      if (data.hasSport) {
-        if (data.sport === 'RUNNING') return data.raceDistance !== null
-        if (data.sport === 'STRENGTH') return data.strengthStyle !== null
-      }
-      return true
-    }
-    case 'physical':
-      return !!(data.age && data.heightCm && data.weightKg && data.gender)
-    case 'hr-fitness':
-      if (!data.experienceLevel) return false
-      if (data.hasSport && data.sport !== 'STRENGTH') {
-        return data.hrSource !== null && (data.hrSource === 'estimated' || !!data.hrMax)
-      }
-      return true
-    case 'schedule':
-      return true
-    case 'health':
-      return data.nutritionCommitment !== null
-    case 'plan-method':
-      return data.planMethod !== null
-    case 'generating':
-      return true
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step labels
-// ---------------------------------------------------------------------------
-
-const STEP_LABELS: Record<StepId, string> = {
-  'health-goal': 'Objetivo',
-  'has-sport': 'Deporte',
-  'sport-select': 'Tu deporte',
-  'sport-details': 'Detalles',
-  physical: 'Perfil físico',
-  'hr-fitness': 'Condición',
-  schedule: 'Disponibilidad',
-  health: 'Salud',
-  'plan-method': 'Tu plan',
-  generating: 'Generando',
 }
 
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
-// Valid sports in the wizard
-const WIZARD_SPORTS = ['RUNNING', 'STRENGTH']
+const STEP_LABELS: Record<StepId, string> = {
+  'goal':       'Tu actividad',
+  'physical':   'Tus datos',
+  'generating': 'Configurando',
+}
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { data: sessionData, update: refreshSession } = useSession()
+  const { update: refreshSession } = useSession()
   const [data, setData] = useState<WizardData>(INITIAL_DATA)
   const [stepIndex, setStepIndex] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // B2B athletes: pre-fill sport from coach config and skip early steps.
-  // Only fires when onboarding is NOT yet complete and user is INACTIVE (B2B pre-activation).
-  // B2C new users are also INACTIVE before onboarding but their sport.type is null,
-  // so the effect exits early at `if (!sport)`.
-  useEffect(() => {
-    if (sessionData?.user?.onboardingCompleted) return  // already done — guard below handles it too
-
-    fetch('/api/athlete/sport')
-      .then((r) => r.json())
-      .then(({ sport }: { sport: string | null }) => {
-        if (!sport) return  // B2C new user — no sport set yet
-        const isValidWizardSport = WIZARD_SPORTS.includes(sport)
-        const patch: Partial<WizardData> = { hasSport: true }
-        if (isValidWizardSport) patch.sport = sport as Sport
-
-        setData((prev) => {
-          const next = { ...prev, ...patch }
-          const steps = getSteps(next)
-          const target = steps.indexOf('physical')
-          setStepIndex(target > 0 ? target : 0)
-          return next
-        })
-      })
-      .catch(() => { /* silently ignore — athlete continues normally */ })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionData?.user?.userPlan])
 
   function update(partial: Partial<WizardData>) {
     setData((prev) => ({ ...prev, ...partial }))
@@ -1142,18 +321,14 @@ export default function OnboardingPage() {
   const currentStepId = steps[stepIndex]
   const totalSteps = steps.length
   const progressPct = Math.min(((stepIndex + 1) / totalSteps) * 100, 100)
-  // Solo es "último paso de datos" si el siguiente paso es exactamente 'generating'
   const isLastDataStep = steps[stepIndex + 1] === 'generating'
 
   function nextStep() {
     if (!isStepValid(currentStepId, data)) return
-
     if (isLastDataStep) {
-      handleGenerate()
+      void handleSubmit()
       return
     }
-
-    // Recalculate steps after update in case sport/mainGoal changed
     const updatedSteps = getSteps(data)
     if (stepIndex < updatedSteps.length - 1) {
       setStepIndex(stepIndex + 1)
@@ -1165,79 +340,38 @@ export default function OnboardingPage() {
     setStepIndex(stepIndex - 1)
   }
 
-  async function handleGenerate() {
-    setStepIndex(steps.indexOf('generating') >= 0 ? steps.indexOf('generating') : steps.length - 1)
+  async function handleSubmit() {
+    setStepIndex(steps.indexOf('generating'))
     setIsGenerating(true)
     setError(null)
 
     try {
-      // Derive mainGoal from the user's actual choices:
-      //   hasSport=true           → SPORT  (running/strength plan)
-      //   MUSCLE_GAIN + no sport  → GYM    (gym tracking, no training plan)
-      //   everything else         → BODY if planMethod=AI, FREE otherwise
-      const isGym = data.healthGoal === 'MUSCLE_GAIN' && !data.hasSport
-      const wantsAIPlan = data.planMethod === 'AI' || data.planMethod === 'TEMPLATE'
-
-      let derivedMainGoal: 'SPORT' | 'BODY' | 'GYM' | 'FREE'
-      let derivedHealthGoal = data.healthGoal ?? ('FREE' as const)
-
-      if (isGym) {
-        derivedMainGoal = 'GYM'
-      } else if (data.hasSport) {
-        derivedMainGoal = 'SPORT'
-      } else if (wantsAIPlan) {
-        derivedMainGoal = 'BODY'
-      } else {
-        derivedMainGoal = 'FREE'
-        derivedHealthGoal = 'FREE'
-      }
-
-      const submissionData = {
-        ...data,
-        mainGoal: derivedMainGoal,
-        healthGoal: derivedHealthGoal,
-        // Defaults para pasos eliminados del wizard simplificado
-        experienceLevel: data.experienceLevel ?? 'INTERMEDIATE',
-        hrSource: data.hrSource ?? 'estimated',
-        nutritionCommitment: data.nutritionCommitment ?? 'moderate',
-        planMethod: data.planMethod ?? 'AI',
-      }
       const res = await fetch('/api/onboarding/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submissionData),
+        body: JSON.stringify(data),
       })
 
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Error generando el plan')
+      if (!res.ok) throw new Error(json.error ?? 'Error configurando la cuenta')
 
       await refreshSession({ onboardingCompleted: true })
       router.push(json.isB2B ? '/pending' : '/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
-      // Go back to last data step
-      const generatingIdx = steps.indexOf('generating')
-      setStepIndex(generatingIdx > 0 ? generatingIdx - 1 : 0)
+      setStepIndex(steps.indexOf('generating') > 0 ? steps.indexOf('generating') - 1 : 0)
     } finally {
       setIsGenerating(false)
     }
   }
 
   const stepContent: Record<StepId, React.ReactNode> = {
-    'health-goal': <StepHealthGoal data={data} update={update} />,
-    'has-sport': <StepHasSport data={data} update={update} />,
-    'sport-select': <StepSportSelect data={data} update={update} />,
-    'sport-details': <StepSportDetails data={data} update={update} />,
-    physical: <StepPhysical data={data} update={update} />,
-    'hr-fitness': <StepHRFitness data={data} update={update} />,
-    schedule: <StepSchedule data={data} update={update} />,
-    health: <StepHealth data={data} update={update} />,
-    'plan-method': <StepPlanMethod data={data} update={update} />,
+    goal:       <StepGoal data={data} update={update} />,
+    physical:   <StepPhysical data={data} update={update} />,
     generating: <StepGenerating />,
   }
 
   const isGeneratingStep = currentStepId === 'generating'
-  const stepLabel = STEP_LABELS[currentStepId] ?? ''
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1247,7 +381,7 @@ export default function OnboardingPage() {
           <span className="text-xl font-bold text-[#1e3a5f]">Medaliq</span>
           <span className="text-gray-300">·</span>
           <span className="text-gray-500 text-sm flex-1">
-            Paso {stepIndex + 1} de {totalSteps} — {stepLabel}
+            Paso {stepIndex + 1} de {totalSteps} — {STEP_LABELS[currentStepId]}
           </span>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
@@ -1293,7 +427,7 @@ export default function OnboardingPage() {
             <button
               onClick={nextStep}
               disabled={!isStepValid(currentStepId, data) || isGenerating}
-              className={`flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${stepIndex === 0 ? 'w-full' : ''}`}
+              className="flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isLastDataStep ? 'Guardar y entrar →' : 'Siguiente →'}
             </button>

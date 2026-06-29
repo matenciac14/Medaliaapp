@@ -1,196 +1,67 @@
 // ---------------------------------------------------------------------------
-// WizardData — datos recolectados durante el onboarding
-// Diseñado para soportar múltiples deportes y futuras integraciones
+// Onboarding simplificado — self-directed tracking
+// El usuario define QUÉ hace (gym / running / ambos) y sus datos físicos.
+// No se genera un plan de entrenamiento — solo NutritionPlan + WeeklyRoutine vacía.
+//
+// Para planes estructurados (B2B coach o /new-goal) se usa un wizard separado.
 // ---------------------------------------------------------------------------
 
-export type MainGoal = 'SPORT' | 'BODY' | 'GYM' | 'FREE'
-export type HealthGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'FITNESS' | 'RECOMPOSITION' | 'FREE'
-export type Sport = 'RUNNING' | 'STRENGTH'
-export type BodyGoal = 'FAT_LOSS' | 'MUSCLE_GAIN' | 'RECOMPOSITION'
-export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
-export type HRSource = 'known' | 'estimated'
-
-// ---------------------------------------------------------------------------
-// Day Schedule — distribución semanal de entrenamientos
-// ---------------------------------------------------------------------------
-
-export type CardioMachine = 'TREADMILL' | 'ELLIPTICAL' | 'BIKE' | 'ROWING' | 'ANY'
-export type DayType = 'cardio' | 'strength' | 'rest'
-export type MuscleGroupSplit = 'PUSH' | 'PULL' | 'LEGS' | 'FULL_BODY'
-
-export type DayConfig = {
-  type: DayType
-  cardioMachine?: CardioMachine    // solo cuando type = 'cardio'
-  split?: MuscleGroupSplit          // solo cuando type = 'strength'
-}
-
-// Claves 1–7 = Lun–Dom
-export type WeekSchedule = { [key in 1 | 2 | 3 | 4 | 5 | 6 | 7]: DayConfig }
-
-/** Pre-rellena una semana por defecto según los días disponibles */
-export function getDefaultSchedule(daysPerWeek: number): WeekSchedule {
-  const schedules: Record<number, WeekSchedule> = {
-    3: {
-      1: { type: 'strength' }, 2: { type: 'rest' },
-      3: { type: 'cardio', cardioMachine: 'ANY' }, 4: { type: 'rest' },
-      5: { type: 'strength' }, 6: { type: 'rest' }, 7: { type: 'rest' },
-    },
-    4: {
-      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
-      3: { type: 'rest' }, 4: { type: 'strength' },
-      5: { type: 'rest' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
-    },
-    5: {
-      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
-      3: { type: 'strength' }, 4: { type: 'rest' },
-      5: { type: 'strength' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
-    },
-    6: {
-      1: { type: 'strength' }, 2: { type: 'cardio', cardioMachine: 'ANY' },
-      3: { type: 'strength' }, 4: { type: 'cardio', cardioMachine: 'ANY' },
-      5: { type: 'strength' }, 6: { type: 'cardio', cardioMachine: 'ANY' }, 7: { type: 'rest' },
-    },
-  }
-  return schedules[daysPerWeek] ?? schedules[4]
-}
-
+export type ActivityType = 'GYM' | 'RUNNING' | 'BOTH' | 'FREE'
 export type GymGoal = 'MUSCLE_GAIN' | 'FAT_LOSS' | 'RECOMPOSITION'
+export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+
+export type StepId = 'goal' | 'physical' | 'generating'
 
 export type WizardData = {
-  // ── Paso 1: Objetivo de salud (nuevo flujo)
-  healthGoal: HealthGoal | null
+  // ── Paso 1: ¿Qué haces? ──────────────────────────────────────────────────
+  activityType: ActivityType | null
+  gymGoal: GymGoal | null       // solo cuando activityType = 'GYM' o 'BOTH'
 
-  // ── Paso 2: ¿Practica un deporte?
-  hasSport: boolean | null
-
-  // ── Meta principal (derivada de healthGoal + hasSport antes de enviar a API)
-  mainGoal: MainGoal | null
-
-  // ── Paso deporte (si hasSport = true)
-  sport: Sport | null
-
-  // ── Paso 2b: Objetivo corporal (si mainGoal = BODY)
-  bodyGoal: BodyGoal | null
-
-  // ── Paso 2c: Objetivo gym (si mainGoal = GYM)
-  gymGoal: GymGoal | null
-
-  // ── Detalles de deporte
-  // Running
-  raceDistance: 'RACE_5K' | 'RACE_10K' | 'RACE_HALF_MARATHON' | 'RACE_MARATHON' | null
-  raceDate: string | null
-  targetTime: string | null
-  recentBestTime: string | null
-
-  // Fuerza
-  strengthStyle: 'POWERLIFTING' | 'HYPERTROPHY' | 'FUNCTIONAL' | null
-
-  // ── Perfil físico (común a todos)
+  // ── Paso 2: Datos físicos ─────────────────────────────────────────────────
   age: number | null
   heightCm: number | null
   weightKg: number | null
   gender: 'male' | 'female' | null
-  weightGoalKg: number | null
-
-  // ── FC y rendimiento
-  hrResting: number | null
-  hrMax: number | null
-  hrSource: HRSource | null
-  experienceLevel: ExperienceLevel | null
-
-  // ── Disponibilidad (común)
   daysPerWeek: number
-  hoursPerSession: number
-
-  // ── Distribución semanal (nuevo)
-  weekSchedule: WeekSchedule | null
-
-  // ── Salud (común)
-  injuries: string[]
-  conditions: string[]
-
-  // ── Equipamiento
-  equipment: string[]
-
-  // ── Nutrición
-  nutritionCommitment: 'strict' | 'moderate' | 'flexible' | null
-
-  // ── Método de generación del plan
-  planMethod: 'AI' | 'TEMPLATE' | null
+  weightGoalKg: number | null   // opcional
+  experienceLevel: ExperienceLevel | null  // opcional
 }
 
 export const INITIAL_DATA: WizardData = {
-  healthGoal: null,
-  hasSport: null,
-  mainGoal: null,
-  sport: null,
-  bodyGoal: null,
+  activityType: null,
   gymGoal: null,
-  raceDistance: null,
-  raceDate: null,
-  targetTime: null,
-  recentBestTime: null,
-  strengthStyle: null,
   age: null,
   heightCm: null,
   weightKg: null,
   gender: null,
-  weightGoalKg: null,
-  hrResting: null,
-  hrMax: null,
-  hrSource: 'estimated',
-  experienceLevel: null,
   daysPerWeek: 4,
-  hoursPerSession: 1,
-  weekSchedule: null,
-  injuries: [],
-  conditions: [],
-  equipment: [],
-  nutritionCommitment: null,
-  planMethod: null,
+  weightGoalKg: null,
+  experienceLevel: null,
 }
 
-// ---------------------------------------------------------------------------
-// Routing de pasos según mainGoal y sport
-// ---------------------------------------------------------------------------
-
-export type StepId =
-  | 'health-goal'
-  | 'has-sport'
-  | 'sport-select'
-  | 'sport-details'
-  | 'physical'
-  | 'hr-fitness'
-  | 'schedule'
-  | 'health'
-  | 'plan-method'
-  | 'generating'
-
 export function getSteps(data: WizardData): StepId[] {
-  const steps: StepId[] = ['health-goal']
+  const steps: StepId[] = ['goal']
 
-  if (!data.healthGoal) return steps
+  if (!data.activityType) return steps
+  if ((data.activityType === 'GYM' || data.activityType === 'BOTH') && !data.gymGoal) return steps
 
-  if (data.healthGoal === 'FREE') {
-    return [...steps, 'physical', 'generating']
-  }
+  steps.push('physical')
 
-  steps.push('has-sport')
+  if (!data.age || !data.heightCm || !data.weightKg || !data.gender) return steps
 
-  if (data.hasSport === null) return steps
-
-  if (data.hasSport) {
-    steps.push('sport-select')
-    if (!data.sport) return steps
-    steps.push('sport-details', 'physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
-  } else {
-    if (data.healthGoal === 'MUSCLE_GAIN') {
-      steps.push('physical', 'plan-method', 'generating')
-    } else {
-      // WEIGHT_LOSS | FITNESS | RECOMPOSITION
-      steps.push('physical', 'hr-fitness', 'schedule', 'health', 'plan-method', 'generating')
-    }
-  }
-
+  steps.push('generating')
   return steps
+}
+
+export function isStepValid(stepId: StepId, data: WizardData): boolean {
+  switch (stepId) {
+    case 'goal':
+      if (!data.activityType) return false
+      if ((data.activityType === 'GYM' || data.activityType === 'BOTH') && !data.gymGoal) return false
+      return true
+    case 'physical':
+      return !!(data.age && data.heightCm && data.weightKg && data.gender)
+    case 'generating':
+      return true
+  }
 }

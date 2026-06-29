@@ -37,6 +37,15 @@ export type CalendarDay = {
     durationMin: number | null
     rpe: number | null
   } | null
+
+  // ── Free run log (SessionLog sin plannedSessionId) ────────────────
+  freeRun: {
+    sessionLogId: string
+    type: string          // RODAJE_Z2 | TEMPO | INTERVALOS | etc.
+    durationMin: number | null
+    distanceKm: number | null
+    rpe: number | null
+  } | null
 }
 
 export type CalendarWeek = {

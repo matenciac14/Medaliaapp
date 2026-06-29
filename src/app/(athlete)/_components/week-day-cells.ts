@@ -34,11 +34,12 @@ export function calendarDaysToWeekCells(
   todayWeekIdx: number,
 ): WeekDayCell[] {
   return days.map((d) => {
-    const { sport, gym, weekIdx, dateNum } = d
+    const { sport, gym, freeRun, weekIdx, dateNum } = d
 
-    const hasSport = !!sport && sport.type !== 'DESCANSO'
-    const isRest   = !!sport && sport.type === 'DESCANSO'
-    const hasGym   = !!gym
+    const hasSport   = !!sport && sport.type !== 'DESCANSO'
+    const isRest     = !!sport && sport.type === 'DESCANSO'
+    const hasGym     = !!gym
+    const hasFreeRun = !!freeRun
 
     let sessionType: string | null = null
     let done = false
@@ -67,8 +68,14 @@ export function calendarDaysToWeekCells(
       // Gym is the only session (or sport was DESCANSO → gym wins as primary)
       sessionType = 'FUERZA'
       done        = gym!.done
-      durationMin = 60
+      durationMin = gym!.durationMin ?? 60
       label       = gym!.label
+    } else if (hasFreeRun) {
+      // Free run log — self-directed, no plan
+      sessionType = freeRun!.type
+      done        = true
+      durationMin = freeRun!.durationMin ?? 0
+      label       = freeRun!.distanceKm ? `${freeRun!.distanceKm} km` : null
     } else if (isRest) {
       sessionType = 'DESCANSO'
     }
