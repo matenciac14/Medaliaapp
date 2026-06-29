@@ -21,15 +21,50 @@ export type WeekData = {
   adherencePct: number
 }
 
+export type BenchmarkPoint = {
+  id: string
+  sport: string
+  metric: string
+  value: number
+  unit: string
+  testedAt: string
+  notes?: string | null
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
   wellbeingData: WellbeingPoint[]
   weeks: WeekData[]
   weightGoal: number
+  benchmarks: BenchmarkPoint[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const SPORT_LABELS: Record<string, string> = {
+  RUNNING: 'Running', STRENGTH: 'Fuerza',
+  CYCLING: 'Ciclismo', SWIMMING: 'Natación', TRIATHLON: 'Triatlón',
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  '5K_TIME': '5K', '10K_TIME': '10K', 'HALF_MARATHON_TIME': 'Media Maratón',
+  'MARATHON_TIME': 'Maratón', 'FTP_WATTS': 'FTP', 'CSS_PACE': 'CSS Pace',
+  '1RM_SQUAT': '1RM Sentadilla', '1RM_DEADLIFT': '1RM Peso muerto', '1RM_BENCH': '1RM Press banca',
+}
+
+function formatBenchmarkValue(value: number, unit: string): string {
+  if (unit === 'seconds') {
+    const h = Math.floor(value / 3600)
+    const m = Math.floor((value % 3600) / 60)
+    const s = Math.round(value % 60)
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+  if (unit === 'watts') return `${value} W`
+  if (unit === 'kg') return `${value} kg`
+  return String(value)
+}
 
 const PHASE_BAR_COLOR: Record<string, string> = {
   BASE: '#1e3a5f',
@@ -353,6 +388,7 @@ export default function ProgressClient({
   wellbeingData,
   weeks,
   weightGoal,
+  benchmarks,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
@@ -589,6 +625,44 @@ export default function ProgressClient({
           </table>
         </div>
       </SectionCard>
+
+      {/* ── Tests de rendimiento (PerformanceBenchmarks) ───────────────────── */}
+      {benchmarks.length > 0 && (() => {
+        const grouped: Record<string, BenchmarkPoint[]> = {}
+        for (const b of benchmarks) {
+          if (!grouped[b.sport]) grouped[b.sport] = []
+          grouped[b.sport].push(b)
+        }
+        return (
+          <SectionCard title="Tests de Rendimiento">
+            <div className="space-y-4">
+              {Object.entries(grouped).map(([sport, items]) => (
+                <div key={sport}>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                    {SPORT_LABELS[sport] ?? sport}
+                  </p>
+                  <div className="space-y-2">
+                    {items.map(b => (
+                      <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{METRIC_LABELS[b.metric] ?? b.metric}</p>
+                          {b.notes && <p className="text-xs text-gray-400 mt-0.5 truncate">{b.notes}</p>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-base font-black text-[#f97316]">{formatBenchmarkValue(b.value, b.unit)}</p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(b.testedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )
+      })()}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import ProgressClient, {
   type HrPoint,
   type WeekData,
   type WellbeingPoint,
+  type BenchmarkPoint,
 } from './_components/ProgressClient'
 
 // Adherencia real: sesiones con log / sesiones planificadas
@@ -64,7 +65,7 @@ export default async function ProgressPage() {
   })
 
   // ── Peso del objetivo (perfil) ───────────────────────────────────────────
-  const [profile, gymSessionsCount] = await Promise.all([
+  const [profile, gymSessionsCount, rawBenchmarks] = await Promise.all([
     prisma.healthProfile.findUnique({
       where: { userId: session.user.id },
       select: { weightGoalKg: true },
@@ -72,9 +73,19 @@ export default async function ProgressPage() {
     prisma.gymSession.count({
       where: { athleteId: session.user.id, completed: true },
     }),
+    prisma.performanceBenchmark.findMany({
+      where: { userId: session.user.id },
+      orderBy: { testedAt: 'desc' },
+      select: { id: true, sport: true, metric: true, value: true, unit: true, testedAt: true, notes: true },
+    }),
   ])
 
   const weightGoal = profile?.weightGoalKg ?? null
+
+  const benchmarks: BenchmarkPoint[] = rawBenchmarks.map(b => ({
+    ...b,
+    testedAt: b.testedAt.toISOString(),
+  }))
 
   // ── Construir arrays de datos ────────────────────────────────────────────
 
@@ -136,6 +147,7 @@ export default async function ProgressPage() {
       wellbeingData={wellbeingData}
       weeks={weeks}
       weightGoal={weightGoal ?? 0}
+      benchmarks={benchmarks}
     />
   )
 }

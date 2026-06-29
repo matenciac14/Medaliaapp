@@ -24,7 +24,7 @@ export async function PATCH(
   })
   if (!relation) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { phase, focusDescription, isRecoveryWeek } = await req.json()
+  const { phase, focusDescription, isRecoveryWeek, volumeKm } = await req.json()
 
   const updated = await prisma.planWeek.update({
     where: { id: weekId },
@@ -32,8 +32,9 @@ export async function PATCH(
       ...(phase !== undefined && { phase }),
       ...(focusDescription !== undefined && { focusDescription }),
       ...(isRecoveryWeek !== undefined && { isRecoveryWeek }),
+      ...(volumeKm !== undefined && { volumeKm: volumeKm === null ? null : Number(volumeKm) }),
     },
-    select: { id: true, phase: true, focusDescription: true, isRecoveryWeek: true },
+    select: { id: true, phase: true, focusDescription: true, isRecoveryWeek: true, volumeKm: true },
   })
 
   return NextResponse.json({ ok: true, week: updated })

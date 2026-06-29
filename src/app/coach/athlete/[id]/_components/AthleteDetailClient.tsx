@@ -151,6 +151,15 @@ const SPORT_LABELS: Record<string, string> = {
   CYCLING: 'Ciclismo', SWIMMING: 'Natación', TRIATHLON: 'Triatlón', FOOTBALL: 'Fútbol',
 }
 
+// Ajuste calórico recomendado por fase de entrenamiento
+const PHASE_KCAL_DELTA: Record<string, { label: string; delta: number; desc: string }> = {
+  BASE:        { label: 'BASE',        delta: -200, desc: 'Déficit leve (−200 kcal)' },
+  DESARROLLO:  { label: 'DESARROLLO',  delta:    0, desc: 'Mantenimiento' },
+  ESPECIFICO:  { label: 'ESPECÍFICO',  delta: +100, desc: 'Superávit leve (+100 kcal)' },
+  ESPECÍFICO:  { label: 'ESPECÍFICO',  delta: +100, desc: 'Superávit leve (+100 kcal)' },
+  AFINAMIENTO: { label: 'AFINAMIENTO', delta: -100, desc: 'Reducción leve (−100 kcal)' },
+}
+
 const METRIC_OPTIONS: Record<string, { metric: string; label: string; unit: string }[]> = {
   RUNNING:  [
     { metric: '5K_TIME',            label: '5K',            unit: 'seconds' },
@@ -651,6 +660,31 @@ export default function AthleteDetailClient({
     .join('')
     .slice(0, 2)
     .toUpperCase()
+
+  // Current training phase (for nutrition phase-based suggestions)
+  const currentPhase = (() => {
+    if (!activePlan || activePlan.weeks.length === 0) return null
+    const today = new Date()
+    let lastPassedIdx = 0
+    activePlan.weeks.forEach((w, i) => {
+      const weekStart = new Date(activePlan.startDate)
+      weekStart.setDate(weekStart.getDate() + (w.weekNumber - 1) * 7)
+      if (weekStart <= today) lastPassedIdx = i
+    })
+    return activePlan.weeks[lastPassedIdx]?.phase ?? null
+  })()
+
+  function applyPhaseTargets() {
+    if (!nutritionPlan || !currentPhase) return
+    const delta = PHASE_KCAL_DELTA[currentPhase]?.delta ?? 0
+    setNutritionDraft({
+      ...nutritionPlan,
+      targetKcalHard: nutritionPlan.tdee + delta + 300,
+      targetKcalEasy: nutritionPlan.tdee + delta,
+      targetKcalRest: nutritionPlan.tdee + delta - 200,
+    })
+    setEditingNutrition(true)
+  }
 
   // Plan info from config (via activePlan or healthProfile)
   const currentWeekLabel = activePlan ? `Semana activa desde ${new Date(activePlan.startDate).toLocaleDateString('es-CO')}` : null
@@ -1553,12 +1587,50 @@ export default function AthleteDetailClient({
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                    <Stat label="TDEE base" value={`${nutritionPlan.tdee} kcal`} />
-                    <Stat label="Día duro" value={`${nutritionPlan.targetKcalHard} kcal`} />
-                    <Stat label="Día fácil" value={`${nutritionPlan.targetKcalEasy} kcal`} />
-                    <Stat label="Día descanso" value={`${nutritionPlan.targetKcalRest} kcal`} />
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <Stat label="TDEE base" value={`${nutritionPlan.tdee} kcal`} />
+                      <Stat label="Día duro" value={`${nutritionPlan.targetKcalHard} kcal`} />
+                      <Stat label="Día fácil" value={`${nutritionPlan.targetKcalEasy} kcal`} />
+                      <Stat label="Día descanso" value={`${nutritionPlan.targetKcalRest} kcal`} />
+                    </div>
+
+                    {/* Phase-based target suggestion */}
+                    {currentPhase && PHASE_KCAL_DELTA[currentPhase] && (() => {
+                      const phaseInfo = PHASE_KCAL_DELTA[currentPhase]
+                      const delta = phaseInfo.delta
+                      const recHard = nutritionPlan.tdee + delta + 300
+                      const recEasy = nutritionPlan.tdee + delta
+                      const recRest = nutritionPlan.tdee + delta - 200
+                      const alreadyApplied =
+                        Math.abs(nutritionPlan.targetKcalHard - recHard) < 80 &&
+                        Math.abs(nutritionPlan.targetKcalEasy - recEasy) < 80
+                      return (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                              Fase actual: <span style={{ color: '#1e3a5f' }}>{phaseInfo.label}</span>
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {phaseInfo.desc} · Duro: <strong className="text-gray-700">{recHard} kcal</strong>
+                              {' '}· Fácil: <strong className="text-gray-700">{recEasy} kcal</strong>
+                              {' '}· Descanso: <strong className="text-gray-700">{recRest} kcal</strong>
+                            </p>
+                          </div>
+                          {alreadyApplied ? (
+                            <span className="text-xs font-medium text-green-600 shrink-0">✓ Targets de fase aplicados</span>
+                          ) : (
+                            <button
+                              onClick={applyPhaseTargets}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#1e3a5f]/30 text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors shrink-0"
+                            >
+                              Aplicar targets de fase
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </>
                 )}
               </div>
 

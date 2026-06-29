@@ -6,6 +6,8 @@ import { completeOnboardingUseCase } from '@/domain/onboarding/complete-onboardi
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import { sendAthleteReadyEmail } from '@/infrastructure/email/resend'
+import { sendPushNotification } from '@/lib/push'
 import type { WizardData } from '@/app/onboarding/_types'
 
 export async function POST(req: NextRequest) {
@@ -29,6 +31,19 @@ export async function POST(req: NextRequest) {
       healthProfileRepo: new PrismaHealthProfileRepository(),
       userRepo: new PrismaUserRepository(),
     })
+
+    if (result.isB2B) {
+      const coachRel = await prisma.coachAthlete.findFirst({
+        where: { athleteId: mobile.id },
+        select: { coach: { select: { email: true, name: true, pushToken: true } } },
+      })
+      if (coachRel?.coach) {
+        const { coach } = coachRel
+        const athleteName = mobile.name ?? 'Tu atleta'
+        sendPushNotification(coach.pushToken ?? null, `${athleteName} completó su perfil`, 'Entra al panel para asignarle un plan de entrenamiento.').catch(() => {})
+        sendAthleteReadyEmail(coach.email ?? '', coach.name ?? 'Coach', athleteName, mobile.id).catch(() => {})
+      }
+    }
 
     // Mobile needs a refreshed token with onboardingCompleted=true and updated features
     const updatedUser = await prisma.user.findUnique({
