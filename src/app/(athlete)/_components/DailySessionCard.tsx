@@ -184,16 +184,24 @@ export default function DailySessionCard({
             </div>
           ) : (
             /* Sin rutina configurada */
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-gray-400">¿Qué entrenas hoy?</p>
-              <div className="flex gap-2">
-                <Link href="/gym/session" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
-                  💪 Gym
-                </Link>
-                <Link href="/log/run" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
-                  🏃 Correr
-                </Link>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-400">¿Qué entrenas hoy?</p>
+                <div className="flex gap-2">
+                  <Link href="/gym/session" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
+                    💪 Gym
+                  </Link>
+                  <Link href="/log/run" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
+                    🏃 Correr
+                  </Link>
+                </div>
               </div>
+              <Link
+                href="/routine/edit"
+                className="block w-full text-center text-xs font-semibold text-[#f97316] border border-dashed border-[#f97316]/40 rounded-lg py-2 hover:bg-[#f97316]/5 transition-colors"
+              >
+                + Configurar mi rutina semanal
+              </Link>
             </div>
           )}
 
@@ -210,9 +218,14 @@ export default function DailySessionCard({
                 {weekSessionCount}/{weekSessionTarget} días esta semana
               </span>
             </div>
-            <Link href="/gym/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">
-              Ver historial →
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/routine/edit" className="text-[11px] text-gray-400 hover:text-[#f97316]">
+                Editar rutina
+              </Link>
+              <Link href="/gym/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">
+                Ver historial →
+              </Link>
+            </div>
           </div>
         </div>
       )}
