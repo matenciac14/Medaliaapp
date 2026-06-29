@@ -30,7 +30,7 @@ export default async function NutritionPage() {
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   // Cargar datos en paralelo
-  const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, allFoods, healthProfile] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, healthProfile, allFoods] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     prisma.foodProfile.findUnique({ where: { userId } }),
