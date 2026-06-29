@@ -477,7 +477,7 @@ const PHASES = [
       { title: 'Test E2E: onboarding BODY (recomposición corporal)', done: false, note: 'weightGoalKg + targetDate. Sin sport seleccionado. Template BODY_RECOMPOSITION_16W.' },
       { title: 'Verificar plan no queda vacío (PlanWeeks y PlannedSessions en DB)', done: false, note: 'Query: TrainingPlan → weeks.length > 0 → sessions.length > 0 por semana. Revisar timeout en createMany.' },
       { title: 'Test: check-in → ajuste de plan → log de ajustes en panel coach', done: false, note: 'Atleta hace check-in con RPE alto → applyPlanAdjustments modifica sesiones → coach ve log en Tab Resumen.' },
-      { title: 'Test: plan de comidas (AI meals) — verificar fallback si AI falla', done: false, note: 'Actualmente bloqueante si Anthropic cae. Pendiente implementar fallback con plantillas estáticas.' },
+      { title: 'Test: plan de comidas (AI meals) — verificar fallback si AI falla', done: true, note: 'Resuelto. buildStaticMealPlan() es el path principal (no se llama AI). parseMealPlanData() valida datos en DB antes de pasar a NutritionContent — null si inválido → empty state con CTA.' },
     ],
   },
   {
@@ -492,7 +492,7 @@ const PHASES = [
       { title: 'Quick-log de sesión desde el dashboard (1 click)', done: true, note: 'Implementado. QuickLog.tsx — botón "¡Completé!" en DailySessionCard cuando hay sesión pendiente. POST /api/log/session con plannedSessionId + router.refresh(). Estado optimista local.' },
       { title: 'Gráficas de progreso visuales (no tablas)', done: true, note: 'Implementado. progress/_components/ProgressClient.tsx tiene LineChart (peso + FC reposo), HorizontalKmChart, AdherenceVerticalChart, WellbeingChart — SVG puro, sin dependencias externas.' },
       { title: 'Mensajería coach → atleta (notas simples, no chat)', done: true, note: 'Implementado. Modelo Message + 4 endpoints web + 4 mobile + badge unread. Coach envía desde /coach/athlete/[id], atleta ve en /messages. Detalle completo en Fase 8.' },
-      { title: 'Fallback plan de comidas sin AI (plantillas estáticas)', done: false, note: 'Si Anthropic cae, el plan de comidas falla con error. Fallback: combinar alimentos de la librería Food según macros target.' },
+      { title: 'Fallback plan de comidas sin AI (plantillas estáticas)', done: true, note: 'Implementado. generate-meals usa buildStaticMealPlan() determinista — sin AI. parseMealPlanData() valida datos antes de render.' },
       { title: 'Stripe + Wompi: suscripción Pro $15/mes', done: false, note: 'Sin pasarela de pago no hay revenue. Detalle completo en Fase 13.' },
       { title: '[HECHO] Simplificar onboarding: objetivo de salud primero, deporte opcional', done: true, note: 'Rediseño completo: healthGoal (Perder grasa/Ganar músculo/Condición/Recomposición) → hasSport (sí/no) → deporte opcional. Sin day-schedule. Flujo sin deporte: 5 pasos. Con deporte: 7 pasos. Peso objetivo condicionado por healthGoal, no mainGoal.' },
       { title: 'AI Chat con prompts sugeridos', done: false, note: 'El chat está vacío y el atleta no sabe qué preguntar. Agregar 4-5 prompts sugeridos según el deporte y fase del plan.' },
@@ -1129,8 +1129,8 @@ const PHASES = [
       },
       {
         title: 'Fallback de plan de comidas sin IA (plantillas estáticas)',
-        done: false,
-        note: 'Cuando Anthropic no está disponible o el usuario no tiene acceso AI: generar plan de comidas desde combinaciones predefinidas de los alimentos seleccionados, ajustadas a los macros target. Sin costo, sin latencia. El usuario tiene plan aunque no tenga Pro.',
+        done: true,
+        note: 'Implementado. buildStaticMealPlan() en domain/nutrition — sin AI, determinista. parseMealPlanData() valida datos antes de NutritionContent.',
       },
       {
         title: 'Onboarding path FREE mejorado — UX 3 pasos claros',
@@ -1340,8 +1340,8 @@ const PHASES = [
       },
       {
         title: 'Fallback plan de comidas sin AI (plantillas estáticas)',
-        done: false,
-        note: 'Cuando Anthropic no responde o el usuario no tiene tier con AI: combinar alimentos de la librería Food según macros target (proteína primero, luego carbos, luego grasas). Sin costo, sin latencia. El usuario tiene plan aunque la AI no esté disponible.',
+        done: true,
+        note: 'Implementado. buildStaticMealPlan() en domain/nutrition — sin AI, determinista. parseMealPlanData() valida datos antes de NutritionContent y mobile API.',
       },
       {
         title: 'sportLabel String? en PlannedSession — documentado pero sin migración',

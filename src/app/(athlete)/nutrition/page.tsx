@@ -7,6 +7,7 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
@@ -121,7 +122,8 @@ export default async function NutritionPage() {
   }
   const badge = DAY_TYPE_LABELS[todayDayType]
 
-  const hasMealPlan = !!mealPlan
+  const parsedMealPlan = mealPlan ? parseMealPlanData(mealPlan.data) : null
+  const hasMealPlan = !!parsedMealPlan
   const hasFoodProfile = !!foodProfile
 
   // Targets del día — fuente única de verdad: getDailyNutritionTarget
@@ -152,16 +154,25 @@ export default async function NutritionPage() {
       </div>
 
       {/* Contenido real — si hay meal plan completo */}
-      {hasMealPlan && nutritionPlan && (
+      {hasMealPlan && parsedMealPlan && nutritionPlan && (
         <NutritionContent
-          mealPlan={mealPlan.data as unknown as MealPlanData}
+          mealPlan={parsedMealPlan as unknown as MealPlanData}
           nutritionPlan={nutritionPlan}
           todayDayType={todayDayType}
         />
       )}
 
+      {/* Plan en DB pero datos inválidos — mostrar aviso con CTA a regenerar */}
+      {mealPlan && !parsedMealPlan && nutritionPlan && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+          <p className="text-sm font-semibold text-yellow-800 mb-1">Tu plan de comidas necesita actualizarse</p>
+          <p className="text-xs text-yellow-600 mb-3">El formato del plan anterior no es compatible. Genera uno nuevo.</p>
+          <FoodSetupFlow hasFoodProfile={hasFoodProfile} allFoods={allFoods} />
+        </div>
+      )}
+
       {/* Macros rápidos — cuando hay nutritionPlan pero aún no meal plan */}
-      {!hasMealPlan && nutritionPlan && (
+      {!hasMealPlan && !mealPlan && nutritionPlan && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Tus macros de hoy</h2>

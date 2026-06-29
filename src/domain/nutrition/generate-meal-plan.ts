@@ -2,8 +2,8 @@
  * Shared meal plan generation logic — used by web and mobile generate-meals routes.
  *
  * Separates:
- *  - buildMealPlanPrompt()  — pure function, no side effects
- *  - callAIForMealPlan()    — AI call + JSON extraction
+ *  - buildStaticMealPlan()  — deterministic fallback, no AI required
+ *  - parseMealPlanData()    — validates raw DB Json before passing to components
  */
 
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
@@ -44,6 +44,18 @@ type Supplement = { name: string; dose: string; when: string; purpose: string }
 type DayPlan = { meals: Meal[]; supplements: Supplement[]; hydrationL: number; rules: string[] }
 
 export type StaticMealPlan = { hard: DayPlan; easy: DayPlan; rest: DayPlan }
+
+/**
+ * Validates raw mealPlan.data from DB before passing to UI components.
+ * Returns null if the data is structurally invalid (missing hard/easy/rest keys).
+ * Components handle empty meals[] gracefully — this only catches completely corrupt data.
+ */
+export function parseMealPlanData(raw: unknown): StaticMealPlan | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (!r.hard || !r.easy || !r.rest) return null
+  return raw as StaticMealPlan
+}
 
 const PROTEIN_CATS = new Set(['PROTEIN', 'DAIRY'])
 const CARB_CATS    = new Set(['CARB', 'LEGUME'])
