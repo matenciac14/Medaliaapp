@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [user, activePlanRaw, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw] = await Promise.all([
+  const [user, activePlanRaw, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       select: { template: { select: { days: { select: { dayOfWeek: true, isRestDay: true } } } } },
       orderBy: { createdAt: 'desc' },
     }),
+    prisma.weeklyRoutine.findUnique({ where: { userId } }),
   ])
 
   const lastCompletedPlan = activePlanRaw ? null : await prisma.trainingPlan.findFirst({
@@ -72,5 +73,5 @@ export async function GET(req: NextRequest) {
     prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch(() => {})
   }
 
-  return NextResponse.json(summary)
+  return NextResponse.json({ ...summary, weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null })
 }
