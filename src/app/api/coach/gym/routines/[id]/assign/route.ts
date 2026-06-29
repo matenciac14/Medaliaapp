@@ -52,9 +52,9 @@ export async function POST(
     )
   }
 
-  // Deactivate any existing active assignment for this athlete + template
+  // Deactivate ALL active assignments for this athlete (un atleta = una rutina activa)
   await prisma.assignedWorkout.updateMany({
-    where: { athleteId, templateId, isActive: true },
+    where: { athleteId, isActive: true },
     data: { isActive: false },
   })
 

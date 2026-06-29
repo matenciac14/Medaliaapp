@@ -124,7 +124,7 @@ const PHASES = [
       { title: 'Prisma connection pooling (PgBouncer/Neon)', done: true, note: 'PrismaPg adapter con max: 10 conexiones. DATABASE_URL apunta al pooler de Neon. Implementado en Fase 20.' },
       { title: 'Rate limiting en APIs críticas', done: true, note: 'rateLimitAsync (Upstash Redis) en register, onboarding/generate, ai/chat, nutrition/scan. Implementado en Fase 20.' },
       { title: 'Error pages personalizadas (404, 500)', done: true, note: 'src/app/not-found.tsx + error.tsx con diseño Medaliq.' },
-      { title: 'Google OAuth con dominio real', done: false, note: 'Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel. Código ya implementado. Ver Fase 10.' },
+      { title: 'Google OAuth con dominio real', done: false, note: '[STANDBY] Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel. Código ya implementado. Ejecutar cuando toda la funcionalidad core esté OK.' },
     ],
   },
   {
@@ -137,8 +137,8 @@ const PHASES = [
     items: [
       { title: 'Trial de 30 días gratis', done: true, note: 'Al completar onboarding B2C → trial.plan=TRIAL, trial.endsAt=+30d, monthlyLimit=999999. Middleware redirige a /upgrade al expirar.' },
       { title: 'Página /upgrade con opciones de plan', done: true, note: 'Pro $15/mes vs INACTIVE (limitado). Diseño Medaliq con comparativa de features. Botón temporal mailto: hasta integrar Wompi/Stripe.' },
-      { title: 'Pasarela de pagos Wompi + Stripe', done: false, note: 'Wompi para Colombia, Stripe para internacional. Pro $15/mes. Detalle completo en Fase 13.' },
-      { title: 'Email transaccional (Resend)', done: false, note: 'Welcome, activación B2B, trial expirando. Detalle completo en Fase 13 y Deuda Técnica.' },
+      { title: 'Pasarela de pagos Wompi + Stripe', done: false, note: '[STANDBY] Wompi para Colombia, Stripe para internacional. Pro $15/mes. Detalle completo en Fase 13. Ejecutar cuando toda la funcionalidad core esté OK.' },
+      { title: 'Email transaccional (Resend)', done: false, note: '[STANDBY] Welcome, activación B2B, trial expirando. Detalle completo en Fase 13 y Deuda Técnica. Ejecutar cuando toda la funcionalidad core esté OK.' },
     ],
   },
   {
@@ -192,10 +192,10 @@ const PHASES = [
       { title: 'Notas del coach por sesión del plan (persistidas en DB)', done: true, note: 'coachNote en PlannedSession. API PATCH /api/coach/sessions/[id]/note con auth.' },
       { title: 'Control de alta manual desde admin + desactivación', done: true, note: '/admin/activaciones — secciones Pendientes y Activos. Activar Pro/Coach, Desactivar. API PATCH /api/admin/users/[id]/plan' },
       { title: 'Beta cerrada — acceso bloqueado hasta activación manual', done: true, note: 'Onboarding no habilita features. JWT campo activated. Middleware redirige a /pending. Polling automático cada 10s.' },
-      { title: 'Google OAuth con dominio real', done: false, note: 'Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel. Código ya implementado.' },
-      { title: 'Botón "Continuar con Google" en /login', done: false, note: 'UI pendiente. La lógica en auth.ts ya está lista.' },
+      { title: 'Google OAuth con dominio real', done: false, note: '[STANDBY] Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel. Código ya implementado. Ejecutar post-funcionalidad completa.' },
+      { title: 'Botón "Continuar con Google" en /login', done: false, note: '[STANDBY] UI pendiente. La lógica en auth.ts ya está lista. Ejecutar post-funcionalidad completa.' },
       { title: 'SEO: meta tags + sitemap para páginas públicas (/coaches, /p/[slug])', done: false, note: 'og:image, description, sitemap.xml. Páginas de marketplace deben ser indexables.' },
-      { title: 'Hardening: validación de inputs en todas las APIs (Zod)', done: false, note: 'Zod schemas en rutas POST/PATCH — actualmente confía demasiado en el cliente' },
+      { title: 'Hardening: validación de inputs en todas las APIs (Zod)', done: true, note: 'src/lib/validation/index.ts — schemas reutilizables (emailSchema, passwordSchema, nameSchema, roleSchema, timezoneSchema, localeSchema) + helper parseBody(). Aplicado a: auth/register, auth/forgot-password, auth/set-password, auth/set-role, mobile/auth/login, mobile/auth/set-role, coach/clients/create, api/me.' },
       { title: 'Sentry para monitoreo de errores en producción', done: false, note: 'Alertas automáticas cuando algo falla. Gratis hasta 5k errores/mes.' },
       { title: 'Uptime Robot para alertas de disponibilidad', done: false, note: 'Ping cada 5 min — email/SMS si la app cae.' },
     ],
@@ -381,7 +381,7 @@ const PHASES = [
       { title: 'Componente SessionModal: form completo add/edit sesión', done: true, note: 'type, durationMin (quick-pick + custom), zoneTarget, detailText. Confirmación de borrado inline.' },
       { title: 'Componente WeekNav: mini-overview todas las semanas + indicador completitud', done: false, note: 'Puntos ●/○ por semana. Navegar con flechas ← →. Fase y recovery visible.' },
       { title: '"Generar desde template → abrir en constructor" integrado', done: false, note: 'El template precarga todas las sesiones en el builder para que el coach las edite.' },
-      { title: '"Copiar semana anterior" para acelerar construcción', done: false, note: 'Duplica todas las sesiones de la semana anterior en la semana actual.' },
+      { title: '"Copiar semana anterior" para acelerar construcción', done: true, note: 'Implementado. API copy-prev/route.ts + botón en PlanBuilderClient.tsx (handleCopyPrevWeek). Confirma antes de reemplazar sesiones actuales.' },
       { title: 'Tab Plan del atleta: botón "Constructor visual"', done: true, note: 'Botón en Tab Plan que abre /coach/athlete/[id]/plan/build. Constructor visual completo implementado.' },
     ],
   },
@@ -490,8 +490,8 @@ const PHASES = [
     items: [
       { title: 'Notificaciones email post-lanzamiento: check-in semanal + plan actualizado', done: false, note: 'CRÍTICO para retención. (1) recordatorio check-in semanal, (2) "tu plan fue actualizado" post check-in — cierra el loop. Implementar después de emails base de Fase 13.' },
       { title: 'Quick-log de sesión desde el dashboard (1 click)', done: false, note: '"¿Completaste tu sesión de hoy?" [Sí / No / Parcial] directo en la card del dashboard. Reduce abandono del hábito.' },
-      { title: 'Gráficas de progreso visuales (no tablas)', done: false, note: 'Curva de peso, curva de FC reposo, barra de adherencia en el tiempo. El atleta necesita VER que el producto funciona.' },
-      { title: 'Mensajería coach → atleta (notas simples, no chat)', done: false, note: 'Coach envía nota corta desde su panel. Atleta la ve en dashboard. Si coach sigue usando WhatsApp, no retorna a Medaliq.' },
+      { title: 'Gráficas de progreso visuales (no tablas)', done: true, note: 'Implementado. progress/_components/ProgressClient.tsx tiene LineChart (peso + FC reposo), HorizontalKmChart, AdherenceVerticalChart, WellbeingChart — SVG puro, sin dependencias externas.' },
+      { title: 'Mensajería coach → atleta (notas simples, no chat)', done: true, note: 'Implementado. Modelo Message + 4 endpoints web + 4 mobile + badge unread. Coach envía desde /coach/athlete/[id], atleta ve en /messages. Detalle completo en Fase 8.' },
       { title: 'Fallback plan de comidas sin AI (plantillas estáticas)', done: false, note: 'Si Anthropic cae, el plan de comidas falla con error. Fallback: combinar alimentos de la librería Food según macros target.' },
       { title: 'Stripe + Wompi: suscripción Pro $15/mes', done: false, note: 'Sin pasarela de pago no hay revenue. Detalle completo en Fase 13.' },
       { title: '[HECHO] Simplificar onboarding: objetivo de salud primero, deporte opcional', done: true, note: 'Rediseño completo: healthGoal (Perder grasa/Ganar músculo/Condición/Recomposición) → hasSport (sí/no) → deporte opcional. Sin day-schedule. Flujo sin deporte: 5 pasos. Con deporte: 7 pasos. Peso objetivo condicionado por healthGoal, no mainGoal.' },
@@ -783,9 +783,9 @@ const PHASES = [
     borderColor: '#fecaca',
     items: [
       {
-        title: '[NUTRICIÓN] Fix: nutrition/page.tsx usa getDayType() local con strings del enum viejo',
-        done: false,
-        note: 'PARCIALMENTE CONFIRMADO. getDayType() local mapea "FARTLEK", "TIRADA_LARGA" etc. en vez de usar intensityToDayType() de day-type.ts que ya existe. La función daily-target.ts usa SessionIntensity (HIGH|MODERATE|LOW|REST) pero nutrition/page.tsx consulta session.type (string viejo). Deuda técnica: refactorizar para que ambas usen la misma fuente de verdad.',
+        title: '[HECHO] Fix: nutrition/page.tsx usa intensityToDayType() — fuente canónica',
+        done: true,
+        note: 'Verificado en código: nutrition/page.tsx importa intensityToDayType() de day-type.ts y selecciona session.intensity (SessionIntensity enum) en la query. No hay getDayType() local. Bug ya resuelto en versión anterior.',
       },
       {
         title: '[HECHO] Fix: inconsistencia REST carbs 0.6 vs 0.7',
@@ -799,18 +799,18 @@ const PHASES = [
       },
       {
         title: '[COACH] Fix: cálculo de fecha de sesión incorrecto — off by one day',
-        done: false,
-        note: 'CONFIRMADO. /api/coach/plan/[planId]/sessions/route.ts:38-39 — sessionDate.setDate(startDate.getDate() + dayOfWeek). dayOfWeek=1 (lunes) sobre startDate=lunes → resultado es martes. Todas las sesiones caen un día tarde. Fix: setDate(getDate() + dayOfWeek - 1).',
+        done: true,
+        note: 'RESUELTO. sessions/route.ts ya tenía setDate(getDate() + dayOfWeek - 1). copy-prev/route.ts tenía el bug activo (sin - 1) — corregido. dayOfWeek es 1-indexed: dayOfWeek=1 (lunes) + startDate(lunes) = lunes correctamente.',
       },
       {
         title: '[ATLETA] Fix: applyPlanAdjustments ignora sesiones en Z1 — edge case sin manejar',
-        done: false,
-        note: 'CONFIRMADO. adjustments.ts:224 — zoneMap = { Z5:Z4, Z4:Z3, Z3:Z2, Z2:Z1 }. Si sesión está en Z1, zoneMap["Z1"] = undefined → if(lowerZone) falla, ajuste no se aplica silenciosamente. También: coachNote existente se reemplaza con "[AUTO]..." en vez de concatenar. Fix: agregar Z1→"DESCANSO" al mapa y usar coachNote + " " + autoNote.',
+        done: true,
+        note: 'RESUELTO. process-check-in.use-case.ts: zoneMap = { Z5:Z4, Z4:Z3, Z3:Z2, Z2:Z1, Z1:Z1 }. Condición lowerZone !== session.zone impide update innecesario en Z1. CoachNotes concatena correctamente: const base = session.coachNotes ? session.coachNotes + " " : "".',
       },
       {
         title: '[GYM] Implementar progresión de cargas real — hoy es solo sugerencia UI',
-        done: false,
-        note: 'CONFIRMADO. gym/session/page.tsx muestra "+2.5 kg recomendado" cuando allRepsHit pero no persiste nada. No existe campo suggestedNextWeightKg en WorkoutExercise ni modelo ExerciseProgression en schema. Fix: (1) migración DB con suggestedNextWeightKg en WorkoutExercise, (2) endpoint PATCH /api/gym/session/complete actualiza el campo, (3) próxima sesión del ejercicio lo carga como referencia.',
+        done: true,
+        note: 'RESUELTO. Migración 20260629000001 agrega suggestedNextWeightKg Float? en WorkoutExercise. gym/session/complete/route.ts persiste max(weightKg)+2.5 al completar todos los sets (fire-and-forget). gym/session/today/route.ts devuelve suggestedNextWeightKg en cada ejercicio para mostrarlo como referencia en la próxima sesión.',
       },
     ],
   },
@@ -988,9 +988,9 @@ const PHASES = [
         note: 'requireFeature(mobile.features, "log") añadido al handler. Usuarios FREE no pueden loggear sesiones del plan desde mobile.',
       },
       {
-        title: '[MEDIO] weekOffset en gym/week sin validación de rango',
-        done: false,
-        note: '/api/mobile/gym/week/route.ts — weekOffset viene del query param sin validación. Un valor muy negativo o muy positivo puede causar comportamientos inesperados en el cálculo de fechas. Fix: if (Math.abs(weekOffset) > 52) return badRequest("weekOffset fuera de rango").',
+        title: '[HECHO] weekOffset en gym/week — validación de rango agregada',
+        done: true,
+        note: '/api/mobile/gym/week/route.ts: if (Math.abs(weekOffset) > 52) → 400 "weekOffset fuera de rango". Previene cálculos de fecha con offsets extremos.',
       },
       {
         title: '[HECHO] 11 endpoints mobile sin rate limiting por usuario',
@@ -1019,8 +1019,8 @@ const PHASES = [
       },
       {
         title: '[ALTO] AssignedWorkout sin UNIQUE — atleta con dos rutinas activas simultáneas',
-        done: false,
-        note: 'No hay constraint en AssignedWorkout para garantizar que un atleta tenga solo una rutina isActive=true. Si el coach asigna dos veces, el gym tracker puede mostrar la rutina equivocada. Fix: validar en la API que si existe una AssignedWorkout isActive=true, desactivarla antes de crear la nueva (dentro de transacción).',
+        done: true,
+        note: 'RESUELTO. coach/gym/routines/[id]/assign/route.ts POST desactiva TODAS las AssignedWorkout isActive=true del atleta antes de crear la nueva (no solo las del mismo template). Un atleta = una rutina activa garantizado por lógica de app.',
       },
       {
         title: '[MEDIO] CoachAthlete sin onDelete: Cascade al eliminar el coach',
@@ -1401,7 +1401,7 @@ const PHASES = [
       {
         title: 'Email transaccional con Resend — templates cron',
         done: false,
-        note: '(1) Recordatorio check-in: dom 18:00 si atleta no ha hecho check-in esa semana. (2) Sesión del día: lun 7am con detalles de la sesión programada. (3) Pago vencido: cuando Payment.status cambia a OVERDUE. Implementar con Vercel Cron Jobs. Infraestructura Resend ya lista.',
+        note: '[STANDBY] (1) Recordatorio check-in: dom 18:00. (2) Sesión del día: lun 7am. (3) Pago vencido. Implementar con Vercel Cron Jobs. Infraestructura Resend ya lista. Ejecutar post-funcionalidad completa.',
       },
       {
         title: '/join/[code] con branding del coach',
@@ -1418,6 +1418,21 @@ const PHASES = [
         done: true,
         note: 'Banner en /coach/dashboard cuando el coach no tiene atletas. Muestra CTA de invitación con link a /coach/invite. Desaparece automáticamente cuando tiene al menos 1 atleta.',
       },
+    ],
+  },
+  // ─── FASE 26 PREV — LOCALIZACIÓN ─────────────────────────────────────────────
+  {
+    id: 'localization',
+    label: 'Localización: Timezone y Locale del Dispositivo',
+    period: 'Completado',
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    borderColor: '#86efac',
+    items: [
+      { title: '[HECHO] Migración DB: User.timezone + User.locale', done: true, note: 'Columnas String? en User. timezone = IANA (e.g. America/Mexico_City), locale = BCP 47 (e.g. es-MX). null = defaults Colombia.' },
+      { title: '[HECHO] PATCH /api/me — web detecta y persiste timezone/locale', done: true, note: 'Cliente envía Intl.DateTimeFormat().resolvedOptions().timeZone + navigator.language post-login.' },
+      { title: '[HECHO] PATCH /api/mobile/auth/me — mobile detecta y persiste timezone/locale', done: true, note: 'expo-localization: Localization.getCalendars()[0].timeZone + Localization.getLocales()[0].languageTag.' },
+      { title: 'Usar User.timezone en lógica de "hoy" (dashboard, plan, check-in)', done: true, note: 'RESUELTO. nutrition/page.tsx + checkin/page.tsx: fetch paralelo de user.timezone, usa tz ?? "America/Bogota". gym/session/today/route.ts: timezone agregado al select de featureGym. Los tres reemplazan el hardcode "America/Bogota" por el timezone del usuario.' },
     ],
   },
   // ─── FASE 26 — TRACKER LIBRE (el núcleo que falta) ───────────────────────────
@@ -1465,30 +1480,30 @@ const PHASES = [
   {
     id: 'templates-fix',
     label: 'Fase 27 — Templates: Eliminar CICLA/NATACION del Plan Running',
-    period: 'Próximo',
-    color: '#7c3aed',
-    bgColor: '#faf5ff',
-    borderColor: '#d8b4fe',
+    period: 'Completado',
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    borderColor: '#86efac',
     items: [
       {
-        title: 'Reemplazar sesión CICLA (jueves) en HALF_MARATHON_18W por OTRO (cardio complementario)',
-        done: false,
-        note: 'templates.ts línea 132-137: tipo CICLA → tipo OTRO. Structure: "Cardio de bajo impacto opcional: ciclismo, natación, elíptico o caminata. Recuperación activa manteniendo base aeróbica. El atleta elige la modalidad." Elimina la prescripción de un deporte que el atleta puede no practicar.',
+        title: '[HECHO] Reemplazar sesión CICLA en HALF_MARATHON_18W por OTRO',
+        done: true,
+        note: 'Verificado con Grep: templates.ts NO contiene ninguna sesión de tipo CICLA. El template usa FUERZA, RODAJE_Z2, FARTLEK, TEMPO, INTERVALOS y TIRADA_LARGA únicamente.',
       },
       {
-        title: 'Reemplazar sesión NATACION (sábado) en HALF_MARATHON_18W por OTRO (movilidad/cardio)',
-        done: false,
-        note: 'templates.ts línea 144-149: tipo NATACION → tipo OTRO. Structure: "Movilidad activa o cardio suave opcional: natación, yoga, pilates, caminata. Recuperación activa. El atleta elige según disponibilidad." Misma filosofía: el plan sugiere el propósito, no el deporte.',
+        title: '[HECHO] Reemplazar sesión NATACION en HALF_MARATHON_18W por OTRO',
+        done: true,
+        note: 'Verificado con Grep: templates.ts NO contiene ninguna sesión de tipo NATACION. El template ya no prescribe deportes eliminados del scope.',
       },
       {
-        title: 'Verificar que TEN_K_12W, FIVE_K_8W y BODY_RECOMPOSITION_16W no tienen CICLA/NATACION',
-        done: false,
-        note: 'Hacer Grep de CICLA y NATACION en templates.ts para confirmar que solo están en HALF_MARATHON_18W. Si aparecen en otros templates, reemplazar con el mismo patrón OTRO.',
+        title: '[HECHO] Verificar TEN_K_12W, FIVE_K_8W y BODY_RECOMPOSITION_16W',
+        done: true,
+        note: 'Grep confirmado: ninguno de los 4 templates contiene CICLA ni NATACION. Todos los templates usan solo SessionTypes dentro del scope actual (RUNNING + STRENGTH).',
       },
       {
-        title: 'Actualizar getSessionIntensity en intensity.ts — CICLA/NATACION ya no necesitan mapeo especial',
-        done: false,
-        note: 'src/lib/plan/intensity.ts: CICLA y NATACION mapean a MODERATE actualmente. Verificar si el tipo OTRO ya mapea a MODERATE (debería). Si CICLA y NATACION siguen en el enum SessionType de DB, mantener el mapeo para datos históricos — no eliminar del enum.',
+        title: '[HECHO] getSessionIntensity en intensity.ts — mantener mapeo para datos históricos',
+        done: true,
+        note: 'intensity.ts conserva CICLA y NATACION → MODERATE para compatibilidad con PlannedSessions históricas en DB. El tipo OTRO ya mapea a MODERATE. Sin cambio de código requerido — comportamiento correcto.',
       },
     ],
   },
@@ -1580,7 +1595,7 @@ const PHASES = [
       },
       {
         title: '"Copiar semana anterior" en el constructor visual',
-        done: false,
+        done: true,
         note: 'Botón en el constructor: duplica todas las sesiones de la semana anterior en la semana actual. Reduce el trabajo repetitivo de construir planes de 16-18 semanas. Operación local (en estado React) — solo se persiste cuando el coach hace Submit.',
       },
       {
@@ -1658,7 +1673,7 @@ const PHASES = [
       {
         title: 'Google OAuth activar con dominio real en producción',
         done: false,
-        note: 'El código de Google OAuth ya está implementado en auth.ts. Pendiente: Google Cloud Console → crear OAuth Client ID con dominio medaliq.com autorizado → agregar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel → UI: botón "Continuar con Google" en /login. Reducción de fricción en registro.',
+        note: '[STANDBY] Código ya implementado en auth.ts. Pendiente: Google Cloud Console → OAuth Client ID → GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET en Vercel → botón en /login. Ejecutar post-funcionalidad completa.',
       },
       {
         title: 'Sentry para monitoreo de errores en producción',

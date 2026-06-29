@@ -13,12 +13,13 @@ export async function GET(req: NextRequest) {
   }
 
   // Feature gate
-  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true } })
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true, timezone: true } })
   if (!userRecord?.featureGym) {
     return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
   }
 
-  const todayDow = jsToOurDow(new Date().getDay())
+  const tz = userRecord.timezone ?? 'America/Bogota'
+  const todayDow = jsToOurDow(new Date(new Date().toLocaleString('en-US', { timeZone: tz })).getDay())
 
   // Parallel: fetch active plan + assigned workout + coach relation
   const [activePlan, assigned, coachRelation] = await Promise.all([
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
         notes: we.notes,
         setType: we.setType,
         supersetWith: we.supersetWith,
+        suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
         exercise: {
           id: we.exercise.id,
           name: we.exercise.name,
@@ -188,6 +190,7 @@ export async function GET(req: NextRequest) {
             notes: we.notes,
             setType: we.setType,
             supersetWith: we.supersetWith,
+            suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
             exercise: {
               id: we.exercise.id,
               name: we.exercise.name,

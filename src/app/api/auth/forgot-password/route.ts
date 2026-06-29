@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SignJWT } from 'jose'
+import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
 import { sendPasswordResetEmail } from '@/infrastructure/email/resend'
+import { emailSchema, parseBody } from '@/lib/validation'
+
+const ForgotSchema = z.object({ email: emailSchema })
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json()
+  const raw = await req.json().catch(() => null)
+  const parsed = parseBody(ForgotSchema, raw)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-  if (!email || typeof email !== 'string') {
-    return NextResponse.json({ error: 'Correo requerido.' }, { status: 400 })
-  }
+  const { email } = parsed.data
 
   // Always return 200 to avoid email enumeration
   const user = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
+    where: { email },
     select: { id: true, email: true },
   })
 

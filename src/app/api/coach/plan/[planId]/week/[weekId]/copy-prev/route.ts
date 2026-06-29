@@ -48,7 +48,7 @@ export async function POST(
     await tx.plannedSession.createMany({
       data: prevWeek.sessions.map((s) => {
         const sessionDate = new Date(targetWeek.startDate)
-        sessionDate.setDate(sessionDate.getDate() + s.dayOfWeek)
+        sessionDate.setDate(sessionDate.getDate() + s.dayOfWeek - 1)
         return {
           weekId,
           dayOfWeek: s.dayOfWeek,

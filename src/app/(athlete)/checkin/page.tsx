@@ -12,14 +12,8 @@ export default async function CheckinPage() {
   const userId = session.user.id
   const hasNutrition = session.user.features?.nutrition ?? false
 
-  // Día de la semana en zona horaria Colombia (UTC-5)
-  const nowInBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }))
-  const dayOfWeek = nowInBogota.getDay() // 0=Dom, 1=Lun … 5=Vie, 6=Sáb
-  // Lun-Jue = "temprano" — mostrar resumen semana pasada + banner orientador
-  const isEarlyInWeek = dayOfWeek >= 1 && dayOfWeek <= 4
-
-  // Fetch en paralelo: plan activo + check-ins
-  const [activePlan, checkIns] = await Promise.all([
+  // Fetch en paralelo: plan activo + check-ins + timezone del usuario
+  const [activePlan, checkIns, userRecord] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
@@ -61,7 +55,14 @@ export default async function CheckinPage() {
         nutritionAdherencePct: true,
       },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ])
+
+  const tz = userRecord?.timezone ?? 'America/Bogota'
+  const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
+  const dayOfWeek = nowInTz.getDay() // 0=Dom, 1=Lun … 5=Vie, 6=Sáb
+  const isEarlyInWeek = dayOfWeek >= 1 && dayOfWeek <= 4
+
 
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : getCurrentISOWeek()
 

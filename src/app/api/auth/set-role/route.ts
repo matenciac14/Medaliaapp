@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { roleSchema, parseBody } from '@/lib/validation'
+
+const SetRoleSchema = z.object({ role: roleSchema })
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -8,10 +12,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No autenticado.' }, { status: 401 })
   }
 
-  const { role } = await req.json()
-  if (role !== 'ATHLETE' && role !== 'COACH') {
-    return NextResponse.json({ error: 'Rol inválido.' }, { status: 400 })
-  }
+  const raw = await req.json().catch(() => null)
+  const parsed = parseBody(SetRoleSchema, raw)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+
+  const { role } = parsed.data
 
   const isCoach = role === 'COACH'
   const now = new Date()

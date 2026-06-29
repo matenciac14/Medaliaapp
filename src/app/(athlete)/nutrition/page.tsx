@@ -18,15 +18,18 @@ export default async function NutritionPage() {
 
   const userId = session.user.id
 
-  const bogotaDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }))
-  const todayDow = jsToOurDow(bogotaDate.getDay())
-
-  // Get active plan first to compute currentWeek (timezone-safe — no UTC date range)
-  const activePlan = await prisma.trainingPlan.findFirst({
-    where: { userId, status: 'ACTIVE' },
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, startDate: true, totalWeeks: true },
-  })
+  // Fetch plan activo + timezone del usuario en paralelo
+  const [activePlan, userRecord] = await Promise.all([
+    prisma.trainingPlan.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, startDate: true, totalWeeks: true },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+  ])
+  const tz = userRecord?.timezone ?? 'America/Bogota'
+  const todayDate = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
+  const todayDow = jsToOurDow(todayDate.getDay())
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   // Cargar datos en paralelo

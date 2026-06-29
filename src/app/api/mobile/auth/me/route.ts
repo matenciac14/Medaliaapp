@@ -10,6 +10,37 @@ const USER_SELECT = {
   onboardingCompleted: true,
 } as const
 
+// PATCH /api/mobile/auth/me — actualizar timezone y locale desde la app mobile
+// expo-localization: Localization.getCalendars()[0].timeZone + Localization.getLocales()[0].languageTag
+export async function PATCH(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:auth-me-patch`, { limit: 100, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
+
+  const body = await req.json().catch(() => ({}))
+  const { timezone, locale } = body as { timezone?: unknown; locale?: unknown }
+
+  if (timezone !== undefined && typeof timezone !== 'string') {
+    return NextResponse.json({ error: 'timezone inválido' }, { status: 400 })
+  }
+  if (locale !== undefined && typeof locale !== 'string') {
+    return NextResponse.json({ error: 'locale inválido' }, { status: 400 })
+  }
+
+  const data: Record<string, string> = {}
+  if (timezone) data.timezone = timezone as string
+  if (locale) data.locale = locale as string
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 })
+  }
+
+  await prisma.user.update({ where: { id: mobile.id }, data })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

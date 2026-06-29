@@ -18,6 +18,10 @@ export async function GET(req: NextRequest) {
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0') || 0
   const selectedDow = parseInt(req.nextUrl.searchParams.get('selectedDow') ?? '0') || 0
 
+  if (Math.abs(weekOffset) > 52) {
+    return NextResponse.json({ error: 'weekOffset fuera de rango' }, { status: 400 })
+  }
+
   const { monday, sunday } = getWeekBounds(weekOffset)
   const isCurrentWeek = weekOffset === 0
 

@@ -33,6 +33,10 @@ model User {
   // Google OAuth role selection (migrado de config === null check)
   needsRoleSelection Boolean @default(false)
 
+  // Localización del dispositivo (detectada en login, actualizable vía PATCH /api/me)
+  timezone   String?  // IANA tz, e.g. 'America/Mexico_City'. null = America/Bogota
+  locale     String?  // BCP 47, e.g. 'es-MX'. null = es-CO
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -506,6 +510,9 @@ model WorkoutExercise {
   notes        String?
   setType      SetType     @default(NORMAL)
   supersetWith String?     // id de otro WorkoutExercise
+
+  // Progresión de cargas: peso sugerido para la próxima sesión (actualizado al completar)
+  suggestedNextWeightKg Float?
 
   day      WorkoutDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
   exercise Exercise   @relation(fields: [exerciseId], references: [id])

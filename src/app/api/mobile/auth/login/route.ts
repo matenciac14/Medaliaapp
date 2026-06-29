@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
 import { signMobileToken } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { emailSchema, passwordSchema, parseBody } from '@/lib/validation'
+
+const LoginSchema = z.object({ email: emailSchema, password: passwordSchema })
 
 const USER_SELECT = {
   id: true, email: true, name: true, password: true, role: true,
@@ -13,14 +17,14 @@ const USER_SELECT = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
+    const raw = await req.json().catch(() => null)
+    const parsed = parseBody(LoginSchema, raw)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Correo y contraseña requeridos.' }, { status: 400 })
-    }
+    // email ya viene normalizado (lowercase+trim) por el schema
+    const { email: normalizedEmail, password } = parsed.data
 
     // Brute-force protection: 10 intentos/min por email
-    const normalizedEmail = String(email).toLowerCase().trim()
     const { allowed } = await rateLimitAsync(`mobile-login-${normalizedEmail}`, { limit: 10, windowMs: 60_000 })
     if (!allowed) return NextResponse.json({ error: 'Demasiados intentos. Intenta en un minuto.' }, { status: 429 })
 
