@@ -146,7 +146,7 @@ export default async function ProgressPage() {
       hrCheckins={hrCheckins}
       wellbeingData={wellbeingData}
       weeks={weeks}
-      weightGoal={weightGoal ?? 0}
+      weightGoal={weightGoal}
       benchmarks={benchmarks}
     />
   )

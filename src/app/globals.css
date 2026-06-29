@@ -192,7 +192,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up {
-  animation: fadeUp 0.25s ease forwards;
+  animation: fadeUp 0.25s ease;
 }
 
 /* Staggered children — add to list containers */

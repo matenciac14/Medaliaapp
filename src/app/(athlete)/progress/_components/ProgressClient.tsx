@@ -36,7 +36,7 @@ export type ProgressClientProps = {
   hrCheckins: HrPoint[]
   wellbeingData: WellbeingPoint[]
   weeks: WeekData[]
-  weightGoal: number
+  weightGoal: number | null
   benchmarks: BenchmarkPoint[]
 }
 
@@ -463,16 +463,20 @@ export default function ProgressClient({
               <p className="text-xs text-gray-500">Actual</p>
             </div>
             <TrendBadge start={weightStart} end={weightEnd} lowerIsBetter unit=" kg" />
-            <div>
-              <p className="text-sm font-semibold text-[#16a34a]">{weightGoal} kg</p>
-              <p className="text-xs text-gray-500">Objetivo</p>
-            </div>
+            {weightGoal !== null && (
+              <div>
+                <p className="text-sm font-semibold text-[#16a34a]">{weightGoal} kg</p>
+                <p className="text-xs text-gray-500">Objetivo</p>
+              </div>
+            )}
           </div>
-          <span className="text-xs text-gray-500 font-medium">
-            {weightEnd > weightGoal
-              ? `Faltan ${(weightEnd - weightGoal).toFixed(1)} kg`
-              : 'Objetivo alcanzado'}
-          </span>
+          {weightGoal !== null && (
+            <span className="text-xs text-gray-500 font-medium">
+              {weightEnd > weightGoal
+                ? `Faltan ${(weightEnd - weightGoal).toFixed(1)} kg`
+                : 'Objetivo alcanzado'}
+            </span>
+          )}
         </div>
 
         <LineChart
@@ -480,7 +484,7 @@ export default function ProgressClient({
           getValue={(d) => d.kg}
           color="#1e3a5f"
           unit=" kg"
-          goalLine={weightGoal}
+          goalLine={weightGoal ?? undefined}
           minVal={weightMin}
           maxVal={weightMax}
         />
@@ -561,12 +565,12 @@ export default function ProgressClient({
         {/* Mobile: cards */}
         <div className="sm:hidden space-y-3">
           {[
-            {
+            ...(weightGoal !== null ? [{
               label: 'Peso vs objetivo',
               start: `${weightStart} kg`,
               end: `${weightEnd} kg`,
               status: weightEnd <= weightGoal ? 'logrado' : 'pendiente',
-            },
+            }] : []),
             {
               label: 'FC Reposo',
               start: `${hrStart} bpm`,
@@ -601,16 +605,18 @@ export default function ProgressClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              <tr>
-                <td className="py-3 pr-4 font-medium text-gray-900">Peso actual vs objetivo</td>
-                <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>
-                <td className="py-3 pr-4 font-semibold text-gray-900">{weightEnd} kg</td>
-                <td className="py-3">
-                  {weightEnd <= weightGoal
-                    ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Logrado</span>
-                    : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316]">Pendiente</span>}
-                </td>
-              </tr>
+              {weightGoal !== null && (
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-gray-900">Peso actual vs objetivo</td>
+                  <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>
+                  <td className="py-3 pr-4 font-semibold text-gray-900">{weightEnd} kg</td>
+                  <td className="py-3">
+                    {weightEnd <= weightGoal
+                      ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Logrado</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316]">Pendiente</span>}
+                  </td>
+                </tr>
+              )}
               <tr>
                 <td className="py-3 pr-4 font-medium text-gray-900">FC Reposo</td>
                 <td className="py-3 pr-4 text-gray-500">{hrStart} bpm</td>

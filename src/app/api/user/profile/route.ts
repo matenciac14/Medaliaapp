@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { estimateHRMax } from '@/lib/plan/formulas'
 
 function calcAge(dob: Date): number {
   const today = new Date()
@@ -8,11 +9,6 @@ function calcAge(dob: Date): number {
   const m = today.getMonth() - dob.getMonth()
   if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
   return age
-}
-
-// Tanaka formula — más precisa que 220-edad para atletas
-function estimateHrMax(age: number): number {
-  return Math.round(208 - 0.7 * age)
 }
 
 export async function PATCH(req: Request) {
@@ -35,9 +31,9 @@ export async function PATCH(req: Request) {
     data.dateOfBirth = dob
     data.age = calcAge(dob)
 
-    // Si no viene hrMax manual → estimar por Tanaka
+    // Si no viene hrMax manual → estimar con la fórmula canónica (Fox: 211 - 0.64×edad)
     if (!hrMax) {
-      data.hrMax = estimateHrMax(data.age as number)
+      data.hrMax = estimateHRMax(data.age as number)
     }
   }
 
