@@ -425,7 +425,7 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Coaches activos esta semana (al menos 1 acción en los últimos 7 días)',
-        done: false,
+        done: true,
         priority: 'P1',
         note: 'Pendiente: agregar User.lastActiveAt (updatedAt en cada request autenticado) o usar AuditLog para detectar actividad de coaches. Mostrar coaches activos / coaches totales en /admin/coaches.',
       },
@@ -563,11 +563,11 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Coach',
         period: 'Urgente',
         items: [
-          { title: 'COACH-BUG-02 — Constructor de plan abre en semana 6, no en la semana activa del atleta', done: false, priority: 'P1', note: 'PlanBuilderClient.tsx: el default de semana inicial no usa currentWeek del plan activo.' },
+          { title: 'COACH-BUG-02 — Constructor de plan abre en semana 1, debería abrir en la semana activa del atleta', done: false, priority: 'P1', note: 'PlanBuilderClient.tsx línea 150: useState(0) = semana 1 siempre. Fix: calcular índice inicial con getPlanWeekNumber(startDate, totalWeeks) - 1, clampeado al rango [0, weeks.length-1]. Requiere pasar startDate como prop al builder.' },
           { title: 'COACH-BUG-03 — Coach ve "Semana 6/18", atleta ve "11/18" — semana activa inconsistente', done: true, priority: 'P1', note: 'Fix aplicado en athletes/_lib/map-athlete.ts: usa getPlanWeekNumber(startDate, totalWeeks) + clamp a totalWeeks. Lado coach (lista /coach/athletes) corregido.' },
           { title: 'COACH-BUG-04 — Coach ve "FASE: DESARROLLO", atleta ve "BASE" — fase activa inconsistente', done: false, priority: 'P1', note: 'La fase se deriva de currentWeek. Si currentWeek difiere (ver COACH-BUG-03), la fase también difiere. Pendiente verificar panel atleta individual (AthleteDetailClient).' },
           { title: 'COACH-BUG-01 — Columna DEPORTE vacía en lista atletas y "Sin datos de deporte" en dashboard', done: true, priority: 'P2', note: 'Fix: SPORT_LABELS ampliado en AthleteTabs.tsx y dashboard/page.tsx cubre RUNNING|STRENGTH|CYCLING|SWIMMING|TRIATHLON|FOOTBALL. Datos vienen de HealthProfile.sport vía map-athlete.ts.' },
-          { title: 'COACH-BUG-05 — Campos Estrés/Motivación/Dolor siempre "—" en Tab Resumen del coach', done: false, priority: 'P2', note: 'Check-in captura stressLevel, motivationLevel, painLevel pero el panel no los muestra. Fix: incluirlos en la respuesta.' },
+          { title: 'COACH-BUG-05 — Campos Estrés/Motivación/Dolor siempre "—" en Tab Resumen del coach', done: true, priority: 'P2', note: 'Verificado: AthleteDetailClient.tsx muestra stressLevel/motivationLevel/painLevel con colores semafóricos (líneas 807-820 card resumen, 983-1007 tabla check-ins). El dato viene de page.tsx que los mapea con ?? null desde WeeklyCheckIn.' },
           { title: 'COACH-BUG-07 — Finanzas sin filtro por atleta — inmanejable con escala', done: false, priority: 'P2', note: 'Fix: selector de atleta en UI + WHERE athleteId en query.' },
           { title: 'COACH-BUG-06 — /coach/settings = "Próximamente" — item de nav lleva a página vacía', done: false, priority: 'P3', note: 'Fix: implementar Settings básico o remover el link del nav.' },
         ],
