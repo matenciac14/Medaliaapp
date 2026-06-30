@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { processCheckIn } from '@/domain/check-in/process-check-in.use-case'
@@ -9,6 +10,20 @@ import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
 // prisma is passed as `db` so the use case can open $transaction
+
+const checkInBodySchema = z.object({
+  hardestRpe:            z.number().min(1).max(10).optional(),
+  sleepHours:            z.number().min(0).max(24).optional(),
+  sleepScore:            z.number().min(0).max(10).optional(),
+  energyLevel:           z.number().min(1).max(10).optional(),
+  stressLevel:           z.number().min(0).max(10).optional(),
+  weightKg:              z.number().min(0).optional(),
+  hrResting:             z.number().min(0).max(250).optional(),
+  painLevel:             z.number().min(0).max(10).optional(),
+  nutritionAdherencePct: z.number().min(0).max(100).optional(),
+  motivationLevel:       z.number().min(0).max(10).optional(),
+  notes:                 z.string().max(5000).optional(),
+})
 
 export async function GET(_req: NextRequest) {
   const session = await auth()
@@ -41,7 +56,13 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
 
-  const body = await req.json()
+  const raw = await req.json()
+  const parsed = checkInBodySchema.safeParse(raw)
+  if (!parsed.success) {
+    return badRequest(parsed.error.issues[0]?.message ?? 'Datos inválidos.')
+  }
+
+  const body = parsed.data
 
   if (body.energyLevel == null && body.hardestRpe == null) {
     return badRequest('Completa al menos la energía percibida o el RPE.')
@@ -52,11 +73,11 @@ export async function POST(req: NextRequest) {
       {
         userId: session.user.id,
         data: {
-          rpe: body.hardestRpe,
+          rpe: body.hardestRpe ?? 5,
           sleepHours: body.sleepHours ?? 7,
           sleepScore: body.sleepScore,
           energyLevel: body.energyLevel ?? 5,
-          stressLevel: body.stressLevel || undefined,
+          stressLevel: body.stressLevel ?? 0,
           weight: body.weightKg,
           heartRate: body.hrResting,
           painLevel: body.painLevel,

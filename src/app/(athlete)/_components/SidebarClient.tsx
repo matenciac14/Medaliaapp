@@ -133,6 +133,7 @@ export default function SidebarClient({ user, config }: Props) {
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="text-white/50 hover:text-white transition-colors"
+              aria-label={s.logout}
               title={s.logout}
             >
               <LogOut size={16} />
