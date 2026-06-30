@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db/prisma'
+import { validateExercise } from '@/domain/admin/exercise'
+
+async function requireAdmin() {
+  const session = await auth()
+  if (!session?.user?.id) return null
+  const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } })
+  return u?.role === 'ADMIN' ? session : null
+}
+
+// PATCH /api/admin/exercises/[id] — editar ejercicio global
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true, isGlobal: true } })
+  if (!existing || existing.coachId !== null || !existing.isGlobal) {
+    return NextResponse.json({ error: 'Ejercicio no encontrado o no es global.' }, { status: 404 })
+  }
+
+  const body = await req.json()
+  const errors = validateExercise(body)
+  if (errors.length > 0) return NextResponse.json({ errors }, { status: 400 })
+
+  const exercise = await prisma.exercise.update({
+    where: { id },
+    data: {
+      name:         body.name.trim(),
+      category:     body.category,
+      equipment:    body.equipment,
+      muscleGroups: body.muscleGroups,
+      description:  body.description?.trim() || null,
+      tips:         body.tips?.trim() || null,
+    },
+    select: { id: true, name: true, category: true, equipment: true, muscleGroups: true },
+  })
+
+  return NextResponse.json({ exercise })
+}
+
+// DELETE /api/admin/exercises/[id] — eliminar ejercicio global
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true, isGlobal: true } })
+  if (!existing || existing.coachId !== null || !existing.isGlobal) {
+    return NextResponse.json({ error: 'Ejercicio no encontrado o no es global.' }, { status: 404 })
+  }
+
+  await prisma.exercise.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+}
