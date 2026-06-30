@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { logAdminAction } from '@/lib/admin/log-action'
+import { ADMIN_ACTIONS } from '@/domain/admin/audit-log'
 
 export async function PATCH(
   req: NextRequest,
@@ -73,6 +75,8 @@ export async function PATCH(
     data,
     select: { id: true, role: true, featurePlan: true, featureCoach: true, onboardingCompleted: true },
   })
+
+  void logAdminAction(session.user.id, ADMIN_ACTIONS.CHANGE_PLAN, id, { plan })
 
   return NextResponse.json({ ok: true, user })
 }
