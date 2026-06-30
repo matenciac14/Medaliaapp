@@ -1,5 +1,15 @@
 import { prisma } from '@/lib/db/prisma'
 
+const FEATURE_LABEL: Record<string, string> = {
+  plan:       'Plan',
+  checkin:    'Check-in',
+  nutrition:  'Nutrición',
+  progress:   'Progreso',
+  log:        'Log',
+  coach:      'Coach',
+  gym:        'Gym',
+}
+
 function tier(role: string, featureCoach: boolean, featurePlan: boolean, featureLog: boolean): { label: string; color: string } {
   if (role === 'ADMIN')  return { label: 'Admin',    color: 'bg-red-100 text-red-700' }
   if (role === 'COACH' || featureCoach) return { label: 'Coach', color: 'bg-orange-100 text-orange-700' }
@@ -11,6 +21,7 @@ function tier(role: string, featureCoach: boolean, featurePlan: boolean, feature
 export default async function AdminSubscriptionsPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
+    take: 300,
     select: {
       id: true, name: true, email: true, role: true, createdAt: true,
       featurePlan: true, featureCheckin: true, featureNutrition: true,
@@ -44,7 +55,7 @@ export default async function AdminSubscriptionsPage() {
       </div>
 
       {/* Tier summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {Object.entries(counts).map(([label, count]) => (
           <div key={label} className="bg-white border border-gray-200 rounded-xl p-5 text-center">
             <p className="text-3xl font-extrabold text-gray-900">{count}</p>
@@ -90,7 +101,7 @@ export default async function AdminSubscriptionsPage() {
                         <div className="flex flex-wrap gap-1">
                           {activeFeatures.map((f) => (
                             <span key={f} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded">
-                              {f}
+                              {FEATURE_LABEL[f] ?? f}
                             </span>
                           ))}
                         </div>

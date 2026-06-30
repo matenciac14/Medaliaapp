@@ -3,12 +3,12 @@ import { prisma } from '@/lib/db/prisma'
 export default async function AdminCoachesPage() {
   const coaches = await prisma.user.findMany({
     where: { role: 'COACH' },
-    include: {
+    select: {
+      id: true, name: true, email: true, createdAt: true,
       coachOf: {
-        include: {
-          athlete: {
-            select: { id: true, name: true, email: true, createdAt: true },
-          },
+        select: {
+          createdAt: true,
+          athlete: { select: { id: true, name: true, email: true } },
         },
       },
     },
@@ -66,12 +66,12 @@ export default async function AdminCoachesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {coach.coachOf.map(({ athlete }) => (
+                    {coach.coachOf.map(({ athlete, createdAt: linkedAt }) => (
                       <tr key={athlete.id} className="hover:bg-gray-50">
                         <td className="px-6 py-2 font-medium text-gray-800">{athlete.name ?? '—'}</td>
                         <td className="px-6 py-2 text-gray-500">{athlete.email}</td>
                         <td className="px-6 py-2 text-gray-400 text-xs">
-                          {new Date(athlete.createdAt).toLocaleDateString('es-CO')}
+                          {new Date(linkedAt).toLocaleDateString('es-CO')}
                         </td>
                       </tr>
                     ))}

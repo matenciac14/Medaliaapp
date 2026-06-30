@@ -21,7 +21,7 @@ export default async function AdminMetricsPage() {
     prisma.trainingPlan.count({ where: { status: 'ACTIVE' } }),
     prisma.trainingPlan.groupBy({ by: ['status'], _count: { _all: true } }),
     prisma.user.count({
-      where: { role: 'COACH', coachOf: { some: {} } },
+      where: { role: 'COACH', coachOf: { some: { status: 'ACTIVE' } } },
     }),
     prisma.user.count({ where: { onboardingCompleted: true } }),
     prisma.user.count(),
@@ -59,7 +59,9 @@ export default async function AdminMetricsPage() {
         <div className="space-y-2">
           {plansByStatus.map((row) => (
             <div key={row.status} className="flex justify-between text-sm">
-              <span className="text-gray-600">{row.status}</span>
+              <span className="text-gray-600">
+                {({ ACTIVE: 'Activo', INACTIVE: 'Inactivo', COMPLETED: 'Completado', ABANDONED: 'Abandonado' } as Record<string, string>)[row.status] ?? row.status}
+              </span>
               <span className="font-semibold text-gray-900">{row._count._all}</span>
             </div>
           ))}
