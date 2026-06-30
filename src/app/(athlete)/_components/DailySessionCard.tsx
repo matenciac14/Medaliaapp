@@ -141,7 +141,7 @@ export default function DailySessionCard({
       {dashboardMode === 'RECOVERY' && (
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
           <p className="text-xs text-gray-500">Movilidad, caminatas o descanso activo. Sin intensidad.</p>
-          <Link href="/log" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] whitespace-nowrap">
+          <Link href="/log/run" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] whitespace-nowrap">
             Registrar →
           </Link>
         </div>
