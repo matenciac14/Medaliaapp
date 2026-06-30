@@ -196,14 +196,14 @@ featurePlan | featureCheckin | featureNutrition | featureProgress | featureLog |
 
 ## Onboarding — flujo multi-deporte
 
-Archivo: `src/app/onboarding/page.tsx` (self-contained)
+Archivo: `src/app/onboarding/page.tsx` → `POST /api/onboarding/generate` → `completeOnboardingUseCase`
+
+El onboarding completa el perfil del atleta y activa sus features.
+**NO genera un TrainingPlan** — los planes se crean en `/new-goal` (B2C) o los asigna el entrenador (B2B).
 
 ```
-RUNNING:   health-goal → has-sport → sport-select → sport-details → physical → hr-fitness → schedule → health → plan-method → generating
-STRENGTH:  health-goal → has-sport → sport-select → sport-details → physical → generating
-GYM B2C:   health-goal → has-sport → physical → plan-method → generating
-FREE:      health-goal → physical → generating
-B2B:       health-goal → [deporte según coach] → physical → generating → /pending (NO activa features)
+RUNNING / GYM / BOTH → perfil + TDEE + nutrición + WeeklyRoutine → features activas → /dashboard
+B2B                  → perfil + TDEE + nutrición → sin features → /pending (entrenador activa después)
 ```
 
 **Regla crítica `isLastDataStep`:**
@@ -212,10 +212,9 @@ const isLastDataStep = steps[stepIndex + 1] === 'generating'
 // NO usar: stepIndex === steps.length - 2  ← BUG — el array crece dinámicamente
 ```
 
-### completeOnboardingUseCase — 4 rutas
-- **FREE/GYM**: calculateTDEE + macros → upsertNutrition → activar features → `planId: null`
-- **B2B**: upsertProfile + `onboarding: completed` → NO activa features → `/pending`
-- **SPORT/BODY B2C**: upsertProfile → generatePlanUseCase → devuelve `planId`
+### completeOnboardingUseCase — 2 rutas reales
+- **B2C** (RUNNING / GYM / BOTH): TDEE + macros → upsertNutrition → upsertProfile → completeOnboarding (features todas activas) → WeeklyRoutine → `planId: null`
+- **B2B**: TDEE + macros → upsertNutrition → upsertProfile → completeOnboarding (sin features) → notifica entrenador → `planId: null`
 
 ---
 
@@ -244,7 +243,7 @@ FASE 2 — $transaction:
 FASE 3 — Post-tx (fuera del tx):
   completeOnboarding → onboardingCompleted=true + sportGoal en HealthProfile
 ```
-← AI removida: no hay fase de recomendaciones. Plan 100% determinista via templates.
+← Plan 100% determinista via templates. `generatedBy: 'COACH' | 'AI'` — ambos usan el mismo template.
 
 ---
 
@@ -258,25 +257,28 @@ POST /api/checkin → processCheckIn(input, deps)
 Fase 1 (fuera tx): findLatest + findActivePlan + getAdherence
 Fase 2 (fuera tx): evaluateCheckInRules → triggers + adjustments
   Triggers: fc_alta | sueno_bajo | rpe_excesivo | dolor_activo | estres_alto
-            motivacion_baja | nutricion_baja | perdida_peso_rap | energia_baja
-  ← aiService.generateRecommendation ELIMINADO — sin AI activa
+            motivacion_baja | nutricion_baja | perdida_peso_rapida | energia_baja
+  ← sin AI — recomendación construida desde adjustments.join('. ')
 Fase 3 ($transaction):
-  upsert WeeklyCheckIn por (userId, weekNumber)
-  applySessionAdjustments (dolor→Z2, volumen*0.8, zona bajada)
-    coachNote += '[AUTO] ...'
-  syncWeight: |Δkg| >= 0.5 → recalcular TDEE + macros
+  1. upsert WeeklyCheckIn por (userId, weekNumber)
+  2. applySessionAdjustments si triggers.length > 0 (dolor→Z2, volumen*0.8/0.85, zona bajada)
+       coachNotes += '[AUTO] ...' — no toca sesiones con notas manuales del entrenador
+  3. syncWeight: |Δkg| >= 0.5 → updateWeight + recalcular TDEE + macros (si hay plan nutricional)
+  3b. syncHrResting: siempre actualiza HealthProfile.hrResting si heartRate > 0
+  4. Primer check-in (count === 1) → enableFeature(userId, 'progress')
 ```
 
 ### AI Coach chat
 
-> **NO IMPLEMENTADO** — el endpoint `/api/ai/chat` no existe aún. `features.aiCoach` era un campo stale (eliminado de user-config.ts). La UI de chat existe en `/p/ai-coach` pero sin backend funcional. Implementación pendiente en roadmap.
+> **NO IMPLEMENTADO** — el endpoint `/api/ai/chat` no existe. `features.aiCoach` era un campo stale eliminado. No hay UI de chat implementada. Implementación pendiente en roadmap.
 
 ### Flujo B2B
 
 ```
 1. POST /api/coach/clients/create → user + coachAthlete
 2. Atleta onboarding → completeOnboardingUseCase detecta B2B → /pending
-3. PATCH /api/coach/athlete/[id]/config → enableFeatures(all) — /activate fue eliminado
+3. PATCH /api/coach/athlete/[id]/config → mergeFeatures(patch) — activa features selectivamente
+     body: { features: { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } }
 4. POST /api/coach/athlete/[id]/plan → generatePlanUseCase (isB2C=false)
 ```
 
