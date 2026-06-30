@@ -1,66 +1,86 @@
 # Medaliq — Web + Backend
 
 > Contexto del producto, modelo de negocio y arquitectura general: ver `../CLAUDE.md`
-> Prioridades actuales: ver rama activa y commits recientes
+> **Bugs y tareas:** fuente canónica en `src/app/admin/roadmap/roadmap-data.ts` — al terminar un bug/feature: marcar `done: true` y actualizar la `note`
+> Schema completo, enums, mapeo dominio↔DB, rutas API: ver `CLAUDE-SCHEMA.md`
 
 ## Stack
 - Next.js 16 App Router + TypeScript
 - PostgreSQL + **Prisma 7** (adapter pg, output `src/generated/prisma`)
 - Tailwind CSS v4 + shadcn/ui
 - Auth.js v5 (next-auth@beta) — estrategia JWT
-- Claude API — Haiku para check-in adjustments, Sonnet para coach chat
 - Neon (PostgreSQL serverless) — pooler runtime, direct URL migraciones
 - pnpm · bcryptjs · Resend · jose
 
+> **Sin AI activa** — `@anthropic-ai/sdk` no está instalado. Producto 100% determinista. No agregar llamadas AI sin decisión explícita.
+
 ---
 
-## Convención de branches — OBLIGATORIO
+## Comandos de desarrollo
+
+```bash
+pnpm dev                                        # servidor local http://localhost:3000
+pnpm tsc --noEmit                               # verificar tipos sin compilar
+pnpm prisma migrate dev --name nombre           # nueva migración (dev)
+pnpm prisma migrate deploy                      # aplicar migraciones en producción (usa DIRECT_URL)
+pnpm prisma db seed                             # poblar DB con usuarios de prueba
+pnpm prisma generate                            # regenerar cliente (auto en migrate dev)
+pnpm prisma studio                              # UI para inspeccionar DB
+```
+
+> Migraciones en producción (Neon): requieren `DIRECT_URL` — el pooler no soporta DDL.
+
+---
+
+## Arquitectura Hexagonal
 
 ```
-feature/[n]-descripcion-kebab-case
-bugfix/[n]-descripcion-kebab-case
-chore/descripcion-kebab-case
-hotfix/[n]-descripcion-kebab-case
+src/
+  domain/                        ← lógica de negocio PURA (nunca importa infra, Prisma, Next.js)
+    check-in/                    evaluate-rules.ts · process-check-in.use-case.ts · check-in.types.ts
+    plan/                        generate-plan.use-case.ts · session-builder.ts · plan.types.ts
+    onboarding/                  complete-onboarding.use-case.ts · onboarding.utils.ts
+    ports/                       plan.repository.ts · checkin.repository.ts · health-profile.repository.ts
+                                 user.repository.ts
+
+  infrastructure/                ← implementaciones de los ports
+    db/                          plan · check-in · health-profile · user repositories (Prisma)
+    email/                       resend.ts
+    ← infrastructure/ai/ NO EXISTE — AI removida intencionalmente (producto ships manual-first)
+
+  lib/                           ← utilidades puras existentes — NO TOCAR sin razón
+    plan/formulas.ts             Karvonen HR zones, Mifflin-St Jeor TDEE ← FUENTE CANÓNICA cálculos físicos
+    plan/templates.ts            4 templates base
+    plan/generator.ts            legado — migrar gradualmente a domain/plan/
+    nutrition/daily-target.ts    getDailyNutritionTarget(intensity, plan) ← FUENTE CANÓNICA nutrición
+    mobile-auth.ts               signMobileToken · getMobileUser
+
+  app/                           ← capa de entrega Next.js — rutas DELGADAS
+    api/                         máx ~25 líneas: auth → validate → call use case → respond
 ```
-Push bloqueado si no cumple (`.githooks/pre-push` + GitHub ruleset).
+
+**Reglas de capas:**
+- `domain/` nunca importa de `infrastructure/`, `app/`, Prisma ni Next.js
+- `app/api/` nunca escribe lógica de negocio — solo llama use cases
+- Si una API route supera 40 líneas, la lógica pertenece al dominio
 
 ---
 
-## Regla crítica para agentes
+## Patrón $transaction — 3 fases obligatorias
 
-**NUNCA romper código existente.** Antes de modificar cualquier archivo:
-1. Leerlo completo para entender el contexto
-2. Solo tocar las líneas estrictamente necesarias
-3. No refactorizar ni renombrar lo que ya funciona
-4. Si el cambio afecta una función compartida, verificar todos sus callers
+```
+Phase 1: reads paralelos (Promise.all) FUERA del tx
+Phase 2: I/O externo (AI, emails) FUERA del tx — dentro = timeout + rollback
+Phase 3: TODOS los writes en db.$transaction({ timeout: 30_000 })
+```
 
-**NO pushear a producción sin autorización explícita de Miguel.**
-
----
-
-## Slugs canónicos en rutas dinámicas
-
-| Entidad | Slug |
-|---------|------|
-| TrainingPlan | `[planId]` |
-| PlannedSession / CoachSession | `[sessionId]` |
-| Atleta / Usuario genérico | `[id]` |
-| Ejercicio / Rutina gym | `[id]` |
-| Semana del plan | `[weekId]` |
-
-Antes de crear una ruta bajo un path dinámico existente, revisar siblings con Glob.
-
----
-
-## Prisma 7 — diferencias críticas
+## Rate limiting mobile
 
 ```ts
-import type { PrismaClient } from '../../generated/prisma/client'  // NUNCA @prisma/client
+const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:endpoint-name`, { limit: 300, windowMs: 60_000 })
+if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
+// GET: 300 | POST: 100
 ```
-- Generator: `prisma-client` con `output = "../src/generated/prisma"`
-- `url` va en `prisma.config.ts`, `directUrl` va en `schema.prisma`
-- Requiere adapter: `new PrismaPg({ connectionString })` de `@prisma/adapter-pg`
-- Seed en `prisma.config.ts → migrations.seed` (no en `package.json`)
 
 ---
 
@@ -101,180 +121,70 @@ Rutas públicas: /, /login, /register, /api/*, /join/*, /coaches, /p/*
 
 ---
 
-## Arquitectura Hexagonal
+## Prisma 7 — diferencias críticas
 
+```ts
+import type { PrismaClient } from '../../generated/prisma/client'  // NUNCA @prisma/client
 ```
-src/
-  domain/                        ← lógica de negocio PURA (nunca importa infra, Prisma, Next.js)
-    check-in/                    evaluate-rules.ts · process-check-in.use-case.ts · check-in.types.ts
-    plan/                        generate-plan.use-case.ts · session-builder.ts · plan.types.ts
-    onboarding/                  complete-onboarding.use-case.ts · onboarding.utils.ts
-    ports/                       plan.repository.ts · checkin.repository.ts · health-profile.repository.ts
-                                 user.repository.ts · ai.service.ts
-
-  infrastructure/                ← implementaciones de los ports
-    db/                          plan · check-in · health-profile · user repositories (Prisma)
-    ai/                          anthropic.service.ts (falla silenciosamente)
-    email/                       resend.ts
-
-  lib/                           ← utilidades puras existentes — NO TOCAR sin razón
-    plan/formulas.ts             Karvonen HR zones, Mifflin-St Jeor TDEE, Riegel race time
-    plan/templates.ts            4 templates base
-    plan/generator.ts            legado — migrar gradualmente a domain/plan/
-    ai/profile.ts                AIProfile type, buildPlanSystemPrompt, buildChatSystemPrompt
-    config/user-config.ts        getUserPlan · DEFAULT_USER_CONFIG (referencia — columnas DB son fuente canónica)
-    nutrition/daily-target.ts    getDailyNutritionTarget(intensity, plan)
-    mobile-auth.ts               signMobileToken · getMobileUser
-
-  app/                           ← capa de entrega Next.js — rutas DELGADAS
-    api/                         máx ~25 líneas: auth → validate → call use case → respond
-```
-
-**Reglas de capas:**
-- `domain/` nunca importa de `infrastructure/`, `app/`, Prisma ni Next.js
-- `app/api/` nunca escribe lógica de negocio — solo llama use cases
-- Si una API route supera 40 líneas, la lógica pertenece al dominio
+- Generator: `prisma-client` con `output = "../src/generated/prisma"`
+- `url` va en `prisma.config.ts`, `directUrl` va en `schema.prisma`
+- Requiere adapter: `new PrismaPg({ connectionString })` de `@prisma/adapter-pg`
+- Seed en `prisma.config.ts → migrations.seed` (no en `package.json`)
 
 ---
 
-## Patrón $transaction — 3 fases obligatorias
+## Helpers centralizados — NO recrear
 
 ```
-Phase 1: reads paralelos (Promise.all) FUERA del tx
-Phase 2: I/O externo (AI, emails) FUERA del tx — dentro = timeout + rollback
-Phase 3: TODOS los writes en db.$transaction({ timeout: 30_000 })
-```
+src/lib/api/responses.ts          ok() · created() · badRequest() · unauthorized()
+                                  forbidden() · notFound() · conflict() · serverError()
 
-## Rate limiting mobile
+src/lib/validation/index.ts       emailSchema · passwordSchema · nameSchema · roleSchema
+                                  parseBody(req, schema) → { data } | NextResponse 400
 
-```ts
-const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:endpoint-name`, { limit: 300, windowMs: 60_000 })
-if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
-// GET: 300 | POST: 100
+src/lib/guards/feature-gate.ts    requireFeature(features, featureKey) → NextResponse 402 | null
+
+src/lib/core/week-number.ts       getISOWeekNumber(date) · getPlanWeekNumber(startDate, totalWeeks)
+                                  getCurrentISOWeek()
+
+src/lib/plan/intensity.ts         getSessionIntensity(sessionType) → SessionIntensity
+
+src/infrastructure/email/resend.ts  sendCoachWelcomeEmail · sendAthleteWelcomeEmail
+                                    sendAthleteCoachAssignedEmail · sendPasswordResetEmail
+                                    sendPlanUpdatedEmail
 ```
 
 ---
 
-## DB — Schema
+## DB — Referencia rápida
 
-### Modelos y relaciones
+> Detalle completo (modelos, enums, mapeo, deuda, IUserRepository, rutas API): ver `CLAUDE-SCHEMA.md`
 
-```
-User (coach)
-  └── CoachAthlete → User (atleta)
-        ├── TrainingPlan (goalType) → PlanWeek → PlannedSession → SessionLog
-        ├── WeeklyCheckIn
-        ├── NutritionPlan + FoodProfile → MealPlan (version) | FoodLog → Food
-        ├── WorkoutTemplate → WorkoutDay → WorkoutExercise
-        ├── AssignedWorkout → GymSession → SetLog (isPR)
-        └── PerformanceBenchmark
+**Enums críticos (no adivinar):**
+- `PlanSource`: `AI | COACH | AI_COACH_APPROVED` — 'TEMPLATE' NO existe
+- `PaymentStatus`: `PENDING | PAID` — OVERDUE es derivado en app, NO enum DB
+- `SessionIntensity`: `HIGH | MODERATE | LOW | REST`
 
-User (coach)
-  ├── CoachProfile → CoachProgram | CoachPost
-  ├── InviteCode (7 días, redimible una vez)
-  ├── Payment (PENDING | PAID) → PaymentAuditLog (CREATED|MARKED_PAID|REMINDED)
-  └── UserSubscription (TRIAL | FREE | PRO)
-
-HealthProfile
-  └── sportGoal String? — meta del deporte (RACE | BODY_RECOMPOSITION | GENERAL_FITNESS)
-
-Message (coach ↔ atleta)
-SystemConfig (singleton id="singleton" — almacena AIProfile)
-```
-
-### Enums — valores exactos
-
-```
-PlanSource:         AI | COACH | AI_COACH_APPROVED   ← 'TEMPLATE' NO existe
-SessionType:        RODAJE_Z2 | FARTLEK | TEMPO | INTERVALOS | TIRADA_LARGA |
-                    FUERZA | CICLA | NATACION | DESCANSO | TEST | SIMULACRO | OTRO
-SessionIntensity:   HIGH | MODERATE | LOW | REST
-PaymentStatus:      PENDING | PAID   ← OVERDUE derivado en app (dueDate < now && PENDING), NO en DB
-AthleteStatus:      ACTIVE | PAUSED
-SubscriptionTier:   TRIAL | FREE | PRO
-```
-
-### Mapeo dominio ↔ DB
-
-| Campo dominio | Columna DB |
-|---------------|-----------|
-| `description` | `PlannedSession.detailText` |
-| `zone` | `PlannedSession.zoneTarget` |
-| `coachNotes` | `PlannedSession.coachNote` |
-| `heartRate` (check-in) | `WeeklyCheckIn.hrResting` |
-
-`WeeklyCheckIn.recordedAt` (no `createdAt`) — importante para queries de check-in de la semana.
-
-### Campos especiales
-
-- `User`: feature flags como columnas Boolean tipadas — NO JSON blob
-  - `featurePlan | featureCheckin | featureNutrition | featureProgress | featureLog | featureCoach | featureGym`
-  - `onboardingCompleted | onboardingCompletedAt | needsRoleSelection`
-- `HealthProfile.sportGoal` — meta del deporte (fuente canónica, no config.sport.goal)
-- `TrainingPlan.goalType` — tipo de objetivo del plan (RACE_5K, BODY_RECOMPOSITION, etc.)
-- `MealPlan.version Int @default(1)` — trazabilidad de versiones del plan nutricional
-- `SetLog.workoutExerciseId` nullable + `exerciseName String?` — preserva historial aunque el coach elimine ejercicios
-- `SetLog.isPR Boolean @default(false)` — detectado en `gym/session/complete/route.ts`
-- `CoachAthlete`: `onDelete: Cascade` en ambas relaciones
-- Partial index único no expresable en Prisma schema:
-  ```sql
-  CREATE UNIQUE INDEX "TrainingPlan_userId_active_unique"
-    ON "TrainingPlan" ("userId") WHERE "status" = 'ACTIVE';
-  ```
-
-### DB — Deuda conocida
-
-| Severidad | Problema |
-|-----------|---------|
-| 🟡 PENDIENTE | `UserSubscription` esqueleto listo — conectar a Stripe/Wompi cuando llegue billing. `getUserPlan()` hardcodea `'PRO'` hasta entonces. |
-| ✅ RESUELTO | `User.config` JSON blob — eliminado. Reemplazado por columnas tipadas + `UserSubscription`. |
-| ✅ RESUELTO | `WeeklyCheckIn` — `planId` agregado + partial indexes. |
-| ✅ RESUELTO | `PaymentStatus.OVERDUE` — eliminado del enum. Derivado en app layer. |
-| ✅ RESUELTO | `FoodProfile` — lookup por `id: { in: availableFoodIds }`. Fuzzy matching eliminado. |
-
-### IUserRepository — métodos atómicos
-
-```ts
-enableFeature(userId, feature)           // single flag → true (columna featureX)
-enableFeatures(userId, features[])       // array → todos true
-mergeFeatures(userId, patch)             // Record<key, bool> — soporta false
-completeOnboarding(userId, opts)         // onboardingCompleted + sportGoal en HealthProfile + optional features
-```
+**Mapeo dominio↔DB:**
+- `PlannedSession.detailText` = `description` · `zoneTarget` = `zone` · `coachNote` = `coachNotes`
+- `WeeklyCheckIn.hrResting` = `heartRate` · usar `recordedAt` (no `createdAt`)
 
 ---
 
-## Feature flags — fuente canónica
-
-Las features viven en columnas Boolean de `User`, NO en JSON:
+## Feature flags — fuente canónica (columnas DB, NO JSON)
 
 ```ts
-// Leer desde DB → construir objeto features:
-const features = {
-  plan:      user.featurePlan,
-  checkin:   user.featureCheckin,
-  nutrition: user.featureNutrition,
-  progress:  user.featureProgress,
-  log:       user.featureLog,
-  coach:     user.featureCoach,
-  gym:       user.featureGym,
-}
+// Columnas Boolean en User:
+featurePlan | featureCheckin | featureNutrition | featureProgress | featureLog | featureCoach | featureGym
 
-// getUserPlan — hardcodea 'PRO' hasta que se conecte Stripe/Wompi
-getUserPlan(features) → siempre 'PRO' por ahora
+// Defaults: ATHLETE todas true (excepto featureCoach=false) | COACH solo featureCoach=true
+// getUserPlan() hardcodea 'PRO' — pendiente Stripe/Wompi
 ```
 
-**Defaults por rol:**
-- ATHLETE: todas `true` excepto `featureCoach = false`
-- COACH: solo `featureCoach = true`, resto `false`
-- B2B sin activar: todas `false` hasta que el coach active con `enableFeatures()`
-
-### Feature gating
-
-| Feature | Sin activar (B2B) | Normal |
-|---------|-------------------|--------|
+| Feature | B2B sin activar | Normal |
+|---------|-----------------|--------|
 | Dashboard / Log manual | ✅ | ✅ |
-| Plan / Check-in / Nutrición / Gym | ❌ | ✅ |
-| AI Coach chat | ❌ | ✅ |
+| Plan / Check-in / Nutrición / Gym / AI | ❌ | ✅ |
 
 ---
 
@@ -287,6 +197,7 @@ RUNNING:   health-goal → has-sport → sport-select → sport-details → phys
 STRENGTH:  health-goal → has-sport → sport-select → sport-details → physical → generating
 GYM B2C:   health-goal → has-sport → physical → plan-method → generating
 FREE:      health-goal → physical → generating
+B2B:       health-goal → [deporte según coach] → physical → generating → /pending (NO activa features)
 ```
 
 **Regla crítica `isLastDataStep`:**
@@ -302,7 +213,7 @@ const isLastDataStep = steps[stepIndex + 1] === 'generating'
 
 ---
 
-## Cerebro AI — generación de planes
+## Generación de planes — templates y fases
 
 ### Templates
 
@@ -321,14 +232,13 @@ FASE 1 — Computación pura:
   calculateHRZones: Karvonen si hrResting > 0, % simple si hrResting = 0
   calculateTDEE(Mifflin-St Jeor) + macros periodizados
 
-FASE 2 — AI: AI_ONBOARDING_ENABLED = false → recommendations = []
-
-FASE 3 — $transaction:
+FASE 2 — $transaction:
   deactivateUserPlans → createPlan → createWeeks → createSessions → upsertNutrition
 
-FASE 4 — Post-tx (fuera del tx):
+FASE 3 — Post-tx (fuera del tx):
   completeOnboarding → onboardingCompleted=true + sportGoal en HealthProfile
 ```
+← AI removida: no hay fase de recomendaciones. Plan 100% determinista via templates.
 
 ---
 
@@ -343,7 +253,7 @@ Fase 1 (fuera tx): findLatest + findActivePlan + getAdherence
 Fase 2 (fuera tx): evaluateCheckInRules → triggers + adjustments
   Triggers: fc_alta | sueno_bajo | rpe_excesivo | dolor_activo | estres_alto
             motivacion_baja | nutricion_baja | perdida_peso_rap | energia_baja
-  Con triggers → aiService.generateRecommendation (falla silenciosa)
+  ← aiService.generateRecommendation ELIMINADO — sin AI activa
 Fase 3 ($transaction):
   upsert WeeklyCheckIn por (userId, weekNumber)
   applySessionAdjustments (dolor→Z2, volumen*0.8, zona bajada)
@@ -353,72 +263,94 @@ Fase 3 ($transaction):
 
 ### AI Coach chat
 
-```
-POST /api/ai/chat (SSE streaming)
-  rateLimitAsync: 20 msgs/min | features.aiCoach === false → 402
-  messagesThisMonth >= monthlyLimit → 429
-  systemPrompt = buildChatSystemPrompt(aiProfile) + buildAthleteContext(user)
-  On complete: messagesThisMonth++ (fire-and-forget)
-```
+> **NO IMPLEMENTADO** — el endpoint `/api/ai/chat` no existe aún. `features.aiCoach` era un campo stale (eliminado de user-config.ts). La UI de chat existe en `/p/ai-coach` pero sin backend funcional. Implementación pendiente en roadmap.
 
 ### Flujo B2B
 
 ```
 1. POST /api/coach/clients/create → user + coachAthlete
 2. Atleta onboarding → completeOnboardingUseCase detecta B2B → /pending
-3. PATCH /api/coach/athlete/[id]/activate → enableFeature(all)
+3. PATCH /api/coach/athlete/[id]/config → enableFeatures(all) — /activate fue eliminado
 4. POST /api/coach/athlete/[id]/plan → generatePlanUseCase (isB2C=false)
 ```
 
 ---
 
-## Estructura de rutas
+## Cron jobs (`/api/cron/*`)
 
-```
-src/app/
-  (athlete)/    dashboard · plan · checkin · nutrition · progress · log
-                gym · gym/session · gym/history
-  coach/        dashboard · athlete/[id] · athlete/[id]/plan/build
-                gym · profile · clients/new · plan/[id]/review · invite · finanzas · settings
-  admin/        page · users · activaciones · ai · coaches · subscriptions · roadmap · settings
-  select-role/  ← Google OAuth role selection
+| Endpoint | Trigger | Qué hace |
+|----------|---------|----------|
+| `/api/cron/checkin-reminder` | Dom 23:00 UTC | Email recordatorio check-in semanal |
+| `/api/cron/session-reminder` | Lun 12:00 UTC | Email sesión del día |
+| `/api/cron/payment-overdue` | Diario 14:00 UTC | Email pagos vencidos al coach |
 
-  api/
-    auth/         [...nextauth] · register · set-role · verify-email
-    mobile/auth/  login · me · google · set-role
-    mobile/       dashboard · dashboard/week-sessions · plan · checkin · checkin-status
-                  log/session · progress · nutrition · nutrition/log · nutrition/generate-meals
-                  gym/week · messages · messages/read · messages/unread-count
-                  coach/athletes (COACH only)
-    coach/        invite · join · athlete/[id]/* · plan/[planId]/* · sessions/[id]
-                  gym/* · payments · payments/[paymentId] · profile · programs · posts · clients/create
-    gym/          session/today · session/complete · session/[id]
-    checkin/   log/session/   ai/chat/   onboarding/generate/   upgrade/downgrade/
-    messages/  (web) me · list · send · read
-    admin/     ai-profile · users/[id]/plan
-    cron/      checkin-reminder · session-reminder · payment-overdue
+Test local:
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/checkin-reminder
 ```
 
 ---
 
+## Producción — notas críticas
+
+`vercel.json` tiene `maxDuration: 60` en rutas de generación de plan:
+- `/api/onboarding/generate`
+- `/api/plan/new`
+- `/api/coach/athlete/[id]/plan`
+
+Sin esto Vercel corta el request a los 10s y el plan falla silenciosamente.
+
 ## DB — Neon (producción)
 
-- `DATABASE_URL` — pooler URL para runtime
-- `DIRECT_URL` — direct URL para migraciones
-- Seed: `pnpm prisma db seed` → 39 ejercicios + usuarios de prueba
-  - `admin@medaliq.com / admin123!` — ADMIN
-  - `coach@medaliq.com / coach123` — COACH
-  - `miguel@medaliq.com / atleta123` — ATHLETE con plan + coach
-  - `ana@medaliq.com / atleta123` — ATHLETE B2C sin coach
+- `DATABASE_URL` — pooler URL para runtime · `DIRECT_URL` — migraciones
+- Seed: `pnpm prisma db seed` → `admin@medaliq.com/admin123!` · `coach@medaliq.com/coach123` · `miguel@medaliq.com/atleta123` · `ana@medaliq.com/atleta123`
+
+---
+
+## Slugs canónicos en rutas dinámicas
+
+| Entidad | Slug |
+|---------|------|
+| TrainingPlan | `[planId]` |
+| PlannedSession / CoachSession | `[sessionId]` |
+| Atleta / Usuario genérico | `[id]` |
+| Ejercicio / Rutina gym | `[id]` |
+| Semana del plan | `[weekId]` |
+
+Antes de crear una ruta bajo un path dinámico existente, revisar siblings con Glob.
+
+---
+
+## Convención de branches — OBLIGATORIO
+
+```
+feature/[n]-descripcion-kebab-case
+bugfix/[n]-descripcion-kebab-case
+chore/descripcion-kebab-case
+hotfix/[n]-descripcion-kebab-case
+```
+Push bloqueado si no cumple (`.githooks/pre-push` + GitHub ruleset).
+
+---
+
+## Regla crítica para agentes
+
+**NUNCA romper código existente.** Antes de modificar cualquier archivo:
+1. Leerlo completo para entender el contexto
+2. Solo tocar las líneas estrictamente necesarias
+3. No refactorizar ni renombrar lo que ya funciona
+4. Si el cambio afecta una función compartida, verificar todos sus callers
+
+**NO pushear a producción sin autorización explícita de Miguel.**
 
 ---
 
 ## Skills — decisión autónoma del agente
 
-| Tarea toca... | Cargar skill |
-|---------------|-------------|
-| Prisma schema / migrations / queries | `prisma-development` |
-| Nueva feature compleja multi-capa | `feature-dev` |
-| UI web nueva o rediseño | `frontend-design` |
-| Código con bugs/deuda | `code-review` o `simplify` |
-| React Native / Expo | `react-native-architecture` (solo si toca mobile) |
+| Tarea toca... | Acción |
+|---------------|--------|
+| Prisma schema / migrations / queries | skill `prisma-development` + leer `CLAUDE-SCHEMA.md` |
+| Áreas con bugs conocidos (gym/session, onboarding, plan) | leer `src/app/admin/roadmap/roadmap-data.ts` primero |
+| Nueva feature compleja multi-capa | skill `feature-dev` |
+| UI web nueva o rediseño | skill `frontend-design` |
+| React Native / Expo | skill `react-native-architecture` |

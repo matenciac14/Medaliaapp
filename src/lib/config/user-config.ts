@@ -1,9 +1,13 @@
 /**
- * UserConfig — objeto JSON almacenado en User.config
- * Fuente de verdad de la experiencia del usuario en la app.
+ * UserConfig — representación en memoria / JWT del estado del usuario.
+ * NO es un JSON blob en DB — la DB usa columnas Boolean tipadas en User.
  *
- * El sistema lee este objeto para decidir qué mostrar y cómo comportarse.
- * El coach puede modificarlo por atleta. El onboarding lo construye progresivamente.
+ * `features` espeja las columnas featurePlan | featureCheckin | featureNutrition |
+ * featureProgress | featureLog | featureCoach | featureGym de la tabla User.
+ *
+ * Se construye al firmar el JWT (auth.ts / mobile-auth.ts) y se usa en:
+ * middleware, sidebar, feature-gate, layout de atleta y token mobile.
+ * El coach puede activar features por atleta vía enableFeatures() en IUserRepository.
  */
 export type UserPlan = 'FREE' | 'PRO'
 
@@ -124,7 +128,10 @@ export function getUserPlan(_features: UserConfig['features']): UserPlan {
   return 'PRO'
 }
 
-/** Helper: parsea el JSON crudo de la DB y hace merge con defaults */
+/**
+ * Construye un UserConfig desde un objeto parcial (eg. campos del JWT o un registro de DB legacy).
+ * Hace explicit pick de features para evitar que campos stale (aiPlan, aiCoach) se filtren al token.
+ */
 export function parseUserConfig(raw: unknown): UserConfig {
   if (!raw || typeof raw !== 'object') return DEFAULT_USER_CONFIG
   const partial = raw as Partial<UserConfig>
