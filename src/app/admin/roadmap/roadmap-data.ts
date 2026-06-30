@@ -431,7 +431,7 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Conversión de invite codes: códigos generados vs usados (tasa y tiempo promedio)',
-        done: false,
+        done: true,
         priority: 'P2',
         note: 'InviteCode ya tiene usedAt. Query: count(usedAt IS NOT NULL) / count(*) por coach. Tiempo promedio: avg(usedAt - createdAt). Visible en /admin/invite-codes o en ficha de coach.',
       },
