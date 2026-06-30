@@ -932,7 +932,7 @@ function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
       {[
         { label: 'Completadas',               value: `${completed} / ${total}`, sub: 'sesiones',    accent: false },
         { label: isGym ? 'Vol. entren.' : 'Volumen', value: volumeLabel,        sub: 'esta semana', accent: false },
-        { label: 'Adherencia',                value: `${adherencePct}%`,        sub: 'meta: 80%',  accent: true  },
+        { label: 'Esta sem.',                  value: `${adherencePct}%`,        sub: 'adherencia', accent: true  },
       ].map((kpi, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">{kpi.label}</p>

@@ -69,7 +69,6 @@ function formatBenchmarkValue(value: number, unit: string): string {
 const PHASE_BAR_COLOR: Record<string, string> = {
   BASE: '#1e3a5f',
   DESARROLLO: '#f97316',
-  'ESPECÍFICO': '#dc2626',
   ESPECIFICO: '#dc2626',
   AFINAMIENTO: '#7c3aed',
 }
@@ -77,9 +76,15 @@ const PHASE_BAR_COLOR: Record<string, string> = {
 const PHASE_BADGE: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
   DESARROLLO: 'bg-orange-100 text-orange-800',
-  'ESPECÍFICO': 'bg-red-100 text-red-800',
   ESPECIFICO: 'bg-red-100 text-red-800',
   AFINAMIENTO: 'bg-purple-100 text-purple-800',
+}
+
+const PHASE_LABEL: Record<string, string> = {
+  BASE: 'BASE',
+  DESARROLLO: 'DESARROLLO',
+  ESPECIFICO: 'ESPECÍFICO',
+  AFINAMIENTO: 'AFINAMIENTO',
 }
 
 function adherenceBarColor(pct: number): string {
@@ -538,13 +543,11 @@ export default function ProgressClient({
       {weekData.length > 0 && (
         <SectionCard title="Km Semanales por Fase">
           <div className="flex flex-wrap gap-3 mb-4">
-            {Object.entries(PHASE_BAR_COLOR)
-              .filter(([key]) => !key.includes('ESPECIFICO') || key === 'ESPECIFICO')
-              .map(([phase, color]) => (
+            {Object.entries(PHASE_BAR_COLOR).map(([phase, color]) => (
                 <div key={phase} className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PHASE_BADGE[phase] ?? ''}`}>
-                    {phase === 'ESPECIFICO' ? 'ESPECÍFICO' : phase}
+                    {PHASE_LABEL[phase] ?? phase}
                   </span>
                 </div>
               ))}

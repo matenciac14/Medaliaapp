@@ -40,6 +40,7 @@ export type CreateHealthProfile = {
 export interface IHealthProfileRepository {
   find(userId: string): Promise<AthleteHealthProfile | null>
   updateWeight(userId: string, weightKg: number): Promise<void>
+  updateHrResting(userId: string, hrResting: number): Promise<void>
   updateNutritionTargets(userId: string, targets: NutritionTargets): Promise<void>
   hasNutritionPlan(userId: string): Promise<boolean>
   /** Creates or fully replaces an athlete's health profile. */
