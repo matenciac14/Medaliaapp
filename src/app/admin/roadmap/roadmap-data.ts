@@ -205,6 +205,9 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Notificación al coach cuando atleta completa onboarding B2B', done: true, note: 'sendAthleteReadyEmail + sendPushNotification. Fire-and-forget.' },
           { title: 'applyPlanAdjustments: omite sesiones con edición manual del coach', done: true, note: 'Sesiones con coachNotes sin "[AUTO]" se saltan.' },
           { title: 'Off-by-one fecha sesión corregido — dayOfWeek - 1 en sessions y copy-prev', done: true, note: 'dayOfWeek=1 (lunes) + startDate(lunes) = lunes correctamente.' },
+          { title: 'CoachAthlete.coachGoal + privateNotes: meta visible del atleta + notas privadas en Tab Resumen', done: true, note: 'Campos String? en schema CoachAthlete (db push). PATCH /api/coach/athlete/[id]/config acepta coachGoal y privateNotes junto a features. UI en AthleteDetailClient Tab Resumen: card "Seguimiento del coach" con inputs y botón guardar.' },
+          { title: 'Adherencia de atletas calculada correctamente: sessions filtradas por date <= now (no incluye futuras)', done: true, note: 'Fix en athletes/page.tsx query + athletes/_lib/map-athlete.ts usa getPlanWeekNumber() canónico + clampea a totalWeeks. También corregido en /api/mobile/progress.' },
+          { title: 'Lista operacional /coach/athletes separada del dashboard — paginación, filtros, SPORT_LABELS ampliados', done: true, note: 'SPORT_LABELS cubre RUNNING|STRENGTH|CYCLING|SWIMMING|TRIATHLON|FOOTBALL en AthleteTabs.tsx y dashboard/page.tsx. Label de alerta unificado: "Carga alta" (antes "RPE alta").' },
         ],
       },
       {
@@ -236,6 +239,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'WeekGrid, SessionCard, SessionModal — constructor visual completo', done: true, note: '7 columnas Lun-Dom. Type badge + intensity + duración. Form add/edit con quick-pick durationMin.' },
           { title: 'WeekNav: mini-overview horizontal de todas las semanas', done: true, note: 'Punto de color por fase. Gris si vacío, ámbar si recovery. Tooltip fase + sesiones.' },
           { title: '"Copiar semana anterior" para acelerar construcción', done: true, note: 'API copy-prev/route.ts + botón en PlanBuilderClient.tsx. Confirma antes de reemplazar.' },
+          { title: 'PlannedSession.structure: bloques zone|duration|description en editor inline y vista Tab Plan', done: true, note: 'Campo String? en schema (db push). PATCH /api/coach/sessions/[sessionId]/edit acepta structure (trim, null si vacío). Editor: textarea con hint "zona|duración|descripción". Vista: bloques por \\n, parsea zona|duración|descripción con colores (azul zona, gris duración, texto descripción).' },
           { title: '"Generar desde template → abrir en constructor" — precarga y edita', done: false, note: 'Coach selecciona template → constructor se abre con sesiones precargadas para personalizar.' },
           { title: 'PlannedSession.sportLabel String? — migración pendiente', done: false, note: 'Etiqueta libre por deporte ("Sweet Spot 2×20min", "CSS 400m × 8"). Crear migración ALTER TABLE.' },
         ],
@@ -403,15 +407,15 @@ export const GROUPS: RoadmapGroup[] = [
     items: [
       {
         title: 'MRR estimado: coaches activos × fee por tier (tabla + total mensual en /admin)',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Sin pasarela de pagos aún, pero el dato es calculable desde CoachAthlete ACTIVE. 1-50 asesorados=$6, 51-100=$5, +100=$3. Widget en /admin o nueva sección /admin/revenue. Requiere: prisma groupBy coachId + count activos.',
+        note: 'Implementado en /admin/finanzas. Domain: src/domain/admin/finanzas.ts (coachFeeRate, mrrAthletes, mrrCoaches). Cards: MRR atletas Pro + fee coaches + total. Tabla breakdown por coach con tramo y fee.',
       },
       {
         title: 'WAU (Weekly Active Users) con tendencia 8 semanas — gráfica en /admin/metrics',
-        done: false,
+        done: true,
         priority: 'P1',
-        note: 'Definir "activo" = atleta con SessionLog o WeeklyCheckIn en los últimos 7 días. Query: groupBy(floor(completedAt/week)) × count(distinct userId). Mostrar 8 puntos de datos en LineChart SVG.',
+        note: 'Implementado en /admin/metrics. Domain: src/domain/admin/wau.ts (isoWeekKey, computeWAU, lastNWeekKeys). Bar chart nativo sin deps. "Activo" = SessionLog o WeeklyCheckIn en esa semana. 11 tests.',
       },
       {
         title: 'Retención 14 días: % atletas con al menos 1 check-in o log en los últimos 14 días',
@@ -560,9 +564,9 @@ export const GROUPS: RoadmapGroup[] = [
         period: 'Urgente',
         items: [
           { title: 'COACH-BUG-02 — Constructor de plan abre en semana 6, no en la semana activa del atleta', done: false, priority: 'P1', note: 'PlanBuilderClient.tsx: el default de semana inicial no usa currentWeek del plan activo.' },
-          { title: 'COACH-BUG-03 — Coach ve "Semana 6/18", atleta ve "11/18" — semana activa inconsistente', done: false, priority: 'P1', note: 'Fix: usar getPlanWeekNumber(startDate, totalWeeks) de src/lib/core/week-number.ts en ambos.' },
-          { title: 'COACH-BUG-04 — Coach ve "FASE: DESARROLLO", atleta ve "BASE" — fase activa inconsistente', done: false, priority: 'P1', note: 'La fase se deriva de currentWeek. Si currentWeek difiere (ver COACH-BUG-03), la fase también difiere.' },
-          { title: 'COACH-BUG-01 — Columna DEPORTE vacía en lista atletas y "Sin datos de deporte" en dashboard', done: false, priority: 'P2', note: 'Fix: leer HealthProfile.sport o TrainingPlan.goalType y exponerlo en la respuesta del panel coach.' },
+          { title: 'COACH-BUG-03 — Coach ve "Semana 6/18", atleta ve "11/18" — semana activa inconsistente', done: true, priority: 'P1', note: 'Fix aplicado en athletes/_lib/map-athlete.ts: usa getPlanWeekNumber(startDate, totalWeeks) + clamp a totalWeeks. Lado coach (lista /coach/athletes) corregido.' },
+          { title: 'COACH-BUG-04 — Coach ve "FASE: DESARROLLO", atleta ve "BASE" — fase activa inconsistente', done: false, priority: 'P1', note: 'La fase se deriva de currentWeek. Si currentWeek difiere (ver COACH-BUG-03), la fase también difiere. Pendiente verificar panel atleta individual (AthleteDetailClient).' },
+          { title: 'COACH-BUG-01 — Columna DEPORTE vacía en lista atletas y "Sin datos de deporte" en dashboard', done: true, priority: 'P2', note: 'Fix: SPORT_LABELS ampliado en AthleteTabs.tsx y dashboard/page.tsx cubre RUNNING|STRENGTH|CYCLING|SWIMMING|TRIATHLON|FOOTBALL. Datos vienen de HealthProfile.sport vía map-athlete.ts.' },
           { title: 'COACH-BUG-05 — Campos Estrés/Motivación/Dolor siempre "—" en Tab Resumen del coach', done: false, priority: 'P2', note: 'Check-in captura stressLevel, motivationLevel, painLevel pero el panel no los muestra. Fix: incluirlos en la respuesta.' },
           { title: 'COACH-BUG-07 — Finanzas sin filtro por atleta — inmanejable con escala', done: false, priority: 'P2', note: 'Fix: selector de atleta en UI + WHERE athleteId en query.' },
           { title: 'COACH-BUG-06 — /coach/settings = "Próximamente" — item de nav lleva a página vacía', done: false, priority: 'P3', note: 'Fix: implementar Settings básico o remover el link del nav.' },
