@@ -439,7 +439,7 @@ export const GROUPS: RoadmapGroup[] = [
         title: 'Uso del AI chat: mensajes enviados esta semana y % de cuota mensual utilizada',
         done: false,
         priority: 'P3',
-        note: 'User.messagesThisMonth ya existe. Agregar a /admin/metrics: sum(messagesThisMonth), avg por usuario PRO, top 5 usuarios por consumo. Útil para detectar outliers antes de que el costo escale.',
+        note: 'STANDBY — AI deshabilitado intencionalmente (AI_ONBOARDING_ENABLED = false). Activar solo cuando AI esté habilitado en producción.',
       },
     ],
   },
