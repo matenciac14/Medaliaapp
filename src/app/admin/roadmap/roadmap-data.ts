@@ -419,9 +419,9 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Retención 14 días: % atletas con al menos 1 check-in o log en los últimos 14 días',
-        done: false,
+        done: true,
         priority: 'P1',
-        note: 'Una sola cifra en /admin: ej. "Retención 14d: 72%". Query: count(ATHLETE con checkIns.some({recordedAt > now-14d})) / totalAthletes. Señal directa de si el producto engancha.',
+        note: 'Implementado en /admin/metrics junto al WAU (grid 2/3 + 1/3). Domain: retention.ts (activeUserIdsInWindow, computeRetention, retentionColor). Base = featurePlan:true. Reutiliza eventos ya cargados para WAU. 13 tests.',
       },
       {
         title: 'Coaches activos esta semana (al menos 1 acción en los últimos 7 días)',
