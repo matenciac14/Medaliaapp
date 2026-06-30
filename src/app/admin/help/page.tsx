@@ -20,7 +20,7 @@ const SECTIONS = [
     items: [
       { q: '¿Qué puedo hacer con un usuario?', a: 'Ver su rol actual, email, fecha de creación y estado de onboarding. Puedes cambiar su rol (ATHLETE → COACH, por ejemplo) directamente desde la tabla.' },
       { q: '¿Cómo promuevo un usuario a Coach?', a: 'En la tabla de usuarios → fila del usuario → menú de rol → selecciona COACH. El cambio es inmediato. El usuario debe volver a iniciar sesión para que el JWT se actualice.' },
-      { q: '¿Puedo eliminar usuarios?', a: 'Actualmente no hay acción de eliminar desde el admin para evitar pérdidas accidentales. Para eliminar, hacerlo directamente en la DB o en Neon.' },
+      { q: '¿Puedo eliminar usuarios?', a: 'Sí — en la ficha de usuario (/admin/users/[id]) hay un botón "Eliminar cuenta" que elimina al usuario y registra la acción en el audit log. El audit log preserva el nombre y email aunque el usuario ya no exista.' },
     ],
   },
   {
@@ -39,7 +39,7 @@ const SECTIONS = [
     href: '/admin/subscriptions',
     color: '#f97316',
     items: [
-      { q: '¿Cómo se determina el plan de cada usuario?', a: 'Por ahora se infiere del campo config.features en la DB. Un usuario con todas las features activas es "Pro". Un usuario con solo features básicas es "Free". No hay Stripe todavía.' },
+      { q: '¿Cómo se determina el plan de cada usuario?', a: 'Se infiere de columnas Boolean individuales en la tabla User (featurePlan, featureLog, featureCoach, etc.). Con featurePlan → "Pro". Solo featureLog → "Free". Sin ninguna → "Inactivo". No hay Stripe todavía.' },
       { q: '¿Cuándo se integra Stripe?', a: 'Fase 7 del roadmap — post-lanzamiento. El webhook de Stripe actualizará automáticamente el config del usuario al confirmar el pago.' },
     ],
   },

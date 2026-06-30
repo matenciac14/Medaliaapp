@@ -1,10 +1,23 @@
 import { prisma } from '@/lib/db/prisma'
 
+const SOURCE_LABEL: Record<string, string> = {
+  AI: 'IA',
+  COACH: 'Coach',
+  AI_COACH_APPROVED: 'IA (aprobado)',
+}
+
 export default async function AdminPlansPage() {
   const plans = await prisma.trainingPlan.findMany({
     where: { status: 'ACTIVE' },
     orderBy: { createdAt: 'desc' },
-    include: {
+    take: 200,
+    select: {
+      id: true,
+      name: true,
+      totalWeeks: true,
+      startDate: true,
+      endDate: true,
+      generatedBy: true,
       user: { select: { name: true, email: true } },
     },
   })
@@ -37,14 +50,14 @@ export default async function AdminPlansPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-600">{p.totalWeeks}</td>
                 <td className="px-4 py-3 text-gray-500">
-                  {new Date(p.startDate).toLocaleDateString('es-CO')}
+                  {p.startDate ? new Date(p.startDate).toLocaleDateString('es-CO') : '—'}
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {new Date(p.endDate).toLocaleDateString('es-CO')}
+                  {p.endDate ? new Date(p.endDate).toLocaleDateString('es-CO') : '—'}
                 </td>
                 <td className="px-4 py-3">
                   <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full">
-                    {p.generatedBy}
+                    {SOURCE_LABEL[p.generatedBy] ?? p.generatedBy}
                   </span>
                 </td>
               </tr>

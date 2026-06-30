@@ -390,6 +390,56 @@ export const GROUPS: RoadmapGroup[] = [
     ],
   },
 
+  // ─── ADMIN — BUSINESS INTELLIGENCE ──────────────────────────────────────────
+  // Métricas identificadas en revisión CO (2026-06-30) — no cubiertas por el admin actual
+
+  {
+    id: 'admin-bi',
+    label: 'Admin — Business Intelligence',
+    period: 'Próximo',
+    color: '#0891b2',
+    bgColor: '#f0f9ff',
+    borderColor: '#7dd3fc',
+    items: [
+      {
+        title: 'MRR estimado: coaches activos × fee por tier (tabla + total mensual en /admin)',
+        done: false,
+        priority: 'P0',
+        note: 'Sin pasarela de pagos aún, pero el dato es calculable desde CoachAthlete ACTIVE. 1-50 asesorados=$6, 51-100=$5, +100=$3. Widget en /admin o nueva sección /admin/revenue. Requiere: prisma groupBy coachId + count activos.',
+      },
+      {
+        title: 'WAU (Weekly Active Users) con tendencia 8 semanas — gráfica en /admin/metrics',
+        done: false,
+        priority: 'P1',
+        note: 'Definir "activo" = atleta con SessionLog o WeeklyCheckIn en los últimos 7 días. Query: groupBy(floor(completedAt/week)) × count(distinct userId). Mostrar 8 puntos de datos en LineChart SVG.',
+      },
+      {
+        title: 'Retención 14 días: % atletas con al menos 1 check-in o log en los últimos 14 días',
+        done: false,
+        priority: 'P1',
+        note: 'Una sola cifra en /admin: ej. "Retención 14d: 72%". Query: count(ATHLETE con checkIns.some({recordedAt > now-14d})) / totalAthletes. Señal directa de si el producto engancha.',
+      },
+      {
+        title: 'Coaches activos esta semana (al menos 1 acción en los últimos 7 días)',
+        done: false,
+        priority: 'P1',
+        note: 'Pendiente: agregar User.lastActiveAt (updatedAt en cada request autenticado) o usar AuditLog para detectar actividad de coaches. Mostrar coaches activos / coaches totales en /admin/coaches.',
+      },
+      {
+        title: 'Conversión de invite codes: códigos generados vs usados (tasa y tiempo promedio)',
+        done: false,
+        priority: 'P2',
+        note: 'InviteCode ya tiene usedAt. Query: count(usedAt IS NOT NULL) / count(*) por coach. Tiempo promedio: avg(usedAt - createdAt). Visible en /admin/invite-codes o en ficha de coach.',
+      },
+      {
+        title: 'Uso del AI chat: mensajes enviados esta semana y % de cuota mensual utilizada',
+        done: false,
+        priority: 'P3',
+        note: 'User.messagesThisMonth ya existe. Agregar a /admin/metrics: sum(messagesThisMonth), avg por usuario PRO, top 5 usuarios por consumo. Útil para detectar outliers antes de que el costo escale.',
+      },
+    ],
+  },
+
   // ─── IA & FUTURO ─────────────────────────────────────────────────────────────
 
   {
