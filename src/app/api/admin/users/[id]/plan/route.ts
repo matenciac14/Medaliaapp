@@ -54,17 +54,17 @@ export async function PATCH(
       featureGym:       true,
     }
   } else {
-    // INACTIVE / FREE
+    // FREE — dashboard básico + log manual únicamente
     role = 'ATHLETE'
     data = {
       role,
-      featurePlan:      true,
-      featureCheckin:   true,
-      featureNutrition: true,
-      featureProgress:  true,
+      featurePlan:      false,
+      featureCheckin:   false,
+      featureNutrition: false,
+      featureProgress:  false,
       featureLog:       true,
       featureCoach:     false,
-      featureGym:       true,
+      featureGym:       false,
     }
   }
 

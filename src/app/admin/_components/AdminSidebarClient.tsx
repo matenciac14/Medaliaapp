@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map, BarChart2 } from 'lucide-react'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
@@ -12,16 +12,27 @@ export function AdminSidebarClient() {
   const { t } = useLanguage()
   const s = t.app.sidebar
 
+  // Todos los items — sidebar desktop
   const NAV_ITEMS = [
     { href: '/admin',               label: s.overview,       icon: LayoutDashboard },
     { href: '/admin/users',         label: s.users,          icon: Users           },
     { href: '/admin/activaciones',  label: s.activations,    icon: UserPlus        },
     { href: '/admin/coaches',       label: s.coaches,        icon: UserCheck       },
     { href: '/admin/subscriptions', label: s.subscriptions,  icon: CreditCard      },
+    { href: '/admin/metrics',       label: 'Métricas',       icon: BarChart2       },
     { href: '/admin/ai',            label: s.ai,             icon: Bot             },
     { href: '/admin/roadmap',       label: s.roadmap,        icon: Map             },
     { href: '/admin/settings',      label: s.settings,       icon: Settings        },
     { href: '/admin/help',          label: s.help,           icon: HelpCircle      },
+  ]
+
+  // Solo los 5 más usados — bottom nav mobile
+  const MOBILE_NAV_ITEMS = [
+    { href: '/admin',              label: s.overview,    icon: LayoutDashboard },
+    { href: '/admin/users',        label: s.users,       icon: Users           },
+    { href: '/admin/activaciones', label: s.activations, icon: UserPlus        },
+    { href: '/admin/roadmap',      label: s.roadmap,     icon: Map             },
+    { href: '/admin/settings',     label: s.settings,    icon: Settings        },
   ]
 
   function isActive(href: string) {
@@ -108,7 +119,7 @@ export function AdminSidebarClient() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+        {MOBILE_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

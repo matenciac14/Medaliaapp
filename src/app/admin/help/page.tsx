@@ -64,17 +64,15 @@ export default function AdminHelpPage() {
         <p className="text-sm text-gray-500 mt-1">Guía de operaciones de la plataforma Medaliq.</p>
       </div>
 
-      {/* Credenciales de prueba */}
+      {/* Aviso seed */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
         <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-amber-800">Usuarios de prueba en producción</p>
-          <div className="text-xs text-amber-700 mt-1 space-y-0.5 font-mono">
-            <p>admin@medaliq.com / admin123!</p>
-            <p>coach@medaliq.com / coach123</p>
-            <p>miguel@medaliq.com / atleta123 (con plan + coach)</p>
-            <p>ana@medaliq.com / atleta123 (B2C sin coach)</p>
-          </div>
+          <p className="text-sm font-semibold text-amber-800">Usuarios de prueba (seed)</p>
+          <p className="text-xs text-amber-700 mt-1">
+            Los usuarios de prueba se crean con <code className="bg-amber-100 px-1 rounded">pnpm prisma db seed</code>.
+            Las credenciales están en <code className="bg-amber-100 px-1 rounded">CLAUDE.md</code> y nunca deben publicarse en la UI.
+          </p>
         </div>
       </div>
 

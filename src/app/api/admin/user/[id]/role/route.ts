@@ -28,7 +28,25 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   }
 
-  await prisma.user.update({ where: { id }, data: { role } })
+  const now = new Date()
+
+  const featuresByRole: Record<string, object> = {
+    ATHLETE: {
+      featurePlan: true, featureCheckin: true, featureNutrition: true,
+      featureProgress: true, featureLog: true, featureCoach: false, featureGym: true,
+    },
+    COACH: {
+      featurePlan: false, featureCheckin: false, featureNutrition: false,
+      featureProgress: false, featureLog: false, featureCoach: true, featureGym: false,
+      onboardingCompleted: true, onboardingCompletedAt: now,
+    },
+    ADMIN: {
+      featurePlan: false, featureCheckin: false, featureNutrition: false,
+      featureProgress: false, featureLog: false, featureCoach: false, featureGym: false,
+    },
+  }
+
+  await prisma.user.update({ where: { id }, data: { role, ...featuresByRole[role] } })
 
   return NextResponse.json({ ok: true })
 }

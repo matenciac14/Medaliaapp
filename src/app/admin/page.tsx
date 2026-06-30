@@ -24,7 +24,7 @@ export default async function AdminOverviewPage() {
     prisma.user.count({ where: { role: 'ATHLETE' } }),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
     prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-    prisma.user.findMany({ select: { onboardingCompleted: true } }),
+    prisma.user.count({ where: { onboardingCompleted: true } }),
     prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       take: 10,
@@ -32,15 +32,13 @@ export default async function AdminOverviewPage() {
     }),
   ])
 
-  const onboardingDone = completedOnboarding.filter((u) => u.onboardingCompleted).length
-
   const stats = [
     { label: 'Usuarios totales',       value: totalUsers,       icon: '👥', color: '#1e3a5f' },
     { label: 'Atletas',                value: totalAthletes,    icon: '🏃', color: '#1e3a5f' },
     { label: 'Coaches',                value: totalCoaches,     icon: '🏋️', color: '#f97316' },
     { label: 'Nuevos esta semana',     value: newThisWeek,      icon: '📈', color: '#16a34a' },
     { label: 'Nuevos este mes',        value: newThisMonth,     icon: '📅', color: '#16a34a' },
-    { label: 'Onboarding completado',  value: onboardingDone,   icon: '✅', color: '#7c3aed' },
+    { label: 'Onboarding completado',  value: completedOnboarding, icon: '✅', color: '#7c3aed' },
   ]
 
   return (

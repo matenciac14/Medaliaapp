@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/db/prisma'
 
-function tier(role: string, featureCoach: boolean): { label: string; color: string } {
-  if (role === 'ADMIN')  return { label: 'Admin',  color: 'bg-red-100 text-red-700' }
-  if (role === 'COACH' || featureCoach) return { label: 'Coach',  color: 'bg-orange-100 text-orange-700' }
-  return { label: 'Pro', color: 'bg-purple-100 text-purple-700' }
+function tier(role: string, featureCoach: boolean, featurePlan: boolean, featureLog: boolean): { label: string; color: string } {
+  if (role === 'ADMIN')  return { label: 'Admin',    color: 'bg-red-100 text-red-700' }
+  if (role === 'COACH' || featureCoach) return { label: 'Coach', color: 'bg-orange-100 text-orange-700' }
+  if (featurePlan) return { label: 'Pro',      color: 'bg-purple-100 text-purple-700' }
+  if (featureLog)  return { label: 'Free',     color: 'bg-gray-100 text-gray-600' }
+  return { label: 'Inactivo', color: 'bg-red-50 text-red-500' }
 }
 
 export default async function AdminSubscriptionsPage() {
@@ -23,13 +25,15 @@ export default async function AdminSubscriptionsPage() {
       plan: u.featurePlan, checkin: u.featureCheckin, nutrition: u.featureNutrition,
       progress: u.featureProgress, log: u.featureLog, coach: u.featureCoach, gym: u.featureGym,
     },
-    tier: tier(u.role, u.featureCoach),
+    tier: tier(u.role, u.featureCoach, u.featurePlan, u.featureLog),
   }))
 
   const counts = {
-    Pro:   parsed.filter((u) => u.tier.label === 'Pro').length,
-    Coach: parsed.filter((u) => u.tier.label === 'Coach').length,
-    Admin: parsed.filter((u) => u.tier.label === 'Admin').length,
+    Pro:      parsed.filter((u) => u.tier.label === 'Pro').length,
+    Free:     parsed.filter((u) => u.tier.label === 'Free').length,
+    Inactivo: parsed.filter((u) => u.tier.label === 'Inactivo').length,
+    Coach:    parsed.filter((u) => u.tier.label === 'Coach').length,
+    Admin:    parsed.filter((u) => u.tier.label === 'Admin').length,
   }
 
   return (

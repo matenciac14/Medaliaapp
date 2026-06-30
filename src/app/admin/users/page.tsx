@@ -2,11 +2,13 @@ import { prisma } from '@/lib/db/prisma'
 import { ChangeRoleButton } from './_components/ChangeRoleButton'
 import { PlanSelector } from './_components/PlanSelector'
 
-type PlanTier = 'FREE' | 'PRO' | 'COACH'
+type DisplayTier = 'INACTIVE' | 'FREE' | 'PRO' | 'COACH'
 
-function inferPlanTier(role: string, featureCoach: boolean): PlanTier {
+function inferPlanTier(role: string, featureCoach: boolean, featurePlan: boolean, featureLog: boolean): DisplayTier {
   if (role === 'COACH' || featureCoach) return 'COACH'
-  return 'PRO'
+  if (featurePlan) return 'PRO'
+  if (featureLog) return 'FREE'
+  return 'INACTIVE'
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -20,7 +22,7 @@ export default async function AdminUsersPage() {
     orderBy: { createdAt: 'desc' },
     select: {
       id: true, name: true, email: true, role: true, createdAt: true,
-      featureCoach: true, onboardingCompleted: true,
+      featurePlan: true, featureLog: true, featureCoach: true, onboardingCompleted: true,
       profile: { select: { sport: true, sportGoal: true } },
     },
   })
@@ -51,7 +53,7 @@ export default async function AdminUsersPage() {
               {users.map((u) => {
                 const sport = u.profile?.sport ?? '—'
                 const goal  = u.profile?.sportGoal ?? '—'
-                const planTier = inferPlanTier(u.role, u.featureCoach)
+                const planTier = inferPlanTier(u.role, u.featureCoach, u.featurePlan, u.featureLog)
 
                 return (
                   <tr key={u.id} className="hover:bg-gray-50">
@@ -65,7 +67,10 @@ export default async function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <PlanSelector userId={u.id} currentTier={planTier} />
+                      {planTier === 'INACTIVE'
+                        ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-500">Inactivo</span>
+                        : <PlanSelector userId={u.id} currentTier={planTier} />
+                      }
                     </td>
                     <td className="px-5 py-3">
                       {u.onboardingCompleted ? (
