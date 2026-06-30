@@ -11,12 +11,14 @@ export default async function ActivacionesPage() {
       email: true,
       createdAt: true,
       featurePlan: true,
+      featureLog: true,
       onboardingCompleted: true,
       profile: { select: { sport: true } },
     },
   })
 
-  const pendingUsers = allAthletes.filter((u) => !u.featurePlan)
+  // pendientes = sin featurePlan NI featureLog (B2B sin activar, no Free tier)
+  const pendingUsers = allAthletes.filter((u) => !u.featurePlan && !u.featureLog)
   const activeUsers = allAthletes.filter((u) => u.featurePlan)
 
   return (

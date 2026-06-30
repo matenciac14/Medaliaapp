@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { logAdminAction } from '@/lib/admin/log-action'
+import { ADMIN_ACTIONS } from '@/domain/admin/audit-log'
 
 export async function PATCH(
   req: NextRequest,
@@ -54,17 +56,17 @@ export async function PATCH(
       featureGym:       true,
     }
   } else {
-    // INACTIVE / FREE
+    // FREE — dashboard básico + log manual únicamente
     role = 'ATHLETE'
     data = {
       role,
-      featurePlan:      true,
-      featureCheckin:   true,
-      featureNutrition: true,
-      featureProgress:  true,
+      featurePlan:      false,
+      featureCheckin:   false,
+      featureNutrition: false,
+      featureProgress:  false,
       featureLog:       true,
       featureCoach:     false,
-      featureGym:       true,
+      featureGym:       false,
     }
   }
 
@@ -73,6 +75,8 @@ export async function PATCH(
     data,
     select: { id: true, role: true, featurePlan: true, featureCoach: true, onboardingCompleted: true },
   })
+
+  void logAdminAction(session.user.id, ADMIN_ACTIONS.CHANGE_PLAN, id, { plan })
 
   return NextResponse.json({ ok: true, user })
 }

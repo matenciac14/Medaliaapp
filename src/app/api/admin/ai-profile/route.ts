@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { revalidateTag } from 'next/cache'
+import { logAdminAction } from '@/lib/admin/log-action'
+import { ADMIN_ACTIONS } from '@/domain/admin/audit-log'
 
 type AIProfile = {
   coachingPhilosophy: string
@@ -36,7 +38,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const adminSession = await requireAdmin()
+  if (!adminSession) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { coachingPhilosophy, periodizationPrinciples, injuryProtocol, nutritionGuidelines, goalNotes } = body
@@ -56,6 +59,8 @@ export async function PATCH(req: NextRequest) {
   })
 
   revalidateTag('system-config', 'default')
+
+  void logAdminAction(adminSession.user.id, ADMIN_ACTIONS.UPDATE_AI_PROFILE)
 
   return NextResponse.json({ ok: true, aiProfile })
 }

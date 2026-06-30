@@ -16,6 +16,7 @@ export function ChangeRoleButton({ userId, currentRole }: Props) {
 
   async function handleChange(newRole: string) {
     if (newRole === currentRole) return
+    if (!window.confirm(`¿Cambiar rol de ${currentRole} → ${newRole}? Esto actualizará las features del usuario.`)) return
     setLoading(true)
     try {
       await fetch(`/api/admin/user/${userId}/role`, {

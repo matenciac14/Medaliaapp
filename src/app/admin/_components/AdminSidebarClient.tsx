@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map, BarChart2, DollarSign, Bell, ClipboardList, Link2, Timer, Dumbbell } from 'lucide-react'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
@@ -12,16 +12,33 @@ export function AdminSidebarClient() {
   const { t } = useLanguage()
   const s = t.app.sidebar
 
+  // Todos los items — sidebar desktop
   const NAV_ITEMS = [
     { href: '/admin',               label: s.overview,       icon: LayoutDashboard },
     { href: '/admin/users',         label: s.users,          icon: Users           },
     { href: '/admin/activaciones',  label: s.activations,    icon: UserPlus        },
     { href: '/admin/coaches',       label: s.coaches,        icon: UserCheck       },
     { href: '/admin/subscriptions', label: s.subscriptions,  icon: CreditCard      },
+    { href: '/admin/alerts',        label: 'Alertas',        icon: Bell            },
+    { href: '/admin/finanzas',      label: 'Finanzas',       icon: DollarSign      },
+    { href: '/admin/metrics',       label: 'Métricas',       icon: BarChart2       },
+    { href: '/admin/audit',         label: 'Actividad',      icon: ClipboardList   },
+    { href: '/admin/invite-codes',  label: 'Invite Codes',   icon: Link2           },
+    { href: '/admin/crons',         label: 'Crons',          icon: Timer           },
+    { href: '/admin/exercises',     label: 'Ejercicios',     icon: Dumbbell        },
     { href: '/admin/ai',            label: s.ai,             icon: Bot             },
     { href: '/admin/roadmap',       label: s.roadmap,        icon: Map             },
     { href: '/admin/settings',      label: s.settings,       icon: Settings        },
     { href: '/admin/help',          label: s.help,           icon: HelpCircle      },
+  ]
+
+  // Solo los 5 más usados — bottom nav mobile
+  const MOBILE_NAV_ITEMS = [
+    { href: '/admin',              label: s.overview,    icon: LayoutDashboard },
+    { href: '/admin/users',        label: s.users,       icon: Users           },
+    { href: '/admin/activaciones', label: s.activations, icon: UserPlus        },
+    { href: '/admin/roadmap',      label: s.roadmap,     icon: Map             },
+    { href: '/admin/settings',     label: s.settings,    icon: Settings        },
   ]
 
   function isActive(href: string) {
@@ -44,6 +61,19 @@ export function AdminSidebarClient() {
               Medaliq <span style={{ color: '#f97316' }}>Admin</span>
             </span>
           </div>
+        </div>
+
+        <div className="px-4 pt-3 pb-1">
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="flex-1 text-left">Buscar…</span>
+            <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -108,7 +138,7 @@ export function AdminSidebarClient() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-20">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+        {MOBILE_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

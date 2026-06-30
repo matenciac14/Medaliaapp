@@ -92,6 +92,10 @@ model User {
   // Auditoría de pagos (acciones como actor)
   paymentAuditLogs   PaymentAuditLog[]
 
+  // Auditoría de acciones admin
+  adminActions       AdminAuditLog[] @relation("AdminActions")
+  adminAuditTargets  AdminAuditLog[] @relation("AdminAuditTargets")
+
   // Rutina semanal self-directed (sin plan)
   weeklyRoutine      WeeklyRoutine?
 }
@@ -891,4 +895,22 @@ model Message {
 
   @@index([fromId, toId, createdAt])
   @@index([toId, readAt])
+}
+
+// ─── AUDITORÍA ADMIN ─────────────────────────────────────────────────────────
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  adminId      String
+  action       String   // CHANGE_ROLE | CHANGE_PLAN | UPDATE_AI_PROFILE
+  targetUserId String?
+  meta         Json?    // e.g. { from: 'ATHLETE', to: 'COACH' } | { plan: 'PRO' }
+  createdAt    DateTime @default(now())
+
+  admin      User  @relation("AdminActions",      fields: [adminId],      references: [id], onDelete: Cascade)
+  targetUser User? @relation("AdminAuditTargets", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([targetUserId])
+  @@index([createdAt(sort: Desc)])
 }
