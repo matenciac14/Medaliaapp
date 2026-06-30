@@ -7,9 +7,23 @@ import { PrismaCheckInRepository } from '@/infrastructure/db/check-in.repository
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { unauthorized, ok, serverError } from '@/lib/api/responses'
+import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
+import { z } from 'zod'
+
+const mobileCheckInSchema = z.object({
+  energyLevel:     z.number().min(1).max(5),
+  muscleSoreness:  z.number().min(1).max(5),
+  stressLevel:     z.number().min(1).max(5),
+  motivationLevel: z.number().min(0).max(10).optional(),
+  sleepScore:      z.number().min(0).max(10).optional(),
+  painLevel:       z.number().min(0).max(10).optional(),
+  weightKg:        z.number().min(0).optional(),
+  hrResting:       z.number().min(0).max(250).optional(),
+  sleepHours:      z.number().min(0).max(24).optional(),
+  notes:           z.string().max(5000).optional(),
+})
 
 /** Mobile sends energy and stress on a 1-5 scale — normalize to 1-10 for consistency. */
 function scale5to10(v: number): number {
@@ -68,18 +82,13 @@ export async function POST(req: NextRequest) {
   const { allowed: rlOk } = await rateLimitAsync(`mobile-${mobile.id}:checkin`, { limit: 100, windowMs: 60_000 })
   if (!rlOk) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
-  const body = await req.json() as {
-    energyLevel: number      // 1-5
-    muscleSoreness: number   // 1-5 → maps to rpe
-    stressLevel: number      // 1-5
-    motivationLevel?: number // 1-10
-    sleepScore?: number      // 1-10
-    painLevel?: number       // 1-10
-    weightKg?: number
-    hrResting?: number
-    sleepHours?: number
-    notes?: string
+  const raw = await req.json()
+  const parsed = mobileCheckInSchema.safeParse(raw)
+  if (!parsed.success) {
+    return badRequest(parsed.error.issues[0]?.message ?? 'Datos inválidos.')
   }
+
+  const body = parsed.data
 
   try {
     const result = await processCheckIn(
