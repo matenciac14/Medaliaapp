@@ -54,6 +54,20 @@ export function InviteCodesClient({ codes: initialCodes, coaches }: Props) {
         body: JSON.stringify({ coachId: selectedCoach }),
       })
       if (res.ok) {
+        const data = await res.json()
+        const coach = coaches.find((c) => c.id === selectedCoach) ?? coaches[0]
+        const newCode: Code = {
+          id: data.invite.id,
+          code: data.invite.code,
+          status: 'activo',
+          expiresAt: new Date(data.invite.expiresAt),
+          createdAt: new Date(),
+          usedAt: null,
+          coach,
+          usedByUser: null,
+        }
+        setCodes((prev) => [newCode, ...prev])
+        setSelectedCoach('')
         startTransition(() => { router.refresh() })
       } else {
         const d = await res.json().catch(() => ({}))

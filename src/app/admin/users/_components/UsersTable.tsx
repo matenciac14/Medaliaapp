@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChangeRoleButton } from './ChangeRoleButton'
 import { PlanSelector } from './PlanSelector'
 
@@ -34,23 +35,39 @@ const ROLE_BADGE: Record<string, string> = {
   ADMIN:   'bg-red-100 text-red-700',
 }
 
-const PAGE_SIZE = 50
+type Props = {
+  users: User[]
+  total: number
+  page: number
+  pageSize: number
+  searchQuery: string
+}
 
-export function UsersTable({ users }: { users: User[] }) {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
+export function UsersTable({ users, total, page, pageSize, searchQuery }: Props) {
+  const [search, setSearch] = useState(searchQuery)
+  const [, startTransition] = useTransition()
+  const router = useRouter()
+  const isFirstRender = useRef(true)
 
-  const filtered = users.filter((u) => {
-    const q = search.toLowerCase()
-    return (
-      u.email.toLowerCase().includes(q) ||
-      (u.name ?? '').toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q)
-    )
-  })
+  // Búsqueda con debounce → actualiza URL (server-side)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    const t = setTimeout(() => {
+      const params = new URLSearchParams()
+      if (search.trim()) params.set('q', search.trim())
+      startTransition(() => { router.push(`/admin/users?${params.toString()}`) })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [search, router])
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
-  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const totalPages = Math.ceil(total / pageSize)
+
+  function goToPage(newPage: number) {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('q', search.trim())
+    if (newPage > 0) params.set('page', String(newPage))
+    router.push(`/admin/users?${params.toString()}`)
+  }
 
   return (
     <div>
@@ -58,14 +75,14 @@ export function UsersTable({ users }: { users: User[] }) {
       <div className="mb-4">
         <input
           type="search"
-          placeholder="Buscar por nombre, email o rol…"
+          placeholder="Buscar por nombre o email…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+          onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
         {search && (
           <span className="ml-3 text-xs text-gray-400">
-            {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+            {total} resultado{total !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -86,7 +103,7 @@ export function UsersTable({ users }: { users: User[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginated.map((u) => {
+              {users.map((u) => {
                 const sport = u.profile?.sport ?? '—'
                 const goal  = u.profile?.sportGoal ?? '—'
                 const planTier = inferPlanTier(u.role, u.featureCoach, u.featurePlan, u.featureLog)
@@ -129,10 +146,10 @@ export function UsersTable({ users }: { users: User[] }) {
                   </tr>
                 )
               })}
-              {paginated.length === 0 && (
+              {users.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-5 py-8 text-center text-sm text-gray-400">
-                    Sin resultados para &ldquo;{search}&rdquo;
+                    {search ? `Sin resultados para "${search}"` : 'Sin usuarios registrados.'}
                   </td>
                 </tr>
               )}
@@ -144,19 +161,19 @@ export function UsersTable({ users }: { users: User[] }) {
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <span>
-              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length}
+              {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
             </span>
             <div className="flex gap-2">
               <button
                 disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => goToPage(page - 1)}
                 className="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
               >
                 ← Anterior
               </button>
               <button
                 disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => goToPage(page + 1)}
                 className="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
               >
                 Siguiente →

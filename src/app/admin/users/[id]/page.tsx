@@ -10,6 +10,21 @@ const ROLE_BADGE: Record<string, string> = {
   ADMIN:   'bg-red-100 text-red-700',
 }
 
+const GOAL_LABEL: Record<string, string> = {
+  RACE_5K:             '5K',
+  RACE_10K:            '10K',
+  RACE_HALF_MARATHON:  'Media maratón',
+  RACE_MARATHON:       'Maratón',
+  BODY_RECOMPOSITION:  'Recomposición corporal',
+  STRENGTH_TRAINING:   'Fuerza',
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  AI:                 'IA generado',
+  COACH:              'Coach',
+  AI_COACH_APPROVED:  'IA (aprobado por coach)',
+}
+
 export default async function AdminUserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
@@ -121,7 +136,9 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Objetivo</span>
-                  <span className="font-medium text-gray-700">{activePlan.goalType ?? '—'}</span>
+                  <span className="font-medium text-gray-700">
+                    {activePlan.goalType ? (GOAL_LABEL[activePlan.goalType] ?? activePlan.goalType) : '—'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Inicio</span>
@@ -135,7 +152,9 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Fuente</span>
-                  <span className="font-medium text-gray-700">{activePlan.generatedBy}</span>
+                  <span className="font-medium text-gray-700">
+                    {SOURCE_LABEL[activePlan.generatedBy] ?? activePlan.generatedBy}
+                  </span>
                 </div>
               </div>
             ) : (
@@ -185,7 +204,7 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
       </div>
 
       {/* Feature flags */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
         <h2 className="font-semibold text-gray-800 mb-3 text-sm">Features activas</h2>
         <div className="flex flex-wrap gap-2">
           {features.map(({ key, label }) => {

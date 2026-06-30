@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
+import Link from 'next/link'
 
 const ROLE_BADGE: Record<string, string> = {
   ATHLETE: 'bg-blue-100 text-blue-700',
@@ -156,9 +157,9 @@ export default async function AdminOverviewPage() {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-800">Últimos registros</h2>
-          <a href="/admin/users" className="text-sm text-orange-500 hover:underline">
+          <Link href="/admin/users" className="text-sm text-orange-500 hover:underline">
             Ver todos →
-          </a>
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

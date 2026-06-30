@@ -12,6 +12,7 @@ export default async function AdminAlertsPage() {
         role: 'ATHLETE',
         onboardingCompleted: true,
         featurePlan: false,
+        featureLog: false,  // excluye atletas FREE (featureLog:true, featurePlan:false)
       },
       select: { id: true, name: true, email: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
@@ -102,7 +103,7 @@ export default async function AdminAlertsPage() {
               <li key={`${alert.type}-${alert.userId}`} className="px-6 py-4 flex items-start gap-4">
                 {/* Severidad */}
                 <span
-                  className={`mt-0.5 shrink-0 w-2 h-2 rounded-full mt-2 ${
+                  className={`shrink-0 w-2 h-2 rounded-full mt-2 ${
                     alert.severity === 'high' ? 'bg-red-500' : 'bg-amber-400'
                   }`}
                 />
