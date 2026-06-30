@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { DeleteUserButton } from './_components/DeleteUserButton'
 
 const ROLE_BADGE: Record<string, string> = {
   ATHLETE: 'bg-blue-100 text-blue-700',
@@ -198,6 +199,16 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
             )
           })}
         </div>
+      </div>
+
+      {/* Zona peligrosa */}
+      <div className="border border-red-100 rounded-xl p-5 space-y-3">
+        <h2 className="font-semibold text-red-700 text-sm">Zona peligrosa</h2>
+        <p className="text-xs text-gray-500">
+          Eliminar este usuario borrará en cascada todos sus datos. La acción quedará registrada
+          en el log de actividad.
+        </p>
+        <DeleteUserButton userId={user.id} userName={user.name} />
       </div>
     </div>
   )

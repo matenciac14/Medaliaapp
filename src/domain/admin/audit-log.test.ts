@@ -106,9 +106,56 @@ describe('colorForAction', () => {
     expect(c.bg).toContain('purple')
   })
 
+  it('DELETE_USER → rojo', () => {
+    const c = colorForAction(ADMIN_ACTIONS.DELETE_USER)
+    expect(c.bg).toContain('red')
+    expect(c.text).toContain('red')
+  })
+
   it('acción desconocida → gris', () => {
     const c = colorForAction('???')
     expect(c.bg).toContain('gray')
     expect(c.text).toContain('gray')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DELETE_USER — label + descripción
+// ---------------------------------------------------------------------------
+describe('labelForAction — DELETE_USER', () => {
+  it('DELETE_USER → "Eliminación"', () => {
+    expect(labelForAction(ADMIN_ACTIONS.DELETE_USER)).toBe('Eliminación')
+  })
+})
+
+describe('describeAuditEntry — DELETE_USER', () => {
+  it('usa datos de meta (email, name, role) aunque targetUserName sea null', () => {
+    const desc = describeAuditEntry({
+      action: ADMIN_ACTIONS.DELETE_USER,
+      meta: { email: 'juan@example.com', name: 'Juan Pérez', role: 'ATHLETE' },
+      targetUserName: null,
+    })
+    expect(desc).toContain('Juan Pérez')
+    expect(desc).toContain('juan@example.com')
+    expect(desc).toContain('ATHLETE')
+  })
+
+  it('funciona sin name en meta', () => {
+    const desc = describeAuditEntry({
+      action: ADMIN_ACTIONS.DELETE_USER,
+      meta: { email: 'anon@example.com', name: null, role: 'COACH' },
+      targetUserName: null,
+    })
+    expect(desc).toContain('anon@example.com')
+    expect(desc).toContain('COACH')
+  })
+
+  it('incluye email entre paréntesis si está disponible', () => {
+    const desc = describeAuditEntry({
+      action: ADMIN_ACTIONS.DELETE_USER,
+      meta: { email: 'test@ex.com', name: 'Test', role: 'ADMIN' },
+      targetUserName: null,
+    })
+    expect(desc).toMatch(/\(test@ex\.com\)/)
   })
 })
