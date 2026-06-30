@@ -1,20 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
-
-const ATHLETE_PRO_PRICE = 9.99  // USD/mes
-
-function coachFeeRate(athleteCount: number): number {
-  if (athleteCount === 0) return 0
-  if (athleteCount <= 50)  return athleteCount * 6
-  if (athleteCount <= 100) return 50 * 6 + (athleteCount - 50) * 5
-  return 50 * 6 + 50 * 5 + (athleteCount - 100) * 3
-}
-
-function feeLabel(count: number): string {
-  if (count === 0)   return '—'
-  if (count <= 50)   return '$6/atleta'
-  if (count <= 100)  return '$5/atleta (>50)'
-  return '$3/atleta (>100)'
-}
+import { coachFeeRate, feeLabel, mrrAthletes as calcMrrAthletes, mrrCoaches as calcMrrCoaches, ATHLETE_PRO_PRICE_USD } from '@/domain/admin/finanzas'
 
 function fmt(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
@@ -47,7 +32,7 @@ export default async function AdminFinanzasPage() {
   ])
 
   // MRR atletas
-  const mrrAthletes = proAthletes * ATHLETE_PRO_PRICE
+  const athletesMrr = calcMrrAthletes(proAthletes)
 
   // MRR fees coaches (lo que deben pagar a Medaliq)
   const coachesWithFee = coaches.map((c) => ({
@@ -55,8 +40,8 @@ export default async function AdminFinanzasPage() {
     athleteCount: c.coachOf.length,
     fee: coachFeeRate(c.coachOf.length),
   }))
-  const mrrCoaches = coachesWithFee.reduce((sum, c) => sum + c.fee, 0)
-  const mrrTotal = mrrAthletes + mrrCoaches
+  const coachesMrr = calcMrrCoaches(coachesWithFee.map((c) => c.fee))
+  const mrrTotal = athletesMrr + coachesMrr
 
   // Pagos en plataforma
   const paid    = paymentGroups.filter((p) => p.status === 'PAID')
@@ -68,13 +53,13 @@ export default async function AdminFinanzasPage() {
   const kpis = [
     {
       label: 'MRR atletas Pro',
-      value: fmt(mrrAthletes),
-      sub: `${proAthletes} atletas × $${ATHLETE_PRO_PRICE}/mes`,
+      value: fmt(athletesMrr),
+      sub: `${proAthletes} atletas × $${ATHLETE_PRO_PRICE_USD}/mes`,
       color: '#7c3aed',
     },
     {
       label: 'Fee coaches (est.)',
-      value: fmt(mrrCoaches),
+      value: fmt(coachesMrr),
       sub: `${coachesWithFee.filter((c) => c.athleteCount > 0).length} coaches con atletas`,
       color: '#f97316',
     },
@@ -176,7 +161,7 @@ export default async function AdminFinanzasPage() {
               <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                 <tr>
                   <td colSpan={4} className="px-5 py-3 text-sm font-semibold text-gray-700">Total fee coaches</td>
-                  <td className="px-5 py-3 text-right font-extrabold text-orange-600">{fmt(mrrCoaches)}</td>
+                  <td className="px-5 py-3 text-right font-extrabold text-orange-600">{fmt(coachesMrr)}</td>
                 </tr>
               </tfoot>
             </table>
