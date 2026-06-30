@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { DeleteUserButton } from './_components/DeleteUserButton'
+import { ResetPasswordButton } from './_components/ResetPasswordButton'
 
 const ROLE_BADGE: Record<string, string> = {
   ATHLETE: 'bg-blue-100 text-blue-700',
@@ -199,6 +200,12 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
             )
           })}
         </div>
+      </div>
+
+      {/* Acciones rápidas */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+        <h2 className="font-semibold text-gray-800 text-sm">Acciones</h2>
+        <ResetPasswordButton email={user.email} />
       </div>
 
       {/* Zona peligrosa */}

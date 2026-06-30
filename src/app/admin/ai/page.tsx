@@ -94,6 +94,20 @@ export default function AdminAIPage() {
 
   return (
     <div className="max-w-3xl">
+      {/* Banner — AI_ONBOARDING_ENABLED = false */}
+      <div className="mb-6 flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+        <span className="text-lg shrink-0">⚠️</span>
+        <div>
+          <p className="font-semibold text-amber-800">AI de generación de planes desactivada</p>
+          <p className="text-amber-700 mt-0.5">
+            <code className="text-xs bg-amber-100 px-1 py-0.5 rounded">AI_ONBOARDING_ENABLED = false</code> —
+            los cambios en este perfil <strong>no afectan la generación de planes</strong> hasta que se reactive.
+            El chat AI sí usa este prompt. Reactiva editando la constante en{' '}
+            <code className="text-xs bg-amber-100 px-1 py-0.5 rounded">src/domain/plan/generate-plan.use-case.ts</code>.
+          </p>
+        </div>
+      </div>
+
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Perfil AI Coach</h1>
