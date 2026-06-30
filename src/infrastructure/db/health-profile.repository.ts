@@ -33,6 +33,13 @@ export class PrismaHealthProfileRepository implements IHealthProfileRepository {
     })
   }
 
+  async updateHrResting(userId: string, hrResting: number): Promise<void> {
+    await this.db.healthProfile.updateMany({
+      where: { userId },
+      data: { hrResting },
+    })
+  }
+
   async updateNutritionTargets(userId: string, targets: NutritionTargets): Promise<void> {
     await this.db.nutritionPlan.update({
       where: { userId },

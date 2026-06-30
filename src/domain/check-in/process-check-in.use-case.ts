@@ -142,6 +142,11 @@ export async function processCheckIn(
       await syncWeight(userId, data.weight, prevCheckIn?.weight ?? null, txHealthProfile)
     }
 
+    // 3b. Sync FC reposo → HealthProfile (always update when provided)
+    if (data.heartRate && data.heartRate > 0) {
+      await txHealthProfile.updateHrResting(userId, data.heartRate)
+    }
+
     // 4. First check-in → enable progress feature
     const total = await txCheckIn.count(userId)
     if (total === 1) {

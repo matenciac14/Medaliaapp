@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { User, Scale, Heart, Moon, Zap, AlertTriangle, Target, ChevronDown, ChevronUp, Check, Pencil, X } from 'lucide-react'
 
 type DailyLog = {
@@ -70,6 +71,7 @@ function today() {
 }
 
 export default function ProfileClient({ user }: Props) {
+  const router = useRouter()
   const todayLog = user.dailyLogs.find(l => l.date === today()) ?? null
 
   const [form, setForm] = useState({
@@ -124,6 +126,7 @@ export default function ProfileClient({ user }: Props) {
       })
       setSavedProfile(true)
       setEditingProfile(false)
+      router.refresh()
       setTimeout(() => setSavedProfile(false), 2500)
     } finally {
       setSavingProfile(false)
@@ -146,6 +149,7 @@ export default function ProfileClient({ user }: Props) {
         }),
       })
       setSaved(true)
+      router.refresh()
       setTimeout(() => setSaved(false), 2500)
     } finally {
       setSaving(false)
@@ -373,10 +377,16 @@ export default function ProfileClient({ user }: Props) {
 
       {/* Formulario de métricas diarias */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <Target size={16} className="text-[#f97316]" />
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Registrar métricas</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target size={16} className="text-[#f97316]" />
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Registro diario</h2>
+          </div>
+          <a href="/checkin" className="text-xs text-gray-400 hover:text-[#f97316] transition-colors py-2 -my-2 inline-block">
+            Check-in semanal →
+          </a>
         </div>
+        <p className="text-xs text-gray-400 -mt-1">Datos del día — peso, FC y sueño. El check-in semanal también actualiza peso y FC reposo con contexto de entrenamiento.</p>
 
         <div>
           <label className="text-xs font-medium text-gray-500 mb-1 block">Fecha</label>

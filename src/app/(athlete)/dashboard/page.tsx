@@ -541,7 +541,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         </div>
                         <div className="flex justify-between items-center">
                           <p className="text-[10px] text-gray-400">Semana {planData.currentWeek} de {planData.totalWeeks}</p>
-                          <Link href="/plan" className="text-[10px] font-semibold text-[#f97316]">Ver plan →</Link>
+                          <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
                         </div>
                       </>
                     )}
@@ -563,7 +563,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           {phaseDisplay}
                         </span>
                       </p>
-                      <Link href="/plan" className="text-[10px] font-semibold text-[#f97316]">Ver plan →</Link>
+                      <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
                     </div>
                   </>
                 ) : (

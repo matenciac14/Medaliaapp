@@ -105,7 +105,7 @@ export default function DailySessionCard({
               ) : (
                 <QuickLog sessionId={todaySession.id} initialCompleted={false} />
               )}
-              <Link href="/plan" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] transition-colors whitespace-nowrap">
+              <Link href="/plan" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] transition-colors whitespace-nowrap py-2 -my-2 inline-block">
                 Ver mi plan →
               </Link>
             </div>
