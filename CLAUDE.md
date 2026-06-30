@@ -46,7 +46,7 @@ src/
   infrastructure/                ← implementaciones de los ports
     db/                          plan · check-in · health-profile · user repositories (Prisma)
     email/                       resend.ts
-    ← infrastructure/ai/ NO EXISTE — AI removida intencionalmente (producto ships manual-first)
+    ← infrastructure/ai/ pendiente — AI en desarrollo, aún no integrada
 
   lib/                           ← utilidades puras existentes — NO TOCAR sin razón
     plan/formulas.ts             Karvonen HR zones, Mifflin-St Jeor TDEE ← FUENTE CANÓNICA cálculos físicos
@@ -94,6 +94,8 @@ if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { s
 - NO hay check de trial expirado en middleware — la lógica de upgrade está inline en páginas
 
 ## Google OAuth web
+
+> **[STANDBY]** — No está activa en producción. Pendiente: activar Client ID + Secret en Google Cloud Console y configurar `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` en Vercel. El código está implementado — solo falta la configuración.
 
 - Nuevo usuario Google → `needsRoleSelection = true` en columna DB → JWT
 - Middleware redirige a `/select-role` antes de cualquier otro check
@@ -185,6 +187,10 @@ featurePlan | featureCheckin | featureNutrition | featureProgress | featureLog |
 |---------|-----------------|--------|
 | Dashboard / Log manual | ✅ | ✅ |
 | Plan / Check-in / Nutrición / Gym / AI | ❌ | ✅ |
+
+> Approach mejorado documentado en `../CLAUDE.md` — Bloque 3:
+> atletas B2C derivan features de `computeAthleteFeatures(tier)`,
+> entrenadores tienen límites de asesorados via `getCoachLimits(tier)`.
 
 ---
 
@@ -282,7 +288,7 @@ Fase 3 ($transaction):
 |----------|---------|----------|
 | `/api/cron/checkin-reminder` | Dom 23:00 UTC | Email recordatorio check-in semanal |
 | `/api/cron/session-reminder` | Lun 12:00 UTC | Email sesión del día |
-| `/api/cron/payment-overdue` | Diario 14:00 UTC | Email pagos vencidos al coach |
+| `/api/cron/payment-overdue` | Diario 14:00 UTC | Email pagos vencidos al entrenador |
 
 Test local:
 ```bash
@@ -304,6 +310,8 @@ Sin esto Vercel corta el request a los 10s y el plan falla silenciosamente.
 
 - `DATABASE_URL` — pooler URL para runtime · `DIRECT_URL` — migraciones
 - Seed: `pnpm prisma db seed` → `admin@medaliq.com/admin123!` · `coach@medaliq.com/coach123` · `miguel@medaliq.com/atleta123` · `ana@medaliq.com/atleta123`
+
+> **Solo correr en desarrollo** — nunca en producción. Ver reglas completas en `../CLAUDE.md`.
 
 ---
 
