@@ -164,11 +164,15 @@ export async function generatePlanUseCase(
 
   const { sportType, sportGoal } = resolveSportConfig(input.goalType)
 
-  await deps.userRepo.completeOnboarding(input.userId, {
-    features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,
-    onboarding: { completed: true, completedAt: new Date().toISOString() },
-    sport: { type: sportType, goal: sportGoal },
-  })
+  await Promise.all([
+    deps.userRepo.completeOnboarding(input.userId, {
+      features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,
+      onboarding: { completed: true, completedAt: new Date().toISOString() },
+      sport: { type: sportType, goal: sportGoal },
+    }),
+    // Persiste hrMax calculado (Fox) en HealthProfile — fuente canónica para todas las vistas
+    deps.db.healthProfile.update({ where: { userId: input.userId }, data: { hrMax } }).catch(() => {}),
+  ])
 
   return { planId, hrZones, hrMax, tdee }
 }

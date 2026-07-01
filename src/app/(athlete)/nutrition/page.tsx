@@ -85,7 +85,7 @@ export default async function NutritionPage() {
       healthProfile.heightCm,
       healthProfile.age,
       (healthProfile.gender ?? 'male') as 'male' | 'female',
-      4
+      5 // factor consistente con syncWeight (check-in) y nutrition/generate
     )
     const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)
     nutritionPlan = await prisma.nutritionPlan.upsert({

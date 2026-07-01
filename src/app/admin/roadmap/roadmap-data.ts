@@ -506,8 +506,8 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Datos & Cálculos',
         period: 'Urgente',
         items: [
-          { title: 'BUG-003 — FC máxima inconsistente: onboarding Fox (211-0.64×edad) vs perfil Tanaka (208-0.7×edad)', done: false, priority: 'P1', note: 'Fix: Fox es la fuente de verdad (generator.ts). Guardar hrMax en HealthProfile al crear y usar en todas las vistas.' },
-          { title: 'BUG-004 — TDEE inconsistente entre vistas (4 valores distintos el mismo día)', done: false, priority: 'P1', note: 'Fix: leer siempre de NutritionPlan.tdee y aplicar getDailyNutritionTarget(intensity). Sin recalcular en cada vista.' },
+          { title: 'BUG-003 — FC máxima inconsistente: onboarding Fox (211-0.64×edad) vs perfil Tanaka (208-0.7×edad)', done: true, priority: 'P1', note: 'Fix: ProfileClient.tsx ahora usa Fox (211-0.64×edad). generate-plan.use-case persiste hrMax calculado a HealthProfile en Phase 3. help/page.tsx actualizado. Fox es fuente canónica en todo el sistema.' },
+          { title: 'BUG-004 — TDEE inconsistente entre vistas (4 valores distintos el mismo día)', done: true, priority: 'P1', note: 'Fix: nutrition/page.tsx lazy init ahora usa daysPerWeek=5 (igual que syncWeight y nutrition/generate). Todas las recalculaciones de TDEE usan factor 1.725. Vistas solo leen NutritionPlan.tdee.' },
           { title: 'BUG-007 — Progreso: "Objetivo 0 kg · Faltan 77 kg" sin meta de peso definida', done: false, priority: 'P2', note: 'weightGoalKg null → default 0 → cálculo absurdo. Fix: if (!weightGoalKg) → CTA "Define tu meta de peso".' },
           { title: 'BUG-009 — FC reposo del check-in no sincroniza al perfil de salud', done: false, priority: 'P2', note: 'Fix: upsert HealthProfile.hrResting cuando el check-in incluye hrResting.' },
           { title: 'BUG-010 — Dos métricas de adherencia distintas en la misma pantalla (/plan)', done: false, priority: 'P2', note: '"Adherencia 20% · meta 80%" coexiste con "Adherencia promedio 100%". Fix: una sola definición o etiquetar qué mide cada bloque.' },

@@ -75,7 +75,7 @@ const SECTIONS = [
     color: '#1e3a5f',
     items: [
       { q: '¿Qué datos puedo editar en mi perfil?', a: 'Fecha de nacimiento (calcula edad automáticamente), altura, peso actual y objetivo, FC reposo, FC máxima real, lesiones activas y condiciones médicas.' },
-      { q: '¿Por qué me pide la fecha de nacimiento y no la edad?', a: 'La fecha de nacimiento permite que la edad se calcule automáticamente y siempre esté actualizada. También se estima la FC máxima con la fórmula Tanaka (208 − 0.7×edad).' },
+      { q: '¿Por qué me pide la fecha de nacimiento y no la edad?', a: 'La fecha de nacimiento permite que la edad se calcule automáticamente y siempre esté actualizada. También se estima la FC máxima con la fórmula Fox (211 − 0.64×edad), la misma que usa el generador de planes.' },
       { q: '¿Para qué sirven las métricas diarias?', a: 'Puedes registrar peso, FC reposo, sueño y nivel de energía cada día. Estos datos aparecen en tu dashboard y permiten ajustar el plan según cómo estás respondiendo.' },
     ],
   },
