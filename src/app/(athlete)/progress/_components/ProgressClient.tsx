@@ -468,20 +468,24 @@ export default function ProgressClient({
               <p className="text-xs text-gray-500">Actual</p>
             </div>
             <TrendBadge start={weightStart} end={weightEnd} lowerIsBetter unit=" kg" />
-            {weightGoal !== null && (
+            {weightGoal ? (
               <div>
                 <p className="text-sm font-semibold text-[#16a34a]">{weightGoal} kg</p>
                 <p className="text-xs text-gray-500">Objetivo</p>
               </div>
+            ) : (
+              <Link href="/profile" className="text-xs text-[#f97316] font-medium hover:underline">
+                + Define tu meta de peso
+              </Link>
             )}
           </div>
-          {weightGoal !== null && (
+          {weightGoal ? (
             <span className="text-xs text-gray-500 font-medium">
               {weightEnd > weightGoal
                 ? `Faltan ${(weightEnd - weightGoal).toFixed(1)} kg`
                 : 'Objetivo alcanzado'}
             </span>
-          )}
+          ) : null}
         </div>
 
         <LineChart

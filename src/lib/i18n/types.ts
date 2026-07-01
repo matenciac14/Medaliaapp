@@ -144,6 +144,8 @@ export type Translations = {
       // Coach tier new fields
       perAthlete: string
       forCoachesLabel: string
+      coachTiersTitle: string
+      coachTiersSubtitle: string
     }
     finalCta: {
       title: string

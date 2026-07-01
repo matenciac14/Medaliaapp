@@ -46,13 +46,12 @@ export default async function Home() {
           <span className="text-2xl font-bold text-[#1e3a5f]">Medaliq</span>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <a href="#como-funciona" className="hover:text-[#1e3a5f] transition-colors">{l.nav.howItWorks}</a>
-            <a href="#entrenadores" className="hover:text-[#1e3a5f] transition-colors">{l.nav.forTrainers}</a>
-            <a href="/coaches" className="hover:text-[#1e3a5f] transition-colors">{l.nav.coaches}</a>
             <a href="#precios" className="hover:text-[#1e3a5f] transition-colors">{l.nav.pricing}</a>
+            <a href="#entrenadores" className="hover:text-[#1e3a5f] transition-colors">{l.nav.forTrainers}</a>
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher variant="light" />
-            <a href="/login" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-[#1e3a5f] transition-colors">
+            <a href="/login" className="hidden sm:block text-xs text-gray-400 hover:text-gray-700 transition-colors">
               Iniciar sesión
             </a>
             <a href="/register">
@@ -89,27 +88,24 @@ export default async function Home() {
           <p className="text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto mb-10 leading-relaxed anim-fade-up delay-300">
             {l.hero.subtitle}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center anim-fade-up delay-400">
+          <div className="flex flex-col items-center gap-3 anim-fade-up delay-400">
             <a href="/register">
-              <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-8 py-4 rounded-xl text-lg w-full sm:w-auto transition-transform hover:scale-105 active:scale-95">
+              <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95">
                 {l.hero.cta1}
               </button>
             </a>
-            <a href="#como-funciona">
-              <button
-                className="border-white/30 text-white bg-white/10 hover:bg-white/20 font-semibold px-8 py-4 rounded-xl text-lg w-full sm:w-auto transition-transform hover:scale-105 active:scale-95 backdrop-blur-sm"
-              >
-                {l.hero.cta2}
-              </button>
+            <p className="text-blue-300/70 text-xs">8 entrenadores ya reservaron su lugar.</p>
+            <a href="#como-funciona" className="text-blue-300 hover:text-white text-sm transition-colors">
+              {l.hero.cta2}
             </a>
           </div>
 
           {/* Stats */}
           <div className="flex flex-wrap justify-center gap-8 mt-16 anim-fade-in delay-600">
             {[
-              { value: '18 sem', label: l.hero.stat1Label },
-              { value: '39+', label: l.hero.stat2Label },
-              { value: '24/7', label: l.hero.stat3Label },
+              { value: '30 días', label: l.hero.stat1Label },
+              { value: '0%', label: l.hero.stat2Label },
+              { value: '5', label: l.hero.stat3Label },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <div className="text-3xl font-extrabold text-[#f97316]">{value}</div>
@@ -131,14 +127,8 @@ export default async function Home() {
           </RevealOnScroll>
           <RevealOnScroll delay={100}>
             <ProfileTabs
-              ctaLabel={l.pricing.trialCta}
+              ctaLabel={l.hero.cta1}
               tabs={[
-                {
-                  label: l.profiles.tab1Label,
-                  title: l.profiles.tab1Title,
-                  desc: l.profiles.tab1Desc,
-                  gets: l.profiles.tab1Gets,
-                },
                 {
                   label: l.profiles.tab2Label,
                   title: l.profiles.tab2Title,
@@ -146,16 +136,10 @@ export default async function Home() {
                   gets: l.profiles.tab2Gets,
                 },
                 {
-                  label: l.profiles.tab3Label,
-                  title: l.profiles.tab3Title,
-                  desc: l.profiles.tab3Desc,
-                  gets: l.profiles.tab3Gets,
-                },
-                {
-                  label: l.profiles.tab4Label,
-                  title: l.profiles.tab4Title,
-                  desc: l.profiles.tab4Desc,
-                  gets: l.profiles.tab4Gets,
+                  label: l.profiles.tab1Label,
+                  title: l.profiles.tab1Title,
+                  desc: l.profiles.tab1Desc,
+                  gets: l.profiles.tab1Gets,
                 },
               ]}
             />
@@ -163,43 +147,42 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Cómo funciona */}
-      <section id="como-funciona" className="py-20 px-4 bg-white">
-        <div className="max-w-3xl mx-auto">
+      {/* Para Entrenadores */}
+      <section id="entrenadores" className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
-            <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
-              {l.howItWorks.title}
+            <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+              {l.forCoaches.badge}
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
+              {l.forCoaches.title}
             </h2>
-            <p className="text-center text-gray-500 mb-14 text-base">{l.howItWorks.subtitle}</p>
+            <p className="text-gray-500 mb-12 max-w-xl mx-auto text-base">
+              {l.forCoaches.subtitle}
+            </p>
           </RevealOnScroll>
-          <div className="flex flex-col gap-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {[
-              { step: "1", title: l.howItWorks.step1Title, desc: l.howItWorks.step1Desc, delay: 0 },
-              { step: "2", title: l.howItWorks.step2Title, desc: l.howItWorks.step2Desc, delay: 80 },
-              { step: "3", title: l.howItWorks.step3Title, desc: l.howItWorks.step3Desc, delay: 160 },
-              { step: "4", title: l.howItWorks.step4Title, desc: l.howItWorks.step4Desc, delay: 240 },
-              { step: "5", title: l.howItWorks.step5Title, desc: l.howItWorks.step5Desc, delay: 320 },
-            ].map((item, idx, arr) => (
-              <RevealOnScroll key={item.step} delay={item.delay}>
-                <div className="flex gap-5 group">
-                  {/* Step number + connector */}
-                  <div className="flex flex-col items-center shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold group-hover:bg-[#f97316] transition-colors duration-300 z-10">
-                      {item.step}
-                    </div>
-                    {idx < arr.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-gradient-to-b from-[#1e3a5f]/30 to-transparent my-1" style={{ minHeight: '2.5rem' }} />
-                    )}
-                  </div>
-                  {/* Content */}
-                  <div className="pb-8">
-                    <h3 className="text-base font-bold text-[#1e3a5f] mt-2 mb-1">{item.title}</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
-                  </div>
+              { icon: "📈", title: l.forCoaches.card1Title, desc: l.forCoaches.card1Desc, delay: 0 },
+              { icon: "📱", title: l.forCoaches.card2Title, desc: l.forCoaches.card2Desc, delay: 100 },
+              { icon: "💰", title: l.forCoaches.card3Title, desc: l.forCoaches.card3Desc, delay: 200 },
+            ].map((item) => (
+              <RevealOnScroll key={item.title} delay={item.delay}>
+                <div className="bg-gray-50 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full">
+                  <div className="text-3xl mb-3">{item.icon}</div>
+                  <h3 className="text-base font-bold text-[#1e3a5f] mb-2">{item.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </RevealOnScroll>
             ))}
           </div>
+          <RevealOnScroll delay={200}>
+            <a href="/register">
+              <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
+                {l.forCoaches.cta}
+              </button>
+            </a>
+          </RevealOnScroll>
         </div>
       </section>
 
@@ -218,7 +201,7 @@ export default async function Home() {
                 { icon: "🔍", text: l.features.item1 },
                 { icon: "❤️", text: l.features.item2 },
                 { icon: "🥗", text: l.features.item3 },
-                { icon: "⚠️", text: l.features.item4 },
+                { icon: "📋", text: l.features.item4 },
               ].map((item) => (
                 <li key={item.text} className="flex items-start gap-3 group">
                   <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-200">{item.icon}</span>
@@ -250,7 +233,7 @@ export default async function Home() {
                 ))}
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
-                <span className="text-[#f97316] font-semibold">Medaliq: </span>
+                <span className="text-[#f97316] font-semibold">📊 Resumen: </span>
                 {l.features.aiMsg}
               </div>
             </div>
@@ -258,110 +241,41 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Para Entrenadores */}
-      <section id="entrenadores" className="py-20 px-4 bg-white">
-        <div className="max-w-5xl mx-auto text-center">
+      {/* Cómo funciona */}
+      <section id="como-funciona" className="py-20 px-4 bg-white">
+        <div className="max-w-3xl mx-auto">
           <RevealOnScroll>
-            <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
-              {l.forCoaches.badge}
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
-              {l.forCoaches.title}
+            <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
+              {l.howItWorks.title}
             </h2>
-            <p className="text-gray-500 mb-12 max-w-xl mx-auto text-base">
-              {l.forCoaches.subtitle}
-            </p>
+            <p className="text-center text-gray-500 mb-14 text-base">{l.howItWorks.subtitle}</p>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="flex flex-col gap-0">
             {[
-              { icon: "📊", title: l.forCoaches.card1Title, desc: l.forCoaches.card1Desc, delay: 0 },
-              { icon: "✅", title: l.forCoaches.card2Title, desc: l.forCoaches.card2Desc, delay: 100 },
-              { icon: "🔔", title: l.forCoaches.card3Title, desc: l.forCoaches.card3Desc, delay: 200 },
-            ].map((item) => (
-              <RevealOnScroll key={item.title} delay={item.delay}>
-                <div className="bg-gray-50 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full">
-                  <div className="text-3xl mb-3">{item.icon}</div>
-                  <h3 className="text-base font-bold text-[#1e3a5f] mb-2">{item.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+              { step: "1", title: l.howItWorks.step1Title, desc: l.howItWorks.step1Desc, delay: 0 },
+              { step: "2", title: l.howItWorks.step2Title, desc: l.howItWorks.step2Desc, delay: 120 },
+              { step: "3", title: l.howItWorks.step3Title, desc: l.howItWorks.step3Desc, delay: 240 },
+            ].map((item, idx, arr) => (
+              <RevealOnScroll key={item.step} delay={item.delay}>
+                <div className="flex gap-5 group">
+                  {/* Step number + connector */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold group-hover:bg-[#f97316] transition-colors duration-300 z-10">
+                      {item.step}
+                    </div>
+                    {idx < arr.length - 1 && (
+                      <div className="w-0.5 flex-1 bg-gradient-to-b from-[#1e3a5f]/30 to-transparent my-1" style={{ minHeight: '2.5rem' }} />
+                    )}
+                  </div>
+                  {/* Content */}
+                  <div className="pb-8">
+                    <h3 className="text-base font-bold text-[#1e3a5f] mt-2 mb-1">{item.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
               </RevealOnScroll>
             ))}
           </div>
-          <RevealOnScroll delay={200}>
-            <a href="/register">
-              <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
-                {l.forCoaches.cta}
-              </button>
-            </a>
-          </RevealOnScroll>
-        </div>
-      </section>
-
-      {/* Coaches destacados */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <RevealOnScroll>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
-                {l.coachSection.title}
-              </h2>
-              <p className="text-gray-500 text-base max-w-xl mx-auto">
-                {l.coachSection.subtitle}
-              </p>
-            </div>
-          </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Placeholder coach 1 */}
-            <RevealOnScroll delay={100}>
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold text-base shrink-0">CR</div>
-                  <div>
-                    <div className="font-bold text-[#1e3a5f] text-base leading-tight">{l.coachSection.coachRunTitle}</div>
-                    <div className="text-gray-400 text-xs">{l.coachSection.coachRunSub}</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Running</span>
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Gym</span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 flex-1">{l.coachSection.comingSoon}</p>
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="text-gray-400 text-sm">{l.coachSection.viewAll}</span>
-                  <a href="/coaches"><span className="bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-xl">Ver todos</span></a>
-                </div>
-              </div>
-            </RevealOnScroll>
-
-            {/* Placeholder coach 2 */}
-            <RevealOnScroll delay={200}>
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold text-base shrink-0">CG</div>
-                  <div>
-                    <div className="font-bold text-[#1e3a5f] text-base leading-tight">{l.coachSection.coachGymTitle}</div>
-                    <div className="text-gray-400 text-xs">{l.coachSection.coachGymSub}</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Gym</span>
-                  <span className="bg-orange-50 text-orange-700 text-xs rounded-full px-2 py-0.5">Funcional</span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 flex-1">{l.coachSection.comingSoon}</p>
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="text-gray-400 text-sm">{l.coachSection.viewAll}</span>
-                  <a href="/coaches"><span className="bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-xl">Ver todos</span></a>
-                </div>
-              </div>
-            </RevealOnScroll>
-          </div>
-          <RevealOnScroll>
-            <div className="text-center">
-              <a href="/coaches" className="text-[#1e3a5f] font-semibold text-sm hover:underline">
-                {l.coachSection.viewAllLink}
-              </a>
-            </div>
-          </RevealOnScroll>
         </div>
       </section>
 
@@ -370,76 +284,105 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto text-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">{l.pricing.title}</h2>
-            <p className="text-gray-500 mb-12 text-base">{l.pricing.subtitle}</p>
+            <p className="text-gray-500 mb-3 text-base">{l.pricing.subtitle}</p>
+            <span className="inline-block bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full mb-10">
+              💵 Precios en USD
+            </span>
           </RevealOnScroll>
 
-          {/* Atletas row — Free + Trial + Pro */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Coach tier — PRIMERO */}
+          <RevealOnScroll>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow p-6 md:p-8 text-left mb-6">
+              <div className="mb-5">
+                <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-2">
+                  {l.pricing.forCoachesLabel}
+                </div>
+                <h3 className="text-lg font-bold text-[#1e3a5f] mb-1">{l.pricing.coachTiersTitle}</h3>
+                <p className="text-sm text-gray-500">{l.pricing.coachTiersSubtitle}</p>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                {[
+                  { name: 'Starter', price: 'Gratis',    athletes: '≤ 5 asesorados' },
+                  { name: 'Growth',  price: '$39/mes',   athletes: '6 – 25 asesorados' },
+                  { name: 'Pro',     price: '$79/mes',   athletes: '26 – 75 asesorados' },
+                  { name: 'Scale',   price: '$129/mes',  athletes: '+75 asesorados' },
+                ].map((tier) => (
+                  <div key={tier.name} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{tier.name}</div>
+                    <div className="text-xl font-extrabold text-[#1e3a5f] mb-1">{tier.price}</div>
+                    <div className="text-xs text-gray-500">{tier.athletes}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-end gap-6">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-2 gap-x-6">
+                  {[l.pricing.coachF1, l.pricing.coachF2, l.pricing.coachF3, l.pricing.coachF4, l.pricing.coachF5].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-green-500 shrink-0">✓</span> {f}
+                    </div>
+                  ))}
+                </div>
+                <div className="shrink-0">
+                  <a href="/register">
+                    <button className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg border">
+                      {l.pricing.coachCta}
+                    </button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </RevealOnScroll>
 
-            {/* Free (after trial) */}
+          {/* Separador atletas */}
+          <div className="flex items-center gap-4 max-w-2xl mx-auto mb-8">
+            <hr className="flex-1 border-gray-200" />
+            <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Para atletas</span>
+            <hr className="flex-1 border-gray-200" />
+          </div>
+
+          {/* Atletas — Free + Pro */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+
+            {/* Free */}
             <RevealOnScroll>
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col hover:shadow-md transition-shadow h-full">
-                <div className="mb-4">
+                <div className="mb-5">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{l.pricing.freeLabel}</span>
-                  <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$0</div>
+                  <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$0 <span className="text-xs text-gray-400 font-normal">USD</span></div>
                   <div className="text-gray-400 text-sm">{l.pricing.freePeriod}</div>
                 </div>
                 <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-6">
                   <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.freeF1}</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {l.pricing.freeF2}</li>
-                  <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> {l.pricing.freeF3}</li>
-                  <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> {l.pricing.freeF4}</li>
-                  <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> {l.pricing.freeF5}</li>
+                  <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF3}</li>
+                  <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF4}</li>
+                  <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF5}</li>
                 </ul>
                 <a href="/register">
-                  <button className="w-full border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold">
+                  <button className="w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors">
                     {l.pricing.freeCta}
                   </button>
                 </a>
               </div>
             </RevealOnScroll>
 
-            {/* Trial 30 días — "Empieza aquí" */}
+            {/* Pro — con trial integrado */}
             <RevealOnScroll delay={80}>
               <div className="rounded-2xl p-6 border-2 border-[#f97316] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full"
-                style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fff 60%)' }}>
+                style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2240 100%)' }}>
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
                   <span className="bg-[#f97316] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">
-                    {l.pricing.trialBadge}
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <span className="text-xs font-semibold text-orange-500 uppercase tracking-widest">{l.pricing.trialLabel}</span>
-                  <div className="text-4xl font-extrabold text-[#1e3a5f] mt-2">$0</div>
-                  <div className="text-orange-500 text-sm font-medium">{l.pricing.trialPeriod}</div>
-                </div>
-                <ul className="space-y-3 text-sm text-gray-700 flex-1 mb-6">
-                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF1}</li>
-                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF2}</li>
-                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF3}</li>
-                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF4}</li>
-                  <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.trialF5}</li>
-                </ul>
-                <a href="/register">
-                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold anim-pulse-cta">
-                    {l.pricing.trialCta}
-                  </button>
-                </a>
-              </div>
-            </RevealOnScroll>
-
-            {/* Pro — most popular */}
-            <RevealOnScroll delay={160}>
-              <div className="bg-[#1e3a5f] rounded-2xl p-6 border-2 border-[#1e3a5f] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                  <span className="bg-white text-[#1e3a5f] text-xs font-bold px-4 py-1 rounded-full border border-[#1e3a5f]">
                     {l.pricing.popular}
                   </span>
                 </div>
-                <div className="mb-4">
+                <div className="mb-5">
                   <span className="text-xs font-semibold text-blue-300 uppercase tracking-widest">{l.pricing.proLabel}</span>
-                  <div className="text-4xl font-extrabold text-white mt-2">$15</div>
-                  <div className="text-blue-300 text-sm">{l.pricing.proPeriod}</div>
+                  <div className="flex items-baseline gap-1.5 mt-2">
+                    <div className="text-4xl font-extrabold text-white">$9.99</div>
+                    <div className="text-blue-300/60 text-xs font-normal">USD</div>
+                    <div className="text-blue-300 text-sm pb-0.5">/ {l.pricing.proPeriod}</div>
+                  </div>
+                  <div className="text-blue-400 text-xs mt-1">$79.99/año · <span className="text-[#f97316] font-semibold">30 días gratis para probar</span></div>
                 </div>
                 <ul className="space-y-3 text-sm text-blue-100 flex-1 mb-6">
                   <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.proF1}</li>
@@ -449,47 +392,14 @@ export default async function Home() {
                   <li className="flex items-center gap-2"><span className="text-[#f97316]">✓</span> {l.pricing.proF5}</li>
                 </ul>
                 <a href="/register">
-                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold">
+                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
                     {l.pricing.proCta}
                   </button>
                 </a>
+                <p className="text-center text-blue-400 text-xs mt-3">Sin tarjeta · Cancela cuando quieras.</p>
               </div>
             </RevealOnScroll>
           </div>
-
-          {/* Coach tier — full width card */}
-          <RevealOnScroll delay={200}>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow p-6 md:p-8 text-left">
-              <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
-                <div className="shrink-0">
-                  <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-2">
-                    {l.pricing.forCoachesLabel}
-                  </div>
-                  <div className="text-5xl font-extrabold text-[#1e3a5f]">
-                    $6
-                  </div>
-                  <div className="text-gray-500 text-sm mt-1">{l.pricing.perAthlete}</div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-[#1e3a5f] mb-3">{l.pricing.coachLabel}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-2 gap-x-6">
-                    {[l.pricing.coachF1, l.pricing.coachF2, l.pricing.coachF3, l.pricing.coachF4, l.pricing.coachF5].map((f) => (
-                      <div key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="text-green-500 shrink-0">✓</span> {f}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  <a href="/register">
-                    <button className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap">
-                      {l.pricing.coachCta}
-                    </button>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </RevealOnScroll>
         </div>
       </section>
 

@@ -32,6 +32,7 @@ export function ChangeRoleButton({ userId, currentRole }: Props) {
 
   return (
     <select
+      key={currentRole}
       disabled={loading}
       defaultValue={currentRole}
       onChange={(e) => handleChange(e.target.value)}

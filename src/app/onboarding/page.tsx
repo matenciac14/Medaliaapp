@@ -356,7 +356,13 @@ export default function OnboardingPage() {
       if (!res.ok) throw new Error(json.error ?? 'Error configurando la cuenta')
 
       await refreshSession({ onboardingCompleted: true })
-      router.push(json.isB2B ? '/pending' : '/dashboard')
+      if (json.isB2B) {
+        router.push('/pending')
+      } else if (data.activityType === 'RUNNING' || data.activityType === 'BOTH') {
+        router.push('/new-goal')
+      } else {
+        router.push('/dashboard')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
       setStepIndex(steps.indexOf('generating') > 0 ? steps.indexOf('generating') - 1 : 0)

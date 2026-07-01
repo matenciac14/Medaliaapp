@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { getInitialWeekIdx } from '@/lib/core/week-number'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
       setCreateLoading(false)
     }
   }
-  const [weekIdx, setWeekIdx] = useState(0)
+  const [weekIdx, setWeekIdx] = useState(() => getInitialWeekIdx(initialPlan))
   const [modal, setModal] = useState<ModalState | null>(null)
   const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
   const [saving, setSaving] = useState(false)

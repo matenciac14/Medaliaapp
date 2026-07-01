@@ -48,7 +48,7 @@ function calcAge(dob: string): number {
 }
 
 function estimateHrMax(age: number): number {
-  return Math.round(208 - 0.7 * age)
+  return Math.round(211 - 0.64 * age) // Fox — fuente canónica del sistema
 }
 
 function calcBMI(weightKg: number, heightCm: number): string {
@@ -103,6 +103,9 @@ export default function ProfileClient({ user }: Props) {
   // Valores calculados
   const computedAge = profileForm.dateOfBirth ? calcAge(profileForm.dateOfBirth) : p?.age ?? null
   const computedHrMax = profileForm.hrMax ? parseInt(profileForm.hrMax) : computedAge ? estimateHrMax(computedAge) : null
+  // Para el modo display usa los datos del servidor (actualizados tras router.refresh), no el form
+  const displayAge = p?.dateOfBirth ? calcAge(p.dateOfBirth) : p?.age ?? null
+  const displayHrMax = p?.hrMax ?? (displayAge ? estimateHrMax(displayAge) : null)
   const bmi = p?.weightKg && p?.heightCm ? parseFloat(calcBMI(p.weightKg, p.heightCm)) : null
   const [savingProfile, setSavingProfile] = useState(false)
   const [savedProfile, setSavedProfile] = useState(false)
@@ -233,7 +236,7 @@ export default function ProfileClient({ user }: Props) {
               {profileForm.dateOfBirth && (
                 <p className="text-xs text-gray-400 mt-1">
                   Edad calculada: <span className="font-semibold text-[#1e3a5f]">{calcAge(profileForm.dateOfBirth)} años</span>
-                  {' · '}FC máx estimada (Tanaka): <span className="font-semibold text-[#1e3a5f]">{estimateHrMax(calcAge(profileForm.dateOfBirth))} bpm</span>
+                  {' · '}FC máx estimada (Fox): <span className="font-semibold text-[#1e3a5f]">{estimateHrMax(calcAge(profileForm.dateOfBirth))} bpm</span>
                 </p>
               )}
             </div>
@@ -265,7 +268,7 @@ export default function ProfileClient({ user }: Props) {
                   onChange={e => setProfileForm(f => ({ ...f, hrMax: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
                 />
-                <p className="text-[10px] text-gray-400 mt-0.5">Deja vacío para usar la estimada por Tanaka</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Deja vacío para usar la estimada por Fox (211 − 0.64×edad)</p>
               </div>
             </div>
             <div>
@@ -325,8 +328,8 @@ export default function ProfileClient({ user }: Props) {
               <div>
                 <span className="text-gray-500 text-xs">FC máxima</span>
                 <p className="font-semibold">
-                  {computedHrMax ?? '—'} bpm
-                  {!p.hrMax && computedHrMax && <span className="text-[10px] text-gray-400 ml-1">estimada</span>}
+                  {displayHrMax ?? '—'} bpm
+                  {!p.hrMax && displayHrMax && <span className="text-[10px] text-gray-400 ml-1">estimada</span>}
                 </p>
               </div>
             </div>

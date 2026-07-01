@@ -189,7 +189,7 @@ export default function AdminRoadmapPage() {
         </div>
 
         {/* Mini resumen por grupo */}
-        <div className="grid grid-cols-5 gap-3 mt-6">
+        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-3 mt-6">
           {GROUPS.map((group) => {
             const items = getAllItems(group)
             const { done, total, pct } = progress(items)

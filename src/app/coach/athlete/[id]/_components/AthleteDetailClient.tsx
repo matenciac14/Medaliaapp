@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getInitialWeekIdx } from '@/lib/core/week-number'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AthleteFeatureToggles from './AthleteFeatureToggles'
@@ -237,17 +238,7 @@ export default function AthleteDetailClient({
   const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
 
   // Plan week navigation — show one week at a time to avoid rendering 90 sessions at once
-  const [planViewWeekIdx, setPlanViewWeekIdx] = useState(() => {
-    if (!activePlan || activePlan.weeks.length === 0) return 0
-    // Default to the last week that has passed or the first future one
-    const today = new Date()
-    const lastPassedIdx = activePlan.weeks.reduce((best, w, i) => {
-      const weekStart = new Date(activePlan.startDate)
-      weekStart.setDate(weekStart.getDate() + (w.weekNumber - 1) * 7)
-      return weekStart <= today ? i : best
-    }, 0)
-    return lastPassedIdx
-  })
+  const [planViewWeekIdx, setPlanViewWeekIdx] = useState(() => getInitialWeekIdx(activePlan))
 
   // Plan creation state
   const [creatingPlan, setCreatingPlan] = useState(false)
@@ -661,17 +652,11 @@ export default function AthleteDetailClient({
     .slice(0, 2)
     .toUpperCase()
 
-  // Current training phase (for nutrition phase-based suggestions)
+  // Current training phase (for nutrition phase-based suggestions) — usa getPlanWeekNumber como fuente canónica
   const currentPhase = (() => {
     if (!activePlan || activePlan.weeks.length === 0) return null
-    const today = new Date()
-    let lastPassedIdx = 0
-    activePlan.weeks.forEach((w, i) => {
-      const weekStart = new Date(activePlan.startDate)
-      weekStart.setDate(weekStart.getDate() + (w.weekNumber - 1) * 7)
-      if (weekStart <= today) lastPassedIdx = i
-    })
-    return activePlan.weeks[lastPassedIdx]?.phase ?? null
+    const idx = getInitialWeekIdx(activePlan)
+    return activePlan.weeks[idx]?.phase ?? null
   })()
 
   function applyPhaseTargets() {

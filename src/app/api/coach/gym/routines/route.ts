@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import type { SetType } from '@/generated/prisma/enums'
+import { z } from 'zod'
+
+const DayExerciseSchema = z.object({
+  exerciseId: z.string().uuid(),
+  sets: z.number().int().min(1).max(20).optional(),
+  repsScheme: z.string().max(50).optional(),
+  restSeconds: z.number().int().min(0).max(600).nullable().optional(),
+  setType: z.string().max(30).optional(),
+  notes: z.string().max(500).optional(),
+  order: z.number().int().min(0),
+  supersetWithOrder: z.number().int().nullable().optional(),
+})
+
+const DaySchema = z.object({
+  dayOfWeek: z.number().int().min(0).max(6),
+  label: z.string().max(100),
+  muscleGroups: z.array(z.string().max(50)),
+  isRestDay: z.boolean(),
+  warmupNotes: z.string().max(1000).optional(),
+  cardioNotes: z.string().max(1000).optional(),
+  exercises: z.array(DayExerciseSchema),
+})
+
+const CreateRoutineSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  goal: z.string().max(200).optional(),
+  level: z.string().max(100).optional(),
+  daysPerWeek: z.number().int().min(1).max(7),
+  days: z.array(DaySchema).min(1),
+})
 
 export async function GET(_req: NextRequest) {
   const session = await auth()
@@ -30,35 +61,9 @@ export async function GET(_req: NextRequest) {
   return NextResponse.json(templates)
 }
 
-interface DayExerciseInput {
-  exerciseId: string
-  sets: number
-  repsScheme: string
-  restSeconds?: number | null
-  setType?: string
-  notes?: string
-  order: number
-  supersetWithOrder?: number | null  // order del ejercicio par en el mismo día (no ID — el PATCH recrea IDs)
-}
-
-interface DayInput {
-  dayOfWeek: number
-  label: string
-  muscleGroups: string[]
-  isRestDay: boolean
-  warmupNotes?: string
-  cardioNotes?: string
-  exercises: DayExerciseInput[]
-}
-
-interface CreateRoutineBody {
-  name: string
-  description?: string
-  goal?: string
-  level?: string
-  daysPerWeek: number
-  days: DayInput[]
-}
+type DayExerciseInput = z.infer<typeof DayExerciseSchema>
+type DayInput = z.infer<typeof DaySchema>
+type CreateRoutineBody = z.infer<typeof CreateRoutineSchema>
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -68,17 +73,11 @@ export async function POST(req: NextRequest) {
   }
 
   const coachId = session.user.id
-  const body: CreateRoutineBody = await req.json()
+  const parsed = CreateRoutineSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
+  const body: CreateRoutineBody = parsed.data
 
   const { name, description, goal, level, daysPerWeek, days } = body
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
-  }
-
-  if (!days || days.length === 0) {
-    return NextResponse.json({ error: 'La rutina debe tener al menos un día' }, { status: 400 })
-  }
 
   // Validate that exercises reference valid exercise IDs the coach can use
   const exerciseIds = days
