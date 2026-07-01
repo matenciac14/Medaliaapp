@@ -62,7 +62,7 @@ export default async function Home() {
             <a href="/login" className="hidden sm:block text-xs text-gray-400 hover:text-gray-700 transition-colors">
               Iniciar sesión
             </a>
-            <a href="/register">
+            <a href="/register" className="block w-full sm:w-auto">
               <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
                 <span className="sm:hidden">Reservar</span>
                 <span className="hidden sm:inline">{l.nav.cta}</span>
@@ -96,7 +96,7 @@ export default async function Home() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-16 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-7 anim-fade-up">
+            <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
                 <span key={badge} className="self-start bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
                   {badge}
@@ -111,7 +111,7 @@ export default async function Home() {
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
-              <a href="/register">
+              <a href="/register" className="block w-full sm:w-auto">
                 <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                   {l.hero.cta1}
                 </button>
@@ -449,7 +449,7 @@ export default async function Home() {
 
           <RevealOnScroll delay={150}>
             <div className="text-center">
-              <a href="/register">
+              <a href="/register" className="block w-full sm:w-auto">
                 <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
                   {l.forCoaches.cta}
                 </button>
@@ -629,7 +629,7 @@ export default async function Home() {
                   ))}
                 </div>
                 <div className="shrink-0">
-                  <a href="/register">
+                  <a href="/register" className="block w-full sm:w-auto">
                     <button className="border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg">
                       {l.pricing.coachCta}
                     </button>
@@ -662,7 +662,7 @@ export default async function Home() {
                   <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF4}</li>
                   <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF5}</li>
                 </ul>
-                <a href="/register">
+                <a href="/register" className="block w-full sm:w-auto">
                   <button className="w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors">
                     {l.pricing.freeCta}
                   </button>
@@ -696,7 +696,7 @@ export default async function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/register">
+                <a href="/register" className="block w-full sm:w-auto">
                   <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
                     {l.pricing.proCta}
                   </button>
@@ -749,7 +749,7 @@ export default async function Home() {
         <RevealOnScroll>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{l.finalCta.title}</h2>
           <p className="text-blue-200 mb-8 text-base max-w-md mx-auto">{l.finalCta.subtitle}</p>
-          <a href="/register">
+          <a href="/register" className="block w-full sm:w-auto">
             <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
               {l.finalCta.cta}
             </button>

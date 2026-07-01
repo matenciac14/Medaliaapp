@@ -37,7 +37,7 @@ export default function LanguageSwitcher({ variant = 'dark' }: Props) {
             : 'bg-white/15 text-white hover:bg-white/25',
         ].join(' ')}
       >
-        <span>{FLAGS[locale].flag}</span>
+        <span>🌐</span>
         <span>{FLAGS[locale].label}</span>
       </button>
 
