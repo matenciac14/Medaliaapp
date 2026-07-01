@@ -10,8 +10,8 @@ export const en: Translations = {
       cta: 'Reserve access',
     },
     hero: {
-      badge1: '🔬 Real periodization · Daily nutrition',
-      badge2: '🌎 For LatAm coaches',
+      badge1: '🔬 Real periodization',
+      badge2: '🌎 For LatAm',
       badge3: '🏆 Early access',
       title: 'Your athletes see their progress week by week.',
       titleHighlight: 'You grow without losing control.',

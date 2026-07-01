@@ -10,8 +10,8 @@ export const pt: Translations = {
       cta: 'Reservar acesso',
     },
     hero: {
-      badge1: '🔬 Periodização real · Nutrição diária',
-      badge2: '🌎 Para treinadores da América Latina',
+      badge1: '🔬 Periodização real',
+      badge2: '🌎 Para LatAm',
       badge3: '🏆 Acesso antecipado',
       title: 'Seus atletas veem seu progresso semana a semana.',
       titleHighlight: 'Você cresce sem perder o controle.',

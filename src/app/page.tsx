@@ -82,6 +82,18 @@ export default async function Home() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,34,64,0.95) 0%, rgba(30,58,95,0.75) 45%, rgba(30,58,95,0.25) 100%)' }} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,34,64,0.4) 100%)' }} />
 
+        {/* Floating card mobile — relativo a <section>, no al inner div */}
+        <div className="lg:hidden absolute top-6 right-4 z-20 anim-fade-in delay-400">
+          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-44">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+              <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
+            </div>
+            <p className="text-white text-[13px] font-bold">Intervalos 4×8 · Zona 3</p>
+            <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
+          </div>
+        </div>
+
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-16 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
@@ -111,18 +123,6 @@ export default async function Home() {
                 <span className="text-[#f97316] text-sm leading-none">★★★★★</span>
                 <p className="text-blue-200 text-xs">8 entrenadores ya reservaron su lugar.</p>
               </div>
-            </div>
-          </div>
-
-          {/* Floating card mobile — "Sesión de hoy" top-right */}
-          <div className="lg:hidden absolute top-6 right-4 z-20 anim-fade-in delay-400">
-            <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-44">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#f97316]" />
-                <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
-              </div>
-              <p className="text-white text-[13px] font-bold">Intervalos 4×8 · Zona 3</p>
-              <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
             </div>
           </div>
 
