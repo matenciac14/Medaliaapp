@@ -96,9 +96,9 @@ export default async function Home() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-16 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
-            <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
-                <span key={badge} className="bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
+                <span key={badge} className="self-start bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
                   {badge}
                 </span>
               ))}
