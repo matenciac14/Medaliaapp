@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 import { computeWAU } from '@/domain/admin/wau'
 import { activeUserIdsInWindow, computeRetention, retentionColor } from '@/domain/admin/retention'
+import { KpiCard } from '@/app/_components/kpi-card'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -83,11 +84,7 @@ export default async function AdminMetricsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {kpis.map((k) => (
-          <div key={k.label} className="bg-white border border-gray-200 rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">{k.label}</p>
-            <p className="text-4xl font-extrabold" style={{ color: k.color }}>{k.value}</p>
-            <p className="text-xs text-gray-400 mt-1">{k.sub}</p>
-          </div>
+          <KpiCard key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
         ))}
       </div>
 

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { mapRelation } from '../athletes/_lib/map-athlete'
+import { KpiCard } from '@/app/_components/kpi-card'
 
 const SPORT_LABELS: Record<string, string> = {
   RUNNING:   '🏃 Running',
@@ -357,12 +358,3 @@ export default async function CoachDashboardPage() {
   )
 }
 
-function KpiCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold leading-tight" style={{ color }}>{value}</p>
-      <p className="text-xs text-gray-400 mt-1">{sub}</p>
-    </div>
-  )
-}
