@@ -7,6 +7,7 @@ import ProgressClient, {
   type WellbeingPoint,
   type BenchmarkPoint,
   type GymPR,
+  type HistoryItem,
 } from './_components/ProgressClient'
 
 // Adherencia real: sesiones con log / sesiones planificadas
@@ -66,7 +67,7 @@ export default async function ProgressPage() {
   })
 
   // ── Peso del objetivo (perfil) ───────────────────────────────────────────
-  const [profile, gymSessionsCount, rawBenchmarks, rawGymPRs] = await Promise.all([
+  const [profile, gymSessionsCount, rawBenchmarks, rawGymPRs, rawSessionLogs, rawGymSessions] = await Promise.all([
     prisma.healthProfile.findUnique({
       where: { userId: session.user.id },
       select: { weightGoalKg: true },
@@ -94,9 +95,64 @@ export default async function ProgressPage() {
         session: { select: { date: true } },
       },
     }),
+    prisma.sessionLog.findMany({
+      where: { userId: session.user.id },
+      orderBy: { completedAt: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        completedAt: true,
+        durationMin: true,
+        distanceKm: true,
+        rpe: true,
+        plannedSession: { select: { type: true } },
+      },
+    }),
+    prisma.gymSession.findMany({
+      where: { athleteId: session.user.id, completed: true },
+      orderBy: { date: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        date: true,
+        durationMin: true,
+        rpe: true,
+        assignedWorkout: { select: { template: { select: { name: true } } } },
+        plannedSession: { select: { workoutDay: { select: { label: true } } } },
+      },
+    }),
   ])
 
   const weightGoal = profile?.weightGoalKg ?? null
+
+  const RUN_TYPE_LABELS: Record<string, string> = {
+    RODAJE_Z2: 'Rodaje Z2', FARTLEK: 'Fartlek', TEMPO: 'Tempo',
+    INTERVALOS: 'Intervalos', TIRADA_LARGA: 'Tirada larga', OTRO: 'Sesión libre', DESCANSO: 'Descanso',
+    FUERZA: 'Fuerza', TEST: 'Test', SIMULACRO: 'Simulacro',
+  }
+
+  const runItems: HistoryItem[] = rawSessionLogs.map(sl => ({
+    id: `run-${sl.id}`,
+    date: sl.completedAt.toISOString(),
+    type: 'run' as const,
+    label: sl.plannedSession?.type ? (RUN_TYPE_LABELS[sl.plannedSession.type] ?? sl.plannedSession.type) : 'Sesión libre',
+    durationMin: sl.durationMin ?? null,
+    distanceKm: sl.distanceKm ?? null,
+    rpe: sl.rpe ?? null,
+  }))
+
+  const gymItems: HistoryItem[] = rawGymSessions.map(gs => ({
+    id: `gym-${gs.id}`,
+    date: gs.date.toISOString(),
+    type: 'gym' as const,
+    label: gs.plannedSession?.workoutDay?.label ?? gs.assignedWorkout?.template.name ?? 'Sesión de gym',
+    durationMin: gs.durationMin ?? null,
+    rpe: gs.rpe ?? null,
+  }))
+
+  const recentActivity: HistoryItem[] = [...runItems, ...gymItems]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 30)
 
   const benchmarks: BenchmarkPoint[] = rawBenchmarks.map(b => ({
     ...b,
@@ -173,6 +229,7 @@ export default async function ProgressPage() {
       weightGoal={weightGoal}
       benchmarks={benchmarks}
       gymPRs={gymPRs}
+      recentActivity={recentActivity}
     />
   )
 }
