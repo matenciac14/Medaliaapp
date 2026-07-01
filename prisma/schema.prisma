@@ -77,6 +77,7 @@ model User {
 
   // Invite codes
   inviteCodes        InviteCode[]  @relation("CoachInvites")
+  usedInviteCodes    InviteCode[]  @relation("UsedInvites")
 
   // Benchmarks de rendimiento
   benchmarks         PerformanceBenchmark[]
@@ -151,11 +152,13 @@ model CoachAthlete {
   coachGoal    String?       // meta visible para el atleta (ej. "Bajar 5kg en 16 semanas")
   privateNotes String?       // notas privadas del coach — el atleta nunca las ve
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   coach   User @relation("CoachRelation",   fields: [coachId],   references: [id], onDelete: Cascade)
   athlete User @relation("AthleteRelation", fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@unique([coachId, athleteId])
+  @@index([athleteId])
 }
 
 enum AthleteStatus {
@@ -169,12 +172,16 @@ model InviteCode {
   id        String    @id @default(cuid())
   code      String    @unique
   coachId   String
-  usedBy    String?   // athleteId que lo redimió
+  usedBy    String?   // athleteId que lo redimió — FK con SetNull
   usedAt    DateTime?
   expiresAt DateTime
   createdAt DateTime  @default(now())
 
-  coach User @relation("CoachInvites", fields: [coachId], references: [id], onDelete: Cascade)
+  coach      User  @relation("CoachInvites", fields: [coachId], references: [id], onDelete: Cascade)
+  usedByUser User? @relation("UsedInvites",  fields: [usedBy],  references: [id], onDelete: SetNull)
+
+  @@index([coachId])
+  @@index([expiresAt])
 }
 
 // ─── PERFIL DE SALUD ────────────────────────────────────────────────────────
@@ -376,6 +383,7 @@ model SessionLog {
   plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
 
   @@index([userId])
+  @@index([completedAt])
 }
 
 // ─── RUTINA SEMANAL SELF-DIRECTED ───────────────────────────────────────────
@@ -508,6 +516,8 @@ model WorkoutTemplate {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isPublic, isActive])
 }
 
 model WorkoutDay {
@@ -645,6 +655,8 @@ model CoachProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isPublic])
 }
 
 model CoachProgram {

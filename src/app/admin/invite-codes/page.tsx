@@ -10,7 +10,8 @@ export default async function AdminInviteCodesPage() {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, code: true, usedBy: true, usedAt: true, expiresAt: true, createdAt: true,
-        coach: { select: { id: true, name: true, email: true } },
+        coach:      { select: { id: true, name: true, email: true } },
+        usedByUser: { select: { id: true, name: true, email: true } },
       },
     }),
     prisma.user.findMany({
@@ -20,19 +21,9 @@ export default async function AdminInviteCodesPage() {
     }),
   ])
 
-  const usedByIds = codes.map((c) => c.usedBy).filter(Boolean) as string[]
-  const athletes = usedByIds.length > 0
-    ? await prisma.user.findMany({
-        where: { id: { in: usedByIds } },
-        select: { id: true, name: true, email: true },
-      })
-    : []
-  const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]))
-
   const enriched = codes.map((c) => ({
     ...c,
     status: (c.usedBy ? 'usado' : c.expiresAt < now ? 'vencido' : 'activo') as 'usado' | 'vencido' | 'activo',
-    usedByUser: c.usedBy ? (athleteById[c.usedBy] ?? null) : null,
   }))
 
   // Conversión
