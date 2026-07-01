@@ -9,7 +9,7 @@ import {
   TrendingUp, Smartphone,
   HeartPulse, Apple, ClipboardCheck,
   LayoutDashboard, Users, List, CreditCard, MessageCircle,
-  Search,
+  Search, FlaskConical, Globe, Trophy,
 } from "lucide-react";
 
 export default async function Home() {
@@ -84,22 +84,27 @@ export default async function Home() {
 
         {/* Floating card mobile — relativo a <section>, no al inner div */}
         <div className="lg:hidden absolute top-3 right-4 z-20 anim-fade-in delay-400">
-          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-52">
+          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-[14px] px-[14px] py-[12px] flex flex-col gap-[6px] w-[180px] shadow-[0px_12px_30px_-6px_rgba(0,0,0,0.35)]">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-[#f97316]" />
-              <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
+              <span className="text-[#bfdbfe] text-[10px] font-semibold uppercase">Sesión de hoy</span>
             </div>
             <p className="text-white text-[13px] font-bold whitespace-nowrap">Intervalos 4×8 · Zona 3</p>
-            <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
+            <p className="text-[#bfdbfe] text-[11px] whitespace-nowrap">Adherencia 92% · FC ↓3bpm</p>
           </div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 pt-[110px] pb-14 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
-              {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
-                <span key={badge} className="self-start bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
-                  {badge}
+              {([
+                { Icon: FlaskConical, label: l.hero.badge1 },
+                { Icon: Globe, label: l.hero.badge2 },
+                { Icon: Trophy, label: l.hero.badge3 },
+              ] as { Icon: React.ElementType; label: string }[]).map(({ Icon, label }) => (
+                <span key={label} className="flex items-center gap-[5px] bg-white/12 border border-white/25 text-white font-medium px-[12px] py-[5px] rounded-full backdrop-blur-sm">
+                  <Icon size={14} strokeWidth={2} className="shrink-0" />
+                  <span className="text-[12px]">{label}</span>
                 </span>
               ))}
             </div>
@@ -140,10 +145,10 @@ export default async function Home() {
             <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-[#f97316]" />
-                <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
+                <span className="text-[#bfdbfe] text-[10px] font-semibold uppercase">Sesión de hoy</span>
               </div>
               <p className="text-white text-[13px] font-bold">Intervalos 4×8 · Zona 3</p>
-              <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
+              <p className="text-[#bfdbfe] text-[11px] whitespace-nowrap">Adherencia 92% · FC ↓3bpm</p>
             </div>
           </div>
         </div>
