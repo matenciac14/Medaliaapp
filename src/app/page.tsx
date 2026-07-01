@@ -103,22 +103,13 @@ export default async function Home() {
                   {l.hero.cta1}
                 </button>
               </a>
-              <p className="text-blue-300/70 text-xs">8 entrenadores ya reservaron su lugar.</p>
               <a href="#como-funciona" className="text-blue-300 hover:text-white text-sm transition-colors">
                 {l.hero.cta2}
               </a>
-            </div>
-            <div className="flex gap-8 mt-10 anim-fade-in delay-500">
-              {[
-                { value: '∞', label: l.hero.stat1Label },
-                { value: '0%', label: l.hero.stat2Label },
-                { value: '5', label: l.hero.stat3Label },
-              ].map(({ value, label }) => (
-                <div key={label} className="text-center">
-                  <div className="text-2xl font-extrabold text-[#f97316]">{value}</div>
-                  <div className="text-xs text-blue-300 mt-0.5">{label}</div>
-                </div>
-              ))}
+              <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
+                <span className="text-[#f97316] text-sm leading-none">★★★★★</span>
+                <p className="text-blue-200 text-xs">8 entrenadores ya reservaron su lugar.</p>
+              </div>
             </div>
           </div>
 
@@ -159,7 +150,7 @@ export default async function Home() {
               { icon: <CalendarCheck size={22} />, title: l.science.item3Title, sub: l.science.item3Sub },
               { icon: <Wallet size={22} />, title: l.science.item4Title, sub: l.science.item4Sub },
             ].map((item) => (
-              <div key={item.title} className="flex items-center gap-3 flex-1 justify-center px-6 first:pl-0 last:pr-0">
+              <div key={item.title} className="flex items-center gap-3 flex-1 px-8 first:pl-0 last:pr-0">
                 <span className="text-[#f97316] shrink-0">{item.icon}</span>
                 <div>
                   <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
