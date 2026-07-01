@@ -68,7 +68,7 @@ describe('DELETE /api/admin/users/[id]', () => {
 
     const callOrder: string[] = []
     vi.mocked(logAdminAction).mockImplementation(async () => { callOrder.push('audit') })
-    vi.mocked(prisma.user.delete).mockImplementation(async () => { callOrder.push('delete'); return {} as any })
+    vi.mocked(prisma.user.delete).mockImplementation((async () => { callOrder.push('delete'); return {} }) as any)
 
     await DELETE(deleteReq(), PARAMS)
     expect(callOrder).toEqual(['audit', 'delete'])

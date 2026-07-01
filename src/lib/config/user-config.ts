@@ -9,7 +9,7 @@
  * middleware, sidebar, feature-gate, layout de atleta y token mobile.
  * El coach puede activar features por atleta vía enableFeatures() en IUserRepository.
  */
-export type UserPlan = 'FREE' | 'PRO'
+export type UserPlan = 'FREE' | 'PRO' | 'TRIAL'
 
 export type UserConfig = {
   features: {
