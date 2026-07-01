@@ -932,7 +932,7 @@ function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
       {[
         { label: 'Completadas',               value: `${completed} / ${total}`, sub: 'sesiones',    accent: false },
         { label: isGym ? 'Vol. entren.' : 'Volumen', value: volumeLabel,        sub: 'esta semana', accent: false },
-        { label: 'Esta sem.',                  value: `${adherencePct}%`,        sub: 'adherencia', accent: true  },
+        { label: 'Adherencia',                  value: `${adherencePct}%`,        sub: 'esta semana', accent: true  },
       ].map((kpi, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">{kpi.label}</p>
@@ -1031,8 +1031,8 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-gray-900">Adherencia semanal</span>
-        <span className="text-xs text-gray-400">Promedio {avgPct}%</span>
+        <span className="text-sm font-bold text-gray-900">Historial de adherencia</span>
+        <span className="text-xs text-gray-400">Promedio histórico {avgPct}%</span>
       </div>
       <div className="flex items-end gap-2 h-14">
         {slots.map(({ weekNum, pct, isCurrent, isFuture }) => (
