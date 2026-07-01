@@ -158,11 +158,11 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'FoodLog: POST + GET /api/nutrition/log (web + mobile)', done: true, note: 'Totales y % vs target. intensityToDayType() mapea intensity→dayType. calcMacros() por gramos.' },
           { title: 'FoodSetupFlow: usa IDs de Foods de DB (sin nombres libres hardcodeados)', done: true, note: 'buildFoodCategories(allFoods) agrupa por food.category desde DB.' },
           { title: 'FoodLogTracker mobile: 4 barras de progreso + LogFoodModal', done: true, note: 'Búsqueda en librería, quick-picks gramaje (50/100/150/200g), preview macros en tiempo real.' },
-          { title: 'Ajuste nutricional por intensidad real: notificación + aceptar/rechazar', done: false, priority: 'P1', note: 'Al completar sesión con intensidad diferente a la planeada: calcular delta nutricional (kcal+carbos) → notificar atleta → acepta: ajusta NutritionLog del día / rechaza: mantiene plan base. El ajuste es solo para el día actual — no propaga hacia días futuros. Check-in semanal resume desvíos acumulados para el entrenador/nutricionista.' },
+          { title: 'Ajuste nutricional por intensidad real: notificación + aceptar/rechazar', done: true, priority: 'P1', note: 'Domain: calcNutritionAdjustment() pura en domain/nutrition/calculate-nutrition-adjustment.ts. Schema: PendingNutritionAdjustment + AdjustmentStatus enum + SessionLog.actualIntensity. Trigger: POST /api/mobile/log/session crea ajuste si actualIntensity ≠ planned.intensity. Respuesta: GET /api/mobile/nutrition devuelve pendingAdjustment. Endpoints: POST /api/mobile/nutrition/adjustment/[id]/accept|reject. 13 tests de dominio.' },
           { title: 'Validar MealPlan JSON con Zod antes de renderizar en NutritionContent', done: true, note: 'parseMealPlanData() en domain/nutrition/generate-meal-plan.ts valida estructura { hard, easy, rest } y retorna null si es inválido. nutrition/page.tsx usa parsedMealPlan: si null → fallback UI con CTA regenerar. normalizeMealPlan() en NutritionContent maneja DayMeals con arrays vacíos como fallback secundario.' },
           { title: 'Estandarizar REST carbs: NutritionContent debe usar getDailyNutritionTarget()', done: true, note: 'Fix: NutritionContent importa getDailyNutritionTarget de daily-target.ts + intensityToDayType de day-type.ts. Eliminada la lógica inline duplicada (low: ×0.88, rest: ×0.7). Campos renombrados a proteinG/carbsG/fatG.' },
           { title: 'getDayType a lib compartida — eliminar duplicado web vs mobile', done: true, note: 'day-type.ts ya existía como lib compartida. NutritionContent tenía `type DayType` local duplicando la def. Fix: eliminado local, importado de day-type.ts. Tests en day-type.test.ts.' },
-          { title: 'buildStaticMealPlan: porciones en gramos reales usando Foods de DB', done: false, note: 'Resultado: "Pechuga de pollo — 150g (220 kcal, 34g prot)".' },
+          { title: 'buildStaticMealPlan: porciones en gramos reales usando Foods de DB', done: true, note: 'describeFood() con weighsFood=true: "Pollo — 200g (240 kcal, 34g prot)". Vegetales: "Brócoli — 80g (27 kcal)". Snacks: "Almendras — 30g (180 kcal, 5g prot)". Separador \\n cuando weighsFood=true. 9 tests nuevos en generate-meal-plan.test.ts.' },
           { title: 'UI: mostrar gramos y macros por porción en NutritionContent', done: true, note: 'Fix: Meal type extendido con items?: MealFoodItem[]. normalizeDay popula items desde formato coach (foodName+grams+macros). UI: si items disponibles → fila por alimento "Arroz · 150g · 220 kcal · P34g · C28g · G4g". Fallback a foods string para planes AI. Backward-compatible.' },
         ],
       },
@@ -172,7 +172,7 @@ export const GROUPS: RoadmapGroup[] = [
         period: 'Próximo',
         items: [
           { title: 'Medidas corporales en check-in (cintura, brazos, caderas, piernas)', done: true, note: 'DB + API + UI completos. Sección colapsable "📏 Medidas corporales" en CheckInClient.tsx con 4 inputs (cintura/caderas/brazos/muslos). Zod validation en web + mobile API. Fluye por CheckInInput → SaveCheckInPayload → check-in.repository save(). Mobile también acepta los 4 campos.' },
-          { title: 'Gráficas de circunferencias en /progress (web + mobile)', done: false, note: 'El atleta ve la recomposición corporal aunque el peso no baje.' },
+          { title: 'Gráficas de circunferencias en /progress (web + mobile)', done: true, note: 'feature/31: MeasurementPoint type + MeasurementsChart con 4 LineChart (cintura/brazos/cadera/muslos) en ProgressClient.tsx. progress/page.tsx selecciona waistCm/armsCm/hipsCm/thighsCm. API mobile /api/mobile/progress devuelve measurementPoints.' },
           { title: 'Fotos de progreso semanales (Vercel Blob)', done: false, note: 'Modelo ProgressPhoto { userId, url, takenAt }. POST /api/progress/photos (multipart). Comparador side-by-side en /progress.' },
           { title: 'Log libre sin plan — sessionId opcional en /api/log/session y /api/mobile/log/session', done: true, note: 'Implementado: /api/mobile/log/session maneja !sessionId → freeSessionType. /api/log/run con plannedSessionId: null. /api/log/session con plannedSessionId opcional.' },
           { title: 'UI mobile: pantalla de log libre sin sessionId (selector tipo + RPE + duración + notas)', done: true, note: 'log.tsx soporta isFreeMode (cuando !sessionId): selector de 3 tipos (Correr/Fuerza/Otro), RPE, duración, distancia, FC, notas. Accesible desde dashboard.' },
@@ -247,7 +247,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'WeekNav: mini-overview horizontal de todas las semanas', done: true, note: 'Punto de color por fase. Gris si vacío, ámbar si recovery. Tooltip fase + sesiones.' },
           { title: '"Copiar semana anterior" para acelerar construcción', done: true, note: 'API copy-prev/route.ts + botón en PlanBuilderClient.tsx. Confirma antes de reemplazar.' },
           { title: 'PlannedSession.structure: bloques zone|duration|description en editor inline y vista Tab Plan', done: true, note: 'Campo String? en schema (db push). PATCH /api/coach/sessions/[sessionId]/edit acepta structure (trim, null si vacío). Editor: textarea con hint "zona|duración|descripción". Vista: bloques por \\n, parsea zona|duración|descripción con colores (azul zona, gris duración, texto descripción).' },
-          { title: '"Generar desde template → abrir en constructor" — precarga y edita', done: false, note: 'Coach selecciona template → constructor se abre con sesiones precargadas para personalizar.' },
+          { title: '"Generar desde template → abrir en constructor" — precarga y edita', done: true, note: 'TEMPLATE_PREVIEW record en AthleteDetailClient.tsx: 6 goalTypes → {weeks, description, phases[]}. Card de preview bajo el selector de goalType en el modal de creación de plan — muestra semanas, descripción y badges de fases. Coach selecciona el objetivo y ve el template antes de generar.' },
           { title: 'PlannedSession.sportLabel String? — migración pendiente', done: false, note: 'Etiqueta libre por deporte ("Sweet Spot 2×20min", "CSS 400m × 8"). Crear migración ALTER TABLE.' },
         ],
       },
@@ -260,7 +260,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'API CRUD: GET + POST /api/coach/athlete/[id]/benchmarks', done: true, note: 'Historial agrupado por metric. Solo coach asignado puede crear.' },
           { title: 'UI coach: Tab Benchmarks en panel atleta (form + lista agrupada por deporte)', done: true, note: 'Tiempos formateados MM:SS.' },
           { title: 'UI atleta: benchmarks en /progress (SectionCard "Tests de Rendimiento")', done: true, note: 'Solo visible si el atleta tiene benchmarks.' },
-          { title: 'Medidas corporales en Tab Progreso del coach (cintura, brazos, caderas)', done: false, note: 'Tabla de circunferencias junto al peso. Evolución completa del atleta.' },
+          { title: 'Medidas corporales en Tab Progreso del coach (cintura, brazos, caderas)', done: true, note: 'CheckInData extendido con waistCm/armsCm/hipsCm/thighsCm. Tabla de check-ins añade 4 columnas. Sección "Circunferencias corporales" con mini bar charts (4 colores: índigo/naranja/rosa/teal) en AthleteDetailClient.tsx. page.tsx mapea los 4 campos desde WeeklyCheckIn.' },
           { title: 'Notificación in-app al coach cuando atleta completa una sesión', done: true, note: 'Fix (push): notifyCoach() helper en gym/session/complete/route.ts envía push al coach vía pushToken tras cada sesión de gym. Idem en log/session/route.ts para sesiones de running. Fire-and-forget (catch→noop). Pendiente: badge in-app requeriría tabla Notification en DB.' },
           { title: 'Finanzas: filtro por atleta en /coach/finanzas', done: true, note: 'Ya implementado: filterAthlete state + select "Todos los atletas" visible cuando athletes.length > 1 + filter client-side byAthlete. Verificado en coach/finanzas/page.tsx.' },
           { title: 'generator.ts: calibrar zonas HR con benchmark reciente de running', done: false, note: 'Si hay 5K_TIME < 90 días → fórmula Riegel → ajusta intensidades del plan.' },
@@ -309,6 +309,72 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'Admin P3: editor de ejercicios globales desde /admin', done: true, priority: 'P3', note: '/admin/exercises: CRUD completo (GET+POST /api/admin/exercises, PATCH+DELETE /[id]). validateExercise domain puro (23 tests). Formulario inline con selects de categoría y equipamiento. Filtro client-side por nombre/categoría.' },
     ],
   },
+
+  // ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+
+  {
+    id: 'landing',
+    label: 'Landing Page — Ventas & Credibilidad',
+    period: 'En construcción',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#c4b5fd',
+    phases: [
+      {
+        id: 'landing-p0',
+        label: 'P0 — Legal & SEO Técnico (Bloqueante)',
+        period: 'Urgente',
+        items: [
+          { title: 'Páginas /terminos y /privacidad con contenido real (Ley 1581 Colombia + LGPD Brasil básico)', done: false, priority: 'P0', note: 'Requisito bloqueante para App Store, Play Store y pasarelas de pago (Wompi/Stripe). Sin estas páginas no se puede lanzar mobile ni cobrar.' },
+          { title: 'Meta tags: <title>, <meta description> optimizados por página', done: false, priority: 'P0', note: 'Sin esto Google no indexa correctamente. Implementar en layout.tsx y page.tsx con generateMetadata de Next.js.' },
+          { title: 'Open Graph tags (og:title, og:description, og:image) para preview en WhatsApp/LinkedIn/Twitter', done: false, priority: 'P0', note: 'Crítico para LatAm donde WhatsApp es canal principal de referidos. Preview sin OG tags genera desconfianza.' },
+          { title: 'robots.txt + sitemap.xml (incluyendo /coaches y /p/[slug])', done: false, priority: 'P0', note: 'Sin robots.txt Google no sabe qué rastrear. sitemap.xml acelera indexación de páginas de coaches.' },
+          { title: 'hreflang para es/en/pt — indicar a Google el idioma de cada versión', done: false, priority: 'P0', note: 'Sin hreflang Google puede mostrar la versión incorrecta en resultados de búsqueda según el país.' },
+          { title: 'Cookie consent banner — requerido si se usa cualquier analytics/pixel', done: false, priority: 'P0', note: 'Ilegal en Colombia/Brasil/Europa usar cookies de tracking sin consentimiento. Implementar antes de activar GA4 o Meta Pixel.' },
+        ],
+      },
+      {
+        id: 'landing-p1',
+        label: 'P1 — Conversión y Credibilidad',
+        period: 'Alta prioridad',
+        items: [
+          { title: 'Schema JSON-LD: Organization + SoftwareApplication — rich results en Google', done: false, priority: 'P1', note: 'Permite que Google muestre rating, precio y descripción del producto directamente en resultados de búsqueda.' },
+          { title: 'Testimonios con foto real o avatar + nombre + ciudad + deporte (reemplazar texto plano)', done: false, priority: 'P1', note: 'Testimonios de texto sin foto tienen ~0% credibilidad. Mínimo: foto de perfil real o avatar generado con iniciales.' },
+          { title: 'Contador de coaches/atletas creíble — reemplazar "8 entrenadores reservaron"', done: false, priority: 'P1', note: '"8 spots" suena a que nadie usa el producto. Cuando se tengan 20+ coaches: mostrar número real. Mientras: quitar o reformular.' },
+          { title: 'Sección comparativa vs TrueCoach/Excel — tabla con diferenciador 0% fee', done: false, priority: 'P1', note: 'TrueCoach cobra 5% sobre pagos desde enero 2026. Es el diferenciador más fuerte y no se menciona explícitamente en la landing.' },
+          { title: 'WhatsApp flotante o widget de contacto directo (estándar en LatAm)', done: false, priority: 'P1', note: 'En LatAm los coaches resuelven dudas por WhatsApp antes de registrarse. Sin canal de contacto directo se pierde el 30-40% de prospectos calientes.' },
+          { title: 'Email capture secundario — formulario "únete a la lista" para quienes no convierten hoy', done: false, priority: 'P1', note: 'El 97% de visitantes no convierte en el primer visit. Sin captura de email no hay forma de hacer nurturing. CTA: "Recibe novedades y el guía gratuita de periodización".' },
+        ],
+      },
+      {
+        id: 'landing-p2',
+        label: 'P2 — Ventas y Confianza',
+        period: 'Próximo sprint',
+        items: [
+          { title: 'Video demo de 60-90 segundos — mostrar el flujo real del coach + atleta', done: false, priority: 'P2', note: 'Los coaches necesitan ver el producto antes de registrarse. Sin video demo la tasa de conversión de coaches es ~30% menor. Prioridad: pantalla de coach (panel de atletas + asignación de rutina).' },
+          { title: 'Calculadora de ROI para coaches — "¿cuánto tiempo recuperas con Medaliq?"', done: false, priority: 'P2', note: 'Input: número de atletas. Output: horas/semana ahorradas + equivalente en dinero. Ancla el valor antes del precio.' },
+          { title: 'Sección seguridad de datos — "Tus datos y los de tus atletas están seguros"', done: false, priority: 'P2', note: 'Los coaches manejan datos de salud de terceros. Un párrafo de seguridad (HTTPS, Neon, backups) reduce fricción de adopción.' },
+          { title: 'Garantía con términos explícitos — "30 días o te ayudamos a exportar todo"', done: false, priority: 'P2', note: 'Actualmente mencionado en FAQ pero no destacado visualmente. Necesita un bloque visual propio con badge de garantía.' },
+          { title: 'Página 404 personalizada con CTA y navegación de regreso', done: false, priority: 'P2', note: '404 genérico de Next.js pierde usuarios que llegaron por link incorrecto. Incluir: logo, mensaje amigable, botón home.' },
+          { title: 'Meta Pixel + Google Tag Manager — tracking de conversiones para ads', done: false, priority: 'P2', note: 'Sin pixel no hay retargeting. Sin GTM no hay medición de conversión. Requerido antes de invertir en cualquier pauta paga.' },
+        ],
+      },
+      {
+        id: 'landing-p3',
+        label: 'P3 — SEO Orgánico y Crecimiento',
+        period: 'Mediano plazo',
+        items: [
+          { title: 'Blog/recursos — 2-3 artículos iniciales para SEO orgánico', done: false, priority: 'P3', note: 'Artículos target: "Cómo periodizar para runners principiantes", "Gestión de atletas online: guía para coaches". Tráfico orgánico sin inversión en pauta.' },
+          { title: 'Landing pages por deporte — /running y /gym con copy específico', done: false, priority: 'P3', note: 'Permite rankear para búsquedas como "app para entrenadores de running Colombia". Copy diferente por segmento.' },
+          { title: 'Sección de integraciones — Garmin, Strava, Apple Watch (aunque sea coming soon)', done: false, priority: 'P3', note: 'Genera percepción de producto maduro. Footer o sección "compatible con" con logos grises + "próximamente".' },
+          { title: 'manifest.json y PWA básico — instalable desde el navegador móvil', done: false, priority: 'P3', note: 'Permite instalar la landing como app en home screen sin pasar por stores. Aumenta retention de usuarios móviles.' },
+          { title: 'Press kit / media page — logo, screenshots, descripción oficial para prensa', done: false, priority: 'P3', note: 'Cuando un influencer fitness o medio quiera escribir sobre Medaliq, necesita assets. /press o /media con logo SVG, paleta, screenshots.' },
+          { title: 'A/B testing de hero copy y CTA — validar variantes de conversión', done: false, priority: 'P3', note: 'Test A: copy actual "Tus atletas ven su progreso" vs Test B: copy pain-first "¿Cuántas horas pierdes en Excel cada semana?". Implementar con Vercel Edge Config o PostHog.' },
+        ],
+      },
+    ],
+  },
+
 
   // ─── MOBILE ───────────────────────────────────────────────────────────────────
 

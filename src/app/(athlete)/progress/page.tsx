@@ -8,6 +8,7 @@ import ProgressClient, {
   type BenchmarkPoint,
   type GymPR,
   type HistoryItem,
+  type MeasurementPoint,
 } from './_components/ProgressClient'
 
 // Adherencia real: sesiones con log / sesiones planificadas
@@ -47,6 +48,10 @@ export default async function ProgressPage() {
       stressLevel: true,
       motivationLevel: true,
       recordedAt: true,
+      waistCm: true,
+      armsCm: true,
+      hipsCm: true,
+      thighsCm: true,
     },
   })
 
@@ -186,6 +191,16 @@ export default async function ProgressPage() {
       motivationLevel: c.motivationLevel ?? null,
     }))
 
+  const measurementCheckins: MeasurementPoint[] = rawCheckIns
+    .filter((c) => c.waistCm != null || c.armsCm != null || c.hipsCm != null || c.thighsCm != null)
+    .map((c) => ({
+      week: c.weekNumber,
+      waistCm: c.waistCm ?? null,
+      armsCm: c.armsCm ?? null,
+      hipsCm: c.hipsCm ?? null,
+      thighsCm: c.thighsCm ?? null,
+    }))
+
   const weeks: WeekData[] = plan
     ? plan.weeks.map((w) => ({
         weekNumber: w.weekNumber,
@@ -230,6 +245,7 @@ export default async function ProgressPage() {
       benchmarks={benchmarks}
       gymPRs={gymPRs}
       recentActivity={recentActivity}
+      measurementCheckins={measurementCheckins}
     />
   )
 }

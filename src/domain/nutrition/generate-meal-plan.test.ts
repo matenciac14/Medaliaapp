@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildStaticMealPlan, computeNutritionTargets, type MacroTargets } from './generate-meal-plan'
+import { buildStaticMealPlan, computeNutritionTargets, parseMealPlanData, type MacroTargets } from './generate-meal-plan'
 import { calculateMacros } from '@/lib/plan/formulas'
 
 // ---------------------------------------------------------------------------
@@ -261,8 +261,8 @@ describe('buildStaticMealPlan — dbFoods: porciones en gramos (weighsFood=true)
       [DB_PROTEIN]
     )
     const foodLine: string = plan.hard.meals[0].foods
-    // Debe empezar con un número seguido de "g Pechuga de pollo cocida"
-    expect(foodLine).toMatch(/^\d+g Pechuga de pollo cocida/)
+    // Nuevo formato: "Nombre — Xg (Y kcal, Zg prot)"
+    expect(foodLine).toMatch(/^Pechuga de pollo cocida — \d+g \(\d+ kcal, \d+g prot\)/)
   })
 
   it('con dbFoods y weighsFood=true: proteína + carb + veggie en una comida', () => {
@@ -272,13 +272,12 @@ describe('buildStaticMealPlan — dbFoods: porciones en gramos (weighsFood=true)
       [DB_PROTEIN, DB_CARB, DB_VEG]
     )
     const foodLine: string = plan.hard.meals[0].foods
-    // Debe contener las tres partes separadas por " · "
-    expect(foodLine).toContain(' · ')
-    const parts = foodLine.split(' · ')
+    // Nuevo formato: partes separadas por newline al usar weighsFood=true
+    const parts = foodLine.split('\n')
     expect(parts).toHaveLength(3)
-    expect(parts[0]).toMatch(/^\d+g Pechuga de pollo cocida/)
-    expect(parts[1]).toMatch(/^\d+g Arroz blanco cocido/)
-    expect(parts[2]).toBe('80g Brócoli')
+    expect(parts[0]).toMatch(/^Pechuga de pollo cocida — \d+g \(\d+ kcal, \d+g prot\)/)
+    expect(parts[1]).toMatch(/^Arroz blanco cocido — \d+g \(\d+ kcal, \d+g prot\)/)
+    expect(parts[2]).toMatch(/^Brócoli — 80g \(\d+ kcal\)/)
   })
 
   it('con dbFoods y weighsFood=true: gramos de proteína están entre 50 y 500', () => {
@@ -288,7 +287,10 @@ describe('buildStaticMealPlan — dbFoods: porciones en gramos (weighsFood=true)
       [DB_PROTEIN, DB_CARB]
     )
     for (const meal of plan.hard.meals) {
-      const grams = parseInt(meal.foods.split('g ')[0], 10)
+      // Nuevo formato: "Nombre — Xg (Y kcal, Zg prot)"
+      const match = meal.foods.match(/— (\d+)g/)
+      expect(match).not.toBeNull()
+      const grams = parseInt(match![1], 10)
       expect(grams).toBeGreaterThanOrEqual(50)
       expect(grams).toBeLessThanOrEqual(500)
     }
@@ -301,8 +303,13 @@ describe('buildStaticMealPlan — dbFoods: porciones en gramos (weighsFood=true)
       { ...BASE_INPUT, weighsFood: true, mealsPerDay: 3 },
       [DB_PROTEIN]
     )
-    const gramsHard = parseInt(plan.hard.meals[0].foods.split('g ')[0], 10)
-    const gramsRest = parseInt(plan.rest.meals[0].foods.split('g ')[0], 10)
+    // Nuevo formato: "Nombre — Xg (Y kcal, Zg prot)"
+    const matchHard = plan.hard.meals[0].foods.match(/— (\d+)g/)
+    const matchRest = plan.rest.meals[0].foods.match(/— (\d+)g/)
+    expect(matchHard).not.toBeNull()
+    expect(matchRest).not.toBeNull()
+    const gramsHard = parseInt(matchHard![1], 10)
+    const gramsRest = parseInt(matchRest![1], 10)
     // La proteína es idéntica en todos los tipos de día → los gramos son iguales
     expect(gramsHard).toBeGreaterThanOrEqual(gramsRest)
     expect(gramsHard).toBeGreaterThan(0)
@@ -325,6 +332,7 @@ describe('buildStaticMealPlan — dbFoods: medidas caseras (weighsFood=false)', 
       { ...BASE_INPUT, weighsFood: false, mealsPerDay: 3 },
       [DB_PROTEIN, DB_CARB, DB_VEG]
     )
+    // weighsFood=false → separador sigue siendo " · "
     const parts = plan.hard.meals[0].foods.split(' · ')
     expect(parts[2]).toBe('1 taza en floretes Brócoli')
   })
@@ -338,8 +346,10 @@ describe('buildStaticMealPlan — dbFoods: comidas ligeras (snacks)', () => {
       [DB_PROTEIN, DB_CARB, DB_FRUIT]
     )
     const snackMeal: string = plan.hard.meals[1].foods
-    // El snack debe contener el banano, no la pechuga
+    // Nuevo formato: "Nombre — Xg (Y kcal, Zg prot)"
     expect(snackMeal).toContain('Banano / plátano maduro')
+    expect(snackMeal).toContain(' — ')
+    expect(snackMeal).toContain(' kcal')
   })
 
   it('con n=4, la última comida (Post-cena) también es snack', () => {
@@ -449,3 +459,120 @@ describe('computeNutritionTargets', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Feature B — nuevos tests del formato enriquecido
+// ---------------------------------------------------------------------------
+
+function mockFood(overrides: Partial<import('./generate-meal-plan').DbFood> = {}): import('./generate-meal-plan').DbFood {
+  return {
+    name: 'Pollo',
+    category: 'PROTEIN',
+    kcalPer100g: 120,
+    proteinPer100g: 24,
+    carbsPer100g: 0,
+    fatPer100g: 2,
+    servingG: 150,
+    servingLabel: '1 pechuga mediana',
+    ...overrides,
+  }
+}
+
+const MACROS_B: MacroTargets = {
+  hard: { kcal: 2800, protein: 160, carbs: 340, fat: 80 },
+  easy: { kcal: 2300, protein: 160, carbs: 270, fat: 80 },
+  rest: { kcal: 1900, protein: 150, carbs: 0,   fat: 70 },
+}
+
+const INPUT_B: import('./generate-meal-plan').GenerateMealsInput = {
+  availableFoods: ['Pollo', 'Arroz'],
+  weighsFood: true,
+  mealsPerDay: 3,
+  restrictions: [],
+}
+
+describe('parseMealPlanData — feature B', () => {
+  it('retorna null si el dato es inválido (missing keys)', () => {
+    expect(parseMealPlanData(null)).toBeNull()
+    expect(parseMealPlanData({})).toBeNull()
+    expect(parseMealPlanData({ hard: {}, easy: {} })).toBeNull()
+    expect(parseMealPlanData('string')).toBeNull()
+    expect(parseMealPlanData(42)).toBeNull()
+  })
+
+  it('retorna el mismo objeto si tiene hard/easy/rest', () => {
+    const raw = { hard: { meals: [] }, easy: { meals: [] }, rest: { meals: [] } }
+    expect(parseMealPlanData(raw)).toBe(raw)
+  })
+})
+
+describe('buildStaticMealPlan — feature B', () => {
+  it('sin dbFoods: usa availableFoods como fallback', () => {
+    const plan = buildStaticMealPlan(MACROS_B, INPUT_B)
+    const firstMealFoods = plan.hard.meals[0].foods
+    expect(['Pollo', 'Arroz']).toContain(firstMealFoods)
+  })
+
+  it('con dbFoods y weighsFood=true: el campo foods contiene el formato — Xg (Y kcal) para proteínas', () => {
+    const dbFoods = [mockFood()]
+    const plan = buildStaticMealPlan(MACROS_B, { ...INPUT_B, weighsFood: true }, dbFoods)
+    const mealWithProtein = plan.hard.meals.find(m => m.foods.includes(' — '))
+    expect(mealWithProtein).toBeDefined()
+    expect(mealWithProtein!.foods).toContain(' — ')
+    expect(mealWithProtein!.foods).toContain(' kcal')
+  })
+
+  it('con dbFoods y weighsFood=false: el campo foods usa servingLabel o nombre', () => {
+    const dbFoods = [mockFood()]
+    const plan = buildStaticMealPlan(MACROS_B, { ...INPUT_B, weighsFood: false }, dbFoods)
+    const meal = plan.hard.meals[0]
+    expect(meal.foods).not.toContain(' — ')
+    expect(meal.foods).toContain('Pollo')
+  })
+
+  it('meals count == mealsPerDay (clamped a [2,6])', () => {
+    const plan2       = buildStaticMealPlan(MACROS_B, { ...INPUT_B, mealsPerDay: 2 })
+    const plan6       = buildStaticMealPlan(MACROS_B, { ...INPUT_B, mealsPerDay: 6 })
+    const planLow     = buildStaticMealPlan(MACROS_B, { ...INPUT_B, mealsPerDay: 0 })
+    const planHigh    = buildStaticMealPlan(MACROS_B, { ...INPUT_B, mealsPerDay: 10 })
+    expect(plan2.hard.meals).toHaveLength(2)
+    expect(plan6.hard.meals).toHaveLength(6)
+    expect(planLow.hard.meals).toHaveLength(2)
+    expect(planHigh.hard.meals).toHaveLength(6)
+  })
+
+  it('kcal del plan hard > easy > rest (por macro target)', () => {
+    const plan = buildStaticMealPlan(MACROS_B, INPUT_B)
+    const hardKcal = plan.hard.meals.reduce((sum, m) => sum + m.kcal, 0)
+    const easyKcal = plan.easy.meals.reduce((sum, m) => sum + m.kcal, 0)
+    const restKcal = plan.rest.meals.reduce((sum, m) => sum + m.kcal, 0)
+    expect(hardKcal).toBeGreaterThan(easyKcal)
+    expect(easyKcal).toBeGreaterThan(restKcal)
+  })
+
+  it('tiene hard, easy, rest', () => {
+    const plan = buildStaticMealPlan(MACROS_B, INPUT_B)
+    expect(plan).toHaveProperty('hard')
+    expect(plan).toHaveProperty('easy')
+    expect(plan).toHaveProperty('rest')
+  })
+
+  it('cada meal tiene time, label, kcal, protein, carbs, fat', () => {
+    const plan = buildStaticMealPlan(MACROS_B, INPUT_B)
+    for (const dayKey of ['hard', 'easy', 'rest'] as const) {
+      for (const meal of plan[dayKey].meals) {
+        expect(meal).toHaveProperty('time')
+        expect(meal).toHaveProperty('label')
+        expect(meal).toHaveProperty('kcal')
+        expect(meal).toHaveProperty('protein')
+        expect(meal).toHaveProperty('carbs')
+        expect(meal).toHaveProperty('fat')
+        expect(typeof meal.time).toBe('string')
+        expect(typeof meal.label).toBe('string')
+        expect(typeof meal.kcal).toBe('number')
+        expect(typeof meal.protein).toBe('number')
+        expect(typeof meal.carbs).toBe('number')
+        expect(typeof meal.fat).toBe('number')
+      }
+    }
+  })
+})
