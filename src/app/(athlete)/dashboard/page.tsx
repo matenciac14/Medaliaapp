@@ -728,6 +728,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
+              {/* ── FREE nuevo usuario: CTA crear primer plan ── */}
+              {dashboardMode === 'FREE' && !lastCompletedPlanInfo && (
+                <div className="mb-4 p-3 bg-[#f97316]/5 rounded-xl border border-[#f97316]/20 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-[#1e3a5f]">Crea tu primer plan</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Elige tu meta y generamos tu plan periodizado</p>
+                  </div>
+                  <Link
+                    href="/new-goal"
+                    className="text-xs font-bold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0"
+                  >
+                    Comenzar →
+                  </Link>
+                </div>
+              )}
+
               {/* ── FREE: CTA nueva meta (si hay plan completado) ── */}
               {dashboardMode === 'FREE' && lastCompletedPlanInfo && (
                 <div className="mb-4 p-3 bg-[#1e3a5f]/5 rounded-xl border border-[#1e3a5f]/10 flex items-center justify-between gap-3">

@@ -494,7 +494,7 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Onboarding & Plan',
         period: 'Urgente',
         items: [
-          { title: 'BUG-002 — Onboarding "Plan personalizado" no genera el plan automáticamente', done: false, priority: 'P0', note: 'Dashboard muestra "Sin plan activo". Plan solo se crea yendo manualmente a /new-goal. Fix: disparar generatePlanUseCase al cerrar onboarding cuando plan-method=AI.' },
+          { title: 'BUG-002 — Onboarding "Plan personalizado" no genera el plan automáticamente', done: true, priority: 'P0', note: 'Fix: onboarding/page.tsx redirige RUNNING/BOTH a /new-goal tras completar setup (antes iba a /dashboard vacío). dashboard/page.tsx agrega CTA "Crear plan" para modo FREE sin historial previo. El onboarding por diseño solo configura nutrición + perfil; el plan se genera en /new-goal.' },
           { title: 'BUG-005 — /new-goal no hereda la meta elegida en onboarding; falta opción "Ganar músculo"', done: false, priority: 'P1', note: 'Fix: pre-rellenar /new-goal con goalType del HealthProfile. Agregar opción STRENGTH/HYPERTROPHY al selector.' },
           { title: 'BUG-021 — Onboarding pregunta el deporte 3 veces y los días disponibles 2 veces', done: false, priority: 'P2', note: 'Fix: consolidar y reutilizar respuestas entre pasos.' },
         ],
