@@ -521,6 +521,115 @@ export const BODY_RECOMPOSITION_16W: PlanTemplate = {
 }
 
 // ---------------------------------------------------------------------------
+// STRENGTH_TRAINING_16W
+// Upper/Lower 4 días — sin running
+// Fases: Base (1-4), Desarrollo (5-10), Específico (11-14), Afinamiento (15-16)
+// Lun=Upper Push, Mar=Lower Quad, Jue=Upper Pull, Vie=Lower Posterior
+// ---------------------------------------------------------------------------
+
+function buildStrengthWeek(
+  weekNumber: number,
+  phase: 'BASE' | 'DESARROLLO' | 'ESPECIFICO' | 'AFINAMIENTO',
+  isRecoveryWeek: boolean,
+  focusDescription: string,
+  upperDuration: number,
+  lowerDuration: number,
+): WeekTemplate {
+  const upperPushStructure: Record<string, string> = {
+    BASE:        'Press banca plano 3×10, press inclinado mancuerna 3×12, press militar 3×10, fondos asistidos 3×12, extensión tríceps polea 3×15. Técnica y conexión mente-músculo.',
+    DESARROLLO:  'Press banca 4×8, press inclinado barra 4×10, press militar mancuerna 4×10, fondos lastrados 3×10, extensión tríceps 4×12. Sobrecarga progresiva — sube 2.5kg cada semana.',
+    ESPECIFICO:  'Press banca 4×6-8 (pesado), press inclinado 4×8, aperturas cable 3×12, press militar 4×8, fondos lastrados 4×8, tríceps polea 4×10. Intensidad alta.',
+    AFINAMIENTO: 'Press banca 3×8 (reducir carga 10%), press inclinado 3×10, press militar 3×10, fondos 3×10. Mantener músculo, reducir volumen.',
+  }
+  const upperPullStructure: Record<string, string> = {
+    BASE:        'Jalón al pecho 3×12, remo con polea 3×12, remo mancuerna 3×12 c/lado, curl bíceps barra 3×12, curl martillo 3×15. Base de tracción.',
+    DESARROLLO:  'Dominadas asistidas 4×8, remo barra 4×10, remo cable 4×10, curl bíceps 4×10, curl predicador 3×12. Progresión en dominadas.',
+    ESPECIFICO:  'Dominadas lastradas 4×6-8, remo barra pesado 4×8, remo inclinado mancuerna 4×10, curl bíceps pesado 4×8, curl concentrado 3×12.',
+    AFINAMIENTO: 'Dominadas 3×8, remo barra 3×10, curl bíceps 3×10. Mantener fuerza de tirón.',
+  }
+  const lowerQuadStructure: Record<string, string> = {
+    BASE:        'Sentadilla libre 3×10, prensa pierna 3×12, extensión cuádriceps 3×15, zancada alterna 3×10 c/lado, pantorrilla de pie 4×15. Técnica de sentadilla.',
+    DESARROLLO:  'Sentadilla 4×8, prensa 4×10, extensión cuádriceps 4×12, zancada búlgara 3×10 c/lado, pantorrilla 4×12. Añadir carga progresiva.',
+    ESPECIFICO:  'Sentadilla frontal 4×6-8 (pesado), hack squat 4×8, prensa 4×10, extensión cuádriceps 4×10, zancada búlgara 4×8 c/lado.',
+    AFINAMIENTO: 'Sentadilla 3×8, prensa 3×10, extensión 3×12. Volumen reducido.',
+  }
+  const lowerPosteriorStructure: Record<string, string> = {
+    BASE:        'Peso muerto convencional 3×8, hip thrust 3×12, curl femoral 3×15, buenos días 3×12, abducción cadera 3×15. Base de cadena posterior.',
+    DESARROLLO:  'Peso muerto 4×6, hip thrust 4×10, curl femoral 4×12, peso muerto rumano 3×10, abducción 3×15. Progresión en peso muerto.',
+    ESPECIFICO:  'Peso muerto 4×5-6 (pesado), hip thrust lastrado 4×8, curl femoral 4×10, peso muerto rumano 4×8, glúteo en cable 3×12.',
+    AFINAMIENTO: 'Peso muerto 3×6, hip thrust 3×10, curl femoral 3×12. Mantener fuerza posterior.',
+  }
+
+  return {
+    weekNumber,
+    phase,
+    volumeKm: 0,
+    isRecoveryWeek,
+    focusDescription,
+    sessions: [
+      {
+        dayOfWeek: 1,
+        type: 'FUERZA',
+        durationMin: upperDuration,
+        zoneTarget: 'N/A',
+        structure: upperPushStructure[phase],
+      },
+      {
+        dayOfWeek: 2,
+        type: 'FUERZA',
+        durationMin: lowerDuration,
+        zoneTarget: 'N/A',
+        structure: lowerQuadStructure[phase],
+      },
+      {
+        dayOfWeek: 4,
+        type: 'FUERZA',
+        durationMin: upperDuration,
+        zoneTarget: 'N/A',
+        structure: upperPullStructure[phase],
+      },
+      {
+        dayOfWeek: 5,
+        type: 'FUERZA',
+        durationMin: lowerDuration,
+        zoneTarget: 'N/A',
+        structure: lowerPosteriorStructure[phase],
+      },
+    ],
+  }
+}
+
+export const STRENGTH_TRAINING_16W: PlanTemplate = {
+  goalType: 'STRENGTH_TRAINING',
+  totalWeeks: 16,
+  weeks: [
+    // === BASE (1-4) — Técnica y activación neuromuscular ===
+    buildStrengthWeek(1, 'BASE', false, 'Técnica de movimientos básicos — conexión mente-músculo', 50, 50),
+    buildStrengthWeek(2, 'BASE', false, 'Consolidar patrones motores — incremento leve de carga', 55, 55),
+    buildStrengthWeek(3, 'BASE', false, 'Primer pico de volumen — 4 series en ejercicios principales', 60, 60),
+    buildStrengthWeek(4, 'BASE', true,  'Semana de descarga — dejar que el cuerpo absorba adaptaciones', 40, 40),
+
+    // === DESARROLLO (5-10) — Hipertrofia y sobrecarga progresiva ===
+    buildStrengthWeek(5,  'DESARROLLO', false, 'Sobrecarga progresiva — subir 2.5kg/semana en compuestos', 60, 65),
+    buildStrengthWeek(6,  'DESARROLLO', false, 'Incremento de intensidad — menos reps, más peso', 65, 65),
+    buildStrengthWeek(7,  'DESARROLLO', false, 'Pico de volumen — mayor estímulo de hipertrofia', 65, 70),
+    buildStrengthWeek(8,  'DESARROLLO', true,  'Descarga — reducir volumen 40%, mantener intensidad', 45, 45),
+    buildStrengthWeek(9,  'DESARROLLO', false, 'Retomar con más carga tras descarga', 65, 70),
+    buildStrengthWeek(10, 'DESARROLLO', true,  'Transición a fase específica — deload ligero', 50, 50),
+
+    // === ESPECÍFICO (11-14) — Fuerza máxima y definición ===
+    buildStrengthWeek(11, 'ESPECIFICO', false, 'Trabajo pesado — rango 4-6 reps en compuestos', 65, 70),
+    buildStrengthWeek(12, 'ESPECIFICO', false, 'Pico de fuerza — cargas máximas controladas', 65, 70),
+    buildStrengthWeek(13, 'ESPECIFICO', false, 'Mantener fuerza, reducir volumen levemente', 60, 65),
+    buildStrengthWeek(14, 'ESPECIFICO', false, 'Última semana de intensidad alta — preparar evaluación', 60, 65),
+
+    // === AFINAMIENTO (15-16) — Evaluar y proyectar siguiente ciclo ===
+    buildStrengthWeek(15, 'AFINAMIENTO', false, 'Reducir volumen — mantener movimientos', 50, 50),
+    buildStrengthWeek(16, 'AFINAMIENTO', false, 'Test de fuerza máxima — 1RM estimado en press y sentadilla', 45, 45),
+  ],
+}
+
+// ---------------------------------------------------------------------------
 // Índice de plantillas
 // ---------------------------------------------------------------------------
 
@@ -532,7 +641,7 @@ export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
   RACE_MARATHON:      HALF_MARATHON_18W,        // base aeróbica — template maratón pendiente
 
   // Fuerza
-  STRENGTH_TRAINING:  BODY_RECOMPOSITION_16W,    // base hipertrofia/fuerza
+  STRENGTH_TRAINING:  STRENGTH_TRAINING_16W,     // Upper/Lower 4 días — sin running
 
   // Composición corporal
   BODY_RECOMPOSITION: BODY_RECOMPOSITION_16W,
