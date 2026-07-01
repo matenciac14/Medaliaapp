@@ -27,6 +27,7 @@ export type PlanClientWeekSession = {
   logRpe: number | null
   logHrAvg: number | null
   logNotes: string | null
+  logDistanceKm: number | null
 }
 
 export type PlanClientWeek = {
@@ -51,6 +52,17 @@ interface PlanClientProps {
   weeks: PlanClientWeek[]
   nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null
   weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+const RUNNING_TYPES = new Set(['RODAJE_Z2','FARTLEK','TEMPO','INTERVALOS','TIRADA_LARGA','SIMULACRO','TEST'])
+
+function formatPace(distanceKm: number, durationMin: number): string {
+  const secPerKm = (durationMin * 60) / distanceKm
+  const min = Math.floor(secPerKm / 60)
+  const sec = Math.round(secPerKm % 60)
+  return `${min}:${String(sec).padStart(2, '0')} /km`
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -180,8 +192,11 @@ function EditModal({ session, onClose, onSaved }: {
   const [zoneTarget, setZone]       = useState(session.zoneTarget)
   const [detailText, setDetail]     = useState(session.detailText)
 
+  const isEditRunning = RUNNING_TYPES.has(type)
+
   // Log fields
   const [logDuration, setLogDuration] = useState(String(session.logDurationMin ?? ''))
+  const [logDistance, setLogDistance] = useState(String(session.logDistanceKm ?? ''))
   const [rpe, setRpe]                 = useState(session.logRpe ?? 0)
   const [hrAvg, setHrAvg]             = useState(String(session.logHrAvg ?? ''))
   const [logNotes, setLogNotes]       = useState(session.logNotes ?? '')
@@ -208,6 +223,10 @@ function EditModal({ session, onClose, onSaved }: {
         const hr = hrAvg ? parseInt(hrAvg) : null
         if (hr !== session.logHrAvg) logUpdates.hrAvg = hr
         if (logNotes.trim() !== (session.logNotes ?? '')) logUpdates.notes = logNotes.trim() || null
+        if (isEditRunning) {
+          const dist = logDistance ? parseFloat(logDistance) : null
+          if (dist !== session.logDistanceKm) logUpdates.distanceKm = dist
+        }
       }
 
       const [sessionRes, logRes] = await Promise.all([
@@ -234,10 +253,11 @@ function EditModal({ session, onClose, onSaved }: {
       const merged: Partial<PlanClientWeekSession> = {
         ...sessionUpdates as Partial<PlanClientWeekSession>,
         ...(isLogged ? {
-          logDurationMin: logUpdates.durationMin as number ?? session.logDurationMin,
-          logRpe:         logUpdates.rpe         as number ?? session.logRpe,
-          logHrAvg:       logUpdates.hrAvg        as number ?? session.logHrAvg,
-          logNotes:       logUpdates.notes        as string ?? session.logNotes,
+          logDurationMin:  logUpdates.durationMin  as number ?? session.logDurationMin,
+          logRpe:          logUpdates.rpe          as number ?? session.logRpe,
+          logHrAvg:        logUpdates.hrAvg        as number ?? session.logHrAvg,
+          logNotes:        logUpdates.notes        as string ?? session.logNotes,
+          logDistanceKm:   logUpdates.distanceKm  as number ?? session.logDistanceKm,
         } : {}),
       }
       onSaved(merged)
@@ -351,6 +371,25 @@ function EditModal({ session, onClose, onSaved }: {
                   />
                 </div>
               </div>
+
+              {isEditRunning && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">Distancia (km)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={logDistance}
+                    onChange={e => setLogDistance(e.target.value)}
+                    placeholder="8.5"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                  {logDistance && parseFloat(logDistance) > 0 && logDuration && parseInt(logDuration) > 0 && (
+                    <p className="text-xs text-[#1e3a5f] font-medium">
+                      Ritmo: {formatPace(parseFloat(logDistance), parseInt(logDuration))}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* RPE */}
               <div className="space-y-2">
@@ -536,8 +575,12 @@ function LogModal({ session, onClose, onSuccess }: {
   onClose: () => void
   onSuccess: () => void
 }) {
+  const isRunning  = RUNNING_TYPES.has(session.type)
+  const isStrength = session.type === 'FUERZA'
+
   const [completed, setCompleted] = useState<boolean | null>(null)
   const [actualDuration, setActualDuration] = useState(String(session.durationMin))
+  const [distanceKm, setDistanceKm] = useState('')
   const [rpe, setRpe] = useState(0)
   const [hrAvg, setHrAvg] = useState('')
   const [notes, setNotes] = useState('')
@@ -560,6 +603,7 @@ function LogModal({ session, onClose, onSuccess }: {
           durationMin: actualDuration ? parseInt(actualDuration) : undefined,
           rpe: rpe > 0 ? rpe : undefined,
           hrAvg: hrAvg ? parseInt(hrAvg) : undefined,
+          distanceKm: isRunning && distanceKm ? parseFloat(distanceKm) : undefined,
           notes: notes.trim() || undefined,
         }),
       })
@@ -640,6 +684,39 @@ function LogModal({ session, onClose, onSuccess }: {
                   />
                 </div>
               </div>
+
+              {/* Distancia + ritmo — solo sesiones de running */}
+              {isRunning && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-600">Distancia (km)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={distanceKm}
+                    onChange={e => setDistanceKm(e.target.value)}
+                    placeholder="8.5"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
+                  />
+                  {distanceKm && parseFloat(distanceKm) > 0 && actualDuration && parseInt(actualDuration) > 0 && (
+                    <p className="text-xs text-[#1e3a5f] font-semibold">
+                      Ritmo: {formatPace(parseFloat(distanceKm), parseInt(actualDuration))}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Gym — solo FUERZA */}
+              {isStrength && (
+                <div className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
+                  <span className="text-xl">💪</span>
+                  <div>
+                    <p className="text-xs font-semibold text-purple-800">¿Quieres registrar series y reps?</p>
+                    <a href="/gym" className="text-xs text-purple-600 underline hover:text-purple-800">
+                      Ir al módulo de Gym →
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* RPE */}
               <div className="space-y-2">

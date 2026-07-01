@@ -176,6 +176,7 @@ export default async function PlanPage() {
           logRpe: s.log?.rpe ?? null,
           logHrAvg: s.log?.hrAvg ?? null,
           logNotes: s.log?.notes ?? null,
+          logDistanceKm: s.log?.distanceKm ?? null,
         })),
       }))
     }
