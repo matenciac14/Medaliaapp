@@ -44,8 +44,15 @@ export async function POST(req: NextRequest) {
   const fromId = session.user.id
   if (fromId === toId) return NextResponse.json({ error: 'No puedes enviarte mensajes a ti mismo' }, { status: 400 })
 
-  const recipient = await prisma.user.findUnique({ where: { id: toId }, select: { id: true, name: true, pushToken: true } })
+  const [recipient, relationship] = await Promise.all([
+    prisma.user.findUnique({ where: { id: toId }, select: { id: true, name: true, pushToken: true } }),
+    prisma.coachAthlete.findFirst({
+      where: { OR: [{ coachId: fromId, athleteId: toId }, { coachId: toId, athleteId: fromId }] },
+      select: { id: true },
+    }),
+  ])
   if (!recipient) return NextResponse.json({ error: 'Destinatario no encontrado' }, { status: 404 })
+  if (!relationship) return NextResponse.json({ error: 'Sin relación coach-atleta con este usuario' }, { status: 403 })
 
   const message = await prisma.message.create({
     data: { fromId, toId, content: content.trim() },

@@ -6,7 +6,7 @@ import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength
 import { z } from 'zod'
 
 const SetPayloadSchema = z.object({
-  workoutExerciseId: z.string().uuid(),
+  workoutExerciseId: z.string().min(1),
   setNumber: z.number().int().min(1).max(20),
   weightKg: z.number().min(0).max(1000).nullable(),
   repsCompleted: z.number().int().min(0).max(200).nullable(),
@@ -14,15 +14,15 @@ const SetPayloadSchema = z.object({
 })
 
 const ExerciseOverrideSchema = z.object({
-  originalWorkoutExerciseId: z.string().uuid(),
-  replacedWithExerciseId: z.string().uuid(),
+  originalWorkoutExerciseId: z.string().min(1),
+  replacedWithExerciseId: z.string().min(1),
   replacedExerciseName: z.string().max(200),
   reason: z.string().max(500).optional(),
 })
 
 const GymCompleteSchema = z.object({
-  assignedWorkoutId: z.string().uuid().optional(),
-  plannedSessionId: z.string().uuid().optional(),
+  assignedWorkoutId: z.string().min(1).optional(),
+  plannedSessionId: z.string().min(1).optional(),
   dayOfWeek: z.number().int().min(0).max(6),
   rpe: z.number().int().min(1).max(10).optional(),
   durationMin: z.number().int().min(0).max(600).optional(),
