@@ -32,6 +32,10 @@ export async function GET(req: NextRequest) {
         motivationLevel: true,
         sleepHours: true,
         recordedAt: true,
+        waistCm: true,
+        armsCm: true,
+        hipsCm: true,
+        thighsCm: true,
       },
     }),
     prisma.trainingPlan.findFirst({
@@ -69,6 +73,16 @@ export async function GET(req: NextRequest) {
       sleepHours: c.sleepHours ?? null,
     }))
 
+  const measurementPoints = checkIns
+    .filter(c => c.waistCm !== null || c.armsCm !== null || c.hipsCm !== null || c.thighsCm !== null)
+    .map(c => ({
+      week: c.weekNumber,
+      waistCm: c.waistCm ?? null,
+      armsCm: c.armsCm ?? null,
+      hipsCm: c.hipsCm ?? null,
+      thighsCm: c.thighsCm ?? null,
+    }))
+
   const weeks = plan?.weeks.map(w => ({
     weekNumber: w.weekNumber,
     phase: w.phase,
@@ -86,6 +100,7 @@ export async function GET(req: NextRequest) {
     weightPoints,
     hrPoints,
     wellbeingPoints,
+    measurementPoints,
     weeks,
     weightGoal: profile?.weightGoalKg ?? null,
     gymSessionsCompleted: gymCount,
