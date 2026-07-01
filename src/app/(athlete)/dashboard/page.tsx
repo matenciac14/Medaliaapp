@@ -78,6 +78,35 @@ function buildWeeklySummary({
   return lines.slice(0, 2).join(' ') || null
 }
 
+function buildFreeModeSummary({
+  weekSessionCount, weekSessionTarget, todayRoutineDay, dashboardMode, recoveryDaysSinceEnd,
+}: {
+  weekSessionCount: number
+  weekSessionTarget: number
+  todayRoutineDay: { activity: 'GYM' | 'RUN' | 'REST' } | null
+  dashboardMode: 'FREE' | 'RECOVERY'
+  recoveryDaysSinceEnd: number | null
+}): string | null {
+  const lines: string[] = []
+
+  if (weekSessionCount === 0) {
+    lines.push('Aún no has entrenado esta semana.')
+  } else if (weekSessionCount >= weekSessionTarget) {
+    lines.push(`${weekSessionCount} sesiones esta semana — meta cumplida.`)
+  } else {
+    lines.push(`${weekSessionCount} de ${weekSessionTarget} sesiones esta semana.`)
+  }
+
+  if (dashboardMode === 'RECOVERY' && recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 7) {
+    lines.push('Semana de recuperación — mantén la intensidad baja.')
+  } else if (todayRoutineDay && todayRoutineDay.activity !== 'REST') {
+    const label = todayRoutineDay.activity === 'GYM' ? 'Gym' : 'Salida a correr'
+    lines.push(`Hoy: ${label}.`)
+  }
+
+  return lines.join(' ') || null
+}
+
 function getGreeting() {
   const h = new Date().getHours()
   if (h < 12) return 'Buenos días'
@@ -460,6 +489,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     completedCount, totalTraining, currentVolume, volumeDeltaPct,
     streakDays, formStatus, last4WeeksAdherencePct, planPhase: planData.phase, isCurrentWeek,
   }) : null
+  const freeModeSummary = (dashboardMode === 'FREE' || dashboardMode === 'RECOVERY')
+    ? buildFreeModeSummary({ weekSessionCount, weekSessionTarget, todayRoutineDay, dashboardMode, recoveryDaysSinceEnd })
+    : null
 
   return (
     <div className="py-6 lg:px-8 lg:py-8 max-w-6xl mx-auto space-y-6">
@@ -726,8 +758,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 />
               )}
             </div>
-            {weeklySummary && (
-              <p className="text-sm text-gray-500 mb-3 leading-relaxed">{weeklySummary}</p>
+            {(weeklySummary ?? freeModeSummary) && (
+              <p className="text-sm text-gray-500 mb-3 leading-relaxed">{weeklySummary ?? freeModeSummary}</p>
             )}
 
             <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4">
