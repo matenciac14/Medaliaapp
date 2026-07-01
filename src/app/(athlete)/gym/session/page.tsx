@@ -60,6 +60,7 @@ type SessionData = {
   } | null
   exercises: WorkoutExercise[]
   previousLogs: PreviousLog[]
+  freeSession?: boolean
 }
 
 type SetState = {
@@ -70,6 +71,8 @@ type SetState = {
 
 // exerciseId -> setIndex (0-based) -> SetState
 type SetsMap = Record<string, SetState[]>
+
+type FreeExercise = { id: string; name: string }
 
 // ─── Session Timer ───────────────────────────────────────────────────────────
 
@@ -267,6 +270,10 @@ export default function GymSessionPage() {
   const [submitting, setSubmitting] = useState(false)
   const [newPRs, setNewPRs] = useState<{ exerciseName: string | null; weightKg: number | null }[]>([])
 
+  // free session state
+  const [freeExercises, setFreeExercises] = useState<FreeExercise[]>([])
+  const [newExerciseName, setNewExerciseName] = useState('')
+
   // Fetch session data on mount
   useEffect(() => {
     async function fetchSession() {
@@ -339,6 +346,23 @@ export default function GymSessionPage() {
     })
   }, [])
 
+  const addFreeExercise = useCallback(() => {
+    const name = newExerciseName.trim()
+    if (!name) return
+    const id = `free-${Date.now()}`
+    setFreeExercises((prev) => [...prev, { id, name }])
+    setSetsMap((prev) => ({ ...prev, [id]: [{ weightKg: '', repsCompleted: '', completed: false }] }))
+    setExpanded((prev) => { const n = new Set(prev); n.add(id); return n })
+    setNewExerciseName('')
+  }, [newExerciseName])
+
+  const addFreeSet = useCallback((feId: string) => {
+    setSetsMap((prev) => ({
+      ...prev,
+      [feId]: [...(prev[feId] ?? []), { weightKg: '', repsCompleted: '', completed: false }],
+    }))
+  }, [])
+
   const toggleSetDone = useCallback((weId: string, setIdx: number, restSeconds: number | null) => {
     setSetsMap((prev) => {
       const copy = { ...prev }
@@ -363,32 +387,50 @@ export default function GymSessionPage() {
   })()
 
   // Can finish if at least one set logged per exercise (or no exercises)
-  const canFinish = sessionData?.exercises.length === 0
-    || sessionData?.exercises.every((we) => setsMap[we.id]?.some((s) => s.completed)) === true
+  const canFinish = sessionData?.freeSession
+    ? freeExercises.length > 0 && freeExercises.some((fe) => setsMap[fe.id]?.some((s) => s.completed))
+    : sessionData?.exercises.length === 0
+      || sessionData?.exercises.every((we) => setsMap[we.id]?.some((s) => s.completed)) === true
 
   const handleComplete = useCallback(async (rpe: number, durationMin: number, notes: string) => {
     if (!sessionData) return
     setSubmitting(true)
 
     const sets: {
-      workoutExerciseId: string
+      workoutExerciseId?: string
+      exerciseName?: string
       setNumber: number
       weightKg: number | null
       repsCompleted: number | null
       completed: boolean
     }[] = []
 
-    for (const we of sessionData.exercises) {
-      const weSets = setsMap[we.id] ?? []
-      weSets.forEach((s, idx) => {
-        sets.push({
-          workoutExerciseId: we.id,
-          setNumber: idx + 1,
-          weightKg: s.weightKg !== '' ? parseFloat(s.weightKg) : null,
-          repsCompleted: s.repsCompleted !== '' ? parseInt(s.repsCompleted) : null,
-          completed: s.completed,
+    if (sessionData.freeSession) {
+      for (const fe of freeExercises) {
+        const feSets = setsMap[fe.id] ?? []
+        feSets.forEach((s, idx) => {
+          sets.push({
+            exerciseName: fe.name,
+            setNumber: idx + 1,
+            weightKg: s.weightKg !== '' ? parseFloat(s.weightKg) : null,
+            repsCompleted: s.repsCompleted !== '' ? parseInt(s.repsCompleted) : null,
+            completed: s.completed,
+          })
         })
-      })
+      }
+    } else {
+      for (const we of sessionData.exercises) {
+        const weSets = setsMap[we.id] ?? []
+        weSets.forEach((s, idx) => {
+          sets.push({
+            workoutExerciseId: we.id,
+            setNumber: idx + 1,
+            weightKg: s.weightKg !== '' ? parseFloat(s.weightKg) : null,
+            repsCompleted: s.repsCompleted !== '' ? parseInt(s.repsCompleted) : null,
+            completed: s.completed,
+          })
+        })
+      }
     }
 
     try {
@@ -503,7 +545,7 @@ export default function GymSessionPage() {
             ← Volver
           </button>
           <h1 className="text-xl font-bold text-[#1e3a5f] leading-tight">
-            {workoutDay?.label ?? 'Sesión de hoy'}
+            {workoutDay?.label ?? sessionData.templateName}
           </h1>
           {workoutDay?.muscleGroups && workoutDay.muscleGroups.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -732,6 +774,103 @@ export default function GymSessionPage() {
         })}
       </div>
 
+      {/* Free session — exercise adder */}
+      {sessionData.freeSession && (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Nombre del ejercicio (ej: Press banca)"
+              value={newExerciseName}
+              onChange={(e) => setNewExerciseName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addFreeExercise() }}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316]"
+            />
+            <button
+              onClick={addFreeExercise}
+              disabled={!newExerciseName.trim()}
+              className="bg-[#1e3a5f] disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors shrink-0"
+            >
+              + Agregar
+            </button>
+          </div>
+
+          {freeExercises.map((fe, feIdx) => {
+            const feSets = setsMap[fe.id] ?? []
+            const isExpanded = expanded.has(fe.id)
+            const completedCount = feSets.filter((s) => s.completed).length
+            const allDone = completedCount === feSets.length && feSets.length > 0
+
+            return (
+              <div
+                key={fe.id}
+                className={`bg-white border rounded-xl overflow-hidden transition-colors ${allDone ? 'border-green-200' : 'border-gray-200'}`}
+              >
+                <button
+                  onClick={() => toggleExpanded(fe.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-4 text-left transition-colors ${allDone ? 'bg-green-50' : 'bg-white hover:bg-gray-50'}`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allDone ? 'bg-green-500 text-white' : 'bg-[#1e3a5f] text-white'}`}>
+                    {allDone ? '✓' : feIdx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold text-sm truncate ${allDone ? 'text-green-700' : 'text-gray-900'}`}>{fe.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{completedCount}/{feSets.length} series completadas</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="px-4 pb-4 space-y-2 border-t border-gray-100 pt-3">
+                    {feSets.map((s, setIdx) => (
+                      <div
+                        key={setIdx}
+                        className={`flex items-center gap-2 rounded-xl px-3 py-2.5 border transition-all ${s.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+                      >
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${s.completed ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                          {setIdx + 1}
+                        </div>
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            type="number" inputMode="decimal" min={0} step={0.5} placeholder="kg"
+                            value={s.weightKg}
+                            onChange={(e) => updateSet(fe.id, setIdx, 'weightKg', e.target.value)}
+                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                          />
+                          <span className="text-gray-400 text-sm">×</span>
+                          <input
+                            type="number" inputMode="numeric" min={0} placeholder="reps"
+                            value={s.repsCompleted}
+                            onChange={(e) => updateSet(fe.id, setIdx, 'repsCompleted', e.target.value)}
+                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                          />
+                        </div>
+                        <button
+                          onClick={() => toggleSetDone(fe.id, setIdx, null)}
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${s.completed ? 'bg-green-500 text-white scale-110' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                          aria-label={s.completed ? 'Desmarcar serie' : 'Marcar serie completa'}
+                        >
+                          <CheckCircle2 size={20} />
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={() => addFreeSet(fe.id)}
+                      className="w-full text-center text-xs text-gray-500 hover:text-[#f97316] border border-dashed border-gray-300 rounded-lg py-2 transition-colors"
+                    >
+                      + Serie
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Cardio notes */}
       {workoutDay?.cardioNotes && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
@@ -753,7 +892,7 @@ export default function GymSessionPage() {
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
-          {canFinish ? '🏁 Finalizar sesión' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
+          {canFinish ? '🏁 Finalizar sesión' : sessionData.freeSession ? 'Agrega al menos 1 ejercicio y 1 serie' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
         </button>
       </div>
       <div className="hidden md:block pt-2">
@@ -766,7 +905,7 @@ export default function GymSessionPage() {
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
-          {canFinish ? '🏁 Finalizar sesión' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
+          {canFinish ? '🏁 Finalizar sesión' : sessionData.freeSession ? 'Agrega al menos 1 ejercicio y 1 serie' : `Completa al menos 1 serie por ejercicio (${completedSets}/${totalSets})`}
         </button>
       </div>
 

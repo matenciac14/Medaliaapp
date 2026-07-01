@@ -8,7 +8,8 @@ import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
 
 const SetPayloadSchema = z.object({
-  workoutExerciseId: z.string().min(1),
+  workoutExerciseId: z.string().min(1).optional(),
+  exerciseName: z.string().max(200).optional(),
   setNumber: z.number().int().min(1).max(20),
   weightKg: z.number().min(0).max(1000).nullable(),
   repsCompleted: z.number().int().min(0).max(200).nullable(),
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   const exerciseOverrides = body.exerciseOverrides ?? null
 
   // Pre-fetch exercise names + exerciseId for denormalization and PR detection
-  const weIds = [...new Set(sets.map(s => s.workoutExerciseId).filter(Boolean))]
+  const weIds = [...new Set(sets.map(s => s.workoutExerciseId).filter((id): id is string => Boolean(id)))]
   const workoutExercises = weIds.length > 0
     ? await prisma.workoutExercise.findMany({
         where: { id: { in: weIds } },
@@ -163,21 +164,21 @@ export async function POST(req: NextRequest) {
         exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
         setLogs: {
           create: sets.map(s => ({
-            workoutExerciseId: s.workoutExerciseId,
-            exerciseName: weNameMap.get(s.workoutExerciseId) ?? null,
+            workoutExerciseId: s.workoutExerciseId ?? null,
+            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
             setNumber: s.setNumber,
             weightKg: s.weightKg ?? null,
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
-            isPR: isPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+            isPR: isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed),
           })),
         },
       },
       select: { id: true },
     })
 
-    const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId, s.weightKg, s.completed))
-      .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
+    const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed))
+      .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null, weightKg: s.weightKg }))
 
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
@@ -186,9 +187,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
 
+  // ─── Free session path (no template, no plan) ───────────────────────────────
+  if (!body.assignedWorkoutId) {
+    const gymSession = await prisma.gymSession.create({
+      data: {
+        athleteId,
+        assignedWorkoutId: null,
+        plannedSessionId: null,
+        dayOfWeek,
+        date: today,
+        durationMin: durationMin ?? null,
+        rpe: rpe ?? null,
+        notes: notes ?? null,
+        completed: true,
+        setLogs: {
+          create: sets.map(s => ({
+            workoutExerciseId: null,
+            exerciseName: s.exerciseName ?? s.workoutExerciseId ?? null,
+            setNumber: s.setNumber,
+            weightKg: s.weightKg ?? null,
+            repsCompleted: s.repsCompleted ?? null,
+            completed: s.completed,
+            isPR: false,
+          })),
+        },
+      },
+      select: { id: true },
+    })
+    notifyCoach(athleteId, userRecord.name, 'Sesión libre de gym completada 💪').catch(() => {})
+    revalidatePath('/dashboard')
+    return NextResponse.json({ sessionId: gymSession.id, newPRs: [] }, { status: 201 })
+  }
+
   // ─── AssignedWorkout path ────────────────────────────────────────────────────
-  if (!body.assignedWorkoutId)
-    return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
 
   const assigned = await prisma.assignedWorkout.findFirst({
     where: { id: body.assignedWorkoutId, athleteId, isActive: true },
@@ -209,21 +240,21 @@ export async function POST(req: NextRequest) {
       exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
       setLogs: {
         create: sets.map(s => ({
-          workoutExerciseId: s.workoutExerciseId,
-          exerciseName: weNameMap.get(s.workoutExerciseId) ?? null,
+          workoutExerciseId: s.workoutExerciseId ?? null,
+          exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
           setNumber: s.setNumber,
           weightKg: s.weightKg ?? null,
           repsCompleted: s.repsCompleted ?? null,
           completed: s.completed,
-          isPR: isPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+          isPR: isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed),
         })),
       },
     },
     select: { id: true },
   })
 
-  const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId, s.weightKg, s.completed))
-    .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId) ?? null, weightKg: s.weightKg }))
+  const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed))
+    .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null, weightKg: s.weightKg }))
 
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)
