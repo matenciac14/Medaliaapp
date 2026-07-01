@@ -233,16 +233,16 @@ export default function DailySessionCard({
       {/* TRAINING: footer badges de fase + semana + adherencia */}
       {dashboardMode === 'TRAINING' && hasActivePlan && (
         <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 flex-wrap items-center">
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${phaseColors[planPhase] ?? 'bg-gray-100 text-gray-600'}`}>
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${phaseColors[planPhase] ?? 'bg-gray-100 text-gray-600'}`}>
             Fase {phaseDisplay}
           </span>
           {selectedWeekNum != null && totalWeeks != null && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600">
               Semana {selectedWeekNum}/{totalWeeks}
             </span>
           )}
           {completedCount != null && totalTraining != null && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600">
               {completedCount}/{totalTraining} completadas
             </span>
           )}

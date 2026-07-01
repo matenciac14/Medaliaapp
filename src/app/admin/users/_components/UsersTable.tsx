@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChangeRoleButton } from './ChangeRoleButton'
 import { PlanSelector } from './PlanSelector'
+import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum-labels'
 
 type PlanTier = 'FREE' | 'PRO' | 'COACH'
 
@@ -135,7 +136,7 @@ export function UsersTable({ users, total, page, pageSize, searchQuery }: Props)
                       )}
                     </td>
                     <td className="px-5 py-3 text-gray-500 text-xs">
-                      {sport !== '—' ? `${sport} · ${goal}` : '—'}
+                      {sport !== '—' ? `${SPORT_LABEL[sport] ?? sport} · ${GOAL_LABEL[goal] ?? goal}` : '—'}
                     </td>
                     <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                       {new Date(u.createdAt).toLocaleDateString('es-CO')}

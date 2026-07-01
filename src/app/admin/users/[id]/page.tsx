@@ -10,14 +10,7 @@ const ROLE_BADGE: Record<string, string> = {
   ADMIN:   'bg-red-100 text-red-700',
 }
 
-const GOAL_LABEL: Record<string, string> = {
-  RACE_5K:             '5K',
-  RACE_10K:            '10K',
-  RACE_HALF_MARATHON:  'Media maratón',
-  RACE_MARATHON:       'Maratón',
-  BODY_RECOMPOSITION:  'Recomposición corporal',
-  STRENGTH_TRAINING:   'Fuerza',
-}
+import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum-labels'
 
 const SOURCE_LABEL: Record<string, string> = {
   AI:                 'IA generado',
@@ -112,8 +105,8 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
           <h2 className="font-semibold text-gray-800 mb-3 text-sm">Perfil de salud</h2>
           <div className="space-y-2 text-sm">
             {[
-              { label: 'Deporte',    value: user.profile?.sport ?? '—' },
-              { label: 'Objetivo',   value: user.profile?.sportGoal ?? '—' },
+              { label: 'Deporte',    value: SPORT_LABEL[user.profile?.sport ?? ''] ?? user.profile?.sport ?? '—' },
+              { label: 'Objetivo',   value: GOAL_LABEL[user.profile?.sportGoal ?? ''] ?? user.profile?.sportGoal ?? '—' },
               { label: 'Edad',       value: user.profile?.age ? `${user.profile.age} años` : '—' },
               { label: 'Peso',       value: user.profile?.weightKg ? `${user.profile.weightKg} kg` : '—' },
               { label: 'Talla',      value: user.profile?.heightCm ? `${user.profile.heightCm} cm` : '—' },

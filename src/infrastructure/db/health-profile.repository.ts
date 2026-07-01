@@ -21,6 +21,7 @@ export class PrismaHealthProfileRepository implements IHealthProfileRepository {
         weightGoalKg: true,
         heightCm: true,
         age: true,
+        dateOfBirth: true,
         gender: true,
       },
     })

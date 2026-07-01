@@ -50,13 +50,13 @@ export function DeleteUserButton({ userId, userName }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => setStep('idle')}
-            className="flex-1 px-3 py-1.5 rounded-md text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={() => setStep('confirm2')}
-            className="flex-1 px-3 py-1.5 rounded-md text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
           >
             Sí, continuar
           </button>
@@ -78,14 +78,14 @@ export function DeleteUserButton({ userId, userName }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => setStep('idle')}
-            className="flex-1 px-3 py-1.5 rounded-md text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={() => startTransition(handleDelete)}
             disabled={isPending}
-            className="flex-1 px-3 py-1.5 rounded-md text-xs font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
           >
             {isPending ? 'Eliminando…' : 'Eliminar definitivamente'}
           </button>

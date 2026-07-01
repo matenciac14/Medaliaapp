@@ -1,3 +1,5 @@
+// DEV ONLY — seed de desarrollo con usuarios de prueba.
+// Para producción usar: tsx prisma/seed.prod.ts
 import 'dotenv/config'
 import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'

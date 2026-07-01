@@ -1,32 +1,41 @@
 -- Remove OVERDUE from PaymentStatus enum.
 --
--- Problema: OVERDUE es estado derivado (dueDate < NOW() && status = PENDING)
--- almacenado en DB. Requería un side-effect en el GET para mantenerse actualizado
--- — si el coach no abría Finanzas, los pagos vencidos nunca se marcaban.
---
--- Solución: OVERDUE se calcula en la capa de aplicación (dueDate + status).
--- DB solo persiste PENDING | PAID — estados que realmente cambian por acción humana.
+-- Wrapped in a DO block so the shadow DB can replay safely even when
+-- the Payment table does not yet exist (it is created later in
+-- 20260628100000_decompose_user_config).
 
--- 0. Cleanup por si un intento previo dejó el tipo a medias
-DROP TYPE IF EXISTS "PaymentStatus_new";
+DO $$ BEGIN
+  -- Only run if Payment table exists (idempotent replay safety)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Payment'
+  ) THEN
+    -- 0. Cleanup if a previous attempt left the type half-done
+    DROP TYPE IF EXISTS "PaymentStatus_new";
 
--- 1. Resetear pagos OVERDUE a PENDING (no han sido pagados; el vencimiento es display)
-UPDATE "Payment" SET status = 'PENDING' WHERE status = 'OVERDUE';
+    -- 1. Reset OVERDUE rows to PENDING
+    UPDATE "Payment" SET status = 'PENDING' WHERE status = 'OVERDUE';
 
--- 2. Crear nuevo enum sin OVERDUE
-CREATE TYPE "PaymentStatus_new" AS ENUM ('PENDING', 'PAID');
+    -- 2. Create new enum without OVERDUE
+    CREATE TYPE "PaymentStatus_new" AS ENUM ('PENDING', 'PAID');
 
--- 3. Dropear el DEFAULT antes de mutar el tipo (PostgreSQL no puede castear el default automáticamente)
-ALTER TABLE "Payment" ALTER COLUMN status DROP DEFAULT;
+    -- 3. Drop DEFAULT before mutating column type
+    ALTER TABLE "Payment" ALTER COLUMN status DROP DEFAULT;
 
--- 4. Migrar la columna al nuevo tipo
-ALTER TABLE "Payment"
-  ALTER COLUMN status TYPE "PaymentStatus_new"
-  USING status::text::"PaymentStatus_new";
+    -- 4. Cast column to new enum
+    ALTER TABLE "Payment"
+      ALTER COLUMN status TYPE "PaymentStatus_new"
+      USING status::text::"PaymentStatus_new";
 
--- 5. Restaurar el DEFAULT con el nuevo tipo
-ALTER TABLE "Payment" ALTER COLUMN status SET DEFAULT 'PENDING'::"PaymentStatus_new";
+    -- 5. Restore DEFAULT with new type
+    ALTER TABLE "Payment" ALTER COLUMN status SET DEFAULT 'PENDING'::"PaymentStatus_new";
 
--- 6. Eliminar enum viejo y renombrar el nuevo
-DROP TYPE "PaymentStatus";
-ALTER TYPE "PaymentStatus_new" RENAME TO "PaymentStatus";
+    -- 6. Drop old enum and rename new
+    DROP TYPE IF EXISTS "PaymentStatus";
+    ALTER TYPE "PaymentStatus_new" RENAME TO "PaymentStatus";
+  ELSE
+    -- Table will be created by 20260628100000_decompose_user_config with
+    -- the correct (PENDING | PAID) enum — nothing to do here.
+    RAISE NOTICE 'Payment table not found — skipping enum migration (will be created correctly later).';
+  END IF;
+END $$;

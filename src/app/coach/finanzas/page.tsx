@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { KpiCard } from '@/app/_components/kpi-card'
+import { getDisplayStatus } from '@/lib/coach/payment-status'
+import type { DisplayStatus } from '@/lib/coach/payment-status'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-// OVERDUE no existe en DB — se deriva de dueDate + status en la capa de presentación
 type StoredStatus = 'PENDING' | 'PAID'
-type DisplayStatus = 'PENDING' | 'PAID' | 'OVERDUE'
 
 type Payment = {
   id: string
@@ -20,11 +21,6 @@ type Payment = {
   notes: string | null
   createdAt: string
   athlete: { id: string; name: string | null; email: string }
-}
-
-function getDisplayStatus(p: Payment): DisplayStatus {
-  if (p.status === 'PAID') return 'PAID'
-  return new Date(p.dueDate) < new Date() ? 'OVERDUE' : 'PENDING'
 }
 
 type Athlete = {
@@ -67,8 +63,9 @@ export default function FinanzasPage() {
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
 
-  // Filter
+  // Filters
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | 'ALL'>('ALL')
+  const [filterAthlete, setFilterAthlete] = useState<string>('ALL')
 
   const fetchPayments = useCallback(async () => {
     setLoading(true)
@@ -146,7 +143,8 @@ export default function FinanzasPage() {
     .filter(p => p.paidAt && new Date(p.paidAt).getMonth() === new Date().getMonth())
     .reduce((s, p) => s + p.amount, 0)
 
-  const filtered = filterStatus === 'ALL' ? payments : payments.filter(p => getDisplayStatus(p) === filterStatus)
+  const byAthlete = filterAthlete === 'ALL' ? payments : payments.filter(p => p.athleteId === filterAthlete)
+  const filtered  = filterStatus  === 'ALL' ? byAthlete : byAthlete.filter(p => getDisplayStatus(p) === filterStatus)
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto" style={{ backgroundColor: '#f8fafc' }}>
@@ -167,21 +165,27 @@ export default function FinanzasPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-          <p className="text-xs text-gray-400 mb-1">Vencido</p>
-          <p className="text-lg font-black text-red-600">{overdue.length > 0 ? fmt(totalOverdue, 'COP') : '—'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{overdue.length} pago{overdue.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-          <p className="text-xs text-gray-400 mb-1">Pendiente</p>
-          <p className="text-lg font-black text-yellow-700">{pending.length > 0 ? fmt(totalPending, 'COP') : '—'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{pending.length} pago{pending.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-          <p className="text-xs text-gray-400 mb-1">Cobrado (mes)</p>
-          <p className="text-lg font-black text-green-700">{totalPaidMonth > 0 ? fmt(totalPaidMonth, 'COP') : '—'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{paid.length} total</p>
-        </div>
+        <KpiCard
+          label="Vencido"
+          value={overdue.length > 0 ? fmt(totalOverdue, 'COP') : '—'}
+          sub={`${overdue.length} pago${overdue.length !== 1 ? 's' : ''}`}
+          color="#dc2626"
+          center
+        />
+        <KpiCard
+          label="Pendiente"
+          value={pending.length > 0 ? fmt(totalPending, 'COP') : '—'}
+          sub={`${pending.length} pago${pending.length !== 1 ? 's' : ''}`}
+          color="#854d0e"
+          center
+        />
+        <KpiCard
+          label="Cobrado (mes)"
+          value={totalPaidMonth > 0 ? fmt(totalPaidMonth, 'COP') : '—'}
+          sub={`${paid.length} total`}
+          color="#166534"
+          center
+        />
       </div>
 
       {/* Form */}
@@ -270,7 +274,23 @@ export default function FinanzasPage() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Athlete filter */}
+      {athletes.length > 1 && (
+        <div className="mb-3">
+          <select
+            value={filterAthlete}
+            onChange={e => setFilterAthlete(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300"
+          >
+            <option value="ALL">Todos los atletas</option>
+            {athletes.map(a => (
+              <option key={a.id} value={a.id}>{a.name ?? a.email}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Status filters */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {(['ALL', 'OVERDUE', 'PENDING', 'PAID'] as const).map(s => (
           <button

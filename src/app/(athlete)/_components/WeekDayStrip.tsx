@@ -103,7 +103,7 @@ function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => v
       )}
       {hasSession && durationMin > 0 && (
         <span className={cn('text-[10px] leading-none', done || isToday ? 'text-white/70' : 'text-gray-400')}>
-          {durationMin} min{zoneTarget ? ` · ${zoneTarget}` : ''}
+          {durationMin} min{zoneTarget && zoneTarget !== 'N/A' && sessionType !== 'FUERZA' ? ` · ${zoneTarget}` : ''}
         </span>
       )}
       {gymOverlay && (
@@ -183,7 +183,7 @@ function GridCell({ cell, isSelected, onClick }: { cell: WeekDayCell; isSelected
         <span className={cn('text-[9px] mt-0.5',
           isSelected ? 'text-blue-200' : 'text-gray-400'
         )}>
-          {cell.durationMin}m{cell.zoneTarget ? ` · ${cell.zoneTarget}` : ''}
+          {cell.durationMin}m{cell.zoneTarget && cell.zoneTarget !== 'N/A' && cell.sessionType !== 'FUERZA' ? ` · ${cell.zoneTarget}` : ''}
         </span>
       )}
     </Wrapper>

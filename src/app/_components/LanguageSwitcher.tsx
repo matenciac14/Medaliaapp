@@ -24,7 +24,7 @@ export default function LanguageSwitcher({ variant = 'dark' }: Props) {
           onClick={() => setLocale(loc)}
           title={label}
           className={[
-            'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium transition-all',
+            'flex items-center justify-center gap-1 px-2.5 py-3 rounded text-xs font-medium transition-all min-h-[44px] min-w-[44px]',
             locale === loc
               ? variant === 'dark'
                 ? 'bg-white/20 text-white'

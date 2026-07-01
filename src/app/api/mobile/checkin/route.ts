@@ -19,7 +19,7 @@ const mobileCheckInSchema = z.object({
   motivationLevel: z.number().min(0).max(10).optional(),
   sleepScore:      z.number().min(0).max(10).optional(),
   painLevel:       z.number().min(0).max(10).optional(),
-  weightKg:        z.number().min(0).optional(),
+  weightKg:        z.number().min(10).max(500).optional(),
   hrResting:       z.number().min(0).max(250).optional(),
   sleepHours:      z.number().min(0).max(24).optional(),
   notes:           z.string().max(5000).optional(),

@@ -90,7 +90,7 @@ export default function CoachSidebarClient({ coachName }: Props) {
               <p className="text-white text-sm font-medium truncate">{coachName}</p>
               <p className="text-white/50 text-xs">Coach</p>
             </div>
-            <button onClick={() => signOut({ callbackUrl: '/login' })} className="text-white/50 hover:text-white transition-colors" title={s.logout}>
+            <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg" title={s.logout} aria-label={s.logout}>
               <LogOut size={16} />
             </button>
           </div>

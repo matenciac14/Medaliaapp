@@ -271,6 +271,11 @@ export default function ProfileClient({ user }: Props) {
                 <p className="text-[10px] text-gray-400 mt-0.5">Deja vacío para usar la estimada por Fox (211 − 0.64×edad)</p>
               </div>
             </div>
+            <p className="text-[10px] text-gray-400 -mt-1">
+              El seguimiento semanal de peso y FC se hace en el{' '}
+              <a href="/checkin" className="underline hover:text-gray-600 transition-colors">Check-in semanal</a>.
+              Aquí actualiza solo si hubo un cambio permanente en tu perfil base.
+            </p>
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Lesiones (separadas por coma)</label>
               <input

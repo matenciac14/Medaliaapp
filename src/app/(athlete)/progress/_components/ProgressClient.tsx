@@ -73,6 +73,11 @@ const PHASE_BAR_COLOR: Record<string, string> = {
   AFINAMIENTO: '#7c3aed',
 }
 
+// Normaliza acentos para lookup en los mapas de fase (la DB puede guardar ESPECÍFICO o ESPECIFICO)
+function normalizePhase(phase: string): string {
+  return phase.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+}
+
 const PHASE_BADGE: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
   DESARROLLO: 'bg-orange-100 text-orange-800',
@@ -250,7 +255,7 @@ function HorizontalKmChart({ data }: { data: WeekData[] }) {
     <div className="space-y-2">
       {data.map((w) => {
         const widthPct = Math.round((w.volumeKm / maxKm) * 100)
-        const color = PHASE_BAR_COLOR[w.phase] ?? '#1e3a5f'
+        const color = PHASE_BAR_COLOR[normalizePhase(w.phase)] ?? '#1e3a5f'
         return (
           <div key={w.weekNumber} className="flex items-center gap-2">
             <span className="text-[10px] text-gray-500 w-5 shrink-0">S{w.weekNumber}</span>
