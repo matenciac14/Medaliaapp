@@ -48,7 +48,7 @@ export default async function AdminFinanzasPage() {
   const pending = paymentGroups.filter((p) => p.status === 'PENDING' && p.dueDate >= now)
   const overdue = paymentGroups.filter((p) => p.status === 'PENDING' && p.dueDate < now)
 
-  const sumCOP = (items: typeof paid) => items.reduce((s, p) => s + (p.currency === 'COP' ? p.amount : 0), 0)
+  const sumCOP = (items: typeof paid) => items.reduce((s, p) => s + (p.currency === 'COP' ? Number(p.amount) : 0), 0)
 
   const kpis = [
     {

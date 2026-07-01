@@ -4,6 +4,7 @@ import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { requireFeature } from '@/lib/guards/feature-gate'
 import { z } from 'zod'
+import type { SessionType } from '@/generated/prisma/enums'
 
 const LogSessionSchema = z.object({
   sessionId: z.string().min(1).optional(),
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         plannedSessionId: null,
-        freeSessionType: sessionType,
+        freeSessionType: sessionType as SessionType | undefined,
         completedAt: new Date(),
         rpe: rpe ?? null,
         hrAvg: hrAvg ?? null,

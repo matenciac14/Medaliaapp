@@ -265,7 +265,7 @@ export async function sendPaymentOverdueCoachEmail(
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151">${i.athleteName}</td>
         <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;text-align:right">
-          ${i.amount.toLocaleString('es-CO')} ${i.currency}
+          ${Number(i.amount).toLocaleString('es-CO')} ${i.currency}
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:12px;color:#ef4444;text-align:right">
           ${daysOverdue}d vencido

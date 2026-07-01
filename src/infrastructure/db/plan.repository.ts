@@ -15,7 +15,7 @@ import type { PrismaDbClient } from '@/lib/db/prisma-client'
 import type { Prisma } from '@/generated/prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
-import type { Phase, SessionType as PrismaSessionType } from '../../generated/prisma/enums'
+import type { Phase, SessionType as PrismaSessionType, GoalType } from '../../generated/prisma/enums'
 
 export class PrismaPlanRepository implements IPlanRepository {
   constructor(private db: PrismaDbClient = prisma) {}
@@ -113,7 +113,7 @@ export class PrismaPlanRepository implements IPlanRepository {
       data: {
         userId: data.userId,
         name: data.name,
-        goalType: data.goalType ?? null,
+        goalType: (data.goalType as GoalType | undefined) ?? null,
         totalWeeks: data.totalWeeks,
         status: 'ACTIVE',
         // 'TEMPLATE' is not in PlanSource enum — map to 'AI' as closest equivalent
