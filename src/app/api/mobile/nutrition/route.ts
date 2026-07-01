@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
   })
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
-  const [nutritionPlan, mealPlan, todaySession, gymToday] = await Promise.all([
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const [nutritionPlan, mealPlan, todaySession, pendingAdj, gymToday] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -36,6 +39,10 @@ export async function GET(req: NextRequest) {
           select: { type: true, intensity: true },
         })
       : Promise.resolve(null),
+    prisma.pendingNutritionAdjustment.findUnique({
+      where: { userId_date: { userId, date: todayStart } },
+      select: { id: true, deltaKcal: true, deltaCarbsG: true, adjustedKcal: true, adjustedCarbsG: true, plannedIntensity: true, actualIntensity: true, status: true },
+    }),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
       select: {
@@ -71,10 +78,13 @@ export async function GET(req: NextRequest) {
     : nutritionPlan.carbsEasyG
   const macros = { kcal, proteinG: nutritionPlan.proteinG, carbsG, fatG: nutritionPlan.fatG, tdee: nutritionPlan.tdee }
 
+  const pendingAdjustment = pendingAdj?.status === 'PENDING' ? pendingAdj : null
+
   return NextResponse.json({
     hasNutritionPlan: true,
     dayType,
     macros,
     mealPlan: parseMealPlanData(mealPlan?.data ?? null),
+    pendingAdjustment,
   })
 }

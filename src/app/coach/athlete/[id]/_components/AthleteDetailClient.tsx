@@ -74,6 +74,10 @@ export type CheckInData = {
   hardestSessionRpe: number | null
   adjustmentsTriggered: string[]
   notes: string | null
+  waistCm: number | null
+  armsCm: number | null
+  hipsCm: number | null
+  thighsCm: number | null
 }
 
 export type NutritionPlanData = {
@@ -136,6 +140,16 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
 }
 
 const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmarks', 'Gym', 'Mensajes']
+
+// ── Template preview info (feature C) ────────────────────────────────────────
+const TEMPLATE_PREVIEW: Record<string, { weeks: number; description: string; phases: string[] }> = {
+  RACE_5K:             { weeks: 8,  description: 'Intervalos progresivos + fartlek semanal.', phases: ['BASE 3 sem', 'DESARROLLO 3 sem', 'AFINAMIENTO 2 sem'] },
+  RACE_10K:            { weeks: 12, description: 'Volumen aeróbico + tempo runs y series.', phases: ['BASE 4 sem', 'DESARROLLO 5 sem', 'ESPECÍFICO 2 sem', 'AFINAMIENTO 1 sem'] },
+  RACE_HALF_MARATHON:  { weeks: 18, description: 'Tiradas largas progresivas + zonas HR 2-3.', phases: ['BASE 5 sem', 'DESARROLLO 7 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
+  RACE_MARATHON:       { weeks: 18, description: 'Volumen máximo + simulacro de carrera.', phases: ['BASE 5 sem', 'DESARROLLO 7 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
+  STRENGTH_TRAINING:   { weeks: 16, description: 'Splits Push/Pull/Legs con progresión de cargas.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
+  BODY_RECOMPOSITION:  { weeks: 16, description: 'Fuerza + cardio moderado para recomposición.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
+}
 
 const INTENSITY_SCORE: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1, REST: 0 }
 
@@ -1124,6 +1138,24 @@ export default function AthleteDetailClient({
                       <option value="WEIGHT_LOSS">Pérdida de peso</option>
                       <option value="GENERAL_FITNESS">Condición general</option>
                     </select>
+                    {/* Template preview — feature C */}
+                    {TEMPLATE_PREVIEW[planGoalType] && (() => {
+                      const info = TEMPLATE_PREVIEW[planGoalType]
+                      return (
+                        <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-semibold text-[#1e3a5f]">{info.weeks} semanas</span>
+                            <span className="text-gray-400">·</span>
+                            <span className="text-gray-600 text-xs">{info.description}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {info.phases.map(p => (
+                              <span key={p} className="text-[10px] px-2 py-0.5 bg-white border border-blue-100 rounded-full text-[#1e3a5f] font-medium">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   <div>
@@ -1395,6 +1427,10 @@ export default function AthleteDetailClient({
                       <th className="pb-2 font-medium">Estrés</th>
                       <th className="pb-2 font-medium">Motivación</th>
                       <th className="pb-2 font-medium">Dolor</th>
+                      <th className="pb-2 font-medium">Cintura</th>
+                      <th className="pb-2 font-medium">Brazos</th>
+                      <th className="pb-2 font-medium">Cadera</th>
+                      <th className="pb-2 font-medium">Muslos</th>
                       <th className="pb-2 font-medium">Adherencia</th>
                     </tr>
                   </thead>
@@ -1427,6 +1463,10 @@ export default function AthleteDetailClient({
                             </span>
                           ) : '—'}
                         </td>
+                        <td className="py-2.5 text-gray-600">{c.waistCm != null ? `${c.waistCm} cm` : '—'}</td>
+                        <td className="py-2.5 text-gray-600">{c.armsCm != null ? `${c.armsCm} cm` : '—'}</td>
+                        <td className="py-2.5 text-gray-600">{c.hipsCm != null ? `${c.hipsCm} cm` : '—'}</td>
+                        <td className="py-2.5 text-gray-600">{c.thighsCm != null ? `${c.thighsCm} cm` : '—'}</td>
                         <td className="py-2.5 text-gray-600">
                           {c.dietAdherencePct != null ? `${c.dietAdherencePct}%` : '—'}
                         </td>
@@ -1461,6 +1501,60 @@ export default function AthleteDetailClient({
                           </div>
                         )
                       })}
+                  </div>
+                </div>
+              )}
+
+              {/* Circunferencias corporales */}
+              {checkInsSorted.some((c) => c.waistCm !== null || c.armsCm !== null || c.hipsCm !== null || c.thighsCm !== null) && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Circunferencias corporales</h2>
+                  <div className="space-y-5">
+                    {([
+                      { key: 'waistCm' as const, label: 'Cintura', color: '#6366f1' },
+                      { key: 'armsCm'  as const, label: 'Brazos',  color: '#f97316' },
+                      { key: 'hipsCm'  as const, label: 'Cadera',  color: '#ec4899' },
+                      { key: 'thighsCm' as const, label: 'Muslos', color: '#14b8a6' },
+                    ]).map(({ key, label, color }) => {
+                      const pts = checkInsSorted.filter(c => c[key] !== null)
+                      if (pts.length === 0) return null
+                      const latest = pts[pts.length - 1][key] as number
+                      const first  = pts[0][key] as number
+                      const delta  = +(latest - first).toFixed(1)
+                      const maxVal = Math.max(...pts.map(p => p[key] as number))
+                      const minVal = Math.min(...pts.map(p => p[key] as number))
+                      const range  = maxVal - minVal || 1
+                      return (
+                        <div key={key}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700">{label}</span>
+                            <div className="flex items-center gap-2">
+                              {delta !== 0 && (
+                                <span className={`text-xs font-semibold ${delta < 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                  {delta > 0 ? '+' : ''}{delta} cm
+                                </span>
+                              )}
+                              <span className="text-sm font-bold" style={{ color }}>{latest} cm</span>
+                            </div>
+                          </div>
+                          <div className="flex items-end gap-1" style={{ height: 36 }}>
+                            {pts.map((c, idx) => {
+                              const heightPct = 25 + ((c[key] as number - minVal) / range) * 75
+                              return (
+                                <div key={c.id} title={`S${c.weekNumber}: ${c[key]} cm`} className="flex-1 rounded-t-sm transition-all" style={{ height: `${heightPct}%`, backgroundColor: color, opacity: 0.55 + (idx / pts.length) * 0.45 }} />
+                              )
+                            })}
+                          </div>
+                          <div className="flex gap-1 mt-0.5">
+                            {pts.map(c => (
+                              <div key={c.id} className="flex-1 text-center">
+                                <span className="text-[9px] text-gray-400">S{c.weekNumber}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
