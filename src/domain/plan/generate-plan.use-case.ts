@@ -29,7 +29,7 @@ import type { PrismaDbClient } from '@/lib/db/prisma-client'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Running goal types that include a weekly FUERZA session. */
+/** Running goal types that include a weekly FUERZA session in their template. */
 const RUNNING_GOALS = new Set([
   'RACE_5K', 'RACE_10K', 'RACE_HALF_MARATHON', 'RACE_MARATHON',
 ])
@@ -38,8 +38,8 @@ const RUNNING_GOALS = new Set([
  * Maps training phase → WorkoutDay ID for the "Fuerza corredor" system template.
  * IDs are stable — defined in prisma/seed.ts.
  *
- * BASE:      functional strength (3×12-15, sentadillas, lunges, hip thrust)
- * DESARROLLO+: specific runner strength + plyometrics (4×8-10, heavier load)
+ * BASE:       functional strength (3×12-15, sentadillas, lunges, hip thrust)
+ * DESARROLLO+: specific runner strength (4×8-10, heavier load, calf emphasis)
  */
 const FUERZA_CORREDOR_DAY: Record<string, string> = {
   BASE:        'system-fuerza-corredor-base',
@@ -47,6 +47,20 @@ const FUERZA_CORREDOR_DAY: Record<string, string> = {
   ESPECIFICO:  'system-fuerza-corredor-especifico',
   ESPECÍFICO:  'system-fuerza-corredor-especifico',
   AFINAMIENTO: 'system-fuerza-corredor-especifico',
+}
+
+/**
+ * Pure function — resolves the WorkoutDay ID that should be linked to a planned session.
+ * Returns null for all non-running plans or non-FUERZA sessions.
+ * Exported for testing.
+ */
+export function resolveWorkoutDayId(
+  goalType: string,
+  sessionType: string,
+  phase: string,
+): string | null {
+  if (!RUNNING_GOALS.has(goalType) || sessionType !== 'FUERZA') return null
+  return FUERZA_CORREDOR_DAY[phase] ?? null
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -155,9 +169,7 @@ export async function generatePlanUseCase(
         return week.sessions.map(session => {
           // Link FUERZA sessions in running plans to the system WorkoutDay so the
           // gym tracker can load exercises automatically without coach assignment.
-          const workoutDayId = (isRunning && session.type === 'FUERZA')
-            ? (FUERZA_CORREDOR_DAY[week.phase] ?? null)
-            : null
+          const workoutDayId = resolveWorkoutDayId(input.goalType, session.type, week.phase)
 
           return {
             weekId: planWeek.id,
