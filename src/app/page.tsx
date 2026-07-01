@@ -110,7 +110,7 @@ export default async function Home() {
             </div>
             <div className="flex gap-8 mt-10 anim-fade-in delay-500">
               {[
-                { value: '30 días', label: l.hero.stat1Label },
+                { value: '∞', label: l.hero.stat1Label },
                 { value: '0%', label: l.hero.stat2Label },
                 { value: '5', label: l.hero.stat3Label },
               ].map(({ value, label }) => (
@@ -147,25 +147,40 @@ export default async function Home() {
 
       {/* 2b · Franja científica */}
       <section className="bg-white border-b border-gray-100 py-10 px-4">
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-6">
+        <div className="max-w-5xl mx-auto flex flex-col items-center gap-7">
           <p className="text-gray-400 text-xs font-semibold tracking-[0.12em] uppercase text-center">
             {l.science.label}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-0">
+          {/* Desktop: fila dividida con divide-x */}
+          <div className="hidden sm:flex items-center divide-x divide-gray-200 w-full">
             {[
               { icon: <Activity size={22} />, title: l.science.item1Title, sub: l.science.item1Sub },
               { icon: <Flame size={22} />, title: l.science.item2Title, sub: l.science.item2Sub },
               { icon: <CalendarCheck size={22} />, title: l.science.item3Title, sub: l.science.item3Sub },
               { icon: <Wallet size={22} />, title: l.science.item4Title, sub: l.science.item4Sub },
-            ].map((item, i) => (
-              <div key={item.title} className="flex items-center">
-                {i > 0 && <div className="hidden sm:block w-px h-9 bg-gray-200 mx-8 sm:mx-10" />}
-                <div className="flex items-center gap-3">
-                  <span className="text-[#f97316]">{item.icon}</span>
-                  <div>
-                    <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
-                    <p className="text-gray-500 text-xs">{item.sub}</p>
-                  </div>
+            ].map((item) => (
+              <div key={item.title} className="flex items-center gap-3 flex-1 justify-center px-6 first:pl-0 last:pr-0">
+                <span className="text-[#f97316] shrink-0">{item.icon}</span>
+                <div>
+                  <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
+                  <p className="text-gray-500 text-xs">{item.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Mobile: grid 2×2 */}
+          <div className="grid grid-cols-2 gap-6 sm:hidden w-full">
+            {[
+              { icon: <Activity size={20} />, title: l.science.item1Title, sub: l.science.item1Sub },
+              { icon: <Flame size={20} />, title: l.science.item2Title, sub: l.science.item2Sub },
+              { icon: <CalendarCheck size={20} />, title: l.science.item3Title, sub: l.science.item3Sub },
+              { icon: <Wallet size={20} />, title: l.science.item4Title, sub: l.science.item4Sub },
+            ].map((item) => (
+              <div key={item.title} className="flex items-center gap-3">
+                <span className="text-[#f97316] shrink-0">{item.icon}</span>
+                <div>
+                  <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
+                  <p className="text-gray-500 text-xs">{item.sub}</p>
                 </div>
               </div>
             ))}
