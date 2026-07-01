@@ -37,3 +37,16 @@ export function getPlanWeekNumber(startDate: Date, totalWeeks?: number): number 
 
 /** ISO week of the current date. */
 export const getCurrentISOWeek = (): number => getISOWeekNumber(new Date())
+
+/**
+ * Calcula el índice (0-based) de la semana activa de un plan.
+ * Usa getPlanWeekNumber como fuente canónica y clampea a [0, weeks.length-1].
+ * Usado en PlanBuilderClient y AthleteDetailClient para abrir en la semana correcta.
+ */
+export function getInitialWeekIdx(
+  plan: { startDate: string | Date; totalWeeks: number; weeks: unknown[] } | null
+): number {
+  if (!plan || plan.weeks.length === 0) return 0
+  const currentWeekNumber = getPlanWeekNumber(new Date(plan.startDate as string), plan.totalWeeks)
+  return Math.max(0, Math.min(currentWeekNumber - 1, plan.weeks.length - 1))
+}
