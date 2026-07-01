@@ -9,9 +9,15 @@ export async function GET(req: NextRequest) {
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition-foods`, { limit: 300, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
+  const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+
   const foods = await prisma.food.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+    },
     orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    take: 50,
     select: {
       id: true,
       name: true,

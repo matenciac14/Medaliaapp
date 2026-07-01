@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
 
 const LogSessionSchema = z.object({
@@ -48,19 +49,30 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ ok: true, id: existing.id, alreadyLogged: true })
   }
 
-  const log = await prisma.sessionLog.create({
-    data: {
-      userId,
-      plannedSessionId: body.plannedSessionId ?? null,
-      completedAt: new Date(),
-      rpe: body.rpe,
-      hrAvg: body.hrAvg,
-      hrMax: body.hrMax,
-      distanceKm: body.distanceKm,
-      durationMin: body.durationMin,
-      notes: body.notes,
-    },
-  })
+  const [log, coachRelation] = await Promise.all([
+    prisma.sessionLog.create({
+      data: {
+        userId,
+        plannedSessionId: body.plannedSessionId ?? null,
+        completedAt: new Date(),
+        rpe: body.rpe,
+        hrAvg: body.hrAvg,
+        hrMax: body.hrMax,
+        distanceKm: body.distanceKm,
+        durationMin: body.durationMin,
+        notes: body.notes,
+      },
+    }),
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: userId, status: 'ACTIVE' },
+      select: { coach: { select: { pushToken: true } }, athlete: { select: { name: true } } },
+    }),
+  ])
+
+  if (coachRelation?.coach.pushToken) {
+    const name = coachRelation.athlete.name ?? 'Tu atleta'
+    sendPushNotification(coachRelation.coach.pushToken, `${name} completó una sesión`, 'Sesión registrada 🏃', { screen: 'coach' }).catch(() => {})
+  }
 
   return NextResponse.json({ ok: true, id: log.id })
 }

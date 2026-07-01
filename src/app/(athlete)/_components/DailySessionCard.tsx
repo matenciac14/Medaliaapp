@@ -24,6 +24,12 @@ type RoutineDay = {
   runType?: string | null
 }
 
+type WeekActivity = {
+  dateStr: string
+  label: string
+  emoji: string
+}
+
 type Props = {
   dashboardMode: 'TRAINING' | 'RECOVERY' | 'FREE'
   isCurrentWeek: boolean
@@ -42,6 +48,7 @@ type Props = {
   todayRoutineDay?: RoutineDay | null
   weekSessionCount?: number
   weekSessionTarget?: number
+  weekActivities?: WeekActivity[]
 }
 
 const RUN_TYPE_LABELS: Record<string, string> = {
@@ -65,6 +72,7 @@ export default function DailySessionCard({
   hasGymToday, todayGymDay, planPhase, phaseDisplay, phaseColors,
   selectedWeekNum, totalWeeks, completedCount, totalTraining,
   todayRoutineDay, weekSessionCount = 0, weekSessionTarget = 4,
+  weekActivities = [],
 }: Props) {
   return (
     <>
@@ -202,6 +210,21 @@ export default function DailySessionCard({
               >
                 + Configurar mi rutina semanal
               </Link>
+            </div>
+          )}
+
+          {/* Logs reales de la semana */}
+          {weekActivities.length > 0 && (
+            <div className="space-y-1 border-t border-gray-100 pt-3">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Lo que hiciste esta semana</p>
+              {weekActivities.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-gray-600">
+                  <span>{a.emoji}</span>
+                  <span className="font-medium capitalize">{a.dateStr}</span>
+                  <span className="text-gray-400">·</span>
+                  <span>{a.label}</span>
+                </div>
+              ))}
             </div>
           )}
 

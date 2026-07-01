@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength'
 import { revalidatePath } from 'next/cache'
+import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
 
 const SetPayloadSchema = z.object({
@@ -35,13 +36,23 @@ const GymCompleteSchema = z.object({
 type SetPayload = z.infer<typeof SetPayloadSchema>
 type ExerciseOverride = z.infer<typeof ExerciseOverrideSchema>
 
+async function notifyCoach(athleteId: string, athleteName: string | null, sessionLabel: string) {
+  const relation = await prisma.coachAthlete.findFirst({
+    where: { athleteId, status: 'ACTIVE' },
+    select: { coach: { select: { pushToken: true } } },
+  })
+  if (!relation?.coach.pushToken) return
+  const name = athleteName ?? 'Tu atleta'
+  sendPushNotification(relation.coach.pushToken, `${name} completó una sesión`, sessionLabel, { screen: 'coach' }).catch(() => {})
+}
+
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
   const athleteId = mobile?.id ?? (await auth())?.user?.id
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   // Feature gate
-  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true } })
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true, name: true } })
   if (!userRecord?.featureGym) {
     return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
   }
@@ -170,6 +181,7 @@ export async function POST(req: NextRequest) {
 
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
+    notifyCoach(athleteId, userRecord.name, 'Sesión de fuerza completada 💪').catch(() => {})
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
@@ -215,6 +227,7 @@ export async function POST(req: NextRequest) {
 
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)
+  notifyCoach(athleteId, userRecord.name, 'Sesión de gym completada 💪').catch(() => {})
   revalidatePath('/dashboard')
 
   return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })

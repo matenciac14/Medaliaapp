@@ -31,6 +31,14 @@ export type BenchmarkPoint = {
   notes?: string | null
 }
 
+export type GymPR = {
+  id: string
+  exerciseName: string
+  weightKg: number | null
+  repsCompleted: number | null
+  date: string
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -38,6 +46,7 @@ export type ProgressClientProps = {
   weeks: WeekData[]
   weightGoal: number | null
   benchmarks: BenchmarkPoint[]
+  gymPRs: GymPR[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -399,6 +408,7 @@ export default function ProgressClient({
   weeks,
   weightGoal,
   benchmarks,
+  gymPRs,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
@@ -643,6 +653,33 @@ export default function ProgressClient({
           </table>
         </div>
       </SectionCard>
+
+      {/* ── Récords personales gym ──────────────────────────────────────────── */}
+      {gymPRs.length > 0 && (
+        <SectionCard title={`Récords Personales Gym — ${gymPRs.length} PRs`}>
+          <div className="space-y-2">
+            {gymPRs.map(pr => (
+              <div key={pr.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{pr.exerciseName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(pr.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  {pr.weightKg != null && (
+                    <p className="text-base font-black text-[#f97316]">{pr.weightKg} kg</p>
+                  )}
+                  {pr.repsCompleted != null && (
+                    <p className="text-xs text-gray-500">{pr.repsCompleted} reps</p>
+                  )}
+                  <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-[#f97316] mt-0.5">PR</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── Tests de rendimiento (PerformanceBenchmarks) ───────────────────── */}
       {benchmarks.length > 0 && (() => {
