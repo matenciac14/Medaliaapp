@@ -132,7 +132,7 @@ export default function SidebarClient({ user, config }: Props) {
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-white/50 hover:text-white transition-colors"
+              className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg"
               aria-label={s.logout}
               title={s.logout}
             >

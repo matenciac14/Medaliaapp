@@ -106,7 +106,7 @@ export function AdminSidebarClient() {
           </Link>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-white/50 hover:text-white transition-colors min-h-[44px]"
           >
             <LogOut size={16} />
             <span>{s.logout}</span>
