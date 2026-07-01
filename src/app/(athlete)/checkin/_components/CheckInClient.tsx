@@ -301,7 +301,7 @@ export default function CheckInClient({
                 <h2 className="text-[15px] font-semibold text-[#0f1e30]">Notas de la semana</h2>
               </div>
               <div className="px-6 py-5">
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-[8px] px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-lg px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
               </div>
             </section>
 
@@ -339,7 +339,7 @@ export default function CheckInClient({
                 <h2 className="text-[15px] font-semibold text-[#0f1e30]">📝 Notas de la semana</h2>
               </div>
               <div className="px-6 py-5">
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-[8px] px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-lg px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
               </div>
             </div>
 
