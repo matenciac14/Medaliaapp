@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 const SetPayloadSchema = z.object({
@@ -169,6 +170,7 @@ export async function POST(req: NextRequest) {
 
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
+    revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
 
@@ -213,6 +215,7 @@ export async function POST(req: NextRequest) {
 
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)
+  revalidatePath('/dashboard')
 
   return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
 }
