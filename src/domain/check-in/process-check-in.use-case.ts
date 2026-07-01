@@ -29,6 +29,7 @@ import { CHECK_IN_THRESHOLDS } from './check-in.types'
 import { evaluateCheckInRules, buildSessionAdjustments } from './evaluate-rules'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { calcAge } from '@/lib/utils/calc-age'
 import { PrismaCheckInRepository } from '@/infrastructure/db/check-in.repository'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
@@ -226,7 +227,8 @@ async function syncWeight(
   healthProfileRepo: IHealthProfileRepository
 ): Promise<void> {
   const profile = await healthProfileRepo.find(userId)
-  if (!profile?.heightCm || !profile?.age) return
+  const runtimeAge = profile?.dateOfBirth ? calcAge(profile.dateOfBirth) : (profile?.age ?? null)
+  if (!profile?.heightCm || !runtimeAge) return
 
   const prev = previousWeight ?? profile.weightKg ?? newWeight
   if (Math.abs(newWeight - prev) < CHECK_IN_THRESHOLDS.WEIGHT_DELTA_MIN) return
@@ -239,7 +241,7 @@ async function syncWeight(
   const tdee = calculateTDEE(
     newWeight,
     profile.heightCm,
-    profile.age,
+    runtimeAge,
     (profile.gender ?? 'male') as 'male' | 'female',
     5
   )

@@ -3,6 +3,7 @@ export type AthleteHealthProfile = {
   weightGoalKg: number | null
   heightCm: number | null
   age: number | null
+  dateOfBirth: Date | null   // fuente canónica — calcular edad en runtime con calcAge(dob)
   gender: string | null
 }
 

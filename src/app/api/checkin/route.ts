@@ -17,7 +17,7 @@ const checkInBodySchema = z.object({
   sleepScore:            z.number().min(0).max(10).optional(),
   energyLevel:           z.number().min(1).max(10).optional(),
   stressLevel:           z.number().min(0).max(10).optional(),
-  weightKg:              z.number().min(0).optional(),
+  weightKg:              z.number().min(10).max(500).optional(),
   hrResting:             z.number().min(0).max(250).optional(),
   painLevel:             z.number().min(0).max(10).optional(),
   nutritionAdherencePct: z.number().min(0).max(100).optional(),
