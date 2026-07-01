@@ -238,11 +238,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [weekFreeLogs, weekGymSessions] = activePlan ? [[], []] : await Promise.all([
     prisma.sessionLog.findMany({
       where: { userId, plannedSessionId: null, completedAt: { gte: weekStart, lte: weekEnd } },
-      select: { completedAt: true },
+      select: { completedAt: true, freeSessionType: true },
     }),
     prisma.gymSession.findMany({
       where: { athleteId: userId, completed: true, date: { gte: weekStart, lte: weekEnd } },
-      select: { date: true },
+      orderBy: { date: 'asc' },
+      select: {
+        date: true,
+        assignedWorkout: { select: { template: { select: { name: true } } } },
+      },
     }),
   ])
   const activeDaysThisWeek = new Set([
@@ -250,6 +254,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ...weekGymSessions.map((g) => new Date(g.date).toDateString()),
   ])
   const weekSessionCount = activeDaysThisWeek.size
+
+  // Build activity list for FREE/RECOVERY mode
+  type WeekActivity = { dateStr: string; label: string; emoji: string }
+  const weekActivities: WeekActivity[] = [
+    ...weekFreeLogs.map(l => ({
+      dateStr: new Date(l.completedAt).toLocaleDateString('es-CO', { weekday: 'short' }),
+      label: l.freeSessionType ?? 'Sesión libre',
+      emoji: '🏃',
+    })),
+    ...weekGymSessions.map(g => ({
+      dateStr: new Date(g.date).toLocaleDateString('es-CO', { weekday: 'short' }),
+      label: g.assignedWorkout?.template.name ?? 'Gym',
+      emoji: '💪',
+    })),
+  ].sort((a, b) => a.dateStr.localeCompare(b.dateStr))
   const weekSessionTarget = weeklyRoutine?.daysPerWeek ?? 4
 
   // ── Plan y semana actual ───────────────────────────────────────────────────
@@ -785,6 +804,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 todayRoutineDay={todayRoutineDay}
                 weekSessionCount={weekSessionCount}
                 weekSessionTarget={weekSessionTarget}
+                weekActivities={weekActivities}
               />
             </div>
           </section>

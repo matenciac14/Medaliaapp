@@ -215,5 +215,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ error: 'Sin rutina asignada' }, { status: 404 })
+  // ─── Free session fallback ─────────────────────────────────────────────────
+  // No template and no FUERZA plan session → return freeSession mode
+  return NextResponse.json({
+    assignedWorkoutId: null,
+    plannedSessionId: null,
+    templateName: 'Sesión libre',
+    dayOfWeek: todayDow,
+    isRestDay: false,
+    freeSession: true,
+    hasCoach,
+    workoutDay: null,
+    exercises: [],
+    previousLogs: [],
+    plannedSession: null,
+  })
 }

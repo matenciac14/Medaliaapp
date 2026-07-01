@@ -2,6 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { Flame, Check, Moon, Activity } from 'lucide-react'
+import { type DayType } from '@/lib/nutrition/day-type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+
+type MealFoodItem = {
+  name: string
+  g: number
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+}
 
 type Meal = {
   time: string
@@ -11,6 +22,7 @@ type Meal = {
   protein: number
   carbs: number
   fat: number
+  items?: MealFoodItem[]
 }
 
 type Supplement = {
@@ -65,6 +77,7 @@ function normalizeDay(raw: unknown): DayMeals {
       time: '',
       label,
       foods: entries.map((e) => `${e.foodName} ${e.grams}g`).join(', '),
+      items: entries.map(e => ({ name: e.foodName, g: e.grams, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat })),
       ...totals,
     })
   }
@@ -96,8 +109,6 @@ type NutritionPlanTargets = {
   carbsEasyG: number
   fatG: number
 }
-
-type DayType = 'hard' | 'easy' | 'low' | 'rest'
 
 const DAY_TABS: { key: DayType; label: string; Icon: React.ElementType; color: string }[] = [
   { key: 'hard', label: 'Día duro',   Icon: Flame,    color: '#f97316' },
@@ -134,13 +145,8 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
 
   const normalizedPlan = normalizeMealPlan(mealPlan)
   const dayData = normalizedPlan[activeTab]
-  const targets = {
-    hard: { kcal: nutritionPlan.targetKcalHard, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsHardG, fat: nutritionPlan.fatG },
-    easy: { kcal: nutritionPlan.targetKcalEasy, protein: nutritionPlan.proteinG, carbs: nutritionPlan.carbsEasyG, fat: nutritionPlan.fatG },
-    low:  { kcal: Math.round(nutritionPlan.targetKcalEasy * 0.88), protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.75), fat: nutritionPlan.fatG },
-    rest: { kcal: nutritionPlan.targetKcalRest, protein: nutritionPlan.proteinG, carbs: Math.round(nutritionPlan.carbsEasyG * 0.7), fat: nutritionPlan.fatG },
-  }
-  const target = targets[activeTab]
+  const intensityByDay: Record<DayType, string> = { hard: 'HIGH', easy: 'MODERATE', low: 'LOW', rest: 'REST' }
+  const target = getDailyNutritionTarget(intensityByDay[activeTab], nutritionPlan)
 
   const totalKcal = dayData.meals.reduce((s, m) => s + (m.kcal ?? 0), 0)
   const totalProtein = dayData.meals.reduce((s, m) => s + (m.protein ?? 0), 0)
@@ -180,15 +186,15 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
             <p className="text-xs text-white/60 mt-0.5">kcal</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.protein}g</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{target.proteinG}g</p>
             <p className="text-xs text-white/60 mt-0.5">proteína</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.carbs}g</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{target.carbsG}g</p>
             <p className="text-xs text-white/60 mt-0.5">carbos</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.fat}g</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{target.fatG}g</p>
             <p className="text-xs text-white/60 mt-0.5">grasas</p>
           </div>
         </div>
@@ -198,9 +204,9 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
           <p className="text-xs text-white/50 mb-1">Aporte del menú vs objetivo</p>
           {[
             { label: 'Calorías', value: totalKcal, max: target.kcal, unit: ' kcal' },
-            { label: 'Proteína', value: totalProtein, max: target.protein, unit: 'g' },
-            { label: 'Carbohidratos', value: totalCarbs, max: target.carbs, unit: 'g' },
-            { label: 'Grasas', value: totalFat, max: target.fat, unit: 'g' },
+            { label: 'Proteína', value: totalProtein, max: target.proteinG, unit: 'g' },
+            { label: 'Carbohidratos', value: totalCarbs, max: target.carbsG, unit: 'g' },
+            { label: 'Grasas', value: totalFat, max: target.fatG, unit: 'g' },
           ].map(bar => (
             <div key={bar.label} className="space-y-1">
               <div className="flex justify-between text-xs text-white/70">
@@ -238,7 +244,18 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
                     </div>
                     <span className="text-sm font-bold text-[#f97316]">{meal.kcal} kcal</span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">{meal.foods}</p>
+                  {meal.items && meal.items.length > 0 ? (
+                    <div className="mt-2 space-y-1.5">
+                      {meal.items.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs gap-2">
+                          <span className="text-gray-700 font-medium min-w-0 truncate">{item.name} <span className="text-gray-400 font-normal">· {item.g}g</span></span>
+                          <span className="text-gray-500 shrink-0 whitespace-nowrap">{item.kcal} kcal · P{item.protein}g · C{item.carbs}g · G{item.fat}g</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2 leading-relaxed">{meal.foods}</p>
+                  )}
                   <div className="flex gap-3 mt-2.5 flex-wrap">
                     <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">P {meal.protein}g</span>
                     <span className="text-xs text-yellow-600 font-medium bg-yellow-50 px-2 py-0.5 rounded-full">C {meal.carbs}g</span>

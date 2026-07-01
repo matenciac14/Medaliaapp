@@ -24,38 +24,53 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // dayOfWeek 1 = lunes (mismo valor que JS getDay() para lunes)
   const MONDAY = 1
 
+  // Phase 1: load active plans (minimal — no weeks)
   const activePlans = await prisma.trainingPlan.findMany({
     where: { status: 'ACTIVE' },
     select: {
+      id: true,
       startDate: true,
       totalWeeks: true,
       user: { select: { email: true, name: true, pushToken: true } },
-      weeks: {
-        select: {
-          weekNumber: true,
-          sessions: {
-            where: { dayOfWeek: MONDAY },
-            select: { type: true, durationMin: true, detailText: true },
-          },
-        },
-      },
     },
   })
 
+  if (activePlans.length === 0) return NextResponse.json({ sent: 0, failed: 0 })
+
+  // Phase 2: compute current week per plan and batch-load only the relevant Monday sessions
+  const planFilters = activePlans
+    .map(p => ({ planId: p.id, weekNumber: getPlanWeekNumber(p.startDate, p.totalWeeks) }))
+    .filter(f => f.weekNumber >= 1)
+
+  const mondaySessions = await prisma.plannedSession.findMany({
+    where: {
+      dayOfWeek: MONDAY,
+      week: { OR: planFilters },
+    },
+    select: {
+      type: true,
+      durationMin: true,
+      detailText: true,
+      week: { select: { planId: true } },
+    },
+  })
+
+  const sessionByPlan = new Map(mondaySessions.map(s => [s.week.planId, s]))
+  const userByPlan = new Map(activePlans.map(p => [p.id, p.user]))
+
   let sent = 0
   let failed = 0
-  for (const plan of activePlans) {
-    const currentWeek = getPlanWeekNumber(plan.startDate, plan.totalWeeks)
-    const week = plan.weeks.find(w => w.weekNumber === currentWeek)
-    const session = week?.sessions[0]
-    if (!session || session.type === 'DESCANSO') continue
+
+  for (const [planId, session] of sessionByPlan) {
+    if (session.type === 'DESCANSO') continue
+    const user = userByPlan.get(planId)
+    if (!user?.email) continue
 
     try {
       const typeLabel = SESSION_LABELS[session.type] ?? session.type
-      await sendSessionReminderEmail(plan.user.email!, plan.user.name ?? 'Atleta', {
+      await sendSessionReminderEmail(user.email, user.name ?? 'Atleta', {
         typeLabel,
         durationMin: session.durationMin,
         detail: session.detailText,
@@ -63,7 +78,7 @@ export async function GET(req: NextRequest) {
       const pushBody = session.durationMin
         ? `${typeLabel} · ${session.durationMin} min — ¡a entrenar!`
         : `${typeLabel} — ¡a entrenar!`
-      sendPushNotification(plan.user.pushToken, 'Sesión de hoy 🏃', pushBody, { screen: 'plan' }).catch(() => {})
+      sendPushNotification(user.pushToken, 'Sesión de hoy 🏃', pushBody, { screen: 'plan' }).catch(() => {})
       sent++
     } catch {
       failed++

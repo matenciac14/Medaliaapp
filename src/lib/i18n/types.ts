@@ -147,6 +147,55 @@ export type Translations = {
       coachTiersTitle: string
       coachTiersSubtitle: string
     }
+    science: {
+      label: string
+      item1Title: string
+      item1Sub: string
+      item2Title: string
+      item2Sub: string
+      item3Title: string
+      item3Sub: string
+      item4Title: string
+      item4Sub: string
+    }
+    pain: {
+      title: string
+      subtitle: string
+      card1Title: string
+      card1Desc: string
+      card2Title: string
+      card2Desc: string
+      card3Title: string
+      card3Desc: string
+      bridge: string
+    }
+    testimonials: {
+      title: string
+      subtitle: string
+      t1Quote: string
+      t1Name: string
+      t1Role: string
+      t2Quote: string
+      t2Name: string
+      t2Role: string
+      t3Quote: string
+      t3Name: string
+      t3Role: string
+    }
+    guarantee: {
+      title: string
+      subtitle: string
+      badgeTitle: string
+      badgeDesc: string
+      faq1Q: string
+      faq1A: string
+      faq2Q: string
+      faq2A: string
+      faq3Q: string
+      faq3A: string
+      faq4Q: string
+      faq4A: string
+    }
     finalCta: {
       title: string
       subtitle: string

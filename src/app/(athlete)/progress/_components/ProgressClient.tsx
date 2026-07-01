@@ -31,6 +31,24 @@ export type BenchmarkPoint = {
   notes?: string | null
 }
 
+export type GymPR = {
+  id: string
+  exerciseName: string
+  weightKg: number | null
+  repsCompleted: number | null
+  date: string
+}
+
+export type HistoryItem = {
+  id: string
+  date: string
+  type: 'run' | 'gym'
+  label: string
+  durationMin: number | null
+  distanceKm?: number | null
+  rpe?: number | null
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -38,6 +56,8 @@ export type ProgressClientProps = {
   weeks: WeekData[]
   weightGoal: number | null
   benchmarks: BenchmarkPoint[]
+  gymPRs: GymPR[]
+  recentActivity: HistoryItem[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -399,6 +419,8 @@ export default function ProgressClient({
   weeks,
   weightGoal,
   benchmarks,
+  gymPRs,
+  recentActivity,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
@@ -643,6 +665,63 @@ export default function ProgressClient({
           </table>
         </div>
       </SectionCard>
+
+      {/* ── Récords personales gym ──────────────────────────────────────────── */}
+      {gymPRs.length > 0 && (
+        <SectionCard title={`Récords Personales Gym — ${gymPRs.length} PRs`}>
+          <div className="space-y-2">
+            {gymPRs.map(pr => (
+              <div key={pr.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{pr.exerciseName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(pr.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  {pr.weightKg != null && (
+                    <p className="text-base font-black text-[#f97316]">{pr.weightKg} kg</p>
+                  )}
+                  {pr.repsCompleted != null && (
+                    <p className="text-xs text-gray-500">{pr.repsCompleted} reps</p>
+                  )}
+                  <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-[#f97316] mt-0.5">PR</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Historial de actividad ──────────────────────────────────────────── */}
+      {recentActivity.length > 0 && (
+        <SectionCard title={`Historial de actividad — últimas ${recentActivity.length} sesiones`}>
+          <div className="space-y-2">
+            {recentActivity.map(item => (
+              <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                <span className="text-xl shrink-0">{item.type === 'run' ? '🏃' : '💪'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{item.label}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-xs text-gray-400">
+                      {new Date(item.date).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </p>
+                    {item.durationMin != null && (
+                      <span className="text-[10px] font-medium text-gray-500 bg-white px-1.5 py-0.5 rounded">{item.durationMin} min</span>
+                    )}
+                    {item.distanceKm != null && (
+                      <span className="text-[10px] font-medium text-gray-500 bg-white px-1.5 py-0.5 rounded">{item.distanceKm} km</span>
+                    )}
+                  </div>
+                </div>
+                {item.rpe != null && (
+                  <span className="text-xs font-bold text-[#f97316] shrink-0">RPE {item.rpe}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── Tests de rendimiento (PerformanceBenchmarks) ───────────────────── */}
       {benchmarks.length > 0 && (() => {

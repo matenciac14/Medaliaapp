@@ -1,14 +1,20 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
+  const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+
   const foods = await prisma.food.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+    },
     orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    take: 50,
     select: {
       id: true,
       name: true,
