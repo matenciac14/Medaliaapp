@@ -84,12 +84,12 @@ export default async function Home() {
 
         {/* Floating card mobile — relativo a <section>, no al inner div */}
         <div className="lg:hidden absolute top-6 right-4 z-20 anim-fade-in delay-400">
-          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-44">
+          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-52">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-[#f97316]" />
               <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
             </div>
-            <p className="text-white text-[13px] font-bold">Intervalos 4×8 · Zona 3</p>
+            <p className="text-white text-[13px] font-bold whitespace-nowrap">Intervalos 4×8 · Zona 3</p>
             <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default async function Home() {
                   {l.hero.cta1}
                 </button>
               </a>
-              <a href="#como-funciona" className="text-blue-300 hover:text-white text-sm transition-colors">
+              <a href="#como-funciona" className="hidden sm:inline text-blue-300 hover:text-white text-sm transition-colors">
                 {l.hero.cta2}
               </a>
               <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
@@ -153,7 +153,8 @@ export default async function Home() {
       <section className="bg-white border-b border-gray-100 py-10 px-4">
         <div className="max-w-5xl mx-auto flex flex-col items-center gap-7">
           <p className="text-gray-400 text-xs font-semibold tracking-[0.12em] uppercase text-center">
-            {l.science.label}
+            <span className="sm:hidden">Respaldado por ciencia real</span>
+            <span className="hidden sm:inline">{l.science.label}</span>
           </p>
           {/* Desktop: fila dividida con divide-x */}
           <div className="hidden sm:flex items-center divide-x divide-gray-200 w-full">

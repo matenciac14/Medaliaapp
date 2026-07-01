@@ -15,7 +15,7 @@ export const en: Translations = {
       badge3: '🏆 Early access',
       title: 'Your athletes see their progress week by week.',
       titleHighlight: 'You grow without losing control.',
-      subtitle: 'Periodized plans, nutrition recalculated with every session and weekly tracking for each athlete — so you can manage 30 and each one feels like your only client.',
+      subtitle: 'Periodized plans, nutrition recalculated with every session and weekly tracking for each athlete.',
       cta1: 'Reserve free access →',
       cta2: 'See how it works ↓',
       stat1Label: 'Free, no card',

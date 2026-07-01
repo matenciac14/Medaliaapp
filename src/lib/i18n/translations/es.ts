@@ -15,7 +15,7 @@ export const es: Translations = {
       badge3: '🏆 Acceso anticipado',
       title: 'Tus atletas ven su progreso semana a semana.',
       titleHighlight: 'Tú creces sin perder el control.',
-      subtitle: 'Planes periodizados, nutrición recalculada con cada sesión y seguimiento semanal para cada atleta — para que lleves 30 y cada uno se sienta como si fuera tu único cliente.',
+      subtitle: 'Planes periodizados, nutrición recalculada con cada sesión y seguimiento semanal para cada atleta.',
       cta1: 'Reservar acceso gratuito →',
       cta2: 'Ver cómo funciona ↓',
       stat1Label: 'Gratis sin tarjeta',
