@@ -103,16 +103,16 @@ export default async function Home() {
                 </span>
               ))}
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold leading-tight tracking-tight text-white mb-5 anim-fade-up delay-100">
+            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold leading-[1.06] tracking-[-0.02em] text-white mb-5 anim-fade-up delay-100">
               {l.hero.title}{' '}
               <span className="text-[#f97316]">{l.hero.titleHighlight}</span>
             </h1>
-            <p className="text-base sm:text-lg text-blue-100 leading-relaxed mb-8 max-w-lg anim-fade-up delay-200">
+            <p className="text-lg text-[#dbeafe] leading-[1.5] mb-8 max-w-lg anim-fade-up delay-200">
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
               <a href="/register">
-                <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-base transition-transform hover:scale-105 active:scale-95">
+                <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                   {l.hero.cta1}
                 </button>
               </a>
@@ -197,7 +197,7 @@ export default async function Home() {
       <section className="py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
+            <h2 className="text-[32px] sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
               {l.pain.title}
             </h2>
             <p className="text-gray-500 text-base mb-12">{l.pain.subtitle}</p>
@@ -213,7 +213,7 @@ export default async function Home() {
                   <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4 text-red-400">
                     {card.icon}
                   </div>
-                  <h3 className="text-[#1e3a5f] font-bold text-base mb-2">{card.title}</h3>
+                  <h3 className="text-[#1e3a5f] font-bold text-[17px] mb-2">{card.title}</h3>
                   <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
                 </div>
               </RevealOnScroll>

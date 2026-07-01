@@ -31,10 +31,10 @@ export default function LanguageSwitcher({ variant = 'dark' }: Props) {
         onClick={cycleLocale}
         title="Cambiar idioma"
         className={[
-          'sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+          'sm:hidden flex items-center gap-1 px-[10px] py-[5px] rounded-[8px] text-xs font-medium transition-colors',
           isLight
-            ? 'border-gray-200 text-gray-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'
-            : 'border-white/30 text-white hover:bg-white/10',
+            ? 'bg-[#f3f4f6] text-[#4b5563] hover:bg-gray-200'
+            : 'bg-white/15 text-white hover:bg-white/25',
         ].join(' ')}
       >
         <span>{FLAGS[locale].flag}</span>
