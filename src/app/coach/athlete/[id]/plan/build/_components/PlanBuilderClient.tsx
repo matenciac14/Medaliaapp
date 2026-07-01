@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,19 @@ function formatWeekRange(startDate: string, endDate: string): string {
   return `${s.getDate()} al ${e.getDate()} ${MONTHS[e.getMonth()]}`
 }
 
+// ── Utils ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Calcula el índice inicial de semana para el builder.
+ * Retorna el índice (0-based) de la semana activa del plan, clampeado a [0, weeks.length-1].
+ * Si no hay plan, retorna 0.
+ */
+export function getInitialWeekIdx(plan: { startDate: string; totalWeeks: number; weeks: { id: string }[] } | null): number {
+  if (!plan || plan.weeks.length === 0) return 0
+  const currentWeekNumber = getPlanWeekNumber(new Date(plan.startDate), plan.totalWeeks)
+  return Math.max(0, Math.min(currentWeekNumber - 1, plan.weeks.length - 1))
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 const PHASES = ['BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO', 'COMPETICIÓN', 'RECUPERACIÓN']
@@ -147,7 +161,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
       setCreateLoading(false)
     }
   }
-  const [weekIdx, setWeekIdx] = useState(0)
+  const [weekIdx, setWeekIdx] = useState(() => getInitialWeekIdx(initialPlan))
   const [modal, setModal] = useState<ModalState | null>(null)
   const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
   const [saving, setSaving] = useState(false)
