@@ -23,6 +23,10 @@ const mobileCheckInSchema = z.object({
   hrResting:       z.number().min(0).max(250).optional(),
   sleepHours:      z.number().min(0).max(24).optional(),
   notes:           z.string().max(5000).optional(),
+  waistCm:         z.number().min(40).max(200).optional(),
+  armsCm:          z.number().min(10).max(100).optional(),
+  hipsCm:          z.number().min(40).max(200).optional(),
+  thighsCm:        z.number().min(20).max(120).optional(),
 })
 
 /** Mobile sends energy and stress on a 1-5 scale — normalize to 1-10 for consistency. */
@@ -105,6 +109,10 @@ export async function POST(req: NextRequest) {
           painLevel: body.painLevel,
           motivation: body.motivationLevel,
           notes: body.notes,
+          waistCm: body.waistCm,
+          armsCm: body.armsCm,
+          hipsCm: body.hipsCm,
+          thighsCm: body.thighsCm,
         },
       },
       {

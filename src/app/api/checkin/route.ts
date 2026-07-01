@@ -23,6 +23,10 @@ const checkInBodySchema = z.object({
   nutritionAdherencePct: z.number().min(0).max(100).optional(),
   motivationLevel:       z.number().min(0).max(10).optional(),
   notes:                 z.string().max(5000).optional(),
+  waistCm:               z.number().min(40).max(200).optional(),
+  armsCm:                z.number().min(10).max(100).optional(),
+  hipsCm:                z.number().min(40).max(200).optional(),
+  thighsCm:              z.number().min(20).max(120).optional(),
 })
 
 export async function GET(_req: NextRequest) {
@@ -86,6 +90,10 @@ export async function POST(req: NextRequest) {
             : undefined,
           motivation: body.motivationLevel,
           notes: body.notes,
+          waistCm: body.waistCm,
+          armsCm: body.armsCm,
+          hipsCm: body.hipsCm,
+          thighsCm: body.thighsCm,
         },
       },
       {

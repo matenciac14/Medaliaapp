@@ -171,7 +171,7 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Tracking Avanzado & Tracker Libre',
         period: 'Próximo',
         items: [
-          { title: 'Medidas corporales en check-in (cintura, brazos, caderas, piernas)', done: false, note: 'Migración DB HECHA: waistCm, armsCm, hipsCm, thighsCm Float? en WeeklyCheckIn (migración 20260701000001). Pendiente: UI web sección colapsable + Mobile mismos campos.' },
+          { title: 'Medidas corporales en check-in (cintura, brazos, caderas, piernas)', done: true, note: 'DB + API + UI completos. Sección colapsable "📏 Medidas corporales" en CheckInClient.tsx con 4 inputs (cintura/caderas/brazos/muslos). Zod validation en web + mobile API. Fluye por CheckInInput → SaveCheckInPayload → check-in.repository save(). Mobile también acepta los 4 campos.' },
           { title: 'Gráficas de circunferencias en /progress (web + mobile)', done: false, note: 'El atleta ve la recomposición corporal aunque el peso no baje.' },
           { title: 'Fotos de progreso semanales (Vercel Blob)', done: false, note: 'Modelo ProgressPhoto { userId, url, takenAt }. POST /api/progress/photos (multipart). Comparador side-by-side en /progress.' },
           { title: 'Log libre sin plan — sessionId opcional en /api/log/session y /api/mobile/log/session', done: true, note: 'Implementado: /api/mobile/log/session maneja !sessionId → freeSessionType. /api/log/run con plannedSessionId: null. /api/log/session con plannedSessionId opcional.' },
