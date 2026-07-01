@@ -540,7 +540,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                             {cfg.label}
                           </p>
                           <p className="text-[10px] text-gray-400 mt-0.5">
-                            {s.durationMin} min{s.zoneTarget ? ` · ${s.zoneTarget}` : ''}
+                            {s.durationMin} min{s.zoneTarget && s.zoneTarget !== 'N/A' && s.type !== 'FUERZA' ? ` · ${s.zoneTarget}` : ''}
                           </p>
                           {s.detailText && (
                             <p className="text-[10px] text-gray-400 mt-0.5 truncate">
