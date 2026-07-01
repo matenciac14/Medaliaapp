@@ -530,7 +530,7 @@ export const GROUPS: RoadmapGroup[] = [
         period: 'Urgente',
         items: [
           { title: 'BUG-006 — Bottom-nav mobile omite Nutrición, Progreso y Mensajes', done: true, priority: 'P1', note: 'Nav tiene 6 tabs visibles: Inicio · Plan · Gym · Nutrición · Progreso · Perfil. Mensajes accesible desde Perfil con badge de unread count — patrón correcto para no saturar la barra. Checkin oculto del nav (href:null) pero accesible como ruta.' },
-          { title: 'BUG-008 — Guardar no refresca la vista hasta recargar (stale UI)', done: false, priority: 'P2', note: 'Editar sesión y perfil persisten server-side pero la vista muestra el valor viejo. Fix: router.refresh() o mutación optimista.' },
+          { title: 'BUG-008 — Guardar no refresca la vista hasta recargar (stale UI)', done: true, priority: 'P2', note: 'Fix dual: (1) PlanClient.tsx SessionDetailCard.onSaved agrega router.refresh() para invalidar cache de Next.js y refrescar props server-side al editar sesión. (2) ProfileClient.tsx calcula displayAge/displayHrMax desde prop p (server-refreshed) en lugar de profileForm state, así FC máxima en modo vista refleja datos actualizados.' },
           { title: 'BUG-018 — KPI cards hermanas con 3 tratamientos visuales distintos', done: false, priority: 'P2', note: 'Fix: un solo patrón de card KPI en toda la app.' },
           { title: 'BUG-012 — Enums crudos visibles en UI (RACE_10K, HYPERTROPHY, CHEST…)', done: false, priority: 'P3', note: 'Fix: capa de labels por enum en toda la app.' },
           { title: 'BUG-013 — "Zona N/A" en sesiones de fuerza', done: false, priority: 'P3', note: 'Fix: ocultar chip de zona en SessionType de fuerza o mostrar "Fuerza" como label.' },

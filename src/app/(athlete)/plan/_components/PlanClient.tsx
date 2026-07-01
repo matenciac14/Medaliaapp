@@ -953,6 +953,7 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
         onSaved={(updates) => {
           setShowEdit(false)
           onEdited(updates)
+          router.refresh()
         }}
       />
     )}

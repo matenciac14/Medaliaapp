@@ -103,6 +103,9 @@ export default function ProfileClient({ user }: Props) {
   // Valores calculados
   const computedAge = profileForm.dateOfBirth ? calcAge(profileForm.dateOfBirth) : p?.age ?? null
   const computedHrMax = profileForm.hrMax ? parseInt(profileForm.hrMax) : computedAge ? estimateHrMax(computedAge) : null
+  // Para el modo display usa los datos del servidor (actualizados tras router.refresh), no el form
+  const displayAge = p?.dateOfBirth ? calcAge(p.dateOfBirth) : p?.age ?? null
+  const displayHrMax = p?.hrMax ?? (displayAge ? estimateHrMax(displayAge) : null)
   const bmi = p?.weightKg && p?.heightCm ? parseFloat(calcBMI(p.weightKg, p.heightCm)) : null
   const [savingProfile, setSavingProfile] = useState(false)
   const [savedProfile, setSavedProfile] = useState(false)
@@ -325,8 +328,8 @@ export default function ProfileClient({ user }: Props) {
               <div>
                 <span className="text-gray-500 text-xs">FC máxima</span>
                 <p className="font-semibold">
-                  {computedHrMax ?? '—'} bpm
-                  {!p.hrMax && computedHrMax && <span className="text-[10px] text-gray-400 ml-1">estimada</span>}
+                  {displayHrMax ?? '—'} bpm
+                  {!p.hrMax && displayHrMax && <span className="text-[10px] text-gray-400 ml-1">estimada</span>}
                 </p>
               </div>
             </div>
