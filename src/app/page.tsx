@@ -81,7 +81,7 @@ export default async function Home() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,34,64,0.95) 0%, rgba(30,58,95,0.75) 45%, rgba(30,58,95,0.25) 100%)' }} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,34,64,0.4) 100%)' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-28 lg:py-36 flex items-center gap-12 min-h-[680px]">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-16 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
@@ -270,9 +270,50 @@ export default async function Home() {
             ))}
           </div>
 
-          {/* Coach panel mockup */}
+          {/* Coach panel mockup — mobile simplificado */}
           <RevealOnScroll delay={100}>
-            <div className="rounded-2xl overflow-hidden shadow-[0px_28px_56px_-14px_rgba(0,0,0,0.18)] border border-gray-200 mb-10">
+            <div className="md:hidden bg-[#1e3a5f] rounded-2xl p-5 mb-10">
+              <p className="text-blue-300 text-[10px] font-semibold uppercase tracking-widest mb-4">Mis atletas · Vista resumen</p>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                {[
+                  { v: '22', label: 'Atletas activos' },
+                  { v: '18', label: 'Al día' },
+                  { v: '$2.4M', label: 'Ingresos/mes' },
+                  { v: '92%', label: 'Adherencia' },
+                ].map(({ v, label }) => (
+                  <div key={label} className="bg-white/10 rounded-xl p-3">
+                    <div className="text-lg font-extrabold text-[#f97316]">{v}</div>
+                    <div className="text-[10px] text-blue-300 mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[
+                  { initials: 'AG', color: '#f97316', bg: 'rgba(249,115,22,0.2)', name: 'Ana García',   sport: 'Running', pct: 92 },
+                  { initials: 'LM', color: '#22c55e', bg: 'rgba(34,197,94,0.2)',  name: 'Laura Méndez', sport: 'Running', pct: 88 },
+                  { initials: 'JR', color: '#8b5cf6', bg: 'rgba(139,92,246,0.2)', name: 'Javier Ruiz',  sport: 'Fuerza',  pct: 95 },
+                ].map(({ initials, color, bg, name, sport, pct }) => (
+                  <div key={name} className="flex items-center gap-3 bg-white/8 rounded-xl px-3 py-2.5">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: bg, color }}>{initials}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-semibold truncate">{name}</p>
+                      <p className="text-blue-300 text-[10px]">{sport}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-16 bg-white/20 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-[#f97316]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[10px] text-[#f97316] font-semibold">{pct}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </RevealOnScroll>
+
+          {/* Coach panel mockup — desktop */}
+          <RevealOnScroll delay={100}>
+            <div className="hidden md:block rounded-2xl overflow-hidden shadow-[0px_28px_56px_-14px_rgba(0,0,0,0.18)] border border-gray-200 mb-10">
               {/* Browser bar */}
               <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-3">
                 <div className="flex gap-1.5 shrink-0">
