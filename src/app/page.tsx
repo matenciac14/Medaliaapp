@@ -3,6 +3,14 @@ import RevealOnScroll from "./_components/RevealOnScroll";
 import { getT } from "@/lib/i18n/server";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
 import ProfileTabs from "./_components/ProfileTabs";
+import {
+  Activity, Flame, CalendarCheck, Wallet,
+  FileSpreadsheet, MessageSquare, AlertTriangle,
+  TrendingUp, Smartphone,
+  HeartPulse, Apple, ClipboardCheck,
+  LayoutDashboard, Users, List, CreditCard, MessageCircle,
+  Search,
+} from "lucide-react";
 
 export default async function Home() {
   const t = await getT()
@@ -63,23 +71,18 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* 2 · Hero — foto + overlay + contenido izquierdo */}
+      {/* 2 · Hero */}
       <section className="relative overflow-hidden" style={{ minHeight: '680px' }}>
-        {/* Foto de fondo */}
         <img
           src="/hero-coach.jpg"
           alt="Coach con atleta"
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
-        {/* Overlay izquierdo (navy fuerte → transparente) */}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,34,64,0.95) 0%, rgba(30,58,95,0.75) 45%, rgba(30,58,95,0.25) 100%)' }} />
-        {/* Overlay inferior sutil */}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,34,64,0.4) 100%)' }} />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-28 lg:py-36 flex items-center gap-12 min-h-[680px]">
-          {/* Contenido izquierdo */}
           <div className="w-full lg:max-w-[580px]">
-            {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
                 <span key={badge} className="bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
@@ -87,19 +90,13 @@ export default async function Home() {
                 </span>
               ))}
             </div>
-
-            {/* H1 */}
             <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold leading-tight tracking-tight text-white mb-5 anim-fade-up delay-100">
               {l.hero.title}{' '}
               <span className="text-[#f97316]">{l.hero.titleHighlight}</span>
             </h1>
-
-            {/* Subtítulo */}
             <p className="text-base sm:text-lg text-blue-100 leading-relaxed mb-8 max-w-lg anim-fade-up delay-200">
               {l.hero.subtitle}
             </p>
-
-            {/* CTA */}
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
               <a href="/register">
                 <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-base transition-transform hover:scale-105 active:scale-95">
@@ -111,8 +108,6 @@ export default async function Home() {
                 {l.hero.cta2}
               </a>
             </div>
-
-            {/* Stats */}
             <div className="flex gap-8 mt-10 anim-fade-in delay-500">
               {[
                 { value: '30 días', label: l.hero.stat1Label },
@@ -127,9 +122,8 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Cards flotantes (solo desktop) */}
+          {/* Floating cards (desktop only) */}
           <div className="hidden lg:flex flex-col gap-4 ml-auto anim-fade-in delay-400">
-            {/* Card: Pago confirmado */}
             <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex items-center gap-3 anim-float">
               <div className="w-7 h-7 rounded-full bg-[rgba(52,211,153,0.22)] flex items-center justify-center shrink-0">
                 <span className="text-[#34d399] font-bold text-sm">✓</span>
@@ -139,8 +133,7 @@ export default async function Home() {
                 <p className="text-blue-200 text-[11px]">Ana G. · $180.000 COP</p>
               </div>
             </div>
-            {/* Card: Sesión de hoy */}
-            <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5" style={{ animationDelay: '0.8s' }}>
+            <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-[#f97316]" />
                 <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
@@ -158,19 +151,21 @@ export default async function Home() {
           <p className="text-gray-400 text-xs font-semibold tracking-[0.12em] uppercase text-center">
             {l.science.label}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-0">
             {[
-              { title: l.science.item1Title, sub: l.science.item1Sub, icon: '🫀' },
-              { title: l.science.item2Title, sub: l.science.item2Sub, icon: '⚡' },
-              { title: l.science.item3Title, sub: l.science.item3Sub, icon: '📈' },
-              { title: l.science.item4Title, sub: l.science.item4Sub, icon: '💰' },
+              { icon: <Activity size={22} />, title: l.science.item1Title, sub: l.science.item1Sub },
+              { icon: <Flame size={22} />, title: l.science.item2Title, sub: l.science.item2Sub },
+              { icon: <CalendarCheck size={22} />, title: l.science.item3Title, sub: l.science.item3Sub },
+              { icon: <Wallet size={22} />, title: l.science.item4Title, sub: l.science.item4Sub },
             ].map((item, i) => (
-              <div key={item.title} className="flex items-center gap-3">
-                {i > 0 && <div className="hidden sm:block w-px h-8 bg-gray-200 mr-4" />}
-                <span className="text-xl">{item.icon}</span>
-                <div>
-                  <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
-                  <p className="text-gray-500 text-xs">{item.sub}</p>
+              <div key={item.title} className="flex items-center">
+                {i > 0 && <div className="hidden sm:block w-px h-9 bg-gray-200 mx-8 sm:mx-10" />}
+                <div className="flex items-center gap-3">
+                  <span className="text-[#f97316]">{item.icon}</span>
+                  <div>
+                    <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
+                    <p className="text-gray-500 text-xs">{item.sub}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -178,7 +173,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 2c · El caos de hoy (Pain) */}
+      {/* 2c · El caos de hoy */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
@@ -189,14 +184,14 @@ export default async function Home() {
           </RevealOnScroll>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
             {[
-              { title: l.pain.card1Title, desc: l.pain.card1Desc, delay: 0 },
-              { title: l.pain.card2Title, desc: l.pain.card2Desc, delay: 100 },
-              { title: l.pain.card3Title, desc: l.pain.card3Desc, delay: 200 },
+              { icon: <FileSpreadsheet size={20} />, title: l.pain.card1Title, desc: l.pain.card1Desc, delay: 0 },
+              { icon: <MessageSquare size={20} />, title: l.pain.card2Title, desc: l.pain.card2Desc, delay: 100 },
+              { icon: <AlertTriangle size={20} />, title: l.pain.card3Title, desc: l.pain.card3Desc, delay: 200 },
             ].map((card) => (
               <RevealOnScroll key={card.title} delay={card.delay}>
                 <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-left h-full">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center mb-4">
-                    <span className="text-red-500 text-lg">✕</span>
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4 text-red-400">
+                    {card.icon}
                   </div>
                   <h3 className="text-[#1e3a5f] font-bold text-base mb-2">{card.title}</h3>
                   <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
@@ -228,18 +223,8 @@ export default async function Home() {
             <ProfileTabs
               ctaLabel={l.hero.cta1}
               tabs={[
-                {
-                  label: l.profiles.tab2Label,
-                  title: l.profiles.tab2Title,
-                  desc: l.profiles.tab2Desc,
-                  gets: l.profiles.tab2Gets,
-                },
-                {
-                  label: l.profiles.tab1Label,
-                  title: l.profiles.tab1Title,
-                  desc: l.profiles.tab1Desc,
-                  gets: l.profiles.tab1Gets,
-                },
+                { label: l.profiles.tab2Label, title: l.profiles.tab2Title, desc: l.profiles.tab2Desc, gets: l.profiles.tab2Gets },
+                { label: l.profiles.tab1Label, title: l.profiles.tab1Title, desc: l.profiles.tab1Desc, gets: l.profiles.tab1Gets },
               ]}
             />
           </RevealOnScroll>
@@ -257,22 +242,19 @@ export default async function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
                 {l.forCoaches.title}
               </h2>
-              <p className="text-gray-500 text-base max-w-xl mx-auto">
-                {l.forCoaches.subtitle}
-              </p>
+              <p className="text-gray-500 text-base max-w-xl mx-auto">{l.forCoaches.subtitle}</p>
             </div>
           </RevealOnScroll>
 
-          {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
             {[
-              { icon: '📈', title: l.forCoaches.card1Title, desc: l.forCoaches.card1Desc, delay: 0 },
-              { icon: '📱', title: l.forCoaches.card2Title, desc: l.forCoaches.card2Desc, delay: 100 },
-              { icon: '💰', title: l.forCoaches.card3Title, desc: l.forCoaches.card3Desc, delay: 200 },
+              { icon: <TrendingUp size={22} />, title: l.forCoaches.card1Title, desc: l.forCoaches.card1Desc, delay: 0 },
+              { icon: <Smartphone size={22} />, title: l.forCoaches.card2Title, desc: l.forCoaches.card2Desc, delay: 100 },
+              { icon: <Wallet size={22} />, title: l.forCoaches.card3Title, desc: l.forCoaches.card3Desc, delay: 200 },
             ].map((card) => (
               <RevealOnScroll key={card.title} delay={card.delay}>
                 <div className="bg-gray-50 rounded-2xl p-6 text-left h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                  <div className="w-11 h-11 rounded-xl bg-[rgba(249,115,22,0.12)] flex items-center justify-center mb-4 text-xl">
+                  <div className="w-11 h-11 rounded-xl bg-[rgba(249,115,22,0.12)] flex items-center justify-center mb-4 text-[#f97316]">
                     {card.icon}
                   </div>
                   <h3 className="text-base font-bold text-[#1e3a5f] mb-2">{card.title}</h3>
@@ -282,12 +264,12 @@ export default async function Home() {
             ))}
           </div>
 
-          {/* Mockup panel del coach */}
+          {/* Coach panel mockup */}
           <RevealOnScroll delay={100}>
             <div className="rounded-2xl overflow-hidden shadow-[0px_28px_56px_-14px_rgba(0,0,0,0.18)] border border-gray-200 mb-10">
-              {/* Browser topbar */}
+              {/* Browser bar */}
               <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-3">
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 shrink-0">
                   <div className="w-3 h-3 rounded-full bg-red-400" />
                   <div className="w-3 h-3 rounded-full bg-yellow-400" />
                   <div className="w-3 h-3 rounded-full bg-green-400" />
@@ -296,57 +278,105 @@ export default async function Home() {
                   🔒 medaliq.com/coach/dashboard
                 </div>
               </div>
-              {/* App body */}
-              <div className="flex" style={{ height: '320px' }}>
+
+              {/* App */}
+              <div className="flex" style={{ height: '380px' }}>
                 {/* Sidebar */}
-                <div className="w-44 bg-[#1e3a5f] shrink-0 flex flex-col p-3">
-                  <span className="text-white font-extrabold text-base mb-5 pl-1">Medaliq</span>
-                  <div className="bg-[rgba(249,115,22,0.16)] rounded-lg px-3 py-2 text-white text-xs font-semibold flex items-center gap-2 mb-1">
-                    <span>📊</span> Dashboard
+                <div className="w-48 bg-[#1e3a5f] shrink-0 flex flex-col py-4">
+                  <span className="text-white font-extrabold text-base px-4 mb-5">Medaliq</span>
+                  <div className="bg-[rgba(249,115,22,0.18)] mx-2 rounded-lg px-3 py-2 flex items-center gap-2.5 mb-1">
+                    <LayoutDashboard size={15} className="text-[#f97316] shrink-0" />
+                    <span className="text-white text-xs font-semibold">Dashboard</span>
                   </div>
-                  {[['👥', 'Atletas'], ['📅', 'Rutinas'], ['💬', 'Mensajes'], ['💰', 'Finanzas']].map(([icon, name]) => (
-                    <div key={name} className="px-3 py-2 text-blue-200 text-xs flex items-center gap-2 rounded-lg">
-                      <span>{icon}</span> {name}
+                  {[
+                    { icon: <Users size={15} />, label: 'Atletas' },
+                    { icon: <List size={15} />, label: 'Planes' },
+                    { icon: <CreditCard size={15} />, label: 'Pagos' },
+                    { icon: <MessageCircle size={15} />, label: 'Mensajes' },
+                  ].map(({ icon, label }) => (
+                    <div key={label} className="mx-2 px-3 py-2 flex items-center gap-2.5 rounded-lg">
+                      <span className="text-blue-300 shrink-0">{icon}</span>
+                      <span className="text-blue-200 text-xs">{label}</span>
                     </div>
                   ))}
-                </div>
-                {/* Main */}
-                <div className="flex-1 bg-gray-50 p-5 overflow-hidden">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-sm font-bold text-[#1e3a5f]">Mis atletas</h4>
-                    <button className="bg-[#f97316] text-white text-xs font-semibold px-3 py-1 rounded-lg">+ Invitar</button>
+                  {/* Coach profile */}
+                  <div className="mt-auto mx-2 px-3 py-2 flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-[10px] font-bold text-white shrink-0">CM</div>
+                    <div>
+                      <p className="text-white text-[11px] font-semibold leading-tight">Carlos M.</p>
+                      <p className="text-blue-300 text-[10px]">Coach · Running</p>
+                    </div>
                   </div>
+                </div>
+
+                {/* Main content */}
+                <div className="flex-1 bg-gray-50 p-5 overflow-hidden">
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1e3a5f]">Mis atletas</h4>
+                      <p className="text-[10px] text-gray-400">22 activos · 4 pendientes de pago</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+                        <Search size={11} className="text-gray-400" />
+                        <span className="text-gray-400 text-[10px]">Buscar atleta...</span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Stats */}
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    {[['23', 'Atletas'], ['18', 'Activos'], ['$2.4M', 'Ingresos COP'], ['92%', 'Adherencia']].map(([v, label]) => (
-                      <div key={label} className="bg-white rounded-xl p-2.5 text-center border border-gray-100">
+                  <div className="grid grid-cols-4 gap-2 my-3">
+                    {[
+                      { v: '22', label: 'Atletas activos' },
+                      { v: '18', label: 'Al día' },
+                      { v: '$2.4M', label: 'Ingresos/mes (COP)' },
+                      { v: '92%', label: 'Adherencia prom.' },
+                    ].map(({ v, label }) => (
+                      <div key={label} className="bg-white rounded-xl p-2.5 border border-gray-100">
                         <div className="text-sm font-extrabold text-[#1e3a5f]">{v}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{label}</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 leading-tight">{label}</div>
                       </div>
                     ))}
                   </div>
-                  {/* Table */}
-                  <div className="space-y-1.5">
+
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1fr_80px_70px_100px_80px] gap-2 px-3 py-1 text-[9px] font-semibold text-gray-400 uppercase tracking-widest">
+                    <span>Atleta</span>
+                    <span>Deporte</span>
+                    <span>Plan</span>
+                    <span>Adherencia</span>
+                    <span>Pago</span>
+                  </div>
+
+                  {/* Rows */}
+                  <div className="space-y-1">
                     {[
-                      { name: 'Alejandro', sport: 'Running', pct: 78 },
-                      { name: 'Carlos López', sport: 'Gym', pct: 95 },
-                      { name: 'Laura Gómez', sport: 'Running', pct: 61 },
-                      { name: 'Alan Bel', sport: 'Gym', pct: 88 },
-                    ].map(({ name, sport, pct }) => (
-                      <div key={name} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2 border border-gray-50">
-                        <div className="w-6 h-6 rounded-full bg-[#1e3a5f]/15 flex items-center justify-center text-[9px] font-bold text-[#1e3a5f] shrink-0">
-                          {name[0]}
+                      { initials: 'AG', color: '#f97316', bg: 'rgba(249,115,22,0.15)', name: 'Ana García',     sport: 'Running', plan: 'Sem 7/18',  pct: 92, paid: true },
+                      { initials: 'CL', color: '#f97316', bg: 'rgba(249,115,22,0.15)', name: 'Carlos López',   sport: 'Fuerza',  plan: 'Sem 3/16',  pct: 78, paid: false },
+                      { initials: 'LM', color: '#22c55e', bg: 'rgba(34,197,94,0.15)',  name: 'Laura Méndez',   sport: 'Running', plan: 'Sem 12/18', pct: 88, paid: true },
+                      { initials: 'JR', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', name: 'Javier Ruiz',    sport: 'Fuerza',  plan: 'Sem 5/16',  pct: 95, paid: true },
+                      { initials: 'MT', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', name: 'María Torres',   sport: 'Running', plan: 'Sem 2/8',   pct: 70, paid: false },
+                    ].map(({ initials, color, bg, name, sport, plan, pct, paid }) => (
+                      <div key={name} className="grid grid-cols-[1fr_80px_70px_100px_80px] gap-2 items-center bg-white rounded-xl px-3 py-2 border border-gray-50">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0" style={{ background: bg, color }}>
+                            {initials}
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium truncate">{name}</span>
                         </div>
-                        <span className="flex-1 text-xs text-gray-700 font-medium">{name}</span>
-                        <span className="text-[10px] text-gray-400 w-12">{sport}</span>
-                        <div className="w-20 bg-gray-100 rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${pct > 80 ? 'bg-green-500' : pct > 60 ? 'bg-orange-400' : 'bg-red-400'}`}
-                            style={{ width: `${pct}%` }}
-                          />
+                        <span className="text-[10px] text-gray-500">{sport}</span>
+                        <span className="text-[10px] text-gray-500">{plan}</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full ${pct >= 88 ? 'bg-green-500' : pct >= 75 ? 'bg-orange-400' : 'bg-orange-400'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-semibold ${pct >= 88 ? 'text-green-600' : 'text-orange-500'}`}>{pct}%</span>
                         </div>
-                        <span className={`text-[10px] font-semibold w-8 text-right ${pct > 80 ? 'text-green-600' : pct > 60 ? 'text-orange-500' : 'text-red-500'}`}>
-                          {pct}%
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full text-center ${paid ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-500'}`}>
+                          {paid ? 'Pagado' : 'Pendiente'}
                         </span>
                       </div>
                     ))}
@@ -368,32 +398,29 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 5 · Features — Lo que tus atletas van a recibir */}
+      {/* 5 · Features */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 leading-tight">
               {l.features.title}
             </h2>
-            <p className="text-gray-500 mb-8 text-base leading-relaxed">
-              {l.features.subtitle}
-            </p>
-            <ul className="space-y-4">
+            <p className="text-gray-500 mb-8 text-base leading-relaxed">{l.features.subtitle}</p>
+            <ul className="space-y-5">
               {[
-                { icon: '🔍', text: l.features.item1 },
-                { icon: '❤️', text: l.features.item2 },
-                { icon: '🥗', text: l.features.item3 },
-                { icon: '📋', text: l.features.item4 },
+                { icon: <HeartPulse size={20} />, text: l.features.item1 },
+                { icon: <Flame size={20} />, text: l.features.item2 },
+                { icon: <Apple size={20} />, text: l.features.item3 },
+                { icon: <ClipboardCheck size={20} />, text: l.features.item4 },
               ].map((item) => (
-                <li key={item.text} className="flex items-start gap-3 group">
-                  <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-200">{item.icon}</span>
+                <li key={item.text} className="flex items-start gap-3">
+                  <span className="text-[#f97316] shrink-0 mt-0.5">{item.icon}</span>
                   <span className="text-gray-700 text-sm leading-relaxed">{item.text}</span>
                 </li>
               ))}
             </ul>
           </RevealOnScroll>
 
-          {/* App Mockup */}
           <RevealOnScroll delay={150}>
             <div className="bg-[#1e3a5f] rounded-2xl p-6 text-white shadow-2xl anim-float">
               <div className="flex items-center justify-between mb-6">
@@ -408,14 +435,14 @@ export default async function Home() {
                   { value: '7.2h', label: 'Sueño' },
                   { value: '92%', label: 'Adherencia' },
                 ].map(({ value, label }) => (
-                  <div key={label} className="bg-white/10 rounded-xl p-3 text-center hover:bg-white/15 transition-colors">
+                  <div key={label} className="bg-white/10 rounded-xl p-3 text-center">
                     <div className="text-xl font-bold text-[#f97316]">{value}</div>
                     <div className="text-xs text-blue-200 mt-1">{label}</div>
                   </div>
                 ))}
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
-                <span className="text-[#f97316] font-semibold">📊 Resumen: </span>
+                <span className="text-[#f97316] font-semibold">Resumen: </span>
                 {l.features.aiMsg}
               </div>
             </div>
@@ -471,18 +498,18 @@ export default async function Home() {
               { quote: l.testimonials.t1Quote, name: l.testimonials.t1Name, role: l.testimonials.t1Role, initials: 'AM', color: '#1e3a5f', bg: 'rgba(30,58,95,0.15)', delay: 0 },
               { quote: l.testimonials.t2Quote, name: l.testimonials.t2Name, role: l.testimonials.t2Role, initials: 'VR', color: '#f97316', bg: 'rgba(249,115,22,0.15)', delay: 100 },
               { quote: l.testimonials.t3Quote, name: l.testimonials.t3Name, role: l.testimonials.t3Role, initials: 'ST', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', delay: 200 },
-            ].map((t) => (
-              <RevealOnScroll key={t.name} delay={t.delay}>
+            ].map((testimonial) => (
+              <RevealOnScroll key={testimonial.name} delay={testimonial.delay}>
                 <div className="bg-white border border-gray-100 rounded-2xl p-6 text-left flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
                   <p className="text-[#f97316] font-bold text-sm mb-3">★★★★★</p>
-                  <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-5">{t.quote}</p>
+                  <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-5">{testimonial.quote}</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: t.bg, color: t.color }}>
-                      {t.initials}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: testimonial.bg, color: testimonial.color }}>
+                      {testimonial.initials}
                     </div>
                     <div>
-                      <p className="text-[#1e3a5f] font-bold text-sm">{t.name}</p>
-                      <p className="text-gray-500 text-xs">{t.role}</p>
+                      <p className="text-[#1e3a5f] font-bold text-sm">{testimonial.name}</p>
+                      <p className="text-gray-500 text-xs">{testimonial.role}</p>
                     </div>
                   </div>
                 </div>
@@ -515,10 +542,10 @@ export default async function Home() {
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {[
-                  { name: 'STARTER', price: 'Gratis', athletes: '≤ 5 asesorados', highlight: false },
-                  { name: 'GROWTH',  price: '$39/mes', athletes: '6 – 25 asesorados', highlight: true },
-                  { name: 'PRO',     price: '$79/mes', athletes: '26 – 75 asesorados', highlight: false },
-                  { name: 'SCALE',   price: '$129/mes', athletes: '+75 asesorados', highlight: false },
+                  { name: 'STARTER', price: 'Gratis',   athletes: '≤ 5 asesorados',     highlight: false },
+                  { name: 'GROWTH',  price: '$39/mes',  athletes: '6 – 25 asesorados',   highlight: true },
+                  { name: 'PRO',     price: '$79/mes',  athletes: '26 – 75 asesorados',  highlight: false },
+                  { name: 'SCALE',   price: '$129/mes', athletes: '+75 asesorados',       highlight: false },
                 ].map((tier) => (
                   <div key={tier.name} className={`relative rounded-xl p-4 text-center border ${tier.highlight ? 'bg-[rgba(249,115,22,0.06)] border-[#f97316]' : 'bg-gray-50 border-gray-100'}`}>
                     {tier.highlight && (
@@ -551,14 +578,12 @@ export default async function Home() {
             </div>
           </RevealOnScroll>
 
-          {/* Separador atletas */}
           <div className="flex items-center gap-4 max-w-2xl mx-auto mb-8">
             <hr className="flex-1 border-gray-200" />
             <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Para atletas</span>
             <hr className="flex-1 border-gray-200" />
           </div>
 
-          {/* Atletas Free + Pro */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <RevealOnScroll>
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left flex flex-col hover:shadow-md transition-shadow h-full">
@@ -629,12 +654,10 @@ export default async function Home() {
             <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">{l.guarantee.title}</h2>
             <p className="text-center text-gray-500 text-base mb-10">{l.guarantee.subtitle}</p>
           </RevealOnScroll>
-
-          {/* Banda garantía */}
           <RevealOnScroll delay={50}>
             <div className="bg-[rgba(249,115,22,0.08)] border border-[rgba(249,115,22,0.3)] rounded-2xl px-7 py-6 flex items-start gap-5 mb-8">
-              <div className="w-12 h-12 rounded-full bg-[rgba(249,115,22,0.15)] flex items-center justify-center shrink-0 text-xl">
-                🛡️
+              <div className="w-12 h-12 rounded-full bg-[rgba(249,115,22,0.15)] flex items-center justify-center shrink-0">
+                <span className="text-[#f97316] text-xl">🛡️</span>
               </div>
               <div>
                 <p className="font-bold text-[#1e3a5f] text-lg mb-1">{l.guarantee.badgeTitle}</p>
@@ -642,8 +665,6 @@ export default async function Home() {
               </div>
             </div>
           </RevealOnScroll>
-
-          {/* FAQ 2×2 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-7">
             {[
               { q: l.guarantee.faq1Q, a: l.guarantee.faq1A, delay: 0 },
@@ -662,7 +683,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 10 · CTA final */}
+      {/* CTA final */}
       <section className="py-20 px-4 bg-gradient-to-br from-[#1e3a5f] to-[#0f2240] text-white text-center">
         <RevealOnScroll>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{l.finalCta.title}</h2>
