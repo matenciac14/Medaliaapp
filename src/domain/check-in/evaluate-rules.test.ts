@@ -269,6 +269,29 @@ describe('evaluateCheckInRules — múltiples triggers', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Medidas corporales — puramente observacionales
+// ---------------------------------------------------------------------------
+describe('evaluateCheckInRules — medidas corporales', () => {
+  it('medidas corporales no disparan ningún trigger', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ waistCm: 78, armsCm: 32, hipsCm: 96, thighsCm: 54 }),
+      baseCtx()
+    )
+    expect(r.triggers).toHaveLength(0)
+    expect(r.severity).toBe('ok')
+  })
+
+  it('medidas corporales con otros campos problemáticos no interfieren con triggers', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ sleepHours: 5, waistCm: 80, armsCm: 33, hipsCm: 98, thighsCm: 56 }),
+      baseCtx()
+    )
+    expect(r.triggers).toContain('sueno_bajo')
+    expect(r.triggers).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // buildSessionAdjustments
 // ---------------------------------------------------------------------------
 describe('buildSessionAdjustments', () => {

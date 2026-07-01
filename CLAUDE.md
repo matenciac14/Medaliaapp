@@ -166,10 +166,18 @@ src/infrastructure/email/resend.ts  sendCoachWelcomeEmail · sendAthleteWelcomeE
 - `PlanSource`: `AI | COACH | AI_COACH_APPROVED` — 'TEMPLATE' NO existe
 - `PaymentStatus`: `PENDING | PAID` — OVERDUE es derivado en app, NO enum DB
 - `SessionIntensity`: `HIGH | MODERATE | LOW | REST`
+- `GoalType`: `RACE_5K | RACE_10K | RACE_HALF_MARATHON | RACE_MARATHON | BODY_RECOMPOSITION | STRENGTH_TRAINING`
+- `CoachSubscriptionTier`: `STARTER | GROWTH | PRO | SCALE` — en `UserSubscription.coachTier`
+
+**Tipos DB críticos:**
+- `Payment.amount` → `Decimal @db.Decimal(12,2)` — usar `Number(p.amount)` para aritmética JS
+- `TrainingPlan.goalType` → `GoalType?` enum (no String?) — cast al escribir: `data.goalType as GoalType`
+- `SessionLog.freeSessionType` → `SessionType?` enum (no String?)
 
 **Mapeo dominio↔DB:**
 - `PlannedSession.detailText` = `description` · `zoneTarget` = `zone` · `coachNote` = `coachNotes`
 - `WeeklyCheckIn.hrResting` = `heartRate` · usar `recordedAt` (no `createdAt`)
+- `WeeklyCheckIn` tiene campos de medidas: `waistCm, armsCm, hipsCm, thighsCm Float?`
 
 ---
 
@@ -261,11 +269,17 @@ Fase 2 (fuera tx): evaluateCheckInRules → triggers + adjustments
   ← sin AI — recomendación construida desde adjustments.join('. ')
 Fase 3 ($transaction):
   1. upsert WeeklyCheckIn por (userId, weekNumber)
+       ← incluye waistCm, armsCm, hipsCm, thighsCm si el atleta las envió (puramente observacionales)
   2. applySessionAdjustments si triggers.length > 0 (dolor→Z2, volumen*0.8/0.85, zona bajada)
        coachNotes += '[AUTO] ...' — no toca sesiones con notas manuales del entrenador
   3. syncWeight: |Δkg| >= 0.5 → updateWeight + recalcular TDEE + macros (si hay plan nutricional)
   3b. syncHrResting: siempre actualiza HealthProfile.hrResting si heartRate > 0
   4. Primer check-in (count === 1) → enableFeature(userId, 'progress')
+
+Medidas corporales (waistCm, armsCm, hipsCm, thighsCm):
+  - Campos opcionales en CheckInInput — no disparan ningún trigger ni regla de ajuste
+  - Se persisten en WeeklyCheckIn para visualización histórica en /progress
+  - Web: sección colapsable en CheckInClient; Mobile: mismos campos en mobileCheckInSchema
 ```
 
 ### AI Coach chat
