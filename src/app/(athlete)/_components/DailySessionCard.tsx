@@ -211,7 +211,7 @@ export default function DailySessionCard({
               {Array.from({ length: weekSessionTarget }).map((_, i) => (
                 <div
                   key={i}
-                  className={`w-2 h-2 rounded-full ${i < weekSessionCount ? 'bg-[#f97316]' : 'bg-gray-200'}`}
+                  className={`w-3 h-3 rounded-full transition-colors ${i < weekSessionCount ? 'bg-[#f97316]' : 'bg-gray-200'}`}
                 />
               ))}
               <span className="text-[11px] text-gray-500 ml-1">

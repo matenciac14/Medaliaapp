@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
 
 const LogSessionSchema = z.object({
-  plannedSessionId: z.string().uuid().optional(),
+  plannedSessionId: z.string().min(1).optional(),
   completed: z.boolean().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   distanceKm: z.number().min(0).max(1000).optional(),

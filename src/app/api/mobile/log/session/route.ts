@@ -6,7 +6,7 @@ import { requireFeature } from '@/lib/guards/feature-gate'
 import { z } from 'zod'
 
 const LogSessionSchema = z.object({
-  sessionId: z.string().uuid().optional(),
+  sessionId: z.string().min(1).optional(),
   sessionType: z.string().max(50).optional(),
   completed: z.boolean().optional(),
   actualDurationMin: z.number().int().min(0).max(600).optional(),
