@@ -310,6 +310,72 @@ export const GROUPS: RoadmapGroup[] = [
     ],
   },
 
+  // ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+
+  {
+    id: 'landing',
+    label: 'Landing Page — Ventas & Credibilidad',
+    period: 'En construcción',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#c4b5fd',
+    phases: [
+      {
+        id: 'landing-p0',
+        label: 'P0 — Legal & SEO Técnico (Bloqueante)',
+        period: 'Urgente',
+        items: [
+          { title: 'Páginas /terminos y /privacidad con contenido real (Ley 1581 Colombia + LGPD Brasil básico)', done: false, priority: 'P0', note: 'Requisito bloqueante para App Store, Play Store y pasarelas de pago (Wompi/Stripe). Sin estas páginas no se puede lanzar mobile ni cobrar.' },
+          { title: 'Meta tags: <title>, <meta description> optimizados por página', done: false, priority: 'P0', note: 'Sin esto Google no indexa correctamente. Implementar en layout.tsx y page.tsx con generateMetadata de Next.js.' },
+          { title: 'Open Graph tags (og:title, og:description, og:image) para preview en WhatsApp/LinkedIn/Twitter', done: false, priority: 'P0', note: 'Crítico para LatAm donde WhatsApp es canal principal de referidos. Preview sin OG tags genera desconfianza.' },
+          { title: 'robots.txt + sitemap.xml (incluyendo /coaches y /p/[slug])', done: false, priority: 'P0', note: 'Sin robots.txt Google no sabe qué rastrear. sitemap.xml acelera indexación de páginas de coaches.' },
+          { title: 'hreflang para es/en/pt — indicar a Google el idioma de cada versión', done: false, priority: 'P0', note: 'Sin hreflang Google puede mostrar la versión incorrecta en resultados de búsqueda según el país.' },
+          { title: 'Cookie consent banner — requerido si se usa cualquier analytics/pixel', done: false, priority: 'P0', note: 'Ilegal en Colombia/Brasil/Europa usar cookies de tracking sin consentimiento. Implementar antes de activar GA4 o Meta Pixel.' },
+        ],
+      },
+      {
+        id: 'landing-p1',
+        label: 'P1 — Conversión y Credibilidad',
+        period: 'Alta prioridad',
+        items: [
+          { title: 'Schema JSON-LD: Organization + SoftwareApplication — rich results en Google', done: false, priority: 'P1', note: 'Permite que Google muestre rating, precio y descripción del producto directamente en resultados de búsqueda.' },
+          { title: 'Testimonios con foto real o avatar + nombre + ciudad + deporte (reemplazar texto plano)', done: false, priority: 'P1', note: 'Testimonios de texto sin foto tienen ~0% credibilidad. Mínimo: foto de perfil real o avatar generado con iniciales.' },
+          { title: 'Contador de coaches/atletas creíble — reemplazar "8 entrenadores reservaron"', done: false, priority: 'P1', note: '"8 spots" suena a que nadie usa el producto. Cuando se tengan 20+ coaches: mostrar número real. Mientras: quitar o reformular.' },
+          { title: 'Sección comparativa vs TrueCoach/Excel — tabla con diferenciador 0% fee', done: false, priority: 'P1', note: 'TrueCoach cobra 5% sobre pagos desde enero 2026. Es el diferenciador más fuerte y no se menciona explícitamente en la landing.' },
+          { title: 'WhatsApp flotante o widget de contacto directo (estándar en LatAm)', done: false, priority: 'P1', note: 'En LatAm los coaches resuelven dudas por WhatsApp antes de registrarse. Sin canal de contacto directo se pierde el 30-40% de prospectos calientes.' },
+          { title: 'Email capture secundario — formulario "únete a la lista" para quienes no convierten hoy', done: false, priority: 'P1', note: 'El 97% de visitantes no convierte en el primer visit. Sin captura de email no hay forma de hacer nurturing. CTA: "Recibe novedades y el guía gratuita de periodización".' },
+        ],
+      },
+      {
+        id: 'landing-p2',
+        label: 'P2 — Ventas y Confianza',
+        period: 'Próximo sprint',
+        items: [
+          { title: 'Video demo de 60-90 segundos — mostrar el flujo real del coach + atleta', done: false, priority: 'P2', note: 'Los coaches necesitan ver el producto antes de registrarse. Sin video demo la tasa de conversión de coaches es ~30% menor. Prioridad: pantalla de coach (panel de atletas + asignación de rutina).' },
+          { title: 'Calculadora de ROI para coaches — "¿cuánto tiempo recuperas con Medaliq?"', done: false, priority: 'P2', note: 'Input: número de atletas. Output: horas/semana ahorradas + equivalente en dinero. Ancla el valor antes del precio.' },
+          { title: 'Sección seguridad de datos — "Tus datos y los de tus atletas están seguros"', done: false, priority: 'P2', note: 'Los coaches manejan datos de salud de terceros. Un párrafo de seguridad (HTTPS, Neon, backups) reduce fricción de adopción.' },
+          { title: 'Garantía con términos explícitos — "30 días o te ayudamos a exportar todo"', done: false, priority: 'P2', note: 'Actualmente mencionado en FAQ pero no destacado visualmente. Necesita un bloque visual propio con badge de garantía.' },
+          { title: 'Página 404 personalizada con CTA y navegación de regreso', done: false, priority: 'P2', note: '404 genérico de Next.js pierde usuarios que llegaron por link incorrecto. Incluir: logo, mensaje amigable, botón home.' },
+          { title: 'Meta Pixel + Google Tag Manager — tracking de conversiones para ads', done: false, priority: 'P2', note: 'Sin pixel no hay retargeting. Sin GTM no hay medición de conversión. Requerido antes de invertir en cualquier pauta paga.' },
+        ],
+      },
+      {
+        id: 'landing-p3',
+        label: 'P3 — SEO Orgánico y Crecimiento',
+        period: 'Mediano plazo',
+        items: [
+          { title: 'Blog/recursos — 2-3 artículos iniciales para SEO orgánico', done: false, priority: 'P3', note: 'Artículos target: "Cómo periodizar para runners principiantes", "Gestión de atletas online: guía para coaches". Tráfico orgánico sin inversión en pauta.' },
+          { title: 'Landing pages por deporte — /running y /gym con copy específico', done: false, priority: 'P3', note: 'Permite rankear para búsquedas como "app para entrenadores de running Colombia". Copy diferente por segmento.' },
+          { title: 'Sección de integraciones — Garmin, Strava, Apple Watch (aunque sea coming soon)', done: false, priority: 'P3', note: 'Genera percepción de producto maduro. Footer o sección "compatible con" con logos grises + "próximamente".' },
+          { title: 'manifest.json y PWA básico — instalable desde el navegador móvil', done: false, priority: 'P3', note: 'Permite instalar la landing como app en home screen sin pasar por stores. Aumenta retention de usuarios móviles.' },
+          { title: 'Press kit / media page — logo, screenshots, descripción oficial para prensa', done: false, priority: 'P3', note: 'Cuando un influencer fitness o medio quiera escribir sobre Medaliq, necesita assets. /press o /media con logo SVG, paleta, screenshots.' },
+          { title: 'A/B testing de hero copy y CTA — validar variantes de conversión', done: false, priority: 'P3', note: 'Test A: copy actual "Tus atletas ven su progreso" vs Test B: copy pain-first "¿Cuántas horas pierdes en Excel cada semana?". Implementar con Vercel Edge Config o PostHog.' },
+        ],
+      },
+    ],
+  },
+
+
   // ─── MOBILE ───────────────────────────────────────────────────────────────────
 
   {
