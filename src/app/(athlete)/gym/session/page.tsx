@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { translateMuscleGroup } from '@/lib/gym-labels'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -790,14 +791,15 @@ export default function GymSessionPage() {
         </div>
       )}
 
-      {/* Complete modal */}
-      {showModal && (
+      {/* Complete modal — montado en document.body via portal para evitar stacking context del layout */}
+      {showModal && createPortal(
         <CompleteModal
           onSubmit={handleComplete}
           onClose={() => setShowModal(false)}
           loading={submitting}
           defaultDuration={elapsedMinutes > 0 ? elapsedMinutes : 60}
-        />
+        />,
+        document.body
       )}
     </div>
   )
