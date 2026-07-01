@@ -10,9 +10,9 @@ export const es: Translations = {
       cta: 'Reservar acceso',
     },
     hero: {
-      badge1: '🔬 Periodización real',
-      badge2: '🌎 Para LatAm',
-      badge3: '🏆 Acceso anticipado',
+      badge1: 'Periodización real',
+      badge2: 'Para LatAm',
+      badge3: 'Acceso anticipado',
       title: 'Tus atletas ven su progreso semana a semana.',
       titleHighlight: 'Tú creces sin perder el control.',
       subtitle: 'Planes periodizados, nutrición recalculada con cada sesión y seguimiento semanal para cada atleta.',
