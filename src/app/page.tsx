@@ -83,7 +83,7 @@ export default async function Home() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,34,64,0.4) 100%)' }} />
 
         {/* Floating card mobile — relativo a <section>, no al inner div */}
-        <div className="lg:hidden absolute top-3 right-4 z-20 anim-fade-in delay-400">
+        <div className="lg:hidden absolute top-[50px] right-4 z-20 anim-fade-in delay-400">
           <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-[14px] px-[14px] py-[12px] flex flex-col gap-[6px] w-[180px] shadow-[0px_12px_30px_-6px_rgba(0,0,0,0.35)]">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-[#f97316]" />
