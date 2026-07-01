@@ -94,7 +94,7 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-16 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 pt-[110px] pb-14 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
