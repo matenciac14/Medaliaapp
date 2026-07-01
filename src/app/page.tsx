@@ -63,8 +63,9 @@ export default async function Home() {
               Iniciar sesión
             </a>
             <a href="/register">
-              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm">
-                {l.nav.cta}
+              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
+                <span className="sm:hidden">Reservar</span>
+                <span className="hidden sm:inline">{l.nav.cta}</span>
               </button>
             </a>
           </div>
@@ -113,7 +114,19 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Floating cards (desktop only) */}
+          {/* Floating card mobile — "Sesión de hoy" top-right */}
+          <div className="lg:hidden absolute top-6 right-4 z-20 anim-fade-in delay-400">
+            <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-44">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+                <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
+              </div>
+              <p className="text-white text-[13px] font-bold">Intervalos 4×8 · Zona 3</p>
+              <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
+            </div>
+          </div>
+
+          {/* Floating cards desktop */}
           <div className="hidden lg:flex flex-col gap-4 ml-auto anim-fade-in delay-400">
             <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex items-center gap-3 anim-float">
               <div className="w-7 h-7 rounded-full bg-[rgba(52,211,153,0.22)] flex items-center justify-center shrink-0">
