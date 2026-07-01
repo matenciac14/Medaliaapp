@@ -146,6 +146,10 @@ export default async function AthleteDetailPage({
     hardestSessionRpe: c.hardestSessionRpe,
     adjustmentsTriggered: c.adjustmentsTriggered,
     notes: c.notes,
+    waistCm: c.waistCm ?? null,
+    armsCm: c.armsCm ?? null,
+    hipsCm: c.hipsCm ?? null,
+    thighsCm: c.thighsCm ?? null,
   }))
 
   const nutritionPlanData = nutritionPlan

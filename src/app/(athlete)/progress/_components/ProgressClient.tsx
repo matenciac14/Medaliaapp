@@ -49,6 +49,14 @@ export type HistoryItem = {
   rpe?: number | null
 }
 
+export type MeasurementPoint = {
+  week: number
+  waistCm: number | null
+  armsCm: number | null
+  hipsCm: number | null
+  thighsCm: number | null
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -58,6 +66,7 @@ export type ProgressClientProps = {
   benchmarks: BenchmarkPoint[]
   gymPRs: GymPR[]
   recentActivity: HistoryItem[]
+  measurementCheckins: MeasurementPoint[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -400,6 +409,58 @@ function WellbeingChart({ data }: { data: WellbeingPoint[] }) {
   )
 }
 
+// ─── Measurements ─────────────────────────────────────────────────────────────
+
+const MEASUREMENT_ROWS = [
+  { key: 'waistCm'  as const, label: 'Cintura',  color: '#6366f1' },
+  { key: 'armsCm'   as const, label: 'Brazos',   color: '#f97316' },
+  { key: 'hipsCm'   as const, label: 'Cadera',   color: '#ec4899' },
+  { key: 'thighsCm' as const, label: 'Muslos',   color: '#14b8a6' },
+]
+
+function MeasurementsChart({ data }: { data: MeasurementPoint[] }) {
+  const rows = MEASUREMENT_ROWS.map(({ key, label, color }) => {
+    const points = data
+      .filter(d => d[key] != null)
+      .map(d => ({ week: d.week, val: d[key] as number }))
+    return { key, label, color, points }
+  }).filter(r => r.points.length > 0)
+
+  if (rows.length === 0) return (
+    <p className="text-sm text-gray-400 text-center py-4">Sin medidas registradas aún.</p>
+  )
+
+  return (
+    <div className="space-y-6">
+      {rows.map(({ key, label, color, points }) => {
+        const start = points[0].val
+        const end = points[points.length - 1].val
+        const minVal = Math.min(...points.map(p => p.val)) - 1
+        const maxVal = Math.max(...points.map(p => p.val)) + 1
+        return (
+          <div key={key}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700">{label}</span>
+              <div className="flex items-center gap-3">
+                <TrendBadge start={start} end={end} lowerIsBetter unit=" cm" />
+                <span className="text-base font-bold" style={{ color }}>{end} cm</span>
+              </div>
+            </div>
+            <LineChart
+              data={points}
+              getValue={d => d.val}
+              color={color}
+              unit=" cm"
+              minVal={minVal}
+              maxVal={maxVal}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Periods ──────────────────────────────────────────────────────────────────
 
 const PERIODS = [
@@ -421,13 +482,15 @@ export default function ProgressClient({
   benchmarks,
   gymPRs,
   recentActivity,
+  measurementCheckins,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
-  const weightData   = weightCheckins.slice(-period)
-  const hrData       = hrCheckins.slice(-period)
-  const wellbeingSlice = wellbeingData.slice(-period)
-  const weekData     = weeks.slice(0, period)
+  const weightData        = weightCheckins.slice(-period)
+  const hrData            = hrCheckins.slice(-period)
+  const wellbeingSlice    = wellbeingData.slice(-period)
+  const weekData          = weeks.slice(0, period)
+  const measurementSlice  = measurementCheckins.slice(-period)
 
   // Guard: si no hay datos suficientes, mostrar mensaje
   if (weightData.length === 0 && hrData.length === 0) {
@@ -567,6 +630,13 @@ export default function ProgressClient({
       {wellbeingSlice.length > 0 && (
         <SectionCard title="Bienestar — Últimas semanas">
           <WellbeingChart data={wellbeingSlice} />
+        </SectionCard>
+      )}
+
+      {/* Circunferencias corporales */}
+      {measurementSlice.length > 0 && (
+        <SectionCard title="Circunferencias Corporales (cm)">
+          <MeasurementsChart data={measurementSlice} />
         </SectionCard>
       )}
 

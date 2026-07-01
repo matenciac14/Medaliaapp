@@ -50,9 +50,10 @@ model User {
   profile           HealthProfile?
   goals             Goal[]
   trainingPlans     TrainingPlan[]
-  sessionLogs       SessionLog[]
-  checkIns          WeeklyCheckIn[]
-  nutritionPlan     NutritionPlan?
+  sessionLogs          SessionLog[]
+  checkIns             WeeklyCheckIn[]
+  nutritionPlan        NutritionPlan?
+  nutritionAdjustments PendingNutritionAdjustment[]
   coachOf           CoachAthlete[]    @relation("CoachRelation")
   coachedBy         CoachAthlete[]    @relation("AthleteRelation")
 
@@ -366,10 +367,10 @@ enum SessionType {
 // ─── REGISTRO DE SESIÓN ─────────────────────────────────────────────────────
 
 model SessionLog {
-  id               String   @id @default(cuid())
+  id               String            @id @default(cuid())
   userId           String
-  plannedSessionId String?  @unique
-  completedAt      DateTime @default(now())
+  plannedSessionId String?           @unique
+  completedAt      DateTime          @default(now())
   rpe              Int?
   hrAvg            Int?
   hrMax            Int?
@@ -377,10 +378,12 @@ model SessionLog {
   durationMin      Int?
   notes            String?
   garminActivityId String?
-  freeSessionType  SessionType?  // solo para logs libres (plannedSessionId = null) — antes era String?
+  freeSessionType  SessionType?      // solo para logs libres (plannedSessionId = null)
+  actualIntensity  SessionIntensity? // intensidad real registrada por el atleta
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plannedSession PlannedSession? @relation(fields: [plannedSessionId], references: [id])
+  user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id])
+  nutritionAdjustment      PendingNutritionAdjustment?
 
   @@index([userId])
   @@index([completedAt])
@@ -920,6 +923,41 @@ model Message {
 
   @@index([fromId, toId, createdAt])
   @@index([toId, readAt])
+}
+
+// ─── AJUSTE NUTRICIONAL POR INTENSIDAD REAL ──────────────────────────────────
+
+model PendingNutritionAdjustment {
+  id               String           @id @default(cuid())
+  userId           String
+  date             DateTime         @db.Date       // día al que aplica el ajuste
+  sessionLogId     String?          @unique         // SessionLog que disparó el ajuste
+  plannedIntensity SessionIntensity
+  actualIntensity  SessionIntensity
+  deltaKcal        Int                              // adjustedKcal − plannedKcal (puede ser negativo)
+  deltaCarbsG      Int                              // adjustedCarbsG − plannedCarbsG
+  plannedKcal      Int
+  plannedCarbsG    Int
+  adjustedKcal     Int
+  adjustedCarbsG   Int
+  status           AdjustmentStatus @default(PENDING)
+  acceptedAt       DateTime?
+  rejectedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionLog SessionLog? @relation(fields: [sessionLogId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, date])    // un ajuste por atleta por día
+  @@index([userId, status])
+  @@index([userId, date])
+}
+
+enum AdjustmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 // ─── AUDITORÍA ADMIN ─────────────────────────────────────────────────────────

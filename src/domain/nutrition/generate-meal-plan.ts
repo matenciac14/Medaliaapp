@@ -68,7 +68,9 @@ function describeFood(food: DbFood, targetMacroG: number, macroKey: 'proteinPer1
     const g = per100 > 0
       ? Math.min(500, Math.max(50, Math.round((targetMacroG * 0.85 / per100) * 100)))
       : food.servingG
-    return `${g}g ${food.name}`
+    const kcal = Math.round(g * food.kcalPer100g / 100)
+    const protein = Math.round(g * food.proteinPer100g / 100)
+    return `${food.name} — ${g}g (${kcal} kcal, ${protein}g prot)`
   }
   return food.servingLabel ? `${food.servingLabel} ${food.name}` : food.name
 }
@@ -97,10 +99,15 @@ function buildFoodLine(
 
   if (vegs.length > 0) {
     const v = vegs[i % vegs.length]
-    parts.push(weighsFood ? `80g ${v.name}` : (v.servingLabel ? `${v.servingLabel} ${v.name}` : v.name))
+    if (weighsFood) {
+      const kcal = Math.round(80 * v.kcalPer100g / 100)
+      parts.push(`${v.name} — 80g (${kcal} kcal)`)
+    } else {
+      parts.push(v.servingLabel ? `${v.servingLabel} ${v.name}` : v.name)
+    }
   }
 
-  return parts.length > 0 ? parts.join(' · ') : fallback
+  return parts.length > 0 ? parts.join(weighsFood ? '\n' : ' · ') : fallback
 }
 
 export function computeNutritionTargets(profile: ProfileInput) {
@@ -146,9 +153,13 @@ export function buildStaticMealPlan(macros: MacroTargets, input: GenerateMealsIn
       if (dbFoods && dbFoods.length > 0) {
         if (isSnack && snackFoods.length > 0) {
           const s = snackFoods[i % snackFoods.length]
-          foodsLine = input.weighsFood
-            ? `${s.servingG}g ${s.name}`
-            : (s.servingLabel ? `${s.servingLabel} ${s.name}` : s.name)
+          if (input.weighsFood) {
+            const kcal = Math.round(s.servingG * s.kcalPer100g / 100)
+            const protein = Math.round(s.servingG * s.proteinPer100g / 100)
+            foodsLine = `${s.name} — ${s.servingG}g (${kcal} kcal, ${protein}g prot)`
+          } else {
+            foodsLine = s.servingLabel ? `${s.servingLabel} ${s.name}` : s.name
+          }
         } else {
           foodsLine = buildFoodLine(i, protein / n, carbs / n, proteins, carbFoods, vegFoods, fallback, input.weighsFood)
         }

@@ -41,6 +41,10 @@ export class PrismaCheckInRepository implements ICheckInRepository {
       painDescription: data.painDescription ?? null,
       painFlag: hasPain,
       notes: data.notes ?? null,
+      waistCm: data.waistCm ?? null,
+      armsCm: data.armsCm ?? null,
+      hipsCm: data.hipsCm ?? null,
+      thighsCm: data.thighsCm ?? null,
       adjustmentsTriggered: data.triggers,
       recordedAt: new Date(),
     }
