@@ -67,8 +67,9 @@ export default function FinanzasPage() {
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
 
-  // Filter
+  // Filters
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | 'ALL'>('ALL')
+  const [filterAthlete, setFilterAthlete] = useState<string>('ALL')
 
   const fetchPayments = useCallback(async () => {
     setLoading(true)
@@ -146,7 +147,8 @@ export default function FinanzasPage() {
     .filter(p => p.paidAt && new Date(p.paidAt).getMonth() === new Date().getMonth())
     .reduce((s, p) => s + p.amount, 0)
 
-  const filtered = filterStatus === 'ALL' ? payments : payments.filter(p => getDisplayStatus(p) === filterStatus)
+  const byAthlete = filterAthlete === 'ALL' ? payments : payments.filter(p => p.athleteId === filterAthlete)
+  const filtered  = filterStatus  === 'ALL' ? byAthlete : byAthlete.filter(p => getDisplayStatus(p) === filterStatus)
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto" style={{ backgroundColor: '#f8fafc' }}>
@@ -270,7 +272,23 @@ export default function FinanzasPage() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Athlete filter */}
+      {athletes.length > 1 && (
+        <div className="mb-3">
+          <select
+            value={filterAthlete}
+            onChange={e => setFilterAthlete(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300"
+          >
+            <option value="ALL">Todos los atletas</option>
+            {athletes.map(a => (
+              <option key={a.id} value={a.id}>{a.name ?? a.email}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Status filters */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {(['ALL', 'OVERDUE', 'PENDING', 'PAID'] as const).map(s => (
           <button
