@@ -70,7 +70,14 @@ export default function CheckInClient({
   const [nutritionAdherence, setNutritionAdherence] = useState(0)
   const [notes, setNotes] = useState('')
 
+  // Body measurements
+  const [waistCm, setWaistCm] = useState('')
+  const [armsCm, setArmsCm] = useState('')
+  const [hipsCm, setHipsCm] = useState('')
+  const [thighsCm, setThighsCm] = useState('')
+
   const [showWellness, setShowWellness] = useState(false)
+  const [showMeasurements, setShowMeasurements] = useState(false)
 
   const [alerts, setAlerts] = useState<string[]>([])
   const [showAlertModal, setShowAlertModal] = useState(false)
@@ -97,6 +104,10 @@ export default function CheckInClient({
       motivationLevel: motivationLevel || undefined,
       nutritionAdherencePct: hasNutrition && nutritionAdherence > 0 ? nutritionAdherence * 10 : undefined,
       notes: notes || undefined,
+      waistCm: waistCm ? Number(waistCm) : undefined,
+      armsCm: armsCm ? Number(armsCm) : undefined,
+      hipsCm: hipsCm ? Number(hipsCm) : undefined,
+      thighsCm: thighsCm ? Number(thighsCm) : undefined,
     }
   }
 
@@ -113,6 +124,10 @@ export default function CheckInClient({
       motivationLevel: undefined,
       nutritionAdherencePct: undefined,
       notes: undefined,
+      waistCm: undefined,
+      armsCm: undefined,
+      hipsCm: undefined,
+      thighsCm: undefined,
     })
   }
 
@@ -292,6 +307,28 @@ export default function CheckInClient({
               )}
               {!showWellness && (
                 <p className="px-6 py-3 text-xs text-gray-400">Estrés, motivación, calidad de sueño, dolor — ayudan al sistema a ajustar mejor tu plan.</p>
+              )}
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowMeasurements(v => !v)}
+                className="w-full px-6 py-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50 transition-colors"
+              >
+                <h2 className="text-[15px] font-semibold text-[#0f1e30]">📏 Medidas corporales <span className="text-xs font-normal text-gray-400 ml-1">opcional</span></h2>
+                <span className={`text-gray-400 text-sm transition-transform duration-200 ${showMeasurements ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              {showMeasurements && (
+                <div className="px-6 py-5 grid grid-cols-2 gap-4">
+                  <MetricInput label="Cintura" value={waistCm} onChange={setWaistCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 78" />
+                  <MetricInput label="Caderas" value={hipsCm} onChange={setHipsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 96" />
+                  <MetricInput label="Brazos" value={armsCm} onChange={setArmsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 32" />
+                  <MetricInput label="Muslos" value={thighsCm} onChange={setThighsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 54" />
+                </div>
+              )}
+              {!showMeasurements && (
+                <p className="px-6 py-3 text-xs text-gray-400">Cintura, caderas, brazos y muslos — útil para ver recomposición aunque el peso no baje.</p>
               )}
             </section>
 

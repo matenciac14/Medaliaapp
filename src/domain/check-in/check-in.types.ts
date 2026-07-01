@@ -18,6 +18,11 @@ export type CheckInInput = {
   nutritionAdherence?: number   // 1–10 (maps to nutritionAdherencePct / 10 * 100)
   motivation?: number           // 1–10 (maps to motivationLevel)
   notes?: string
+  // Body measurements — purely observational, don't affect plan rules
+  waistCm?: number
+  armsCm?: number
+  hipsCm?: number
+  thighsCm?: number
 }
 
 /** Minimal data from the previous check-in used for dynamic baselines. */
