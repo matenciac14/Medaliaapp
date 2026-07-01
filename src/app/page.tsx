@@ -62,9 +62,10 @@ export default async function Home() {
             <a href="/login" className="hidden sm:block text-xs text-gray-400 hover:text-gray-700 transition-colors">
               Iniciar sesión
             </a>
-            <a href="/register">
-              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm">
-                {l.nav.cta}
+            <a href="/register" className="block w-full sm:w-auto">
+              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
+                <span className="sm:hidden">Reservar</span>
+                <span className="hidden sm:inline">{l.nav.cta}</span>
               </button>
             </a>
           </div>
@@ -81,48 +82,51 @@ export default async function Home() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,34,64,0.95) 0%, rgba(30,58,95,0.75) 45%, rgba(30,58,95,0.25) 100%)' }} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 60%, rgba(15,34,64,0.4) 100%)' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-28 lg:py-36 flex items-center gap-12 min-h-[680px]">
+        {/* Floating card mobile — relativo a <section>, no al inner div */}
+        <div className="lg:hidden absolute top-3 right-4 z-20 anim-fade-in delay-400">
+          <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5 w-52">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+              <span className="text-blue-200 text-[10px] font-semibold tracking-widest uppercase">Sesión de hoy</span>
+            </div>
+            <p className="text-white text-[13px] font-bold whitespace-nowrap">Intervalos 4×8 · Zona 3</p>
+            <p className="text-blue-200 text-[11px]">Adherencia 92% · FC ↓3bpm</p>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 pt-[110px] pb-14 sm:py-24 lg:py-36 flex items-center gap-12 min-h-[680px]">
           <div className="w-full lg:max-w-[580px]">
             <div className="flex flex-wrap gap-2 mb-7 anim-fade-up">
               {[l.hero.badge1, l.hero.badge2, l.hero.badge3].map((badge) => (
-                <span key={badge} className="bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
+                <span key={badge} className="self-start bg-white/12 border border-white/25 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm">
                   {badge}
                 </span>
               ))}
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold leading-tight tracking-tight text-white mb-5 anim-fade-up delay-100">
+            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold leading-[1.06] tracking-[-0.02em] text-white mb-5 anim-fade-up delay-100">
               {l.hero.title}{' '}
               <span className="text-[#f97316]">{l.hero.titleHighlight}</span>
             </h1>
-            <p className="text-base sm:text-lg text-blue-100 leading-relaxed mb-8 max-w-lg anim-fade-up delay-200">
+            <p className="text-lg text-[#dbeafe] leading-[1.5] mb-8 max-w-lg anim-fade-up delay-200">
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
-              <a href="/register">
-                <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-base transition-transform hover:scale-105 active:scale-95">
+              <a href="/register" className="block w-full sm:w-auto">
+                <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                   {l.hero.cta1}
                 </button>
               </a>
-              <p className="text-blue-300/70 text-xs">8 entrenadores ya reservaron su lugar.</p>
-              <a href="#como-funciona" className="text-blue-300 hover:text-white text-sm transition-colors">
+              <a href="#como-funciona" className="hidden sm:inline text-blue-300 hover:text-white text-sm transition-colors">
                 {l.hero.cta2}
               </a>
-            </div>
-            <div className="flex gap-8 mt-10 anim-fade-in delay-500">
-              {[
-                { value: '∞', label: l.hero.stat1Label },
-                { value: '0%', label: l.hero.stat2Label },
-                { value: '5', label: l.hero.stat3Label },
-              ].map(({ value, label }) => (
-                <div key={label} className="text-center">
-                  <div className="text-2xl font-extrabold text-[#f97316]">{value}</div>
-                  <div className="text-xs text-blue-300 mt-0.5">{label}</div>
-                </div>
-              ))}
+              <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
+                <span className="text-[#f97316] text-sm leading-none">★★★★★</span>
+                <p className="text-blue-200 text-xs">8 entrenadores ya reservaron su lugar.</p>
+              </div>
             </div>
           </div>
 
-          {/* Floating cards (desktop only) */}
+          {/* Floating cards desktop */}
           <div className="hidden lg:flex flex-col gap-4 ml-auto anim-fade-in delay-400">
             <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex items-center gap-3 anim-float">
               <div className="w-7 h-7 rounded-full bg-[rgba(52,211,153,0.22)] flex items-center justify-center shrink-0">
@@ -149,7 +153,8 @@ export default async function Home() {
       <section className="bg-white border-b border-gray-100 py-10 px-4">
         <div className="max-w-5xl mx-auto flex flex-col items-center gap-7">
           <p className="text-gray-400 text-xs font-semibold tracking-[0.12em] uppercase text-center">
-            {l.science.label}
+            <span className="sm:hidden">Respaldado por ciencia real</span>
+            <span className="hidden sm:inline">{l.science.label}</span>
           </p>
           {/* Desktop: fila dividida con divide-x */}
           <div className="hidden sm:flex items-center divide-x divide-gray-200 w-full">
@@ -159,7 +164,7 @@ export default async function Home() {
               { icon: <CalendarCheck size={22} />, title: l.science.item3Title, sub: l.science.item3Sub },
               { icon: <Wallet size={22} />, title: l.science.item4Title, sub: l.science.item4Sub },
             ].map((item) => (
-              <div key={item.title} className="flex items-center gap-3 flex-1 justify-center px-6 first:pl-0 last:pr-0">
+              <div key={item.title} className="flex items-center gap-3 flex-1 px-8 first:pl-0 last:pr-0">
                 <span className="text-[#f97316] shrink-0">{item.icon}</span>
                 <div>
                   <p className="text-[#1e3a5f] text-sm font-bold leading-tight">{item.title}</p>
@@ -192,7 +197,7 @@ export default async function Home() {
       <section className="py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
+            <h2 className="text-[32px] sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
               {l.pain.title}
             </h2>
             <p className="text-gray-500 text-base mb-12">{l.pain.subtitle}</p>
@@ -208,7 +213,7 @@ export default async function Home() {
                   <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4 text-red-400">
                     {card.icon}
                   </div>
-                  <h3 className="text-[#1e3a5f] font-bold text-base mb-2">{card.title}</h3>
+                  <h3 className="text-[#1e3a5f] font-bold text-[17px] mb-2">{card.title}</h3>
                   <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
                 </div>
               </RevealOnScroll>
@@ -279,9 +284,50 @@ export default async function Home() {
             ))}
           </div>
 
-          {/* Coach panel mockup */}
+          {/* Coach panel mockup — mobile simplificado */}
           <RevealOnScroll delay={100}>
-            <div className="rounded-2xl overflow-hidden shadow-[0px_28px_56px_-14px_rgba(0,0,0,0.18)] border border-gray-200 mb-10">
+            <div className="md:hidden bg-[#1e3a5f] rounded-2xl p-5 mb-10">
+              <p className="text-blue-300 text-[10px] font-semibold uppercase tracking-widest mb-4">Mis atletas · Vista resumen</p>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                {[
+                  { v: '22', label: 'Atletas activos' },
+                  { v: '18', label: 'Al día' },
+                  { v: '$2.4M', label: 'Ingresos/mes' },
+                  { v: '92%', label: 'Adherencia' },
+                ].map(({ v, label }) => (
+                  <div key={label} className="bg-white/10 rounded-xl p-3">
+                    <div className="text-lg font-extrabold text-[#f97316]">{v}</div>
+                    <div className="text-[10px] text-blue-300 mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[
+                  { initials: 'AG', color: '#f97316', bg: 'rgba(249,115,22,0.2)', name: 'Ana García',   sport: 'Running', pct: 92 },
+                  { initials: 'LM', color: '#22c55e', bg: 'rgba(34,197,94,0.2)',  name: 'Laura Méndez', sport: 'Running', pct: 88 },
+                  { initials: 'JR', color: '#8b5cf6', bg: 'rgba(139,92,246,0.2)', name: 'Javier Ruiz',  sport: 'Fuerza',  pct: 95 },
+                ].map(({ initials, color, bg, name, sport, pct }) => (
+                  <div key={name} className="flex items-center gap-3 bg-white/8 rounded-xl px-3 py-2.5">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: bg, color }}>{initials}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-semibold truncate">{name}</p>
+                      <p className="text-blue-300 text-[10px]">{sport}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-16 bg-white/20 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-[#f97316]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[10px] text-[#f97316] font-semibold">{pct}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </RevealOnScroll>
+
+          {/* Coach panel mockup — desktop */}
+          <RevealOnScroll delay={100}>
+            <div className="hidden md:block rounded-2xl overflow-hidden shadow-[0px_28px_56px_-14px_rgba(0,0,0,0.18)] border border-gray-200 mb-10">
               {/* Browser bar */}
               <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-3">
                 <div className="flex gap-1.5 shrink-0">
@@ -403,7 +449,7 @@ export default async function Home() {
 
           <RevealOnScroll delay={150}>
             <div className="text-center">
-              <a href="/register">
+              <a href="/register" className="block w-full sm:w-auto">
                 <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
                   {l.forCoaches.cta}
                 </button>
@@ -583,7 +629,7 @@ export default async function Home() {
                   ))}
                 </div>
                 <div className="shrink-0">
-                  <a href="/register">
+                  <a href="/register" className="block w-full sm:w-auto">
                     <button className="border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg">
                       {l.pricing.coachCta}
                     </button>
@@ -616,7 +662,7 @@ export default async function Home() {
                   <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF4}</li>
                   <li className="flex items-center gap-2 text-gray-300"><span>✗</span> {l.pricing.freeF5}</li>
                 </ul>
-                <a href="/register">
+                <a href="/register" className="block w-full sm:w-auto">
                   <button className="w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors">
                     {l.pricing.freeCta}
                   </button>
@@ -650,7 +696,7 @@ export default async function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/register">
+                <a href="/register" className="block w-full sm:w-auto">
                   <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
                     {l.pricing.proCta}
                   </button>
@@ -703,7 +749,7 @@ export default async function Home() {
         <RevealOnScroll>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{l.finalCta.title}</h2>
           <p className="text-blue-200 mb-8 text-base max-w-md mx-auto">{l.finalCta.subtitle}</p>
-          <a href="/register">
+          <a href="/register" className="block w-full sm:w-auto">
             <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
               {l.finalCta.cta}
             </button>

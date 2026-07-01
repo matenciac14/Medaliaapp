@@ -137,11 +137,11 @@ export default function FinanzasPage() {
   const overdue  = payments.filter(p => getDisplayStatus(p) === 'OVERDUE')
   const pending  = payments.filter(p => getDisplayStatus(p) === 'PENDING')
   const paid     = payments.filter(p => p.status === 'PAID')
-  const totalOverdue  = overdue.reduce((s, p) => s + p.amount, 0)
-  const totalPending  = pending.reduce((s, p) => s + p.amount, 0)
+  const totalOverdue  = overdue.reduce((s, p) => s + Number(p.amount), 0)
+  const totalPending  = pending.reduce((s, p) => s + Number(p.amount), 0)
   const totalPaidMonth = paid
     .filter(p => p.paidAt && new Date(p.paidAt).getMonth() === new Date().getMonth())
-    .reduce((s, p) => s + p.amount, 0)
+    .reduce((s, p) => s + Number(p.amount), 0)
 
   const byAthlete = filterAthlete === 'ALL' ? payments : payments.filter(p => p.athleteId === filterAthlete)
   const filtered  = filterStatus  === 'ALL' ? byAthlete : byAthlete.filter(p => getDisplayStatus(p) === filterStatus)
