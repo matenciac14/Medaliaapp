@@ -666,6 +666,54 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'COACH-BUG-07 — Finanzas sin filtro por atleta — inmanejable con escala', done: true, priority: 'P2', note: 'Fix: selector "Todos los atletas" en finanzas/page.tsx (visible solo cuando hay >1 atleta). Filtro client-side sobre pagos ya cargados en memoria — byAthlete + filtered en cascada con filterStatus.' },
           { title: 'COACH-BUG-06 — /coach/settings = "Próximamente" — item de nav lleva a página vacía', done: true, priority: 'P3', note: 'Fix: coach/settings/page.tsx redirige a /coach/profile con redirect() — el perfil ya tiene edición completa de nombre, bio, especialidades y disponibilidad.' },
           { title: 'SEC-01 — POST /api/messages y /api/mobile/messages sin validar relación coach-atleta', done: true, priority: 'P1', note: 'Fix: coachAthlete.findFirst en paralelo con recipient lookup (Promise.all). 403 si no existe relación en ambos endpoints. api/messages/route.ts y api/mobile/messages/route.ts.' },
+          { title: 'COACH-BUG-08 — coachAthlete.count sin filtro ACTIVE: atletas PAUSED cuentan contra el límite de tier', done: false, priority: 'P2', note: 'clients/create/route.ts:52 — count sin { status: ACTIVE }. Coach con 5 atletas PAUSED y 0 activos no puede crear nuevos aunque esté en STARTER. Fix: añadir status: "ACTIVE" al where del count.' },
+          { title: 'COACH-BUG-09 — PaymentAuditLog escribe MARKED_PAID también en reversiones a PENDING', done: false, priority: 'P2', note: 'payments/[paymentId]/route.ts:40 — action siempre MARKED_PAID. Fix: derivar action del nuevo status: PAID → MARKED_PAID, PENDING → REVERTED (nuevo valor o usar CREATED como fallback).' },
+          { title: 'COACH-BUG-10 — DELETE payment sin transacción y sin registro en audit trail', done: false, priority: 'P2', note: 'payments/[paymentId]/route.ts:67 — delete fuera de $transaction, sin PaymentAuditLog de DELETED. Fix: $transaction([payment.delete, auditLog.create({ action: "DELETED" })]).' },
+          { title: 'COACH-BUG-11 — config/route.ts: mergeFeatures + coachAthlete.update con Promise.all sin $transaction', done: false, priority: 'P3', note: 'athlete/[id]/config/route.ts:44 — si coachAthlete.update falla, features ya se activaron. Fix: $transaction([mergeFeatures tx, coachAthlete.update]).' },
+        ],
+      },
+
+      // ── ATLETA & CHECK-IN ─────────────────────────────────────────────────────
+      {
+        id: 'bugs-atleta',
+        label: 'Atleta & Check-in',
+        period: 'Urgente',
+        items: [
+          { title: 'BUG-027 — actualIntensity ausente en web /api/log/session: ajuste nutricional nunca se dispara desde web', done: false, priority: 'P1', note: 'api/log/session/route.ts no tiene actualIntensity en el schema Zod ni en el create. Atleta que registra desde web nunca genera PendingNutritionAdjustment. Fix: añadir actualIntensity al schema + lógica post-create idéntica a la del mobile.' },
+          { title: 'BUG-028 — Race condition en PendingNutritionAdjustment.create: P2002 no capturado rompe el response', done: false, priority: 'P1', note: 'api/mobile/log/session/route.ts:93-123 — el check existingAdj + create no están en $transaction. Doble-tap genera P2002 (unique constraint) no catcheado; el SessionLog ya se creó pero el response explota con 500. Fix: wrap en try/catch o usar upsert con skipDuplicates.' },
+          { title: 'BUG-029 — nutritionAdherencePct ausente en schema mobile check-in: regla nutricion_baja nunca activa desde mobile', done: false, priority: 'P2', note: 'api/mobile/checkin/route.ts no tiene nutritionAdherencePct en el Zod schema. evaluateCheckInRules nunca recibe el dato desde mobile — la regla nutricion_baja (<70%) queda muda. Fix: añadir campo al schema mobile y mapearlo al use case.' },
+          { title: 'BUG-030 — /api/log/run/route.ts sin Zod: durationMin, distanceKm, rpe sin validación de rango', done: false, priority: 'P2', note: 'api/log/run/route.ts:14-29 — body desestructurado directamente, Number() sin validar. NaN puede entrar a Prisma silenciosamente. Fix: añadir LogRunSchema con z.number().min/max igual que mobile.' },
+          { title: 'BUG-031 — stressLevel: opcional en web (min 0), requerido en mobile (min 1) — asimetría en use case', done: false, priority: 'P3', note: 'api/checkin/route.ts:19 acepta z.number().min(0).optional(). api/mobile/checkin/route.ts:18 requiere min(1). Desde web puede llegar 0 o undefined, el repositorio guarda tal cual. Estandarizar: opcional en ambos, min(0) en web.' },
+          { title: 'BUG-032 — hrMax solo se registra desde web, mobile lo ignora silenciosamente', done: false, priority: 'P3', note: 'api/log/session/route.ts:61 guarda hrMax. api/mobile/log/session/route.ts:78-85 no lo incluye. Si el atleta solo usa mobile, hrMax nunca se actualiza en SessionLog. Impacto bajo (es informativo), pero genera divergencia de datos.' },
+        ],
+      },
+
+      // ── NUTRICIÓN & PROGRESO ──────────────────────────────────────────────────
+      {
+        id: 'bugs-nutricion',
+        label: 'Nutrición & Progreso',
+        period: 'Urgente',
+        items: [
+          { title: 'BUG-033 — Gym sin running: web muestra macros "día fácil", mobile muestra "día duro" — misma sesión', done: false, priority: 'P2', note: 'nutrition/page.tsx:113 → hasGymSessionToday ? "easy" : "rest". api/mobile/nutrition/route.ts:62 → hasGymToday ? "HIGH" : null → "hard". El atleta gym-only ve kcal distintas en web y mobile el mismo día. Fix: unificar a HIGH para gym-only en ambos canales.' },
+          { title: 'BUG-034 — /api/mobile/progress solo busca plan ACTIVE: semanas históricas invisibles cuando plan termina', done: false, priority: 'P2', note: 'api/mobile/progress/route.ts:41 — status: "ACTIVE". Web incluye COMPLETED. Si el plan termina, mobile devuelve weeks: [] y overallAdherence: 0. Fix: status: { in: ["ACTIVE", "COMPLETED"] } igual que la web.' },
+          { title: 'BUG-035 — /api/mobile/nutrition/log/summary: adherencePct siempre vs targetKcalEasy, ignora tipo de día', done: false, priority: 'P2', note: 'summary/route.ts:47 — targetKcal = nutritionPlan?.targetKcalEasy ?? 0. Compara consumo real contra un solo valor sin distinguir días duros/descanso. Fix: calcular target real por día según FoodLog.date + PlannedSession.intensity de ese día, luego promediar.' },
+          { title: 'BUG-036 — NutritionPlan lazy-init en web pero no en mobile: estado diverge entre canales', done: false, priority: 'P3', note: 'nutrition/page.tsx:82-106 crea NutritionPlan si no existe (lazy-init con TDEE). api/mobile/nutrition/route.ts:65-67 devuelve null sin crearlo. Atleta sin NutritionPlan que visita web → plan creado. Si solo usa mobile → siempre null. Fix: refactorizar lazy-init a un helper compartido llamado en ambos.' },
+          { title: 'BUG-037 — volumeKm ausente en /api/mobile/progress: semanas sin dato de volumen en mobile', done: false, priority: 'P3', note: 'api/mobile/progress/route.ts:86-90 — weeks array no incluye volumeKm. Si mobile charts usan este campo, siempre undefined. Fix: añadir volumeKm: w.volumeKm ?? 0 al map de semanas.' },
+          { title: 'INFO-001 — Tres implementaciones del cálculo de macros por tipo de día (riesgo de divergencia futura)', done: false, priority: 'P3', note: 'getDailyNutritionTarget (daily-target.ts), calcNutritionTarget (calculate-food-log.ts), inline en api/mobile/nutrition/route.ts:69-78. La fuente canónica declarada solo la usa nutrition/page.tsx. Fix: mobile/nutrition/route.ts debe usar getDailyNutritionTarget() en lugar de código inline.' },
+        ],
+      },
+
+      // ── GYM & EJERCICIOS ──────────────────────────────────────────────────────
+      {
+        id: 'bugs-gym-ejercicios',
+        label: 'Gym & Ejercicios (integridad)',
+        period: 'Urgente',
+        items: [
+          { title: 'BUG-038 — PR detection falla cuando coach edita rutina: SetLogs históricos quedan con workoutExerciseId=null → cualquier peso es PR', done: false, priority: 'P1', note: 'complete/route.ts:94 — where: { workoutExerciseId: { in: allWE.map(we => we.id) } } excluye SetLogs con null. Al editar rutina (PATCH borra y recrea WorkoutExercise via cascade), el historial queda invisible. Fix: buscar historial también por exerciseName cuando workoutExerciseId es null, o pivotar por exerciseId en lugar de workoutExerciseId.' },
+          { title: 'BUG-039 — today/route.ts usa UTC para weekNumber pero timezone atleta para dayOfWeek: semana incorrecta en medianoche Bogotá', done: false, priority: 'P2', note: 'today/route.ts:131-133 — todayDate = new Date() (UTC). Si son las 23:00 COT (= 04:00 UTC+1 día), weekNumber apunta a la semana siguiente pero DOW apunta al día actual. Fix: calcular todayDate en America/Bogota antes de getPlanWeekNumber.' },
+          { title: 'BUG-040 — assign/route.ts no verifica CoachAthlete.status ACTIVE: coach desvinculado puede asignar rutinas', done: false, priority: 'P2', note: 'assign/route.ts:43 — findFirst({ where: { coachId, athleteId } }) sin filtrar status. Coach con relación PAUSED puede asignar. Fix: añadir status: "ACTIVE" al where.' },
+          { title: 'BUG-041 — isPR siempre false en sesión libre: récords en sesión libre nunca se detectan', done: false, priority: 'P3', note: 'complete/route.ts:211 — isPR: false hardcodeado para path libre. Un 1RM nuevo en sesión libre no se celebra ni aparece en historial como PR. Fix: reutilizar la lógica de PR detection con pivot por exerciseName cuando exerciseId no está disponible.' },
+          { title: 'BUG-042 — Historial mobile muestra sesiones libres FUERZA (SessionLog) con sets=0 y volumen=0', done: false, priority: 'P3', note: 'history/route.ts:92-106 — formattedFree de SessionLog sin SetLog asociados: completedSets: 0, volumeKg: 0, exercises: []. El atleta ve entradas vacías en su historial. Fix: filtrar formattedFree que tengan completedSets=0 y sin tipo de sesión identificable, o no incluirlas en el merge.' },
         ],
       },
 
