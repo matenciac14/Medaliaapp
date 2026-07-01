@@ -3,21 +3,36 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { autoCompleteStrengthSession } from '@/domain/gym/auto-complete-strength'
+import { z } from 'zod'
 
-type SetPayload = {
-  workoutExerciseId: string
-  setNumber: number
-  weightKg: number | null
-  repsCompleted: number | null
-  completed: boolean
-}
+const SetPayloadSchema = z.object({
+  workoutExerciseId: z.string().uuid(),
+  setNumber: z.number().int().min(1).max(20),
+  weightKg: z.number().min(0).max(1000).nullable(),
+  repsCompleted: z.number().int().min(0).max(200).nullable(),
+  completed: z.boolean(),
+})
 
-type ExerciseOverride = {
-  originalWorkoutExerciseId: string
-  replacedWithExerciseId: string
-  replacedExerciseName: string
-  reason?: string
-}
+const ExerciseOverrideSchema = z.object({
+  originalWorkoutExerciseId: z.string().uuid(),
+  replacedWithExerciseId: z.string().uuid(),
+  replacedExerciseName: z.string().max(200),
+  reason: z.string().max(500).optional(),
+})
+
+const GymCompleteSchema = z.object({
+  assignedWorkoutId: z.string().uuid().optional(),
+  plannedSessionId: z.string().uuid().optional(),
+  dayOfWeek: z.number().int().min(0).max(6),
+  rpe: z.number().int().min(1).max(10).optional(),
+  durationMin: z.number().int().min(0).max(600).optional(),
+  notes: z.string().max(2000).optional(),
+  sets: z.array(SetPayloadSchema).optional(),
+  exerciseOverrides: z.array(ExerciseOverrideSchema).optional(),
+})
+
+type SetPayload = z.infer<typeof SetPayloadSchema>
+type ExerciseOverride = z.infer<typeof ExerciseOverrideSchema>
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -30,24 +45,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
   }
 
-  let body: {
-    assignedWorkoutId?: string
-    plannedSessionId?: string
-    dayOfWeek: number
-    rpe?: number
-    durationMin?: number
-    notes?: string
-    sets?: SetPayload[]
-    exerciseOverrides?: ExerciseOverride[]
-  }
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
+  const parsed = GymCompleteSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
+  const body = parsed.data
 
   const { dayOfWeek, rpe, durationMin, notes } = body
   const sets = body.sets ?? []
   const exerciseOverrides = body.exerciseOverrides ?? null
-
-  if (!dayOfWeek || !Array.isArray(sets))
-    return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
 
   // Pre-fetch exercise names + exerciseId for denormalization and PR detection
   const weIds = [...new Set(sets.map(s => s.workoutExerciseId).filter(Boolean))]

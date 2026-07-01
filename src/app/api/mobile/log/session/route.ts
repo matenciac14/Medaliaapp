@@ -3,6 +3,18 @@ import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { requireFeature } from '@/lib/guards/feature-gate'
+import { z } from 'zod'
+
+const LogSessionSchema = z.object({
+  sessionId: z.string().uuid().optional(),
+  sessionType: z.string().max(50).optional(),
+  completed: z.boolean().optional(),
+  actualDurationMin: z.number().int().min(0).max(600).optional(),
+  rpe: z.number().int().min(1).max(10).optional(),
+  hrAvg: z.number().int().min(30).max(250).optional(),
+  distanceKm: z.number().min(0).max(1000).optional(),
+  notes: z.string().max(2000).optional(),
+}).refine(d => d.sessionId || d.sessionType, { message: 'sessionId o sessionType requerido' })
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -13,12 +25,9 @@ export async function POST(req: NextRequest) {
   if (featureGuard) return featureGuard
 
   const userId = mobile.id
-  const body = await req.json()
-  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes } = body
-
-  if (!sessionId && !sessionType) {
-    return NextResponse.json({ error: 'sessionId o sessionType requerido' }, { status: 400 })
-  }
+  const parsed = LogSessionSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
+  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes } = parsed.data
 
   // ── Log libre (sin plan) ──────────────────────────────────────────────────
   if (!sessionId) {

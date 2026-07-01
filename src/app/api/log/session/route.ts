@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { z } from 'zod'
 
-interface LogSessionBody {
-  plannedSessionId?: string
-  completed?: boolean
-  rpe?: number
-  distanceKm?: number
-  durationMin?: number
-  hrAvg?: number
-  hrMax?: number
-  notes?: string
-}
+const LogSessionSchema = z.object({
+  plannedSessionId: z.string().uuid().optional(),
+  completed: z.boolean().optional(),
+  rpe: z.number().int().min(1).max(10).optional(),
+  distanceKm: z.number().min(0).max(1000).optional(),
+  durationMin: z.number().int().min(0).max(600).optional(),
+  hrAvg: z.number().int().min(30).max(250).optional(),
+  hrMax: z.number().int().min(30).max(250).optional(),
+  notes: z.string().max(2000).optional(),
+})
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -20,7 +21,9 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id
-  const body: LogSessionBody = await req.json()
+  const parsed = LogSessionSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
+  const body = parsed.data
 
   // Si completed === false, no registrar (la sesión queda pendiente)
   if (body.completed === false) {
