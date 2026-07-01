@@ -33,6 +33,8 @@ export type BuiltSession = {
   zoneTarget: string | null
   detailText: string
   date: Date
+  /** Links to a WorkoutDay when type=FUERZA — enables gym tracker to load exercises automatically. */
+  workoutDayId?: string | null
 }
 
 export type GymExercise = {

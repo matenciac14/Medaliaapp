@@ -157,6 +157,7 @@ export class PrismaPlanRepository implements IPlanRepository {
         zoneTarget: s.zoneTarget,
         detailText: s.detailText,
         date: s.date,
+        workoutDayId: s.workoutDayId ?? null,
       })),
     })
   }

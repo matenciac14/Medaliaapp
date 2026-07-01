@@ -28,6 +28,7 @@ import { estimateHRMax, calculateHRZones, calculateTDEE, calculateMacros } from 
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
+import { resolveWorkoutDayId } from './generate-plan.use-case'
 
 // ── Fixtures de atleta — representan onboarding inputs ───────────────────────
 
@@ -256,6 +257,66 @@ describe('generatePlan — nutrition sync con intensity pipeline', () => {
     // Proteína debe ser igual en todos los días (2g/kg)
     expect(getDailyNutritionTarget('HIGH', plan).proteinG).toBe(macros.hard.protein)
     expect(getDailyNutritionTarget('REST', plan).proteinG).toBe(macros.hard.protein)
+  })
+})
+
+// ── resolveWorkoutDayId — gym tracker linkage ─────────────────────────────────
+
+describe('resolveWorkoutDayId — planes de running', () => {
+  const RUNNING_GOALS = ['RACE_5K', 'RACE_10K', 'RACE_HALF_MARATHON', 'RACE_MARATHON']
+
+  it.each(RUNNING_GOALS)('%s + FUERZA + BASE → system-fuerza-corredor-base', (goalType) => {
+    expect(resolveWorkoutDayId(goalType, 'FUERZA', 'BASE')).toBe('system-fuerza-corredor-base')
+  })
+
+  it.each(RUNNING_GOALS)('%s + FUERZA + DESARROLLO → system-fuerza-corredor-especifico', (goalType) => {
+    expect(resolveWorkoutDayId(goalType, 'FUERZA', 'DESARROLLO')).toBe('system-fuerza-corredor-especifico')
+  })
+
+  it.each(['ESPECIFICO', 'ESPECÍFICO', 'AFINAMIENTO'])(
+    'running + FUERZA + %s → system-fuerza-corredor-especifico',
+    (phase) => {
+      expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'FUERZA', phase)).toBe('system-fuerza-corredor-especifico')
+    }
+  )
+
+  it('running + sesión que NO es FUERZA → null (no link al gym tracker)', () => {
+    expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'RODAJE_Z2', 'BASE')).toBeNull()
+    expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'TEMPO', 'DESARROLLO')).toBeNull()
+    expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'TIRADA_LARGA', 'AFINAMIENTO')).toBeNull()
+  })
+})
+
+describe('resolveWorkoutDayId — planes de gym/recomposición', () => {
+  it('BODY_RECOMPOSITION + FUERZA → null (usa AssignedWorkout, no sistema)', () => {
+    expect(resolveWorkoutDayId('BODY_RECOMPOSITION', 'FUERZA', 'BASE')).toBeNull()
+  })
+
+  it('STRENGTH_TRAINING + FUERZA → null', () => {
+    expect(resolveWorkoutDayId('STRENGTH_TRAINING', 'FUERZA', 'DESARROLLO')).toBeNull()
+  })
+
+  it('goalType desconocido → null', () => {
+    expect(resolveWorkoutDayId('SWIMMING', 'FUERZA', 'BASE')).toBeNull()
+    expect(resolveWorkoutDayId('', 'FUERZA', 'BASE')).toBeNull()
+  })
+})
+
+// ── resolveWorkoutDayId — contrato con el seed ────────────────────────────────
+
+describe('resolveWorkoutDayId — IDs estables (contrato con seed)', () => {
+  it('todos los planes de running producen el mismo set de IDs posibles', () => {
+    const validIds = new Set(['system-fuerza-corredor-base', 'system-fuerza-corredor-especifico'])
+    const phases = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
+    const runningGoals = ['RACE_5K', 'RACE_10K', 'RACE_HALF_MARATHON', 'RACE_MARATHON']
+
+    for (const goal of runningGoals) {
+      for (const phase of phases) {
+        const id = resolveWorkoutDayId(goal, 'FUERZA', phase)
+        expect(id).not.toBeNull()
+        expect(validIds.has(id!)).toBe(true)
+      }
+    }
   })
 })
 

@@ -1053,6 +1053,106 @@ async function main() {
   }
 
   console.log(`✅ Rutinas:      ${publicTemplates.length} plantillas públicas del sistema`)
+
+  // ── Sistema: WorkoutTemplate "Fuerza corredor" ─────────────────────────────
+  // Plantilla interna usada por generate-plan para vincular sesiones FUERZA
+  // en planes de running (5K, 10K, Media, Maratón) al gym tracker.
+  // isPublic: false — el atleta no la selecciona manualmente.
+  // Dos WorkoutDays (por fase, no por día de semana):
+  //   BASE:       fuerza funcional 3×12-15 (sentadillas, lunges, hip thrust)
+  //   ESPECÍFICO: fuerza específica 4×8-10 + talones
+  await prisma.workoutTemplate.upsert({
+    where: { id: 'system-fuerza-corredor' },
+    update: {},
+    create: {
+      id: 'system-fuerza-corredor',
+      name: 'Fuerza corredor',
+      description: 'Rutina de fuerza complementaria para atletas de running. Se vincula automáticamente al plan de entrenamiento.',
+      goal: 'RUNNING_STRENGTH',
+      level: 'INTERMEDIATE',
+      daysPerWeek: 1,
+      isPublic: false,
+      category: 'RUNNER_STRENGTH',
+    },
+  })
+
+  // BASE — sentadilla, lunges, hip thrust, talones (fuerza funcional)
+  await prisma.workoutDay.upsert({
+    where: { id: 'system-fuerza-corredor-base' },
+    update: {},
+    create: {
+      id: 'system-fuerza-corredor-base',
+      templateId: 'system-fuerza-corredor',
+      dayOfWeek: 1,
+      label: 'Fuerza Base — Funcional corredor',
+      muscleGroups: ['QUADRICEPS', 'GLUTES', 'HAMSTRINGS', 'CALVES'],
+      isRestDay: false,
+      order: 1,
+      warmupNotes: '5 min movilidad de cadera y rodilla. Activación glúteos con banda.',
+    },
+  })
+
+  const baseFuerzaExercises = [
+    { exerciseId: 'global-exercise-sentadilla-frontal',        order: 1, sets: 3, repsScheme: '12-15', restSeconds: 90  },
+    { exerciseId: 'global-exercise-avanzadas',                 order: 2, sets: 3, repsScheme: '12 c/lado', restSeconds: 60  },
+    { exerciseId: 'global-exercise-hip-thrust',                order: 3, sets: 3, repsScheme: '15',     restSeconds: 60  },
+    { exerciseId: 'global-exercise-elevacion-talones-maquina', order: 4, sets: 3, repsScheme: '20',     restSeconds: 45  },
+  ]
+  for (const ex of baseFuerzaExercises) {
+    await prisma.workoutExercise.upsert({
+      where: { id: `system-fuerza-corredor-base-ex-${ex.exerciseId}` },
+      update: {},
+      create: {
+        id: `system-fuerza-corredor-base-ex-${ex.exerciseId}`,
+        dayId: 'system-fuerza-corredor-base',
+        exerciseId: ex.exerciseId,
+        order: ex.order,
+        sets: ex.sets,
+        repsScheme: ex.repsScheme,
+        restSeconds: ex.restSeconds,
+      },
+    })
+  }
+
+  // ESPECÍFICO — carga más alta, talones con más volumen (fuerza específica)
+  await prisma.workoutDay.upsert({
+    where: { id: 'system-fuerza-corredor-especifico' },
+    update: {},
+    create: {
+      id: 'system-fuerza-corredor-especifico',
+      templateId: 'system-fuerza-corredor',
+      dayOfWeek: 2,
+      label: 'Fuerza Específica — Potencia y reactividad',
+      muscleGroups: ['QUADRICEPS', 'GLUTES', 'HAMSTRINGS', 'CALVES'],
+      isRestDay: false,
+      order: 2,
+      warmupNotes: '5 min rodillo espuma. Skipping progresivo + talones al glúteo.',
+    },
+  })
+
+  const especificoFuerzaExercises = [
+    { exerciseId: 'global-exercise-sentadilla-frontal',        order: 1, sets: 4, repsScheme: '8-10',      restSeconds: 120 },
+    { exerciseId: 'global-exercise-peso-muerto',               order: 2, sets: 4, repsScheme: '8',          restSeconds: 180 },
+    { exerciseId: 'global-exercise-avanzadas',                 order: 3, sets: 3, repsScheme: '10 c/lado',  restSeconds: 90  },
+    { exerciseId: 'global-exercise-elevacion-talones-maquina', order: 4, sets: 4, repsScheme: '15',          restSeconds: 45  },
+  ]
+  for (const ex of especificoFuerzaExercises) {
+    await prisma.workoutExercise.upsert({
+      where: { id: `system-fuerza-corredor-especifico-ex-${ex.exerciseId}` },
+      update: {},
+      create: {
+        id: `system-fuerza-corredor-especifico-ex-${ex.exerciseId}`,
+        dayId: 'system-fuerza-corredor-especifico',
+        exerciseId: ex.exerciseId,
+        order: ex.order,
+        sets: ex.sets,
+        repsScheme: ex.repsScheme,
+        restSeconds: ex.restSeconds,
+      },
+    })
+  }
+
+  console.log('✅ Fuerza corredor: plantilla de sistema (BASE + ESPECÍFICO)')
   console.log(`✅ Coaches:      coach@medaliq.com / coach123`)
   console.log(`                maria.coach@medaliq.com / coach123`)
   console.log(`✅ Admin:        admin@medaliq.com / admin123!`)
