@@ -6,6 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendAthleteWelcomeEmail } from '@/infrastructure/email/resend'
 import { nameSchema, emailSchema, parseBody } from '@/lib/validation'
+import { getCoachLimits, type CoachTier } from '@/domain/subscription/tier-features'
 
 const CreateAthleteSchema = z.object({
   name: nameSchema,
@@ -45,6 +46,28 @@ export async function POST(req: NextRequest) {
     const parsed = parseBody(CreateAthleteSchema, raw)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
     const { name, email, sport = null, goal = null } = parsed.data
+
+    // Enforce coach tier athlete limit before any write
+    const [activeCount, coachSub] = await Promise.all([
+      prisma.coachAthlete.count({ where: { coachId } }),
+      prisma.userSubscription.findUnique({
+        where: { userId: coachId },
+        select: { coachTier: true },
+      }),
+    ])
+    const coachTier = (coachSub?.coachTier ?? 'STARTER') as CoachTier
+    const { maxAthletes } = getCoachLimits(coachTier)
+    if (activeCount >= maxAthletes) {
+      return NextResponse.json(
+        {
+          error: `Alcanzaste el límite de tu plan (${maxAthletes} asesorados). Actualiza a un plan superior para agregar más.`,
+          code: 'COACH_LIMIT_REACHED',
+          limit: maxAthletes,
+          current: activeCount,
+        },
+        { status: 402 }
+      )
+    }
 
     // Check email not already registered
     const existing = await prisma.user.findUnique({ where: { email } })

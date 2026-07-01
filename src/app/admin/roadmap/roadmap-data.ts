@@ -390,7 +390,7 @@ export const GROUPS: RoadmapGroup[] = [
     borderColor: '#7dd3fc',
     items: [
       { title: 'Trial 30 días + página /upgrade con comparativa de features', done: true, note: 'UserSubscription model en DB (TRIAL|FREE|PRO). Botón temporal mailto: hasta integrar pasarela.' },
-      { title: 'Feature flags: derivación por tier + límites de asesorados para entrenadores', done: false, priority: 'P1', note: 'DB HECHA: CoachSubscriptionTier enum (STARTER|GROWTH|PRO|SCALE) + UserSubscription.coachTier (migración 20260701000001). Pendiente: computeAthleteFeatures(tier) + getCoachLimits(CoachSubscriptionTier) en domain + enforcement en POST /api/coach/clients/create.' },
+      { title: 'Feature flags: derivación por tier + límites de asesorados para entrenadores', done: true, priority: 'P1', note: 'computeAthleteFeatures(tier) + getCoachLimits(CoachTier) en domain/subscription/tier-features.ts. Enforcement en POST /api/coach/clients/create: lee coachTier de UserSubscription, cuenta CoachAthlete activos → 402 si activeCount >= maxAthletes.' },
       { title: 'Wompi (Colombia): suscripción atleta Pro $9.99/mes', done: false, note: 'Wompi primero por mercado principal. Checkout → webhook → activa PRO en DB. Precio validado por análisis de mercado LatAm (techo Colombia ~$10 USD).' },
       { title: 'Webhook Wompi/Stripe: pago exitoso → activa Pro, fallo → downgrade', done: false, note: 'POST /api/webhooks/wompi. Mismo mecanismo que activación manual del admin.' },
       { title: 'Facturación mensual al coach por asesorados directos', done: false, note: '1-50: $6/atleta, 51-100: $5/atleta, +100: $3/atleta. Calculado automáticamente.' },
