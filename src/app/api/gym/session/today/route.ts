@@ -128,7 +128,8 @@ export async function GET(req: NextRequest) {
   if (activePlan) {
     const planStart = new Date(activePlan.startDate)
     planStart.setHours(0, 0, 0, 0)
-    const todayDate = new Date()
+    const todayLocalStr = new Date().toLocaleString('en-US', { timeZone: tz })
+    const todayDate = new Date(todayLocalStr)
     todayDate.setHours(0, 0, 0, 0)
     const targetWeekNumber = Math.floor((todayDate.getTime() - planStart.getTime()) / 86_400_000 / 7) + 1
 

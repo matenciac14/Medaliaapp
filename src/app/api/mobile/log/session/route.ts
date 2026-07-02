@@ -16,6 +16,7 @@ const LogSessionSchema = z.object({
   actualDurationMin: z.number().int().min(0).max(600).optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   hrAvg: z.number().int().min(30).max(250).optional(),
+  hrMax: z.number().int().min(30).max(250).optional(),
   distanceKm: z.number().min(0).max(1000).optional(),
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   const userId = mobile.id
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
-  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, distanceKm, notes, actualIntensity } = parsed.data
+  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity } = parsed.data
 
   // ── Log libre (sin plan) ──────────────────────────────────────────────────
   if (!sessionId) {
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
         completedAt: new Date(),
         rpe: rpe ?? null,
         hrAvg: hrAvg ?? null,
+        hrMax: hrMax ?? null,
         durationMin: actualDurationMin ?? null,
         distanceKm: distanceKm ?? null,
         notes: notes ?? null,
@@ -78,6 +80,7 @@ export async function POST(req: NextRequest) {
       completedAt: new Date(),
       rpe: rpe ?? null,
       hrAvg: hrAvg ?? null,
+      hrMax: hrMax ?? null,
       durationMin: actualDurationMin ?? null,
       distanceKm: distanceKm ?? null,
       notes: notes ?? null,
@@ -96,29 +99,33 @@ export async function POST(req: NextRequest) {
     })
 
     if (!existingAdj) {
-      const nutritionPlan = await prisma.nutritionPlan.findUnique({
-        where: { userId },
-        select: { targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
-      })
-      if (nutritionPlan) {
-        const adj = calcNutritionAdjustment(planned.intensity, actualIntensity, nutritionPlan)
-        if (adj) {
-          await prisma.pendingNutritionAdjustment.create({
-            data: {
-              userId,
-              date: today,
-              sessionLogId: log.id,
-              plannedIntensity: planned.intensity,
-              actualIntensity,
-              deltaKcal: adj.deltaKcal,
-              deltaCarbsG: adj.deltaCarbsG,
-              plannedKcal: adj.plannedKcal,
-              plannedCarbsG: adj.plannedCarbsG,
-              adjustedKcal: adj.adjustedKcal,
-              adjustedCarbsG: adj.adjustedCarbsG,
-            },
-          })
+      try {
+        const nutritionPlan = await prisma.nutritionPlan.findUnique({
+          where: { userId },
+          select: { targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
+        })
+        if (nutritionPlan) {
+          const adj = calcNutritionAdjustment(planned.intensity, actualIntensity, nutritionPlan)
+          if (adj) {
+            await prisma.pendingNutritionAdjustment.create({
+              data: {
+                userId,
+                date: today,
+                sessionLogId: log.id,
+                plannedIntensity: planned.intensity,
+                actualIntensity,
+                deltaKcal: adj.deltaKcal,
+                deltaCarbsG: adj.deltaCarbsG,
+                plannedKcal: adj.plannedKcal,
+                plannedCarbsG: adj.plannedCarbsG,
+                adjustedKcal: adj.adjustedKcal,
+                adjustedCarbsG: adj.adjustedCarbsG,
+              },
+            })
+          }
         }
+      } catch {
+        // No bloquear el response si el ajuste nutricional falla (ej. P2002 por doble submit)
       }
     }
   }

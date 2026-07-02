@@ -19,29 +19,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = (await req.json()) as { features?: Record<string, boolean>; coachGoal?: string | null; privateNotes?: string | null }
 
-  const ops: Promise<unknown>[] = []
+  await prisma.$transaction(async (tx) => {
+    // Update features on User if provided — atomic merge, no read needed
+    if (body.features) {
+      const COACH_ALLOWED_FEATURES: FeatureKey[] = ['plan', 'checkin', 'nutrition', 'progress', 'log', 'gym']
+      const safePatch = Object.fromEntries(
+        Object.entries(body.features).filter(([k]) => COACH_ALLOWED_FEATURES.includes(k as FeatureKey))
+      ) as Partial<Record<FeatureKey, boolean>>
+      await new PrismaUserRepository(tx).mergeFeatures(athleteId, safePatch)
+    }
 
-  // Update features on User.config if provided — atomic merge, no read needed
-  if (body.features) {
-    const COACH_ALLOWED_FEATURES: FeatureKey[] = ['plan', 'checkin', 'nutrition', 'progress', 'log', 'gym']
-    const safePatch = Object.fromEntries(
-      Object.entries(body.features).filter(([k]) => COACH_ALLOWED_FEATURES.includes(k as FeatureKey))
-    ) as Partial<Record<FeatureKey, boolean>>
-    ops.push(new PrismaUserRepository().mergeFeatures(athleteId, safePatch))
-  }
-
-  // Update coachGoal / privateNotes on CoachAthlete if provided
-  if ('coachGoal' in body || 'privateNotes' in body) {
-    const data: { coachGoal?: string | null; privateNotes?: string | null } = {}
-    if ('coachGoal' in body) data.coachGoal = body.coachGoal ?? null
-    if ('privateNotes' in body) data.privateNotes = body.privateNotes ?? null
-    ops.push(prisma.coachAthlete.update({
-      where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
-      data,
-    }))
-  }
-
-  await Promise.all(ops)
+    // Update coachGoal / privateNotes on CoachAthlete if provided
+    if ('coachGoal' in body || 'privateNotes' in body) {
+      const data: { coachGoal?: string | null; privateNotes?: string | null } = {}
+      if ('coachGoal' in body) data.coachGoal = body.coachGoal ?? null
+      if ('privateNotes' in body) data.privateNotes = body.privateNotes ?? null
+      await tx.coachAthlete.update({
+        where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
+        data,
+      })
+    }
+  })
 
   return Response.json({ ok: true })
 }

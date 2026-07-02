@@ -89,19 +89,51 @@ export async function POST(req: NextRequest) {
     })
     const weToExerciseId = new Map(allWE.map(we => [we.id, we.exerciseId]))
 
-    const historicalSets = await prisma.setLog.findMany({
-      where: {
-        workoutExerciseId: { in: allWE.map(we => we.id) },
-        session: { athleteId },
-        completed: true,
-        weightKg: { not: null },
-      },
-      select: { workoutExerciseId: true, weightKg: true },
-    })
+    // Mapeo nombre → exerciseId para recuperar sets históricos con workoutExerciseId=null
+    // (ocurre cuando el coach edita la rutina y los WorkoutExercise se recrean)
+    const nameToExerciseId = new Map<string, string>()
+    for (const we of workoutExercises) {
+      nameToExerciseId.set(we.exercise.name, we.exerciseId)
+    }
+    const exerciseNames = [...nameToExerciseId.keys()]
+
+    const [historicalSets, orphanSets] = await Promise.all([
+      // Sets con workoutExerciseId (rutina actual o versiones anteriores del mismo exercise)
+      prisma.setLog.findMany({
+        where: {
+          workoutExerciseId: { in: allWE.map(we => we.id) },
+          session: { athleteId },
+          completed: true,
+          weightKg: { not: null },
+        },
+        select: { workoutExerciseId: true, weightKg: true },
+      }),
+      // Sets huérfanos (workoutExerciseId=null) pero con exerciseName conocido
+      exerciseNames.length > 0
+        ? prisma.setLog.findMany({
+            where: {
+              workoutExerciseId: null,
+              exerciseName: { in: exerciseNames },
+              session: { athleteId },
+              completed: true,
+              weightKg: { not: null },
+            },
+            select: { exerciseName: true, weightKg: true },
+          })
+        : Promise.resolve([]),
+    ])
 
     for (const sl of historicalSets) {
       if (!sl.workoutExerciseId || sl.weightKg === null) continue
       const exId = weToExerciseId.get(sl.workoutExerciseId)
+      if (!exId) continue
+      const cur = maxPerExercise.get(exId) ?? 0
+      if (sl.weightKg > cur) maxPerExercise.set(exId, sl.weightKg)
+    }
+
+    for (const sl of orphanSets) {
+      if (!sl.exerciseName || sl.weightKg === null) continue
+      const exId = nameToExerciseId.get(sl.exerciseName)
       if (!exId) continue
       const cur = maxPerExercise.get(exId) ?? 0
       if (sl.weightKg > cur) maxPerExercise.set(exId, sl.weightKg)
@@ -134,6 +166,28 @@ export async function POST(req: NextRequest) {
       updates.push(prisma.workoutExercise.update({ where: { id: weId }, data: { suggestedNextWeightKg: suggested } }))
     }
     if (updates.length > 0) Promise.all(updates).catch(() => {})
+  }
+
+  // ── Name-based PR detection for free sessions ─────────────────────────────
+  const freeExerciseNames = [...new Set(
+    sets.filter(s => !s.workoutExerciseId && s.exerciseName).map(s => s.exerciseName as string)
+  )]
+  const maxPerFreeExerciseName = new Map<string, number>()
+  if (freeExerciseNames.length > 0) {
+    const historicalFree = await prisma.setLog.findMany({
+      where: { exerciseName: { in: freeExerciseNames }, session: { athleteId }, completed: true, weightKg: { not: null } },
+      select: { exerciseName: true, weightKg: true },
+    })
+    for (const sl of historicalFree) {
+      if (!sl.exerciseName || sl.weightKg === null) continue
+      const cur = maxPerFreeExerciseName.get(sl.exerciseName) ?? 0
+      if (sl.weightKg > cur) maxPerFreeExerciseName.set(sl.exerciseName, sl.weightKg)
+    }
+  }
+
+  function isPRByName(exerciseName: string | null | undefined, weightKg: number | null, completed: boolean): boolean {
+    if (!completed || weightKg === null || !exerciseName) return false
+    return weightKg > (maxPerFreeExerciseName.get(exerciseName) ?? 0)
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -203,20 +257,22 @@ export async function POST(req: NextRequest) {
         setLogs: {
           create: sets.map(s => ({
             workoutExerciseId: null,
-            exerciseName: s.exerciseName ?? s.workoutExerciseId ?? null,
+            exerciseName: s.exerciseName ?? null,
             setNumber: s.setNumber,
             weightKg: s.weightKg ?? null,
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
-            isPR: false,
+            isPR: isPRByName(s.exerciseName, s.weightKg, s.completed),
           })),
         },
       },
       select: { id: true },
     })
+    const newPRsFree = sets.filter(s => isPRByName(s.exerciseName, s.weightKg, s.completed))
+      .map(s => ({ exerciseName: s.exerciseName ?? null, weightKg: s.weightKg }))
     notifyCoach(athleteId, userRecord.name, 'Sesión libre de gym completada 💪').catch(() => {})
     revalidatePath('/dashboard')
-    return NextResponse.json({ sessionId: gymSession.id, newPRs: [] }, { status: 201 })
+    return NextResponse.json({ sessionId: gymSession.id, newPRs: newPRsFree }, { status: 201 })
   }
 
   // ─── AssignedWorkout path ────────────────────────────────────────────────────

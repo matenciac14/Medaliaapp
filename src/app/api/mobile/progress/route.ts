@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.trainingPlan.findFirst({
-      where: { userId, status: 'ACTIVE' },
+      where: { userId, status: { in: ['ACTIVE', 'COMPLETED'] } },
       orderBy: { createdAt: 'desc' },
       include: {
         weeks: {
@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
     weekNumber: w.weekNumber,
     phase: w.phase,
     adherencePct: adherencePct(w.sessions),
+    volumeKm: w.sessions.reduce((acc, s) => acc + (s.log?.distanceKm ?? 0), 0),
   })) ?? []
 
   const totalSessions = checkIns.length

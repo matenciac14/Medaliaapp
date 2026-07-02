@@ -111,7 +111,7 @@ export default async function NutritionPage() {
   const todayDayType: DayType = todaySession
     ? intensityToDayType(todaySession.intensity)
     : hasGymSessionToday
-      ? 'easy'
+      ? 'hard'
       : 'rest'
 
   const DAY_TYPE_LABELS = {

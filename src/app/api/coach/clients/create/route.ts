@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Enforce coach tier athlete limit before any write
     const [activeCount, coachSub] = await Promise.all([
-      prisma.coachAthlete.count({ where: { coachId } }),
+      prisma.coachAthlete.count({ where: { coachId, status: 'ACTIVE' } }),
       prisma.userSubscription.findUnique({
         where: { userId: coachId },
         select: { coachTier: true },
