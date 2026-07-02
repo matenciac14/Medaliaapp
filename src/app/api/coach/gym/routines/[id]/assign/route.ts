@@ -39,9 +39,9 @@ export async function POST(
     return NextResponse.json({ error: 'Rutina no encontrada' }, { status: 404 })
   }
 
-  // Verify the coach has this athlete
+  // Verify the coach has this athlete (active relationship only)
   const relation = await prisma.coachAthlete.findFirst({
-    where: { coachId, athleteId },
+    where: { coachId, athleteId, status: 'ACTIVE' },
     select: { id: true },
   })
 
@@ -100,7 +100,7 @@ export async function DELETE(
 
   const [template, relation] = await Promise.all([
     prisma.workoutTemplate.findFirst({ where: { id: templateId, coachId }, select: { id: true } }),
-    prisma.coachAthlete.findFirst({ where: { coachId, athleteId }, select: { id: true } }),
+    prisma.coachAthlete.findFirst({ where: { coachId, athleteId, status: 'ACTIVE' }, select: { id: true } }),
   ])
 
   if (!template) return NextResponse.json({ error: 'Rutina no encontrada' }, { status: 404 })

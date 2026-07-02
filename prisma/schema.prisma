@@ -160,6 +160,7 @@ model CoachAthlete {
 
   @@unique([coachId, athleteId])
   @@index([athleteId])
+  @@index([coachId, status])
 }
 
 enum AthleteStatus {
@@ -371,6 +372,7 @@ model SessionLog {
   userId           String
   plannedSessionId String?           @unique
   completedAt      DateTime          @default(now())
+  sessionDate      DateTime?         @db.Date // fecha real de la sesión (puede ser ayer/anteayer)
   rpe              Int?
   hrAvg            Int?
   hrMax            Int?
@@ -387,6 +389,7 @@ model SessionLog {
 
   @@index([userId])
   @@index([completedAt])
+  @@index([userId, completedAt(sort: Desc)])
 }
 
 // ─── RUTINA SEMANAL SELF-DIRECTED ───────────────────────────────────────────
@@ -462,6 +465,7 @@ model WeeklyCheckIn {
   // Prisma no soporta partial indexes en schema — se aplicaron manualmente.
   @@index([userId])
   @@index([planId])
+  @@index([userId, weekNumber])
 }
 
 // ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
@@ -637,6 +641,7 @@ model SetLog {
 
   @@index([sessionId])
   @@index([workoutExerciseId])
+  @@index([exerciseName, completed])
 }
 
 // ─── MARKETPLACE DE COACHES ─────────────────────────────────────────────────
@@ -797,12 +802,17 @@ model Food {
 
 // Registro diario de ingesta — listo para fase de tracking
 model FoodLog {
-  id       String   @id @default(cuid())
-  userId   String
-  foodId   String
-  date     DateTime @db.Date
-  mealType String   // BREAKFAST | LUNCH | DINNER | SNACK | PRE_WORKOUT | POST_WORKOUT
-  grams    Float
+  id            String   @id @default(cuid())
+  userId        String
+  foodId        String
+  date          DateTime @db.Date
+  mealType      MealType
+  grams         Float
+  // Snapshot de macros al crear el log — preserva histórico si Food.kcalPer100g se actualiza
+  kcalLogged    Float?
+  proteinLogged Float?
+  carbsLogged   Float?
+  fatLogged     Float?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   food Food @relation(fields: [foodId], references: [id])
@@ -912,14 +922,14 @@ model UserSubscription {
 
 model Message {
   id        String    @id @default(cuid())
-  fromId    String
-  toId      String
+  fromId    String?   // nullable: SetNull cuando el emisor elimina su cuenta
+  toId      String?   // nullable: SetNull cuando el receptor elimina su cuenta
   content   String
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
-  from User @relation("SentMessages",     fields: [fromId], references: [id], onDelete: Cascade)
-  to   User @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: Cascade)
+  from User? @relation("SentMessages",     fields: [fromId], references: [id], onDelete: SetNull)
+  to   User? @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: SetNull)
 
   @@index([fromId, toId, createdAt])
   @@index([toId, readAt])
@@ -958,6 +968,15 @@ enum AdjustmentStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  PRE_WORKOUT
+  POST_WORKOUT
 }
 
 // ─── AUDITORÍA ADMIN ─────────────────────────────────────────────────────────

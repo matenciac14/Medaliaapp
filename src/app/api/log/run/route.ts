@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
 const VALID_RUN_TYPES = ['RODAJE_Z2', 'FARTLEK', 'TEMPO', 'INTERVALOS', 'TIRADA_LARGA', 'OTRO'] as const
-type RunType = typeof VALID_RUN_TYPES[number]
+
+const LogRunSchema = z.object({
+  type: z.enum(VALID_RUN_TYPES),
+  durationMin: z.number().int().min(0).max(600).optional(),
+  distanceKm: z.number().min(0).max(1000).optional(),
+  rpe: z.number().int().min(1).max(10).optional(),
+  notes: z.string().max(2000).optional(),
+})
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const userId = session.user.id
-  const body = await req.json()
-  const { type, durationMin, distanceKm, rpe, notes } = body
+  const parsed = LogRunSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
 
-  if (!type || !VALID_RUN_TYPES.includes(type as RunType)) {
-    return NextResponse.json({ error: 'Tipo de sesión inválido' }, { status: 400 })
-  }
+  const { type, durationMin, distanceKm, rpe, notes } = parsed.data
 
   const log = await prisma.sessionLog.create({
     data: {
@@ -23,9 +29,9 @@ export async function POST(req: NextRequest) {
       plannedSessionId: null,
       freeSessionType: type,
       completedAt: new Date(),
-      durationMin: durationMin ? Number(durationMin) : null,
-      distanceKm: distanceKm ? Number(distanceKm) : null,
-      rpe: rpe ? Number(rpe) : null,
+      durationMin: durationMin ?? null,
+      distanceKm: distanceKm ?? null,
+      rpe: rpe ?? null,
       notes: notes ?? null,
     },
   })

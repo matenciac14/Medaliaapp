@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
-  const [logs, nutritionPlan] = await Promise.all([
+  const [logs, nutritionPlan, activePlan] = await Promise.all([
     prisma.foodLog.findMany({
       where: { userId, date: { gte: weekStart, lte: weekEnd } },
       include: {
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
+    prisma.trainingPlan.findFirst({
+      where: { userId, status: { in: ['ACTIVE', 'COMPLETED'] } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    }),
   ])
 
   // Group logs by date (YYYY-MM-DD UTC) and sum kcal per day
@@ -44,10 +50,31 @@ export async function GET(req: NextRequest) {
   const daysWithoutLog = 7 - daysWithLog
   const totalKcal = [...kcalByDay.values()].reduce((a, b) => a + b, 0)
   const avgKcal = daysWithLog > 0 ? Math.round(totalKcal / daysWithLog) : 0
+
+  // Per-day target: use planned session intensity when available
+  let intensityByDate = new Map<string, string>()
+  if (activePlan) {
+    const plannedSessions = await prisma.plannedSession.findMany({
+      where: { week: { planId: activePlan.id }, date: { gte: weekStart, lte: weekEnd } },
+      select: { date: true, intensity: true },
+    })
+    for (const s of plannedSessions) {
+      intensityByDate.set(s.date.toISOString().split('T')[0], s.intensity)
+    }
+  }
+
+  let adherencePct: number | null = null
+  if (nutritionPlan && daysWithLog > 0) {
+    let totalAdherence = 0
+    for (const [dateKey, consumed] of kcalByDay) {
+      const intensity = intensityByDate.get(dateKey) ?? null
+      const target = getDailyNutritionTarget(intensity, nutritionPlan)
+      if (target.kcal > 0) totalAdherence += (consumed / target.kcal) * 100
+    }
+    adherencePct = Math.round(totalAdherence / daysWithLog)
+  }
+
   const targetKcal = nutritionPlan?.targetKcalEasy ?? 0
-  const adherencePct = targetKcal > 0 && avgKcal > 0
-    ? Math.round((avgKcal / targetKcal) * 100)
-    : null
 
   return NextResponse.json({
     weekStart: weekStart.toISOString().split('T')[0],

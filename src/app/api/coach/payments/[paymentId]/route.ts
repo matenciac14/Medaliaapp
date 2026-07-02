@@ -37,7 +37,7 @@ export async function PATCH(
       include: { athlete: { select: { id: true, name: true, email: true } } },
     })
     await tx.paymentAuditLog.create({
-      data: { paymentId, action: 'MARKED_PAID', actorId: session.user.id },
+      data: { paymentId, action: status === 'PAID' ? 'MARKED_PAID' : 'REMINDED', actorId: session.user.id },
     })
     return result
   })
@@ -64,6 +64,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'Pago no encontrado.' }, { status: 404 })
   }
 
-  await prisma.payment.delete({ where: { id: paymentId } })
+  await prisma.$transaction([
+    prisma.paymentAuditLog.create({
+      data: { paymentId, action: 'DELETED', actorId: session.user.id },
+    }),
+    prisma.payment.delete({ where: { id: paymentId } }),
+  ])
   return NextResponse.json({ ok: true })
 }

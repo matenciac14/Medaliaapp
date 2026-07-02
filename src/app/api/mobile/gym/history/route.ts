@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
     isFree: true,
   }))
 
-  // Unificar y ordenar por fecha desc
-  const all = [...formattedGym, ...formattedFree].sort(
+  // Unificar y ordenar por fecha desc — filtrar libres sin sets (solo tienen metadata)
+  const all = [...formattedGym, ...formattedFree.filter(s => s.durationMin !== null || s.rpe !== null || s.notes !== null)].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   ).slice(0, 60)
 

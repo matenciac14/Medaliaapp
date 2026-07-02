@@ -5,7 +5,9 @@ import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
+import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const [nutritionPlan, mealPlan, todaySession, pendingAdj, gymToday] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -56,7 +58,39 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
+    prisma.healthProfile.findUnique({
+      where: { userId },
+      select: { weightKg: true, heightCm: true, age: true, gender: true, weightGoalKg: true },
+    }),
   ])
+
+  // Lazy-init: create NutritionPlan from HealthProfile if missing (mirrors web behavior)
+  let nutritionPlan = nutritionPlanRaw
+  if (!nutritionPlan && healthProfile?.weightKg && healthProfile?.heightCm && healthProfile?.age) {
+    const tdee = calculateTDEE(
+      healthProfile.weightKg,
+      healthProfile.heightCm,
+      healthProfile.age,
+      (healthProfile.gender ?? 'male') as 'male' | 'female',
+      5
+    )
+    const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)
+    nutritionPlan = await prisma.nutritionPlan.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        tdee,
+        targetKcalHard: macros.hard.kcal,
+        targetKcalEasy: macros.easy.kcal,
+        targetKcalRest: macros.rest.kcal,
+        proteinG: macros.hard.protein,
+        carbsHardG: macros.hard.carbs,
+        carbsEasyG: macros.easy.carbs,
+        fatG: macros.hard.fat,
+      },
+    })
+  }
 
   const hasGymToday = !!(gymToday?.template.days[0] && !gymToday.template.days[0].isRestDay)
   const sessionIntensity = todaySession?.intensity ?? (hasGymToday ? 'HIGH' : null)
@@ -66,17 +100,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null })
   }
 
-  const kcal =
-    dayType === 'hard' ? nutritionPlan.targetKcalHard
-    : dayType === 'rest' ? nutritionPlan.targetKcalRest
-    : dayType === 'low'  ? Math.round(nutritionPlan.targetKcalEasy * 0.88)
-    : nutritionPlan.targetKcalEasy
-  const carbsG =
-    dayType === 'hard' ? nutritionPlan.carbsHardG
-    : dayType === 'rest' ? Math.round(nutritionPlan.carbsEasyG * 0.7)
-    : dayType === 'low'  ? Math.round(nutritionPlan.carbsEasyG * 0.75)
-    : nutritionPlan.carbsEasyG
-  const macros = { kcal, proteinG: nutritionPlan.proteinG, carbsG, fatG: nutritionPlan.fatG, tdee: nutritionPlan.tdee }
+  const dailyTarget = getDailyNutritionTarget(sessionIntensity, nutritionPlan)
+  const macros = { kcal: dailyTarget.kcal, proteinG: dailyTarget.proteinG, carbsG: dailyTarget.carbsG, fatG: dailyTarget.fatG, tdee: nutritionPlan.tdee }
 
   const pendingAdjustment = pendingAdj?.status === 'PENDING' ? pendingAdj : null
 

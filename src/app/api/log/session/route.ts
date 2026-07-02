@@ -3,6 +3,9 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
+import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-adjustment'
+
+const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 
 const LogSessionSchema = z.object({
   plannedSessionId: z.string().min(1).optional(),
@@ -13,6 +16,8 @@ const LogSessionSchema = z.object({
   hrAvg: z.number().int().min(30).max(250).optional(),
   hrMax: z.number().int().min(30).max(250).optional(),
   notes: z.string().max(2000).optional(),
+  actualIntensity: z.enum(INTENSITIES).optional(),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
 })
 
 export async function POST(req: NextRequest) {
@@ -25,21 +30,24 @@ export async function POST(req: NextRequest) {
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
   const body = parsed.data
+  const sessionDate = body.sessionDate ? new Date(`${body.sessionDate}T00:00:00.000Z`) : null
 
   // Si completed === false, no registrar (la sesión queda pendiente)
   if (body.completed === false) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
-  // Verificar ownership si viene plannedSessionId
+  // Verificar ownership si viene plannedSessionId + leer intensity para ajuste nutricional
+  let plannedIntensity: string | null = null
   if (body.plannedSessionId) {
     const planned = await prisma.plannedSession.findFirst({
       where: { id: body.plannedSessionId, week: { plan: { userId } } },
-      select: { id: true },
+      select: { id: true, intensity: true },
     })
     if (!planned) {
       return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
     }
+    plannedIntensity = planned.intensity
 
     // Idempotente: si ya existe log, devolver éxito
     const existing = await prisma.sessionLog.findUnique({
@@ -55,12 +63,14 @@ export async function POST(req: NextRequest) {
         userId,
         plannedSessionId: body.plannedSessionId ?? null,
         completedAt: new Date(),
+        sessionDate,
         rpe: body.rpe,
         hrAvg: body.hrAvg,
         hrMax: body.hrMax,
         distanceKm: body.distanceKm,
         durationMin: body.durationMin,
         notes: body.notes,
+        actualIntensity: body.actualIntensity ?? null,
       },
     }),
     prisma.coachAthlete.findFirst({
@@ -72,6 +82,50 @@ export async function POST(req: NextRequest) {
   if (coachRelation?.coach.pushToken) {
     const name = coachRelation.athlete.name ?? 'Tu atleta'
     sendPushNotification(coachRelation.coach.pushToken, `${name} completó una sesión`, 'Sesión registrada 🏃', { screen: 'coach' }).catch(() => {})
+  }
+
+  // ── Ajuste nutricional por intensidad real ──────────────────────────────────
+  if (body.actualIntensity && plannedIntensity && body.actualIntensity !== plannedIntensity) {
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const existingAdj = await prisma.pendingNutritionAdjustment.findUnique({
+        where: { userId_date: { userId, date: today } },
+        select: { id: true },
+      })
+      if (!existingAdj) {
+        const nutritionPlan = await prisma.nutritionPlan.findUnique({
+          where: { userId },
+          select: { targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
+        })
+        if (nutritionPlan) {
+          const adj = calcNutritionAdjustment(
+            plannedIntensity as 'HIGH' | 'MODERATE' | 'LOW' | 'REST',
+            body.actualIntensity,
+            nutritionPlan,
+          )
+          if (adj) {
+            await prisma.pendingNutritionAdjustment.create({
+              data: {
+                userId,
+                date: today,
+                sessionLogId: log.id,
+                plannedIntensity: plannedIntensity as 'HIGH' | 'MODERATE' | 'LOW' | 'REST',
+                actualIntensity: body.actualIntensity,
+                deltaKcal: adj.deltaKcal,
+                deltaCarbsG: adj.deltaCarbsG,
+                plannedKcal: adj.plannedKcal,
+                plannedCarbsG: adj.plannedCarbsG,
+                adjustedKcal: adj.adjustedKcal,
+                adjustedCarbsG: adj.adjustedCarbsG,
+              },
+            })
+          }
+        }
+      }
+    } catch {
+      // No bloquear el response si el ajuste nutricional falla (ej. P2002 por doble submit)
+    }
   }
 
   return NextResponse.json({ ok: true, id: log.id })
