@@ -29,6 +29,7 @@ type BuilderSession = {
   durationMin: number
   zoneTarget: string | null
   detailText: string | null
+  sportLabel: string | null
   workoutDayId: string | null
   workoutDay: { id: string; label: string; exercises: GymExercisePreview[] } | null
 }
@@ -168,6 +169,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
     durationMin: number
     zoneTarget: string
     detailText: string
+    sportLabel: string
     workoutDayId: string | null
   }) {
     if (!modal || !plan) return
@@ -542,6 +544,11 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                           <p className="text-[10px] text-gray-400 mt-0.5">
                             {s.durationMin} min{s.zoneTarget && s.zoneTarget !== 'N/A' && s.type !== 'FUERZA' ? ` · ${s.zoneTarget}` : ''}
                           </p>
+                          {s.sportLabel && (
+                            <p className="text-[10px] text-blue-500 mt-0.5 truncate font-medium">
+                              {s.sportLabel}
+                            </p>
+                          )}
                           {s.detailText && (
                             <p className="text-[10px] text-gray-400 mt-0.5 truncate">
                               {s.detailText}
@@ -686,7 +693,7 @@ function SessionModal({
   gymTemplates,
 }: {
   modal: ModalState
-  onSave: (data: { type: string; durationMin: number; zoneTarget: string; detailText: string; workoutDayId: string | null }) => void
+  onSave: (data: { type: string; durationMin: number; zoneTarget: string; detailText: string; sportLabel: string; workoutDayId: string | null }) => void
   onDelete?: () => void
   onClose: () => void
   saving: boolean
@@ -696,6 +703,7 @@ function SessionModal({
   const [durationMin, setDurationMin] = useState(modal.session?.durationMin ?? 45)
   const [zoneTarget, setZoneTarget] = useState(modal.session?.zoneTarget ?? '')
   const [detailText, setDetailText] = useState(modal.session?.detailText ?? '')
+  const [sportLabel, setSportLabel] = useState(modal.session?.sportLabel ?? '')
   const [workoutDayId, setWorkoutDayId] = useState<string | null>(modal.session?.workoutDayId ?? null)
 
   const allGymDays = gymTemplates.flatMap(t => t.days.map(d => ({ ...d, templateName: t.name })))
@@ -829,6 +837,20 @@ function SessionModal({
             </div>
           )}
 
+          {/* Sport label — free-form tag visible on the card */}
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Etiqueta de deporte <span className="text-gray-300 font-normal normal-case">(opcional)</span>
+            </p>
+            <input
+              type="text"
+              value={sportLabel}
+              onChange={(e) => setSportLabel(e.target.value)}
+              placeholder="Ej: Sweet Spot 2×20min, CSS 400m × 8"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-200"
+            />
+          </div>
+
           {/* Description */}
           <div>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -863,7 +885,7 @@ function SessionModal({
             Cancelar
           </button>
           <button
-            onClick={() => onSave({ type, durationMin, zoneTarget, detailText, workoutDayId: type === 'FUERZA' ? workoutDayId : null })}
+            onClick={() => onSave({ type, durationMin, zoneTarget, detailText, sportLabel, workoutDayId: type === 'FUERZA' ? workoutDayId : null })}
             disabled={saving}
             className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: '#1e3a5f' }}

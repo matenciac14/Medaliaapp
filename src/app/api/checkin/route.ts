@@ -8,7 +8,7 @@ import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
-import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
+import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
 // prisma is passed as `db` so the use case can open $transaction
 
 const checkInBodySchema = z.object({
@@ -108,6 +108,22 @@ export async function POST(req: NextRequest) {
     if (result.adjustments.length > 0 && session.user.email && session.user.name) {
       sendPlanUpdatedEmail(session.user.email, session.user.name, result.adjustments).catch(() => {})
     }
+
+    // Notify coach (fire-and-forget, B2B athletes only)
+    const athleteId = session.user.id
+    const athleteName = session.user.name ?? ''
+    prisma.coachAthlete.findFirst({
+      where: { athleteId, status: 'ACTIVE' },
+      include: { coach: { select: { email: true, name: true } } },
+    }).then((rel) => {
+      if (rel?.coach.email) {
+        return sendCoachCheckInEmail(rel.coach.email, rel.coach.name ?? '', athleteName, athleteId, {
+          energyLevel: body.energyLevel,
+          hardestRpe:  body.hardestRpe,
+          weightKg:    body.weightKg,
+        })
+      }
+    }).catch(() => {})
 
     return ok({
       ok: true,

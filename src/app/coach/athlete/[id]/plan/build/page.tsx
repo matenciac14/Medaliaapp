@@ -77,8 +77,9 @@ export default async function PlanBuildPage({
             dayOfWeek: s.dayOfWeek,
             type: s.type as string,
             durationMin: s.durationMin,
-            zoneTarget: s.zoneTarget,
-            detailText: s.detailText,
+            zoneTarget:  s.zoneTarget,
+            detailText:  s.detailText,
+            sportLabel:  s.sportLabel ?? null,
             workoutDayId: s.workoutDayId ?? null,
             workoutDay: s.workoutDay
               ? {

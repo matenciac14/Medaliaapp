@@ -262,6 +262,49 @@ export default function AthleteDetailClient({
   const [planError, setPlanError] = useState<string | null>(null)
   const [planCreated, setPlanCreated] = useState(false)
 
+  // Copy-from mode
+  const [planMode, setPlanMode] = useState<'template' | 'copy'>('template')
+  const [copySourcePlanId, setCopySourcePlanId] = useState('')
+  const [copyStartDate, setCopyStartDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [availablePlans, setAvailablePlans] = useState<{ planId: string; planName: string; totalWeeks: number; athleteName: string; status: string }[]>([])
+  const [loadingPlans, setLoadingPlans] = useState(false)
+
+  async function loadAvailablePlans() {
+    setLoadingPlans(true)
+    try {
+      const res = await fetch('/api/coach/plans')
+      if (!res.ok) throw new Error()
+      const { plans } = await res.json()
+      const filtered = (plans as typeof availablePlans).filter((p) => p.planId !== (activePlan as { id?: string } | null)?.id)
+      setAvailablePlans(filtered)
+      if (filtered.length > 0) setCopySourcePlanId(filtered[0].planId)
+    } catch { /* silently fail */ } finally {
+      setLoadingPlans(false)
+    }
+  }
+
+  async function handleCopyPlan() {
+    if (!copySourcePlanId || !copyStartDate) return
+    setPlanGenerating(true)
+    setPlanError(null)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/plan/copy-from`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourcePlanId: copySourcePlanId, startDate: copyStartDate }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Error copiando el plan')
+      setPlanCreated(true)
+      setCreatingPlan(false)
+      router.push(`/coach/athlete/${athleteId}/plan/build`)
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setPlanGenerating(false)
+    }
+  }
+
   async function handleCreatePlan() {
     setPlanGenerating(true)
     setPlanError(null)
@@ -1110,6 +1153,24 @@ export default function AthleteDetailClient({
                 <div className="max-w-md mx-auto space-y-5">
                   <h2 className="font-semibold text-gray-900 text-lg">Crear plan de entrenamiento</h2>
 
+                  {/* Mode toggle */}
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                    <button
+                      onClick={() => setPlanMode('template')}
+                      className="flex-1 py-2 font-medium transition-colors"
+                      style={planMode === 'template' ? { backgroundColor: '#1e3a5f', color: '#fff' } : { color: '#6b7280', backgroundColor: '#fff' }}
+                    >
+                      Desde template
+                    </button>
+                    <button
+                      onClick={() => { setPlanMode('copy'); if (availablePlans.length === 0) loadAvailablePlans() }}
+                      className="flex-1 py-2 font-medium transition-colors border-l border-gray-200"
+                      style={planMode === 'copy' ? { backgroundColor: '#1e3a5f', color: '#fff' } : { color: '#6b7280', backgroundColor: '#fff' }}
+                    >
+                      Copiar de otro atleta
+                    </button>
+                  </div>
+
                   {/* Perfil del atleta para referencia */}
                   {healthProfile && (
                     <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 grid grid-cols-2 gap-2">
@@ -1122,54 +1183,94 @@ export default function AthleteDetailClient({
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo del plan</label>
-                    <select
-                      value={planGoalType}
-                      onChange={(e) => setPlanGoalType(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    >
-                      <option value="RACE_5K">Carrera 5K (8 semanas)</option>
-                      <option value="RACE_10K">Carrera 10K (12 semanas)</option>
-                      <option value="RACE_HALF_MARATHON">Media maratón (18 semanas)</option>
-                      <option value="RACE_MARATHON">Maratón (18 semanas)</option>
-                      <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
-                      <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
-                      <option value="WEIGHT_LOSS">Pérdida de peso</option>
-                      <option value="GENERAL_FITNESS">Condición general</option>
-                    </select>
-                    {/* Template preview — feature C */}
-                    {TEMPLATE_PREVIEW[planGoalType] && (() => {
-                      const info = TEMPLATE_PREVIEW[planGoalType]
-                      return (
-                        <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold text-[#1e3a5f]">{info.weeks} semanas</span>
-                            <span className="text-gray-400">·</span>
-                            <span className="text-gray-600 text-xs">{info.description}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {info.phases.map(p => (
-                              <span key={p} className="text-[10px] px-2 py-0.5 bg-white border border-blue-100 rounded-full text-[#1e3a5f] font-medium">{p}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
+                  {planMode === 'template' ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo del plan</label>
+                        <select
+                          value={planGoalType}
+                          onChange={(e) => setPlanGoalType(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                        >
+                          <option value="RACE_5K">Carrera 5K (8 semanas)</option>
+                          <option value="RACE_10K">Carrera 10K (12 semanas)</option>
+                          <option value="RACE_HALF_MARATHON">Media maratón (18 semanas)</option>
+                          <option value="RACE_MARATHON">Maratón (18 semanas)</option>
+                          <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
+                          <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
+                          <option value="WEIGHT_LOSS">Pérdida de peso</option>
+                          <option value="GENERAL_FITNESS">Condición general</option>
+                        </select>
+                        {TEMPLATE_PREVIEW[planGoalType] && (() => {
+                          const info = TEMPLATE_PREVIEW[planGoalType]
+                          return (
+                            <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="font-semibold text-[#1e3a5f]">{info.weeks} semanas</span>
+                                <span className="text-gray-400">·</span>
+                                <span className="text-gray-600 text-xs">{info.description}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {info.phases.map(p => (
+                                  <span key={p} className="text-[10px] px-2 py-0.5 bg-white border border-blue-100 rounded-full text-[#1e3a5f] font-medium">{p}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Días de entrenamiento por semana</label>
-                    <select
-                      value={planDaysPerWeek}
-                      onChange={(e) => setPlanDaysPerWeek(Number(e.target.value))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    >
-                      {[3, 4, 5, 6].map((d) => (
-                        <option key={d} value={d}>{d} días</option>
-                      ))}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Días de entrenamiento por semana</label>
+                        <select
+                          value={planDaysPerWeek}
+                          onChange={(e) => setPlanDaysPerWeek(Number(e.target.value))}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                        >
+                          {[3, 4, 5, 6].map((d) => (
+                            <option key={d} value={d}>{d} días</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {loadingPlans ? (
+                        <p className="text-sm text-gray-400 text-center py-4">Cargando planes disponibles...</p>
+                      ) : availablePlans.length === 0 ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                          No hay planes de otros atletas disponibles para copiar.
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Plan de origen</label>
+                            <select
+                              value={copySourcePlanId}
+                              onChange={(e) => setCopySourcePlanId(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                            >
+                              {availablePlans.map((p) => (
+                                <option key={p.planId} value={p.planId}>
+                                  {p.athleteName} — {p.planName} ({p.totalWeeks} sem{p.status === 'ACTIVE' ? ' · activo' : ''})
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-400 mt-1">El plan se copiará exactamente con las mismas sesiones, ajustando las fechas al nuevo inicio.</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                            <input
+                              type="date"
+                              value={copyStartDate}
+                              onChange={(e) => setCopyStartDate(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
 
                   {planError && <p className="text-sm text-red-500">{planError}</p>}
 
@@ -1181,12 +1282,12 @@ export default function AthleteDetailClient({
                       Cancelar
                     </button>
                     <button
-                      onClick={handleCreatePlan}
-                      disabled={planGenerating}
+                      onClick={planMode === 'template' ? handleCreatePlan : handleCopyPlan}
+                      disabled={planGenerating || (planMode === 'copy' && (!copySourcePlanId || availablePlans.length === 0))}
                       className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                       style={{ backgroundColor: '#1e3a5f' }}
                     >
-                      {planGenerating ? 'Generando...' : 'Generar plan'}
+                      {planGenerating ? 'Generando...' : planMode === 'template' ? 'Generar plan' : 'Copiar plan →'}
                     </button>
                   </div>
                 </div>

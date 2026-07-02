@@ -9,7 +9,7 @@ import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profil
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
-import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
+import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
 import { z } from 'zod'
 
 const mobileCheckInSchema = z.object({
@@ -131,6 +131,20 @@ export async function POST(req: NextRequest) {
     if (result.adjustments.length > 0) {
       sendPlanUpdatedEmail(mobile.email, mobile.name, result.adjustments).catch(() => {})
     }
+
+    // Notify coach (fire-and-forget, B2B athletes only)
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: mobile.id, status: 'ACTIVE' },
+      include: { coach: { select: { email: true, name: true } } },
+    }).then((rel) => {
+      if (rel?.coach.email) {
+        return sendCoachCheckInEmail(rel.coach.email, rel.coach.name ?? '', mobile.name, mobile.id, {
+          energyLevel: scale5to10(body.energyLevel),
+          hardestRpe:  scale5to10(body.muscleSoreness),
+          weightKg:    body.weightKg,
+        })
+      }
+    }).catch(() => {})
 
     return ok({
       ok: true,
