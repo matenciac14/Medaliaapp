@@ -56,19 +56,27 @@ export async function DELETE(
   }
 
   const { paymentId } = await params
+  const coachId = session.user.id
 
-  const payment = await prisma.payment.findFirst({
-    where: { id: paymentId, coachId: session.user.id },
-  })
-  if (!payment) {
-    return NextResponse.json({ error: 'Pago no encontrado.' }, { status: 404 })
+  try {
+    await prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findFirst({
+        where: { id: paymentId, coachId },
+        select: { id: true },
+      })
+      if (!payment) throw Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' })
+
+      await tx.paymentAuditLog.create({
+        data: { paymentId, action: 'DELETED', actorId: coachId },
+      })
+      await tx.payment.delete({ where: { id: paymentId } })
+    })
+  } catch (err) {
+    if ((err as { code?: string }).code === 'NOT_FOUND') {
+      return NextResponse.json({ error: 'Pago no encontrado.' }, { status: 404 })
+    }
+    throw err
   }
 
-  await prisma.$transaction([
-    prisma.paymentAuditLog.create({
-      data: { paymentId, action: 'DELETED', actorId: session.user.id },
-    }),
-    prisma.payment.delete({ where: { id: paymentId } }),
-  ])
   return NextResponse.json({ ok: true })
 }

@@ -18,9 +18,26 @@ export async function GET(
   })
   if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
-  const [mealPlan, foodProfile] = await Promise.all([
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  const [mealPlan, foodProfile, foodLogs] = await Promise.all([
     prisma.mealPlan.findUnique({ where: { userId: athleteId } }),
     prisma.foodProfile.findUnique({ where: { userId: athleteId } }),
+    prisma.foodLog.findMany({
+      where: { userId: athleteId, date: { gte: sevenDaysAgo } },
+      select: {
+        id: true,
+        date: true,
+        mealType: true,
+        kcalLogged: true,
+        proteinLogged: true,
+        carbsLogged: true,
+        fatLogged: true,
+        food: { select: { name: true } },
+      },
+      orderBy: { date: 'desc' },
+    }),
   ])
 
   // Resolver alimentos del atleta desde el catálogo (para el constructor visual)
@@ -36,7 +53,7 @@ export async function GET(
       })
     : []
 
-  return NextResponse.json({ mealPlan, foodProfile, athleteFoods })
+  return NextResponse.json({ mealPlan, foodProfile, athleteFoods, foodLogs })
 }
 
 export async function PATCH(

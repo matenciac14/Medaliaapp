@@ -28,7 +28,7 @@ import { estimateHRMax, calculateHRZones, calculateTDEE, calculateMacros } from 
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
-import { resolveWorkoutDayId } from './generate-plan.use-case'
+import { resolveWorkoutDayId, generatePlanUseCase } from './generate-plan.use-case'
 
 // ── Fixtures de atleta — representan onboarding inputs ───────────────────────
 
@@ -257,6 +257,26 @@ describe('generatePlan — nutrition sync con intensity pipeline', () => {
     // Proteína debe ser igual en todos los días (2g/kg)
     expect(getDailyNutritionTarget('HIGH', plan).proteinG).toBe(macros.hard.protein)
     expect(getDailyNutritionTarget('REST', plan).proteinG).toBe(macros.hard.protein)
+  })
+})
+
+// ── generatePlanUseCase — guard: goalType sin template ────────────────────────
+
+describe('generatePlanUseCase — guard sin template', () => {
+  it('lanza error si goalType no tiene template (DBI-08)', async () => {
+    // El throw ocurre en Phase 1, antes de cualquier llamada a DB — mocks vacíos bastan
+    const stubDeps = {
+      db: {} as any,
+      planRepo: {} as any,
+      userRepo: {} as any,
+    }
+    const input = {
+      userId: 'u-1', goalType: 'SWIMMING',
+      age: 28, heightCm: 175, weightKg: 70, gender: 'male' as const,
+      daysPerWeek: 5, hoursPerSession: 1,
+      injuries: [], conditions: [], nutritionCommitment: 'MEDIUM',
+    }
+    await expect(generatePlanUseCase(input, stubDeps)).rejects.toThrow('goalType sin template: SWIMMING')
   })
 })
 

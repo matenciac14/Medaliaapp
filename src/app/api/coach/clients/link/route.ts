@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   // Verificar si el atleta ya tiene otro coach activo
   const otherCoach = await prisma.coachAthlete.findFirst({
-    where: { athleteId, coachId: { not: coachId } },
+    where: { athleteId, coachId: { not: coachId }, status: 'ACTIVE' },
     select: { coach: { select: { name: true } } },
   })
   if (otherCoach) {

@@ -93,6 +93,14 @@ export default function CreateAthletePage() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
+  // Optional physical data
+  const [showPhysical, setShowPhysical] = useState(false)
+  const [heightCm, setHeightCm] = useState('')
+  const [weightKg, setWeightKg] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [gender, setGender] = useState<'male' | 'female' | ''>('')
+  const [experienceLevel, setExperienceLevel] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | ''>('')
+
   // Done
   const [created, setCreated] = useState<CreatedAthlete | null>(null)
   const [linkedId, setLinkedId] = useState<string | null>(null)
@@ -154,7 +162,17 @@ export default function CreateAthletePage() {
       const res = await fetch('/api/coach/clients/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email: email.trim(), sport: sport || null, goal: goal || null }),
+        body: JSON.stringify({
+          name,
+          email:           email.trim(),
+          sport:           sport || null,
+          goal:            goal || null,
+          heightCm:        heightCm   ? Number(heightCm)   : undefined,
+          weightKg:        weightKg   ? Number(weightKg)   : undefined,
+          dateOfBirth:     dateOfBirth || undefined,
+          gender:          gender || undefined,
+          experienceLevel: experienceLevel || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setCreateError(data.error ?? 'Error al crear el atleta.'); return }
@@ -179,6 +197,12 @@ export default function CreateAthletePage() {
     setCheckError('')
     setLinkError('')
     setCreateError('')
+    setShowPhysical(false)
+    setHeightCm('')
+    setWeightKg('')
+    setDateOfBirth('')
+    setGender('')
+    setExperienceLevel('')
   }
 
   // ── Done screen ─────────────────────────────────────────────────────────────
@@ -410,6 +434,98 @@ export default function CreateAthletePage() {
               <option key={g.value} value={g.value}>{g.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Datos físicos opcionales */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowPhysical((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <span>Datos físicos del atleta <span className="text-gray-400 font-normal">(opcional)</span></span>
+            <span className="text-gray-400 text-xs">{showPhysical ? '▲ Ocultar' : '▼ Agregar'}</span>
+          </button>
+          {showPhysical && (
+            <div className="px-4 py-4 space-y-4 border-t border-gray-100">
+              <p className="text-xs text-gray-500">Si completas estos datos, el atleta los verá pre-llenados en su onboarding y solo tendrá que confirmarlos.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Talla (cm)</label>
+                  <input
+                    type="number"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    placeholder="170"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-shadow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Peso actual (kg)</label>
+                  <input
+                    type="number"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    placeholder="68"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-shadow"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 bg-white transition-shadow"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Género</label>
+                <div className="flex gap-2">
+                  {(['male', 'female'] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender((prev) => prev === g ? '' : g)}
+                      className="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
+                      style={
+                        gender === g
+                          ? { backgroundColor: '#1e3a5f', borderColor: '#1e3a5f', color: '#fff' }
+                          : { backgroundColor: '#fff', borderColor: '#e5e7eb', color: '#374151' }
+                      }
+                    >
+                      {g === 'male' ? 'Hombre' : 'Mujer'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nivel de experiencia</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'BEGINNER', label: 'Principiante' },
+                    { value: 'INTERMEDIATE', label: 'Intermedio' },
+                    { value: 'ADVANCED', label: 'Avanzado' },
+                  ] as const).map((l) => (
+                    <button
+                      key={l.value}
+                      type="button"
+                      onClick={() => setExperienceLevel((prev) => prev === l.value ? '' : l.value)}
+                      className="flex-1 py-2 rounded-lg border text-xs font-medium transition-colors"
+                      style={
+                        experienceLevel === l.value
+                          ? { backgroundColor: '#1e3a5f', borderColor: '#1e3a5f', color: '#fff' }
+                          : { backgroundColor: '#fff', borderColor: '#e5e7eb', color: '#374151' }
+                      }
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {createError && (

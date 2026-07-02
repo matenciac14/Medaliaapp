@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Términos de uso — Medaliq',
+  title: 'Términos y Condiciones — Medaliq',
   description: 'Términos y condiciones de uso de la plataforma Medaliq.',
 }
 
@@ -22,7 +22,7 @@ export default function TerminosPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
         <div className="mb-10">
           <h1 className="text-4xl font-extrabold text-[#1e3a5f] mb-3">Términos de uso</h1>
-          <p className="text-gray-400 text-sm">Última actualización: junio de 2025</p>
+          <p className="text-gray-400 text-sm">Última actualización: 1 de julio de 2026</p>
         </div>
 
         <div className="prose prose-gray max-w-none space-y-10 text-gray-700 leading-relaxed">
@@ -119,16 +119,26 @@ export default function TerminosPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">9. Ley aplicable</h2>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">9. Protección de datos personales</h2>
+            <p>
+              El tratamiento de los datos personales de los usuarios se rige por la Ley 1581 de 2012 y el Decreto
+              1377 de 2013 de la República de Colombia. Para usuarios en Brasil, aplica adicionalmente la Lei Geral
+              de Proteção de Dados (LGPD — Lei nº 13.709/2018). Para más información, consulta nuestra{' '}
+              <a href="/privacidad" className="text-[#f97316] hover:underline font-medium">Política de Privacidad</a>.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">10. Ley aplicable</h2>
             <p>
               Estos términos se rigen por las leyes de la República de Colombia. Cualquier disputa será resuelta
-              ante los tribunales competentes de la ciudad de Medellín, Colombia, salvo que la ley aplicable
+              ante los tribunales competentes de la ciudad de Bogotá D.C., Colombia, salvo que la ley aplicable
               establezca otra jurisdicción.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">10. Contacto</h2>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">11. Contacto</h2>
             <p>
               Para preguntas sobre estos términos, escríbenos a{' '}
               <a href="mailto:hola@medaliq.com" className="text-[#f97316] hover:underline font-medium">

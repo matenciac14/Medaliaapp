@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12)
     const isCoach = userRole === 'COACH'
 
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         name,
         email,
@@ -61,6 +61,26 @@ export async function POST(req: NextRequest) {
           // Athlete: defaults de columnas son correctos (all true excepto coach)
         }),
       },
+    })
+
+    // Crear UserSubscription + CoachProfile skeleton atómicamente para garantizar invariantes
+    await prisma.$transaction(async (tx) => {
+      await tx.userSubscription.create({
+        data: {
+          userId:   newUser.id,
+          tier:     isCoach ? 'PRO' : 'TRIAL',
+          ...(isCoach
+            ? { coachTier: 'STARTER' }
+            : { trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }),
+        },
+      })
+      if (isCoach) {
+        const baseSlug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const slug = `${baseSlug}-${newUser.id.slice(-6)}`
+        await tx.coachProfile.create({
+          data: { coachId: newUser.id, slug },
+        })
+      }
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://medaliq.com'

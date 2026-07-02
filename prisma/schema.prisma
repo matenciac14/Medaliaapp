@@ -100,6 +100,11 @@ model User {
 
   // Rutina semanal self-directed (sin plan)
   weeklyRoutine      WeeklyRoutine?
+
+  // Constructor Visual de Nutrición (coach)
+  nutritionTemplates    NutritionTemplate[]    @relation("CoachNutritionTemplates")
+  assignedNutritionPlan AssignedNutritionPlan? @relation("AthleteNutritionPlan")
+  coachNutritionPlans   AssignedNutritionPlan[] @relation("CoachNutritionPlans")
 }
 
 enum UserRole {
@@ -336,7 +341,7 @@ model PlannedSession {
 
   week       PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
   log        SessionLog?
-  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id])
+  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id], onDelete: SetNull)
   gymSession GymSession?
 
   @@index([weekId])
@@ -384,7 +389,7 @@ model SessionLog {
   actualIntensity  SessionIntensity? // intensidad real registrada por el atleta
 
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id])
+  plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id], onDelete: SetNull)
   nutritionAdjustment      PendingNutritionAdjustment?
 
   @@index([userId])
@@ -794,7 +799,8 @@ model Food {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  foodLogs FoodLog[]
+  foodLogs              FoodLog[]
+  nutritionTemplateItems NutritionTemplateFoodItem[]
 
   @@index([category])
   @@index([isActive])
@@ -847,7 +853,7 @@ model PerformanceBenchmark {
 model Payment {
   id          String        @id @default(cuid())
   coachId     String
-  athleteId   String
+  athleteId   String?
   amount      Decimal  @db.Decimal(12, 2)
   currency    String        @default("COP")
   description String?
@@ -858,8 +864,8 @@ model Payment {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  coach   User @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
-  athlete User @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: Cascade)
+  coach   User  @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User? @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: SetNull)
 
   auditLogs PaymentAuditLog[]
 
@@ -977,6 +983,91 @@ enum MealType {
   SNACK
   PRE_WORKOUT
   POST_WORKOUT
+}
+
+// ─── CONSTRUCTOR VISUAL DE NUTRICIÓN ─────────────────────────────────────────
+
+enum NutritionDayType {
+  HARD
+  EASY
+  REST
+}
+
+// Plan nutricional reutilizable del coach — se asigna a atletas como un template
+model NutritionTemplate {
+  id          String   @id @default(cuid())
+  coachId     String
+  name        String
+  description String?
+  goal        String?  // "RENDIMIENTO", "PÉRDIDA DE PESO", "GANANCIA MUSCULAR", "MANTENIMIENTO"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  coach       User                    @relation("CoachNutritionTemplates", fields: [coachId], references: [id], onDelete: Cascade)
+  days        NutritionTemplateDay[]
+  assignments AssignedNutritionPlan[]
+
+  @@index([coachId])
+}
+
+// Un día por tipo (HARD/EASY/REST) dentro del template
+model NutritionTemplateDay {
+  id         String           @id @default(cuid())
+  templateId String
+  dayType    NutritionDayType
+
+  template NutritionTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  meals    NutritionTemplateMeal[]
+
+  @@unique([templateId, dayType])
+}
+
+// Una comida dentro de un día (BREAKFAST, LUNCH, etc.)
+model NutritionTemplateMeal {
+  id       String   @id @default(cuid())
+  dayId    String
+  mealType MealType
+  order    Int      @default(0)
+
+  day   NutritionTemplateDay        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  items NutritionTemplateFoodItem[]
+
+  @@unique([dayId, mealType])
+}
+
+// Un alimento con gramaje dentro de una comida
+model NutritionTemplateFoodItem {
+  id       String @id @default(cuid())
+  mealId   String
+  foodId   String
+  grams    Float
+  // Snapshot de macros al crear — independiente de cambios futuros en Food
+  kcal     Float
+  proteinG Float
+  carbsG   Float
+  fatG     Float
+  order    Int    @default(0)
+
+  meal NutritionTemplateMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  food Food                  @relation(fields: [foodId], references: [id])
+
+  @@index([mealId])
+}
+
+// Asignación activa de un template a un atleta
+model AssignedNutritionPlan {
+  id         String   @id @default(cuid())
+  templateId String
+  athleteId  String   @unique  // un atleta tiene máximo una asignación activa
+  coachId    String
+  assignedAt DateTime @default(now())
+
+  template NutritionTemplate @relation(fields: [templateId], references: [id])
+  athlete  User              @relation("AthleteNutritionPlan", fields: [athleteId], references: [id], onDelete: Cascade)
+  coach    User              @relation("CoachNutritionPlans",  fields: [coachId],   references: [id])
+
+  @@index([coachId])
+  @@index([templateId])
 }
 
 // ─── AUDITORÍA ADMIN ─────────────────────────────────────────────────────────

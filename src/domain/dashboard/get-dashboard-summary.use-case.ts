@@ -15,7 +15,8 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 
 // ── Input types ───────────────────────────────────────────────────────────────
 
-type SessionLog = { id: string; log: { id: string } | null; type: string; dayOfWeek: number; durationMin: number | null; zoneTarget: string | null; intensity: string | null; detailText: string | null; coachNote?: string | null }
+// Domain names: description=detailText, zone=zoneTarget, coachNotes=coachNote — mapped in callers
+type SessionLog = { id: string; log: { id: string } | null; type: string; dayOfWeek: number; durationMin: number | null; zone: string | null; intensity: string | null; description: string | null; coachNotes?: string | null }
 export type PlanWeek = { weekNumber: number; phase: string; volumeKm: number | null; sessions: SessionLog[] }
 type ActivePlan = { id: string; name: string; startDate: Date; totalWeeks: number; weeks: PlanWeek[] }
 type CheckIn = { recordedAt: Date; weekNumber: number; weightKg: number | null; hrResting: number | null; sleepHours: number | null; energyLevel: number | null; hardestSessionRpe: number | null }
@@ -147,8 +148,8 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         type: session.type,
         intensity: session.intensity ?? null,
         durationMin: session.durationMin,
-        zoneTarget: session.zoneTarget ?? '2',
-        detailText: session.detailText ?? session.coachNote ?? '',
+        zoneTarget: session.zone ?? '2',
+        detailText: session.description ?? session.coachNotes ?? '',
         completed: !!session.log,
       }
     }
@@ -188,7 +189,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
           weekSessions[idx].done = !!s.log
           weekSessions[idx].id = s.id
           weekSessions[idx].durationMin = s.durationMin
-          weekSessions[idx].zoneTarget = s.zoneTarget ?? '2'
+          weekSessions[idx].zoneTarget = s.zone ?? '2'
         }
       }
       planData = { name: activePlan.name, currentWeek, totalWeeks: activePlan.totalWeeks, phase: week.phase }

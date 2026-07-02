@@ -248,7 +248,18 @@ describe('evaluateCheckInRules — perdida_peso_rapida', () => {
 // Múltiples triggers — severity correcta
 // ---------------------------------------------------------------------------
 describe('evaluateCheckInRules — múltiples triggers', () => {
-  it('varios warnings → severity warning, todos los triggers presentes', () => {
+  it('2 warnings → sin fatiga_acumulada, severity warning', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ sleepHours: 5, energyLevel: 2 }),
+      baseCtx()
+    )
+    expect(r.triggers).toContain('sueno_bajo')
+    expect(r.triggers).toContain('energia_baja')
+    expect(r.triggers).not.toContain('fatiga_acumulada')
+    expect(r.severity).toBe('warning')
+  })
+
+  it('3+ warnings → dispara fatiga_acumulada y severity critical', () => {
     const r = evaluateCheckInRules(
       okCheckIn({ sleepHours: 5, energyLevel: 2, stressLevel: 9 }),
       baseCtx()
@@ -256,7 +267,8 @@ describe('evaluateCheckInRules — múltiples triggers', () => {
     expect(r.triggers).toContain('sueno_bajo')
     expect(r.triggers).toContain('energia_baja')
     expect(r.triggers).toContain('estres_alto')
-    expect(r.severity).toBe('warning')
+    expect(r.triggers).toContain('fatiga_acumulada')
+    expect(r.severity).toBe('critical')
   })
 
   it('warning + critical → severity siempre critical', () => {

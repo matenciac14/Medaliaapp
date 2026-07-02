@@ -9,6 +9,7 @@ type Athlete = MappedAthlete
 const TABS = [
   { key: 'all',        label: 'Todos' },
   { key: 'alerts',     label: 'Con alertas' },
+  { key: 'adherencia', label: 'Por adherencia' },
   { key: 'nocheckIn',  label: 'Sin check-in reciente' },
   { key: 'paused',     label: 'Pausados' },
 ]
@@ -120,14 +121,13 @@ export default function AthleteTabs({
       )
     : allAthletes
 
-  const filtered =
-    tab === 'alerts'
-      ? searched.filter((a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop)
-      : tab === 'nocheckIn'
-      ? searched.filter((a) => a.lastCheckInDaysAgo >= 3)
-      : tab === 'paused'
-      ? searched.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED')
-      : searched  // 'all' — todos sin filtro de status
+  const filtered = (() => {
+    if (tab === 'alerts')     return searched.filter((a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || a.alertFlags.adjustments.includes('fatiga_acumulada'))
+    if (tab === 'nocheckIn')  return searched.filter((a) => a.lastCheckInDaysAgo >= 3)
+    if (tab === 'paused')     return searched.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED')
+    if (tab === 'adherencia') return [...searched].sort((a, b) => a.adherencePct - b.adherencePct)  // ascendente: peor adherencia primero
+    return searched
+  })()
 
   const pausedCount = allAthletes.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED').length
 
@@ -194,8 +194,9 @@ export default function AthleteTabs({
                   <tr key={a.id} className={`hover:bg-gray-50 transition-colors ${currentStatus === 'PAUSED' ? 'opacity-60' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="font-semibold text-gray-900">{a.name}</div>
-                      {(a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || overdueSet.has(a.id)) && (
+                      {(a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || overdueSet.has(a.id) || a.alertFlags.adjustments.includes('fatiga_acumulada')) && (
                         <div className="flex gap-1 mt-0.5 flex-wrap">
+                          {a.alertFlags.adjustments.includes('fatiga_acumulada') && <span className="text-[10px] text-red-700 bg-red-100 px-1.5 py-0.5 rounded font-bold">⚠ Fatiga</span>}
                           {a.alertFlags.noCheckin  && <span className="text-[10px] text-red-600    bg-red-50    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
                           {a.alertFlags.highRpe    && <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
                           {a.alertFlags.weightDrop && <span className="text-[10px] text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded">⚠ Peso</span>}
@@ -227,11 +228,14 @@ export default function AthleteTabs({
                             className="h-full rounded-full"
                             style={{
                               width: `${a.adherencePct}%`,
-                              backgroundColor: a.adherencePct >= 70 ? '#16a34a' : a.adherencePct >= 40 ? '#d97706' : '#dc2626',
+                              backgroundColor: a.adherencePct >= 80 ? '#16a34a' : a.adherencePct >= 60 ? '#d97706' : '#dc2626',
                             }}
                           />
                         </div>
-                        <span className="text-xs text-gray-500">{a.adherencePct}%</span>
+                        <span
+          className="text-xs font-semibold"
+          style={{ color: a.adherencePct >= 80 ? '#16a34a' : a.adherencePct >= 60 ? '#d97706' : '#dc2626' }}
+        >{a.adherencePct}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -306,7 +310,8 @@ function AthleteCard({
   onToggleStatus: () => void
   hasOverdue?: boolean
 }) {
-  const hasAlerts = athlete.alertFlags.noCheckin || athlete.alertFlags.highRpe || athlete.alertFlags.weightDrop || hasOverdue
+  const hasFatiga = athlete.alertFlags.adjustments.includes('fatiga_acumulada')
+  const hasAlerts = athlete.alertFlags.noCheckin || athlete.alertFlags.highRpe || athlete.alertFlags.weightDrop || hasOverdue || hasFatiga
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 ${currentStatus === 'PAUSED' ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -349,7 +354,7 @@ function AthleteCard({
             className="h-full rounded-full"
             style={{
               width: `${athlete.adherencePct}%`,
-              backgroundColor: athlete.adherencePct >= 70 ? '#16a34a' : athlete.adherencePct >= 40 ? '#d97706' : '#dc2626',
+              backgroundColor: athlete.adherencePct >= 80 ? '#16a34a' : athlete.adherencePct >= 60 ? '#d97706' : '#dc2626',
             }}
           />
         </div>
@@ -358,10 +363,11 @@ function AthleteCard({
       <div className="flex items-center justify-between gap-2">
         {hasAlerts ? (
           <div className="flex flex-wrap gap-1">
-            {athlete.alertFlags.noCheckin  && <span className="text-[10px] bg-red-50    text-red-700    border border-red-100    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
-            {athlete.alertFlags.highRpe    && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
-            {athlete.alertFlags.weightDrop && <span className="text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-100 px-1.5 py-0.5 rounded">⚠ Peso</span>}
-            {hasOverdue                    && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
+            {hasFatiga                         && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">⚠ Fatiga</span>}
+            {athlete.alertFlags.noCheckin      && <span className="text-[10px] bg-red-50    text-red-700    border border-red-100    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
+            {athlete.alertFlags.highRpe        && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
+            {athlete.alertFlags.weightDrop     && <span className="text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-100 px-1.5 py-0.5 rounded">⚠ Peso</span>}
+            {hasOverdue                        && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
           </div>
         ) : <div />}
         <button

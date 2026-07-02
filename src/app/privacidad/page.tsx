@@ -22,17 +22,23 @@ export default function PrivacidadPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
         <div className="mb-10">
           <h1 className="text-4xl font-extrabold text-[#1e3a5f] mb-3">Política de privacidad</h1>
-          <p className="text-gray-400 text-sm">Última actualización: junio de 2025</p>
+          <p className="text-gray-400 text-sm">Última actualización: 1 de julio de 2026</p>
         </div>
 
         <div className="prose prose-gray max-w-none space-y-10 text-gray-700 leading-relaxed">
 
           <section>
-            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">1. Introducción</h2>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">1. Responsable y base legal</h2>
             <p>
               En Medaliq nos tomamos en serio tu privacidad. Esta política describe qué datos recopilamos,
               cómo los usamos y cómo los protegemos cuando utilizas nuestra plataforma en <strong>medaliq.com</strong>{' '}
               y en nuestra aplicación móvil.
+            </p>
+            <p className="mt-3">
+              El tratamiento de datos personales se fundamenta en la <strong>Ley 1581 de 2012</strong> y el Decreto
+              1377 de 2013 de la República de Colombia. Para usuarios en Brasil, aplica adicionalmente la{' '}
+              <strong>Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)</strong>. Al registrarte en
+              Medaliq, autorizas expresamente el tratamiento de tus datos conforme a esta política.
             </p>
           </section>
 
@@ -108,21 +114,34 @@ export default function PrivacidadPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">6. Tus derechos</h2>
-            <p>Tienes derecho a:</p>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">6. Tus derechos (Ley 1581 / LGPD)</h2>
+            <p>De conformidad con la Ley 1581 de 2012 (Colombia) y la LGPD (Brasil), tienes derecho a:</p>
             <ul className="list-disc pl-6 space-y-2 mt-3">
-              <li><strong>Acceder</strong> a los datos personales que tenemos sobre ti.</li>
-              <li><strong>Corregir</strong> datos incorrectos o incompletos.</li>
-              <li><strong>Eliminar</strong> tu cuenta y todos tus datos personales.</li>
-              <li><strong>Exportar</strong> tus datos en formato legible (previa solicitud).</li>
-              <li><strong>Oponerte</strong> al uso de tus datos para análisis de mejora del servicio.</li>
+              <li><strong>Conocer</strong> los datos personales que tenemos sobre ti.</li>
+              <li><strong>Actualizar y rectificar</strong> datos incorrectos o incompletos.</li>
+              <li><strong>Suprimir</strong> tus datos cuando no sean necesarios o cuando retires tu consentimiento.</li>
+              <li><strong>Portabilidad:</strong> recibir tus datos en formato estructurado y legible por máquina.</li>
+              <li><strong>Oponerte</strong> al tratamiento de tus datos en determinadas circunstancias.</li>
+              <li><strong>Revocar el consentimiento</strong> en cualquier momento, sin efecto retroactivo.</li>
+              <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio (SIC) de Colombia
+                o la Autoridade Nacional de Proteção de Dados (ANPD) de Brasil.</li>
             </ul>
             <p className="mt-3">
               Para ejercer cualquiera de estos derechos, escríbenos a{' '}
               <a href="mailto:hola@medaliq.com" className="text-[#f97316] hover:underline font-medium">
                 hola@medaliq.com
               </a>{' '}
-              y responderemos en un plazo máximo de 15 días hábiles.
+              y responderemos en un plazo máximo de 10 días hábiles.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">6b. Transferencias internacionales</h2>
+            <p>
+              Los proveedores que utilizamos (Neon, Vercel, Resend) están ubicados en EE.UU. Las transferencias
+              internacionales de datos se realizan bajo garantías adecuadas, incluyendo Cláusulas Contractuales
+              Estándar de la Unión Europea y acuerdos de procesamiento de datos que obligan a los proveedores a
+              proteger tus datos con estándares equivalentes a los exigidos por la Ley 1581 y la LGPD.
             </p>
           </section>
 

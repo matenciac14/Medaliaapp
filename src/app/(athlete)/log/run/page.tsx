@@ -1,9 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+
+type PrevSession = {
+  completedAt: string | null
+  durationMin: number | null
+  distanceKm: number | null
+  rpe: number | null
+}
 
 const RUN_TYPES = [
   { value: 'RODAJE_Z2',    label: 'Rodaje Z2',      subtext: 'Ritmo fácil — conversacional', icon: '🟢' },
@@ -29,6 +36,15 @@ export default function LogRunPage() {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [prevSession, setPrevSession] = useState<PrevSession | null>(null)
+
+  useEffect(() => {
+    if (!runType) { setPrevSession(null); return }
+    fetch(`/api/log/last-session?type=${runType}`)
+      .then((r) => r.json())
+      .then((d) => setPrevSession(d.log ?? null))
+      .catch(() => {})
+  }, [runType])
 
   const isValid = runType !== null
 
@@ -105,6 +121,31 @@ export default function LogRunPage() {
           ))}
         </div>
       </div>
+
+      {/* Comparativa vs sesión anterior */}
+      {runType && prevSession && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+          <p className="text-xs font-semibold text-blue-700 mb-1.5">
+            Última vez —{' '}
+            {prevSession.completedAt
+              ? new Date(prevSession.completedAt).toLocaleDateString('es-CO', {
+                  day: 'numeric', month: 'short',
+                })
+              : ''}
+          </p>
+          <div className="flex gap-4 text-sm text-blue-800">
+            {prevSession.durationMin != null && (
+              <span><strong>{prevSession.durationMin}</strong> min</span>
+            )}
+            {prevSession.distanceKm != null && (
+              <span><strong>{Number(prevSession.distanceKm).toFixed(1)}</strong> km</span>
+            )}
+            {prevSession.rpe != null && (
+              <span>RPE <strong>{prevSession.rpe}</strong></span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Duración */}
       <div className="space-y-2">

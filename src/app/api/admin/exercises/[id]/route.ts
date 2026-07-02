@@ -56,6 +56,14 @@ export async function DELETE(
     return NextResponse.json({ error: 'Ejercicio no encontrado o no es global.' }, { status: 404 })
   }
 
+  const usageCount = await prisma.workoutExercise.count({ where: { exerciseId: id } })
+  if (usageCount > 0) {
+    return NextResponse.json(
+      { error: 'No se puede eliminar: el ejercicio está en uso en rutinas de entrenadores.' },
+      { status: 409 }
+    )
+  }
+
   await prisma.exercise.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

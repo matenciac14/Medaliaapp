@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { getWeekMonday, formatWeekRange, jsToWeekIdx } from '@/lib/core/date-utils'
-import type { CalendarDay, CalendarWeek } from './calendar.types'
+import type { CalendarDay, CalendarWeek } from '@/domain/calendar/calendar.types'
 
 /**
  * Builds a unified CalendarWeek for a given athlete by merging:

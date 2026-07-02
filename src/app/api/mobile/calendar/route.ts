@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/mobile-auth'
-import { buildCalendarWeek } from '@/domain/calendar/build-calendar-week'
+import { buildCalendarWeek } from '@/infrastructure/db/calendar'
 import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {

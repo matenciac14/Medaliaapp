@@ -13,6 +13,12 @@ const CreateAthleteSchema = z.object({
   email: emailSchema,
   sport: z.string().max(50).nullable().optional(),
   goal: z.string().max(100).nullable().optional(),
+  // Optional health profile pre-fill
+  heightCm:        z.number().min(50).max(280).optional(),
+  weightKg:        z.number().min(20).max(400).optional(),
+  dateOfBirth:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  gender:          z.enum(['male', 'female']).optional(),
+  experienceLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
 })
 
 function generateTempPassword(length = 8): string {
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
     const raw = await req.json().catch(() => null)
     const parsed = parseBody(CreateAthleteSchema, raw)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-    const { name, email, sport = null, goal = null } = parsed.data
+    const { name, email, sport = null, goal = null, heightCm, weightKg, dateOfBirth, gender, experienceLevel } = parsed.data
 
     // Enforce coach tier athlete limit before any write
     const [activeCount, coachSub] = await Promise.all([
@@ -106,6 +112,37 @@ export async function POST(req: NextRequest) {
           athleteId: newAthlete.id,
         },
       })
+
+      // UserSubscription para el atleta B2B
+      await tx.userSubscription.create({
+        data: {
+          userId:      newAthlete.id,
+          tier:        'TRIAL',
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      })
+
+      // Pre-fill HealthProfile if coach provided physical data
+      if (heightCm && weightKg) {
+        const dob = dateOfBirth ? new Date(dateOfBirth) : null
+        const age = dob
+          ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+          : 0
+        await tx.healthProfile.create({
+          data: {
+            userId:          newAthlete.id,
+            age,
+            heightCm,
+            weightKg,
+            gender:          gender ?? null,
+            dateOfBirth:     dob,
+            experienceLevel: experienceLevel ?? null,
+            sport:           sport ?? null,
+            sportGoal:       goal ?? null,
+          },
+        })
+      }
+
       return newAthlete
     })
 

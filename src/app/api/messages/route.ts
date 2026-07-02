@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendPushNotification } from '@/lib/push'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 // GET /api/messages?with=[userId] — conversación paginada (más recientes primero)
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { allowed: rlGet } = await rateLimitAsync(`web-${session.user.id}:messages`, { limit: 300, windowMs: 60_000 })
+  if (!rlGet) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const withId = req.nextUrl.searchParams.get('with')
   if (!withId) return NextResponse.json({ error: 'Param ?with= requerido' }, { status: 400 })
@@ -35,6 +38,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { allowed: rlPost } = await rateLimitAsync(`web-${session.user.id}:messages`, { limit: 100, windowMs: 60_000 })
+  if (!rlPost) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const { toId, content } = await req.json()
   if (!toId || !content?.trim()) {

@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate-food-log'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed: rlGet } = await rateLimitAsync(`web-${session.user.id}:nutrition-log`, { limit: 300, windowMs: 60_000 })
+  if (!rlGet) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const userId = session.user.id
   const dateParam = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
@@ -31,6 +34,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { allowed: rlPost } = await rateLimitAsync(`web-${session.user.id}:nutrition-log`, { limit: 100, windowMs: 60_000 })
+  if (!rlPost) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const userId = session.user.id
   const parsed = parseFoodLogPost(await req.json())

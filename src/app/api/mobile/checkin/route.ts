@@ -9,7 +9,8 @@ import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profil
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
-import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
+import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
+import { mapMobileCheckinBody, scale5to10 } from '@/lib/api/checkin-mapper'
 import { z } from 'zod'
 
 const mobileCheckInSchema = z.object({
@@ -30,10 +31,6 @@ const mobileCheckInSchema = z.object({
   thighsCm:        z.number().min(20).max(120).optional(),
 })
 
-/** Mobile sends energy and stress on a 1-5 scale — normalize to 1-10 for consistency. */
-function scale5to10(v: number): number {
-  return Math.round(v * 2)
-}
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -99,25 +96,7 @@ export async function POST(req: NextRequest) {
     const result = await processCheckIn(
       {
         userId: mobile.id,
-        data: {
-          rpe: scale5to10(body.muscleSoreness),
-          sleepHours: body.sleepHours ?? 7,
-          sleepScore: body.sleepScore,
-          energyLevel: scale5to10(body.energyLevel),
-          stressLevel: scale5to10(body.stressLevel ?? 3),
-          weight: body.weightKg,
-          heartRate: body.hrResting,
-          painLevel: body.painLevel,
-          motivation: body.motivationLevel,
-          nutritionAdherence: body.nutritionAdherencePct !== undefined
-            ? Math.round(body.nutritionAdherencePct / 10)
-            : undefined,
-          notes: body.notes,
-          waistCm: body.waistCm,
-          armsCm: body.armsCm,
-          hipsCm: body.hipsCm,
-          thighsCm: body.thighsCm,
-        },
+        data: mapMobileCheckinBody(body),
       },
       {
         db: prisma,
@@ -131,6 +110,20 @@ export async function POST(req: NextRequest) {
     if (result.adjustments.length > 0) {
       sendPlanUpdatedEmail(mobile.email, mobile.name, result.adjustments).catch(() => {})
     }
+
+    // Notify coach (fire-and-forget, B2B athletes only)
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: mobile.id, status: 'ACTIVE' },
+      include: { coach: { select: { email: true, name: true } } },
+    }).then((rel) => {
+      if (rel?.coach.email) {
+        return sendCoachCheckInEmail(rel.coach.email, rel.coach.name ?? '', mobile.name, mobile.id, {
+          energyLevel: scale5to10(body.energyLevel),
+          hardestRpe:  scale5to10(body.muscleSoreness),
+          weightKg:    body.weightKg,
+        })
+      }
+    }).catch(() => {})
 
     return ok({
       ok: true,

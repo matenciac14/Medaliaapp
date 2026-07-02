@@ -8,8 +8,8 @@ import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
-import { sendPlanUpdatedEmail } from '@/infrastructure/email/resend'
-// prisma is passed as `db` so the use case can open $transaction
+import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
+import { mapWebCheckinBody } from '@/lib/api/checkin-mapper'
 
 const checkInBodySchema = z.object({
   hardestRpe:            z.number().min(1).max(10).optional(),
@@ -76,25 +76,7 @@ export async function POST(req: NextRequest) {
     const result = await processCheckIn(
       {
         userId: session.user.id,
-        data: {
-          rpe: body.hardestRpe ?? 5,
-          sleepHours: body.sleepHours ?? 7,
-          sleepScore: body.sleepScore,
-          energyLevel: body.energyLevel ?? 5,
-          stressLevel: body.stressLevel ?? 0,
-          weight: body.weightKg,
-          heartRate: body.hrResting,
-          painLevel: body.painLevel,
-          nutritionAdherence: body.nutritionAdherencePct
-            ? Math.round(body.nutritionAdherencePct / 10)
-            : undefined,
-          motivation: body.motivationLevel,
-          notes: body.notes,
-          waistCm: body.waistCm,
-          armsCm: body.armsCm,
-          hipsCm: body.hipsCm,
-          thighsCm: body.thighsCm,
-        },
+        data: mapWebCheckinBody(body),
       },
       {
         db: prisma,
@@ -108,6 +90,22 @@ export async function POST(req: NextRequest) {
     if (result.adjustments.length > 0 && session.user.email && session.user.name) {
       sendPlanUpdatedEmail(session.user.email, session.user.name, result.adjustments).catch(() => {})
     }
+
+    // Notify coach (fire-and-forget, B2B athletes only)
+    const athleteId = session.user.id
+    const athleteName = session.user.name ?? ''
+    prisma.coachAthlete.findFirst({
+      where: { athleteId, status: 'ACTIVE' },
+      include: { coach: { select: { email: true, name: true } } },
+    }).then((rel) => {
+      if (rel?.coach.email) {
+        return sendCoachCheckInEmail(rel.coach.email, rel.coach.name ?? '', athleteName, athleteId, {
+          energyLevel: body.energyLevel,
+          hardestRpe:  body.hardestRpe,
+          weightKg:    body.weightKg,
+        })
+      }
+    }).catch(() => {})
 
     return ok({
       ok: true,

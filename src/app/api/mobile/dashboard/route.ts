@@ -64,8 +64,24 @@ export async function GET(req: NextRequest) {
     select: { name: true, endDate: true },
   }).then(r => r?.endDate ? { name: r.name, endDate: new Date(r.endDate) } : null)
 
+  // Map Prisma field names → domain names before passing to the pure use case
+  const activePlan = activePlanRaw
+    ? {
+        ...activePlanRaw,
+        weeks: activePlanRaw.weeks.map((w) => ({
+          ...w,
+          sessions: w.sessions.map((s) => ({
+            ...s,
+            zone:        s.zoneTarget,
+            description: s.detailText,
+            coachNotes:  s.coachNote,
+          })),
+        })),
+      }
+    : null
+
   const { summary, planIdToComplete } = getDashboardSummary({
-    user, activePlanRaw, lastCompletedPlan, checkIns, recentLogs, nutritionPlan,
+    user, activePlanRaw: activePlan, lastCompletedPlan, checkIns, recentLogs, nutritionPlan,
     assignedWorkout: assignedWorkoutRaw ?? null,
   })
 

@@ -37,17 +37,24 @@ export async function POST(
 
   const profile = athlete?.profile
 
+  if (!profile) {
+    return NextResponse.json(
+      { error: 'El atleta no tiene perfil físico. Completa el onboarding antes de generar un plan.' },
+      { status: 400 }
+    )
+  }
+
   const result = await generatePlan({
     userId: athleteId,
     goalType,
     daysPerWeek: daysPerWeek ?? 4,
     hoursPerSession: hoursPerSession ?? 1,
-    age: profile?.age ?? 30,
-    heightCm: profile?.heightCm ?? 170,
-    weightKg: profile?.weightKg ?? 70,
-    gender: (profile?.gender ?? 'male') as 'male' | 'female',
-    hrResting: profile?.hrResting ?? undefined,
-    hrMax: profile?.hrMax ?? undefined,
+    age: profile.age ?? 30,
+    heightCm: profile.heightCm ?? 170,
+    weightKg: profile.weightKg ?? 70,
+    gender: (profile.gender ?? 'male') as 'male' | 'female',
+    hrResting: profile.hrResting ?? undefined,
+    hrMax: profile.hrMax ?? undefined,
     injuries: (profile?.injuries as string[]) ?? [],
     conditions: (profile?.conditions as string[]) ?? [],
     nutritionCommitment: 'moderate',

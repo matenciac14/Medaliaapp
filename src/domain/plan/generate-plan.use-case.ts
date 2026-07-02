@@ -107,6 +107,9 @@ export async function generatePlanUseCase(
   // ── Phase 1: reads + pure computation ────────────────────────────────────
 
   const template = getTemplate(input.goalType)
+  if (!template) {
+    throw new Error(`goalType sin template: ${input.goalType}`)
+  }
   const hrMax = input.hrMax && input.hrMax > 100 ? input.hrMax : estimateHRMax(input.age)
   const hrZones = calculateHRZones(hrMax, input.hrResting ?? 0)
   const tdee = calculateTDEE(input.weightKg, input.heightCm, input.age, input.gender ?? 'male', input.daysPerWeek)
@@ -114,7 +117,7 @@ export async function generatePlanUseCase(
 
   const planStart = new Date()
   planStart.setHours(0, 0, 0, 0)
-  const totalWeeks = template?.totalWeeks ?? 18
+  const totalWeeks = template.totalWeeks
   const planEnd = new Date(planStart)
   planEnd.setDate(planEnd.getDate() + totalWeeks * 7)
 
@@ -139,7 +142,7 @@ export async function generatePlanUseCase(
       generatedBy: input.generatedBy === 'COACH' ? 'COACH' : 'AI',
     })
 
-    if (template) {
+    {
       const weekData: CreateWeekData[] = template.weeks.map(week => {
         const idx = week.weekNumber - 1
         const weekStart = new Date(planStart)
@@ -186,8 +189,6 @@ export async function generatePlanUseCase(
       })
 
       await repo.createSessions(allSessions)
-    } else {
-      console.warn(`[generatePlanUseCase] No template for goalType: ${input.goalType}`)
     }
 
     const nutritionTargets: NutritionTargets = {

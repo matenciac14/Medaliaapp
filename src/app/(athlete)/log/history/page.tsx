@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronLeft, CheckCircle2, Dumbbell, Clock, Zap, MapPin } from 'lucide-react'
+import { EditRunButton } from './_components/EditRunButton'
 
 // ─── Tipos de corrida ─────────────────────────────────────────────────────────
 
@@ -397,6 +398,13 @@ function RunCard({ rs }: { rs: RunSessionData }) {
           <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 italic">{rs.notes}</p>
         </div>
       )}
+      <EditRunButton
+        logId={rs.id}
+        initDurationMin={rs.durationMin}
+        initDistanceKm={rs.distanceKm != null ? Number(rs.distanceKm) : null}
+        initRpe={rs.rpe}
+        initNotes={rs.notes}
+      />
     </div>
   )
 }
