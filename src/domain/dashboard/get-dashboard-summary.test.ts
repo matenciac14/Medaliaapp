@@ -57,8 +57,8 @@ function makeSession(dayOfWeek: number, type: string, opts: {
   log?: { id: string } | null
   intensity?: string | null
   durationMin?: number | null
-  zoneTarget?: string | null
-  detailText?: string | null
+  zone?: string | null
+  description?: string | null
 } = {}) {
   return {
     id: opts.id ?? `session-${dayOfWeek}`,
@@ -66,10 +66,10 @@ function makeSession(dayOfWeek: number, type: string, opts: {
     type,
     dayOfWeek,
     durationMin: opts.durationMin ?? 45,
-    zoneTarget: opts.zoneTarget ?? '2',
+    zone: opts.zone ?? '2',
     intensity: opts.intensity ?? 'MODERATE',
-    detailText: opts.detailText ?? 'Sesión de prueba',
-    coachNote: null,
+    description: opts.description ?? 'Sesión de prueba',
+    coachNotes: null,
   }
 }
 
@@ -243,7 +243,7 @@ describe('todaySession', () => {
 
   it('retorna sesión cuando hay sesión activa hoy', () => {
     const { summary } = getDashboardSummary(baseInput({
-      activePlanRaw: makePlanWithSessions([makeSession(TODAY_DOW, 'RODAJE_Z2', { durationMin: 45, zoneTarget: '2' })]),
+      activePlanRaw: makePlanWithSessions([makeSession(TODAY_DOW, 'RODAJE_Z2', { durationMin: 45, zone: '2' })]),
     }))
     expect(summary.todaySession).not.toBeNull()
     expect(summary.todaySession?.type).toBe('RODAJE_Z2')
