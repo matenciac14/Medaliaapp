@@ -80,12 +80,39 @@ PostType:           TIP | ROUTINE_SHOWCASE | ACHIEVEMENT | ANNOUNCEMENT
 
 ## Mapeo dominio ↔ DB
 
-| Campo dominio | Columna DB |
-|---------------|-----------|
-| `description` | `PlannedSession.detailText` |
-| `zone` | `PlannedSession.zoneTarget` |
-| `coachNotes` | `PlannedSession.coachNote` |
-| `heartRate` (check-in) | `WeeklyCheckIn.hrResting` |
+> **REGLA**: Solo `src/infrastructure/db/` conoce ambos nombres.
+> El dominio (`src/domain/`) usa SIEMPRE los nombres de dominio.
+> Las rutas API (`src/app/api/`) mapean en la frontera antes de llamar al use case.
+> Esto es enforced por ESLint — `no-restricted-imports` en `src/domain/`.
+
+### PlannedSession
+
+| Nombre dominio | Columna DB | Dónde se mapea |
+|----------------|------------|---------------|
+| `description` | `detailText` | `PrismaPlanRepository` |
+| `zone` | `zoneTarget` | `PrismaPlanRepository` |
+| `coachNotes` (plural) | `coachNote` (singular) | `PrismaPlanRepository` |
+
+> Trampa clásica: código nuevo usa `session.coachNote` en dominio → `undefined` silencioso.
+> Trampa clásica: escribe `{ coachNotes: '...' }` en update Prisma directo → campo ignorado.
+
+### WeeklyCheckIn
+
+| Nombre dominio / body | Columna DB | Dónde se mapea |
+|-----------------------|------------|---------------|
+| `heartRate` (`CheckInInput`) | `hrResting` | `check-in.repository.ts` + rutas |
+| `rpe` (`CheckInInput`) | `hardestSessionRpe` | `check-in.repository.ts` |
+| `hardestRpe` (body del cliente) | `hardestSessionRpe` | `/api/checkin/route.ts` → `CheckInInput.rpe` |
+
+> `WeeklyCheckIn.recordedAt` (no `createdAt`) — campo correcto para queries de check-in.
+
+### Output types de use cases (contrato público JSON — NO cambiar sin versionar la API)
+
+| Campo en `DashboardSummary` | Origen |
+|-----------------------------|--------|
+| `todaySession.detailText` | viene de `SessionLog.description` en el use case |
+| `todaySession.zoneTarget` | viene de `SessionLog.zone` en el use case |
+| `WeekSessionSlot.zoneTarget` | viene de `SessionLog.zone` en el use case |
 
 `WeeklyCheckIn.recordedAt` (no `createdAt`) — importante para queries de check-in de la semana.
 
