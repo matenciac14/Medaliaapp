@@ -273,8 +273,8 @@ async function main() {
       name: 'Ana Runner',
       password: athletePassword,
       role: UserRole.ATHLETE,
-      featurePlan: true, featureCheckin: true, featureNutrition: true,
-      featureProgress: true, featureLog: true, featureGym: true,
+      featurePlan: false, featureCheckin: false, featureNutrition: false,
+      featureProgress: false, featureLog: false, featureGym: false,
       onboardingCompleted: false,
       profile: {
         create: {
