@@ -149,6 +149,11 @@ export default function TrackingSection({ target, foods, date }: Props) {
                       </span>
                     </div>
                     <ProgressBar value={val} max={tgt} color={m.color} />
+                    {target && tgt > 0 && val < tgt && (
+                      <span className="text-[10px] text-gray-400 mt-0.5 block">
+                        Faltan {Math.round(tgt - val)}{m.unit}
+                      </span>
+                    )}
                   </div>
                 )
               })}

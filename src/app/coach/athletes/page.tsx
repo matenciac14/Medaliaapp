@@ -74,7 +74,7 @@ export default async function CoachAthletesPage() {
   const nextCursor = hasMore ? page[page.length - 1].id : null
   const athletes = page.map((rel) => mapRelation(rel, now))
 
-  const overdueAthleteIds = [...new Set(overduePayments.map((p) => p.athleteId))]
+  const overdueAthleteIds = [...new Set(overduePayments.map((p) => p.athleteId).filter((id): id is string => id !== null))]
   const totalAlerts = athletes.reduce((acc, a) => acc + a.alerts.length, 0)
 
   const pendingAthletes = pendingRelations.map((r) => ({

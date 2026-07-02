@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import type { FeatureKey } from '@/domain/ports/user.repository'
+import { sendPushNotification } from '@/lib/push'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -40,6 +41,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       })
     }
   })
+
+  // Si se activaron features, notificar al atleta en tiempo real (fire-and-forget)
+  if (body.features) {
+    prisma.user.findUnique({ where: { id: athleteId }, select: { pushToken: true } })
+      .then((athlete) => {
+        if (athlete?.pushToken) {
+          return sendPushNotification(
+            athlete.pushToken,
+            'Tu entrenador activó nuevas funciones',
+            'Abre la app para acceder a tu plan de entrenamiento.',
+            { type: 'features_updated' }
+          )
+        }
+      })
+      .catch(() => {})
+  }
 
   return Response.json({ ok: true })
 }

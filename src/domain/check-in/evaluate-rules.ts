@@ -114,6 +114,16 @@ export function evaluateCheckInRules(
     if (severity === 'ok') severity = 'warning'
   }
 
+  // Fatiga acumulada — regla compuesta: 3+ triggers individuales en el mismo check-in
+  // No aplica ajustes de sesión por sí sola — es una alerta para el coach
+  if (triggers.length >= 3) {
+    triggers.push('fatiga_acumulada')
+    adjustments.push(
+      'Fatiga acumulada: múltiples señales de sobrecarga esta semana. Considera reducir la carga total y comunicárselo a tu coach.'
+    )
+    severity = 'critical'
+  }
+
   return { triggers, adjustments, severity }
 }
 

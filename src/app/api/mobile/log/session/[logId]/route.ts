@@ -28,6 +28,7 @@ export async function PATCH(
   if (body.rpe === null) data.rpe = null
   if (typeof body.hrAvg === 'number' && body.hrAvg > 0) data.hrAvg = body.hrAvg
   if (body.hrAvg === null) data.hrAvg = null
+  if (typeof body.distanceKm === 'number' && body.distanceKm > 0) data.distanceKm = body.distanceKm
   if (typeof body.notes === 'string') data.notes = body.notes.trim() || null
 
   if (Object.keys(data).length === 0) {

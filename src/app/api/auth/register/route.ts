@@ -63,15 +63,24 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Crear UserSubscription siempre — evita NPE en cualquier lectura de .subscription.tier
-    await prisma.userSubscription.create({
-      data: {
-        userId:   newUser.id,
-        tier:     isCoach ? 'PRO' : 'TRIAL',
-        ...(isCoach
-          ? { coachTier: 'STARTER' }
-          : { trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }),
-      },
+    // Crear UserSubscription + CoachProfile skeleton atómicamente para garantizar invariantes
+    await prisma.$transaction(async (tx) => {
+      await tx.userSubscription.create({
+        data: {
+          userId:   newUser.id,
+          tier:     isCoach ? 'PRO' : 'TRIAL',
+          ...(isCoach
+            ? { coachTier: 'STARTER' }
+            : { trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }),
+        },
+      })
+      if (isCoach) {
+        const baseSlug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const slug = `${baseSlug}-${newUser.id.slice(-6)}`
+        await tx.coachProfile.create({
+          data: { coachId: newUser.id, slug },
+        })
+      }
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://medaliq.com'

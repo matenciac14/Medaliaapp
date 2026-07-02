@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
 import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-adjustment'
+import { rateLimitAsync } from '@/lib/rate-limit'
 
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
+  const { allowed } = await rateLimitAsync(`web-${session.user.id}:log-session`, { limit: 100, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const userId = session.user.id
   const parsed = LogSessionSchema.safeParse(await req.json())

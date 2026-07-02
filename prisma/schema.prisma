@@ -341,7 +341,7 @@ model PlannedSession {
 
   week       PlanWeek    @relation(fields: [weekId], references: [id], onDelete: Cascade)
   log        SessionLog?
-  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id])
+  workoutDay WorkoutDay? @relation(fields: [workoutDayId], references: [id], onDelete: SetNull)
   gymSession GymSession?
 
   @@index([weekId])
@@ -389,7 +389,7 @@ model SessionLog {
   actualIntensity  SessionIntensity? // intensidad real registrada por el atleta
 
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id])
+  plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id], onDelete: SetNull)
   nutritionAdjustment      PendingNutritionAdjustment?
 
   @@index([userId])
@@ -853,7 +853,7 @@ model PerformanceBenchmark {
 model Payment {
   id          String        @id @default(cuid())
   coachId     String
-  athleteId   String
+  athleteId   String?
   amount      Decimal  @db.Decimal(12, 2)
   currency    String        @default("COP")
   description String?
@@ -864,8 +864,8 @@ model Payment {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  coach   User @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
-  athlete User @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: Cascade)
+  coach   User  @relation("CoachPayments",   fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User? @relation("AthletePayments", fields: [athleteId], references: [id], onDelete: SetNull)
 
   auditLogs PaymentAuditLog[]
 

@@ -60,13 +60,21 @@ export async function POST(
 
   const athleteId = session.user.id
 
-  const invite = await prisma.inviteCode.findUnique({ where: { code } })
+  // Atomic redemption: mark as used only if still unclaimed (prevents race condition)
+  const redeemed = await prisma.inviteCode.updateMany({
+    where: { code, usedBy: null, expiresAt: { gt: new Date() } },
+    data: { usedBy: athleteId, usedAt: new Date() },
+  })
 
-  if (!invite || invite.usedBy || invite.expiresAt < new Date()) {
+  if (redeemed.count === 0) {
     return NextResponse.json({ error: 'Código inválido o expirado.' }, { status: 400 })
   }
 
-  // Verificar que no exista ya la relación
+  // At this point we own the code — fetch coachId and create the relation
+  const invite = await prisma.inviteCode.findUnique({ where: { code }, select: { coachId: true } })
+  if (!invite) return NextResponse.json({ error: 'Código inválido o expirado.' }, { status: 400 })
+
+  // Upsert relation — idempotent if athlete retries after a partial failure
   const existing = await prisma.coachAthlete.findFirst({
     where: { coachId: invite.coachId, athleteId },
   })
@@ -76,12 +84,6 @@ export async function POST(
       data: { coachId: invite.coachId, athleteId },
     })
   }
-
-  // Marcar código como usado
-  await prisma.inviteCode.update({
-    where: { code },
-    data: { usedBy: athleteId, usedAt: new Date() },
-  })
 
   return NextResponse.json({ ok: true })
 }

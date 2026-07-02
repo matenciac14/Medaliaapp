@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const mobile = await getMobileUser(req)
-  const athleteId = mobile?.id ?? (await auth())?.user?.id
+  const session = await auth()
+  const athleteId = session?.user?.id
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { id } = await params

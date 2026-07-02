@@ -7,6 +7,7 @@ vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     user: { findUnique: vi.fn() },
     exercise: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    workoutExercise: { count: vi.fn() },
   },
 }))
 
@@ -105,10 +106,21 @@ describe('DELETE /api/admin/exercises/[id]', () => {
     expect(res.status).toBe(404)
   })
 
+  it('retorna 409 si el ejercicio está en uso en rutinas', async () => {
+    vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
+    vi.mocked(prisma.workoutExercise.count).mockResolvedValue(3)
+    const res = await DELETE(deleteReq(), PARAMS)
+    expect(res.status).toBe(409)
+    expect(prisma.exercise.delete).not.toHaveBeenCalled()
+  })
+
   it('elimina el ejercicio y retorna ok', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
     vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
+    vi.mocked(prisma.workoutExercise.count).mockResolvedValue(0)
     vi.mocked(prisma.exercise.delete).mockResolvedValue({} as any)
     const res = await DELETE(deleteReq(), PARAMS)
     expect(res.status).toBe(200)

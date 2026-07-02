@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         email,
         name ?? 'Coach',
         items.map(i => ({
-          athleteName: i.athlete.name ?? 'Atleta',
+          athleteName: i.athlete?.name ?? 'Atleta',
           amount: Number(i.amount),
           currency: i.currency,
           dueDate: i.dueDate,

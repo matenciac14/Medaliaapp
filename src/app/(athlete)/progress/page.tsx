@@ -175,12 +175,12 @@ export default async function ProgressPage() {
   // ── Construir arrays de datos ────────────────────────────────────────────
 
   const weightCheckins: WeightPoint[] = rawCheckIns
-    .filter((c) => c.weightKg !== null)
-    .map((c) => ({ week: c.weekNumber, kg: c.weightKg as number }))
+    .filter((c): c is typeof c & { weightKg: number } => c.weightKg !== null)
+    .map((c) => ({ week: c.weekNumber, kg: c.weightKg }))
 
   const hrCheckins: HrPoint[] = rawCheckIns
-    .filter((c) => c.hrResting !== null)
-    .map((c) => ({ week: c.weekNumber, bpm: c.hrResting as number }))
+    .filter((c): c is typeof c & { hrResting: number } => c.hrResting !== null)
+    .map((c) => ({ week: c.weekNumber, bpm: c.hrResting }))
 
   const wellbeingData: WellbeingPoint[] = rawCheckIns
     .filter((c) => c.energyLevel != null || c.stressLevel != null || c.motivationLevel != null)

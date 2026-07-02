@@ -671,13 +671,25 @@ function BuilderHeader({
           </>
         )}
       </div>
-      <Link
-        href={`/coach/athlete/${athleteId}`}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors shrink-0 ml-4"
-      >
-        <ChevronLeft size={15} />
-        Volver al panel
-      </Link>
+      <div className="flex items-center gap-3 shrink-0 ml-4">
+        {planName && (
+          <a
+            href={`/coach/athlete/${athleteId}/plan/view`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Vista atleta ↗
+          </a>
+        )}
+        <Link
+          href={`/coach/athlete/${athleteId}`}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ChevronLeft size={15} />
+          Volver al panel
+        </Link>
+      </div>
     </header>
   )
 }
