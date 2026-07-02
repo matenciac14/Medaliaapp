@@ -7,14 +7,14 @@ export type MappedAthlete = {
   name: string
   email: string
   sport: string
-  goal: string
+  goal: string | null
   currentWeek: number
   totalWeeks: number
-  phase: string
+  phase: string | null
   lastCheckInDaysAgo: number
-  weightKg: number
-  weightGoalKg: number
-  hrResting: number
+  weightKg: number | null
+  weightGoalKg: number | null
+  hrResting: number | null
   adherencePct: number
   alerts: string[]
   planStatus: string
@@ -104,14 +104,14 @@ export function mapRelation(rel: InputRow, now: Date): MappedAthlete {
     name: athlete.name ?? 'Atleta',
     email: athlete.email ?? '',
     sport: athlete.profile?.sport ?? '',
-    goal: athlete.goals[0]?.type ?? 'GENERAL_FITNESS',
+    goal: athlete.goals[0]?.type ?? null,
     currentWeek,
     totalWeeks: plan?.totalWeeks ?? 0,
-    phase: (currentPlanWeek?.phase as string) ?? 'BASE',
+    phase: (currentPlanWeek?.phase as string) ?? null,
     lastCheckInDaysAgo: daysSince,
-    weightKg: lastCheckIn?.weightKg ?? athlete.profile?.weightKg ?? 0,
-    weightGoalKg: athlete.profile?.weightGoalKg ?? 0,
-    hrResting: lastCheckIn?.hrResting ?? athlete.profile?.hrResting ?? 0,
+    weightKg: lastCheckIn?.weightKg ?? athlete.profile?.weightKg ?? null,
+    weightGoalKg: athlete.profile?.weightGoalKg ?? null,
+    hrResting: lastCheckIn?.hrResting ?? athlete.profile?.hrResting ?? null,
     adherencePct,
     alerts: adjustments,
     planStatus: plan?.status ?? 'SIN PLAN',

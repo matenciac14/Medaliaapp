@@ -19,6 +19,7 @@ import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,8 +53,11 @@ export async function completeOnboardingUseCase(
   )
   const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
 
-  // ── Nutrition upsert — outside tx (idempotent) ────────────────────────────
-  await deps.planRepo.upsertNutrition(userId, {
+  // ── Derive sport fields from activityType ─────────────────────────────────
+  const sportType = activityToSport(data.activityType)
+  const sportGoal = activityToSportGoal(data.activityType, !!data.gymGoal)
+
+  const nutritionTargets = {
     tdee,
     targetKcalHard: macros.hard.kcal,
     targetKcalEasy: macros.easy.kcal,
@@ -62,16 +66,15 @@ export async function completeOnboardingUseCase(
     carbsHardG: macros.hard.carbs,
     carbsEasyG: macros.easy.carbs,
     fatG: macros.hard.fat,
-  })
+  }
 
-  // ── Derive sport fields from activityType ─────────────────────────────────
-  const sportType = activityToSport(data.activityType)
-  const sportGoal = activityToSportGoal(data.activityType, !!data.gymGoal)
-
-  // ── Profile + onboarding completion — atomic ──────────────────────────────
+  // ── Profile + nutrition + onboarding completion — all atomic ──────────────
   await deps.db.$transaction(async (tx) => {
     const txHealthProfile = new PrismaHealthProfileRepository(tx)
     const txUser = new PrismaUserRepository(tx)
+    const txPlan = new PrismaPlanRepository(tx)
+
+    await txPlan.upsertNutrition(userId, nutritionTargets)
 
     await txHealthProfile.upsertProfile(userId, {
       age: data.age!,
