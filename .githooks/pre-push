@@ -5,7 +5,7 @@
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 # Ramas protegidas — siempre permitidas
-if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "HEAD" ]; then
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "develop" ] || [ "$BRANCH" = "HEAD" ]; then
   exit 0
 fi
 
