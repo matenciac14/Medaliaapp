@@ -1,7 +1,7 @@
 // DEV ONLY — seed de desarrollo con usuarios de prueba.
 // Para producción usar: tsx prisma/seed.prod.ts
 import 'dotenv/config'
-import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory } from '../src/generated/prisma/client'
+import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory, SubscriptionTier, CoachSubscriptionTier } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
 
@@ -39,6 +39,40 @@ async function main() {
       featurePlan: false, featureCheckin: false, featureNutrition: false,
       featureProgress: false, featureLog: false, featureGym: false,
       onboardingCompleted: true, needsRoleSelection: false,
+    },
+  })
+
+
+  // UserSubscription + perfil público para coach1
+  await prisma.userSubscription.upsert({
+    where: { userId: coach1.id },
+    update: {},
+    create: { userId: coach1.id, tier: SubscriptionTier.PRO, coachTier: CoachSubscriptionTier.GROWTH },
+  })
+
+  await prisma.coachProfile.upsert({
+    where: { coachId: coach1.id },
+    update: {},
+    create: {
+      coachId: coach1.id,
+      slug: 'carlos-entrenador',
+      headline: 'Especialista en media maratón y running de fondo',
+      bio: 'Entrenador certificado con 8 años de experiencia. Ayudo a corredores de todos los niveles a alcanzar sus metas de carrera con planes periodizados y seguimiento cercano.',
+      specialties: ['RUNNING', 'GYM'],
+      city: 'Bogotá', country: 'CO',
+      yearsExp: 8,
+      certifications: ['IAAF Level 1', 'Running Coach ASEP'],
+      isPublic: true,
+    },
+  })
+
+  await prisma.inviteCode.upsert({
+    where: { code: 'CARLOS2026' },
+    update: {},
+    create: {
+      code: 'CARLOS2026',
+      coachId: coach1.id,
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año en seed
     },
   })
 
@@ -87,6 +121,7 @@ async function main() {
         create: {
           age: 30, heightCm: 175, weightKg: 75, weightGoalKg: 70,
           hrResting: 55, hrMax: 185, altitudeMeters: 2600,
+          gender: 'male', sport: 'RUNNING', sportGoal: 'RACE_HALF_MARATHON', experienceLevel: 'INTERMEDIATE',
           injuries: [], conditions: [], medications: [],
           sleepHoursAvg: 7, sleepScoreAvg: 78,
         },
@@ -101,6 +136,14 @@ async function main() {
       },
     },
     include: { goals: true },
+  })
+
+
+  // UserSubscription para miguel
+  await prisma.userSubscription.upsert({
+    where: { userId: athlete1.id },
+    update: {},
+    create: { userId: athlete1.id, tier: SubscriptionTier.PRO },
   })
 
   await prisma.coachAthlete.upsert({
@@ -123,6 +166,7 @@ async function main() {
       endDate: addDays(plan1Start, 18 * 7),
       status: PlanStatus.ACTIVE,
       generatedBy: PlanSource.AI,
+      goalType: GoalType.RACE_HALF_MARATHON,
       hrZones: { z1: { min: 95, max: 114 }, z2: { min: 115, max: 133 }, z3: { min: 134, max: 152 }, z4: { min: 153, max: 171 }, z5: { min: 172, max: 185 } },
     },
   })
@@ -205,13 +249,13 @@ async function main() {
     { wn: 6, wkg: 73.8, hr: 53, sleep: 7.2, score: 80, rpe: 9, adh: 85, pain: false, energy: 3, notes: 'Intervalos muy exigentes — mañana descansaré bien' },
   ]) {
     const _existsCi1 = await prisma.weeklyCheckIn.findFirst({
-      where: { userId: athlete1.id, planId: null, weekNumber: ci.wn },
+      where: { userId: athlete1.id, planId: plan1.id, weekNumber: ci.wn },
       select: { id: true },
     })
     if (!_existsCi1) {
       await prisma.weeklyCheckIn.create({
         data: {
-          userId: athlete1.id, planId: null, weekNumber: ci.wn,
+          userId: athlete1.id, planId: plan1.id, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
           energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
