@@ -9,7 +9,7 @@ import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profil
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
-// prisma is passed as `db` so the use case can open $transaction
+import { mapWebCheckinBody } from '@/lib/api/checkin-mapper'
 
 const checkInBodySchema = z.object({
   hardestRpe:            z.number().min(1).max(10).optional(),
@@ -76,25 +76,7 @@ export async function POST(req: NextRequest) {
     const result = await processCheckIn(
       {
         userId: session.user.id,
-        data: {
-          rpe: body.hardestRpe ?? 5,
-          sleepHours: body.sleepHours ?? 7,
-          sleepScore: body.sleepScore,
-          energyLevel: body.energyLevel ?? 5,
-          stressLevel: body.stressLevel ?? 0,
-          weight: body.weightKg,
-          heartRate: body.hrResting,
-          painLevel: body.painLevel,
-          nutritionAdherence: body.nutritionAdherencePct
-            ? Math.round(body.nutritionAdherencePct / 10)
-            : undefined,
-          motivation: body.motivationLevel,
-          notes: body.notes,
-          waistCm: body.waistCm,
-          armsCm: body.armsCm,
-          hipsCm: body.hipsCm,
-          thighsCm: body.thighsCm,
-        },
+        data: mapWebCheckinBody(body),
       },
       {
         db: prisma,

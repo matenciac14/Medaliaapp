@@ -770,3 +770,67 @@ describe('raceDays', () => {
     expect(summary.raceDays).toBeLessThan(0)
   })
 })
+
+// ── CONTRACT TEST — contrato público JSON con la mobile app ──────────────────
+//
+// Estos tests verifican los NOMBRES de campo del output, no solo los valores.
+// Si alguien renombra un campo del output (ej: detailText → description),
+// TypeScript NO lo detecta (sigue siendo string), pero este test SÍ falla.
+//
+// NUNCA renombrar estos campos sin versionar la API mobile primero.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CONTRACT — output field names (mobile API shape)', () => {
+  it('todaySession tiene los campos exactos que espera la app mobile', () => {
+    const plan = makePlanWithSessions([makeSession(TODAY_DOW, 'RODAJE_Z2', { zone: 'Z2', description: 'Rodaje suave' })])
+    const { summary } = getDashboardSummary(baseInput({ activePlanRaw: plan }))
+
+    expect(summary.todaySession).not.toBeNull()
+    // Campos que la mobile app lee por nombre — NO renombrar
+    expect(summary.todaySession).toHaveProperty('id')
+    expect(summary.todaySession).toHaveProperty('type')
+    expect(summary.todaySession).toHaveProperty('intensity')
+    expect(summary.todaySession).toHaveProperty('durationMin')
+    expect(summary.todaySession).toHaveProperty('zoneTarget')   // ← nombre en JSON, origen: zone
+    expect(summary.todaySession).toHaveProperty('detailText')   // ← nombre en JSON, origen: description
+    expect(summary.todaySession).toHaveProperty('completed')
+  })
+
+  it('weekSessions[i] tiene los campos exactos que espera la app mobile', () => {
+    const plan = makePlanWithSessions([makeSession(1, 'RODAJE_Z2')])
+    const { summary } = getDashboardSummary(baseInput({ activePlanRaw: plan }))
+
+    const slot = summary.weekSessions[0]
+    expect(slot).toHaveProperty('dayIndex')
+    expect(slot).toHaveProperty('type')
+    expect(slot).toHaveProperty('done')
+    expect(slot).toHaveProperty('isToday')
+    expect(slot).toHaveProperty('id')
+    expect(slot).toHaveProperty('durationMin')
+    expect(slot).toHaveProperty('zoneTarget')   // ← nombre en JSON, origen: zone
+  })
+
+  it('planData tiene los campos exactos que espera la app mobile', () => {
+    const plan = makePlanWithSessions([makeSession(1, 'RODAJE_Z2')])
+    const { summary } = getDashboardSummary(baseInput({ activePlanRaw: plan }))
+
+    expect(summary.planData).not.toBeNull()
+    expect(summary.planData).toHaveProperty('name')
+    expect(summary.planData).toHaveProperty('currentWeek')
+    expect(summary.planData).toHaveProperty('totalWeeks')
+    expect(summary.planData).toHaveProperty('phase')
+  })
+
+  it('todaySession.zoneTarget viene del campo zone del SessionLog', () => {
+    const plan = makePlanWithSessions([makeSession(TODAY_DOW, 'RODAJE_Z2', { zone: 'Z3-Z4' })])
+    const { summary } = getDashboardSummary(baseInput({ activePlanRaw: plan }))
+
+    expect(summary.todaySession?.zoneTarget).toBe('Z3-Z4')
+  })
+
+  it('todaySession.detailText viene del campo description del SessionLog', () => {
+    const plan = makePlanWithSessions([makeSession(TODAY_DOW, 'TEMPO', { description: 'Calentamiento 15min + 3×10min Tempo' })])
+    const { summary } = getDashboardSummary(baseInput({ activePlanRaw: plan }))
+
+    expect(summary.todaySession?.detailText).toBe('Calentamiento 15min + 3×10min Tempo')
+  })
+})
