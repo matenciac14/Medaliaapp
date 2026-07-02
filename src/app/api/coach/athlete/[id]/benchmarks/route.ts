@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 
+const VALID_SPORTS = ['RUNNING', 'CYCLING', 'SWIMMING', 'STRENGTH', 'TRIATHLON'] as const
+const VALID_METRICS = ['5K_TIME', '10K_TIME', 'HALF_MARATHON_TIME', 'MARATHON_TIME', 'FTP_WATTS', 'CSS_PACE', 'PACE_Z2', '1RM_SQUAT', '1RM_DEADLIFT', '1RM_BENCH', 'VO2MAX'] as const
+
 async function verifyCoach(coachId: string, athleteId: string) {
   return prisma.coachAthlete.findUnique({
     where: { coachId_athleteId: { coachId, athleteId } },
@@ -54,13 +57,21 @@ export async function POST(
   if (!body.sport || !body.metric || body.value == null || !body.unit || !body.testedAt) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
   }
+  const sport = body.sport.toUpperCase()
+  const metric = body.metric.toUpperCase()
+  if (!(VALID_SPORTS as readonly string[]).includes(sport)) {
+    return NextResponse.json({ error: `sport inválido. Valores válidos: ${VALID_SPORTS.join(', ')}` }, { status: 400 })
+  }
+  if (!(VALID_METRICS as readonly string[]).includes(metric)) {
+    return NextResponse.json({ error: `metric inválido. Valores válidos: ${VALID_METRICS.join(', ')}` }, { status: 400 })
+  }
 
   const benchmark = await prisma.performanceBenchmark.create({
     data: {
       userId: athleteId,
       coachId: session.user.id,
-      sport: body.sport,
-      metric: body.metric,
+      sport,
+      metric,
       value: body.value,
       unit: body.unit,
       testedAt: new Date(body.testedAt),

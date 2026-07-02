@@ -67,6 +67,9 @@ PaymentStatus:      PENDING | PAID   ← OVERDUE derivado en app (dueDate < now 
 AthleteStatus:      ACTIVE | PAUSED
 SubscriptionTier:   TRIAL | FREE | PRO
 
+MealType:           BREAKFAST | LUNCH | DINNER | SNACK | PRE_WORKOUT | POST_WORKOUT
+                    ← enum Prisma en DB (antes era String libre — DBA-P0)
+
 SetType:            NORMAL | SUPERSET | BISERIE | DROPSET | CIRCUIT
 EquipmentType:      BARBELL | DUMBBELL | MACHINE | CABLE | SMITH | BODYWEIGHT | KETTLEBELL | BAND | OTHER
 ExerciseCategory:   COMPOUND | ISOLATION | CARDIO | STRETCH | FUNCTIONAL
@@ -106,11 +109,35 @@ PostType:           TIP | ROUTINE_SHOWCASE | ACHIEVEMENT | ANNOUNCEMENT
 - `SetLog.workoutExerciseId` nullable + `exerciseName String?` — preserva historial aunque el entrenador elimine ejercicios
 - `SetLog.isPR Boolean @default(false)` — detectado en `gym/session/complete/route.ts`
 - `WeeklyRoutine.days Json` — `[{dow, activity:"GYM"|"RUN"|"REST", split?, runType?}]`
+- `FoodLog`:
+  - `mealType MealType` — enum Prisma (antes String libre). Validado en API via `VALID_MEAL_TYPES`
+  - `kcalLogged Float?` · `proteinLogged Float?` · `carbsLogged Float?` · `fatLogged Float?` — snapshot de macros al momento del registro (DBA-P0)
+  - **Patrón snapshot**: si `kcalLogged != null` → usar snapshot; si null → calcular desde `food.*` (backwards-compat con registros históricos)
+  - `buildFoodLogResponse` en `src/domain/nutrition/calculate-food-log.ts` aplica la lógica de fallback
+- `SessionLog.sessionDate DateTime? @db.Date` — fecha de la sesión en hora local (permite registrar sesiones pasadas sin distorsión de timezone). Si null → usar `completedAt` (DBA-P1)
+- `Message.fromId String?` · `toId String?` — nullable con `onDelete: SetNull` (antes `Cascade`). Preserva historial del chat cuando un atleta elimina su cuenta (DBA-P1)
+  - `admin/coaches/page.tsx` filtra nulls con type guard: `.filter((id): id is string => id !== null)`
+- `GymSession` CHECK constraint en DB: `assignedWorkoutId IS NULL OR plannedSessionId IS NULL` — exclusividad de FK (DBA-P0)
+- `PerformanceBenchmark.sport/metric` — String (NO enum Prisma: valores como `5K_TIME`, `1RM_SQUAT` son inválidos como identificadores TypeScript). Protegidos por:
+  - DB `CHECK` constraints (DBA-P1)
+  - `VALID_SPORTS` / `VALID_METRICS` whitelists en API (`src/app/api/coach/athlete/[id]/benchmarks/route.ts`)
+  - `.toUpperCase()` normalization en POST
 - Partial index único no expresable en Prisma schema:
   ```sql
   CREATE UNIQUE INDEX "TrainingPlan_userId_active_unique"
     ON "TrainingPlan" ("userId") WHERE "status" = 'ACTIVE';
   ```
+
+## Índices de performance (DBA-P2/P3)
+
+Creados en `prisma/migrations/20260702000003_dba_p2_p3_indexes/migration.sql`:
+
+| Índice | Tabla | Columnas | Query que optimiza |
+|--------|-------|----------|--------------------|
+| `CoachAthlete_coachId_status_idx` | `CoachAthlete` | `(coachId, status)` | `getCoachLimits()` — COUNT WHERE coachId + status='ACTIVE' |
+| `SetLog_exerciseName_completed_idx` | `SetLog` | `(exerciseName, completed)` | `isPRByName()` — MAX weight WHERE exerciseName + completed=true |
+| `WeeklyCheckIn_userId_weekNumber_idx` | `WeeklyCheckIn` | `(userId, weekNumber)` | `findFirst({ userId, weekNumber })` — evita O(n) sobre todos los check-ins |
+| `SessionLog_userId_completedAt_idx` | `SessionLog` | `(userId, completedAt DESC)` | Historial orderBy completedAt desc — elimina sort adicional |
 
 ---
 
@@ -201,6 +228,12 @@ src/app/
 | ✅ RESUELTO | `WeeklyCheckIn` — `planId` agregado + partial indexes. |
 | ✅ RESUELTO | `PaymentStatus.OVERDUE` — eliminado del enum. Derivado en app layer. |
 | ✅ RESUELTO | `FoodProfile` — lookup por `id: { in: availableFoodIds }`. Fuzzy matching eliminado. |
+| ✅ RESUELTO | **DBA-P0** `FoodLog.mealType` String libre → `MealType` enum Prisma. Snapshot de macros `kcalLogged/proteinLogged/carbsLogged/fatLogged` para auditoría. |
+| ✅ RESUELTO | **DBA-P0** `GymSession` FK exclusividad — CHECK constraint `assignedWorkoutId IS NULL OR plannedSessionId IS NULL`. |
+| ✅ RESUELTO | **DBA-P1** `SessionLog.sessionDate` — campo `Date?` para registrar sesiones pasadas sin distorsión de timezone. |
+| ✅ RESUELTO | **DBA-P1** `Message.fromId/toId` — nullable + `onDelete: SetNull`. Historial preservado cuando atleta elimina cuenta. |
+| ✅ RESUELTO | **DBA-P1** `PerformanceBenchmark` — DB CHECK constraints en sport/metric + API whitelist + `.toUpperCase()` normalization. |
+| ✅ RESUELTO | **DBA-P2/P3** — 4 índices de performance: `CoachAthlete(coachId,status)`, `SetLog(exerciseName,completed)`, `WeeklyCheckIn(userId,weekNumber)`, `SessionLog(userId,completedAt DESC)`. |
 
 ---
 

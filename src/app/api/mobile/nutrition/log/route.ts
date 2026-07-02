@@ -57,13 +57,17 @@ export async function POST(req: NextRequest) {
   if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
   const { foodId, gramsNum, mealType, logDate } = parsed
-  const food = await prisma.food.findUnique({ where: { id: foodId }, select: { id: true } })
+  const food = await prisma.food.findUnique({ where: { id: foodId }, select: { id: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } })
   if (!food) return NextResponse.json({ error: 'Alimento no encontrado' }, { status: 404 })
 
+  const snapshot = calcMacros(gramsNum, food)
   const log = await prisma.foodLog.create({
-    data: { userId, foodId, grams: gramsNum, mealType, date: logDate },
+    data: {
+      userId, foodId, grams: gramsNum, mealType, date: logDate,
+      kcalLogged: snapshot.kcal, proteinLogged: snapshot.proteinG, carbsLogged: snapshot.carbsG, fatLogged: snapshot.fatG,
+    },
     include: { food: { select: { name: true, category: true, servingG: true, servingLabel: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } } },
   })
 
-  return NextResponse.json({ ...log, ...calcMacros(log.grams, log.food) }, { status: 201 })
+  return NextResponse.json({ ...log, ...snapshot }, { status: 201 })
 }

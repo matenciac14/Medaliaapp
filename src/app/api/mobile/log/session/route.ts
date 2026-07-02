@@ -20,6 +20,7 @@ const LogSessionSchema = z.object({
   distanceKm: z.number().min(0).max(1000).optional(),
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
 }).refine(d => d.sessionId || d.sessionType, { message: 'sessionId o sessionType requerido' })
 
 export async function POST(req: NextRequest) {
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
   const userId = mobile.id
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
-  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity } = parsed.data
+  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity, sessionDate: sessionDateStr } = parsed.data
+  const sessionDate = sessionDateStr ? new Date(`${sessionDateStr}T00:00:00.000Z`) : null
 
   // ── Log libre (sin plan) ──────────────────────────────────────────────────
   if (!sessionId) {
@@ -44,6 +46,7 @@ export async function POST(req: NextRequest) {
         plannedSessionId: null,
         freeSessionType: sessionType as SessionType | undefined,
         completedAt: new Date(),
+        sessionDate,
         rpe: rpe ?? null,
         hrAvg: hrAvg ?? null,
         hrMax: hrMax ?? null,
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
       userId,
       plannedSessionId: sessionId,
       completedAt: new Date(),
+      sessionDate,
       rpe: rpe ?? null,
       hrAvg: hrAvg ?? null,
       hrMax: hrMax ?? null,

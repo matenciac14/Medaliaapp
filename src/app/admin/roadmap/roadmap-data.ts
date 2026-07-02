@@ -96,6 +96,20 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'DB — CoachAthlete sin updatedAt — sin auditoría de cuándo cambió el status', done: true, priority: 'P3', note: 'Fix: updatedAt DateTime @updatedAt agregado a CoachAthlete en schema.prisma + migración 20260630000001. DEFAULT NOW() para filas existentes.' },
       { title: 'PERF-01 — GET /api/nutrition/foods carga toda la librería sin límite ni búsqueda', done: true, priority: 'P2', note: 'Fix: ?q= search param con where: { name: { contains: q, mode: "insensitive" } } + take: 50. Aplicado en api/nutrition/foods/route.ts (NextRequest) y api/mobile/nutrition/foods/route.ts. Tests en route.test.ts.' },
       { title: 'PERF-02 — cron/session-reminder carga TODOS los weeks de TODOS los planes activos en memoria', done: true, priority: 'P2', note: 'Fix: fase 1 carga solo planes (id, startDate, totalWeeks, user). Fase 2 computa weekNumber por plan y lanza una sola query PlannedSession con OR de filtros {planId, weekNumber}. Elimina la carga de 12,600 filas innecesarias. Tests en route.test.ts.' },
+
+      // ── DEUDA DBA — identificada en auditoría de módulos (2026-07) ────────────
+      { title: 'DBA-P0 — FoodLog sin snapshot de macros: histórico nutricional mutable si Food se actualiza', done: true, priority: 'P0', note: 'Fix (migración 20260702000001): kcalLogged/proteinLogged/carbsLogged/fatLogged Float? en FoodLog. Routes POST web+mobile calculan snapshot con calcMacros() al crear. buildFoodLogResponse() usa snapshot si presente, Food.* como fallback backward-compat. pnpm prisma generate + tsc sin errores.' },
+      { title: 'DBA-P0 — FoodLog.mealType String sin enum: duplicados silenciosos por case mismatch', done: true, priority: 'P0', note: 'Fix (migración 20260702000001): UPDATE UPPER() + CREATE TYPE "MealType" + ALTER COLUMN TYPE. Schema: mealType MealType. Domain: VALID_MEAL_TYPES + MealType type + validación en parseFoodLogPost con mensaje de error claro.' },
+      { title: 'DBA-P0 — GymSession sin CHECK constraint: assignedWorkoutId y plannedSessionId pueden estar poblados simultáneamente', done: true, priority: 'P0', note: 'Fix (migración 20260702000001): ALTER TABLE "GymSession" ADD CONSTRAINT "gym_session_exclusive_fk" CHECK ("assignedWorkoutId" IS NULL OR "plannedSessionId" IS NULL). Aplicado en producción.' },
+      { title: 'DBA-P0 — Partial indexes de WeeklyCheckIn y TrainingPlan(ACTIVE) fuera del schema Prisma: se pierden con migrate reset', done: true, priority: 'P0', note: 'Verificado: los partial indexes SÍ persisten en migrate reset porque están en archivos SQL de migración (20260628000001 y 20260623000002). El riesgo real es prisma db push. Fix: comentario en migración 20260702000001 + regla en CLAUDE.md: NUNCA usar prisma db push en producción, solo migrate deploy.' },
+      { title: 'DBA-P1 — SessionLog sin sessionDate: completedAt mezcla fecha de sesión y fecha de registro', done: true, priority: 'P1', note: 'Fix (migración 20260702000002): sessionDate DateTime? @db.Date en SessionLog. Schema + migración. LogSessionSchema web + mobile: sessionDate z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(). SessionDate persistida en ambos paths (log vinculado + log libre). Registros históricos tienen null, usan completedAt como fallback.' },
+      { title: 'DBA-P1 — Message onDelete: Cascade: coach pierde historial de conversación si atleta elimina su cuenta', done: true, priority: 'P1', note: 'Fix (migración 20260702000002): fromId String? + toId String? nullable. FK recreadas con onDelete: SetNull. admin/coaches/page.tsx: .filter((id): id is string => id !== null). Mensajes con emisor/receptor eliminado preservados en DB con fromId/toId = null. UI puede mostrar "[Usuario eliminado]" si fromId es null.' },
+      { title: 'DBA-P1 — Goal model zombie: ningún flow crea un Goal en producción', done: true, priority: 'P1', note: 'Decisión: mantener modelo Goal. TrainingPlan.goalType y HealthProfile.sportGoal ya capturan el goalType. El modelo Goal se reserva para la futura feature de metas explícitas (raceDate, targetTimeSecs) que se integrará cuando el coach pueda asignar objetivos con fecha. No eliminar — riesgo de migración vs beneficio bajo.' },
+      { title: 'DBA-P1 — PerformanceBenchmark.sport y .metric son String sin enum: benchmark puede guardarse invisible', done: true, priority: 'P1', note: 'Fix (migración 20260702000002): los valores usan 5K_TIME y 1RM_SQUAT (empiezan con número) — no son válidos como identifiers Prisma enum. Alternativa adoptada: CHECK constraints en DB (benchmark_sport_valid + benchmark_metric_valid) + normalización UPPER() de existentes + validación en benchmarks/route.ts POST con lista VALID_SPORTS/VALID_METRICS + toUpperCase() antes de persistir.' },
+      { title: 'DBA-P2 — SetLog sin índice para PR detection por exerciseName: table scan en atletas con 1000+ sets', done: true, priority: 'P2', note: 'Fix (migración 20260702000003): @@index([exerciseName, completed]) en SetLog. Cubre isPRByName() que busca max weight WHERE exerciseName = X AND completed = true. No se desnormalizó athleteId — el índice en exerciseName+completed es suficiente para el caso de uso.' },
+      { title: 'DBA-P2 — CoachAthlete sin @@index([coachId, status]): conteo de atletas activos lento con coaches grandes', done: true, priority: 'P2', note: 'Fix (migración 20260702000003): @@index([coachId, status]) en CoachAthlete. Cubre COUNT WHERE coachId = X AND status = "ACTIVE" de getCoachLimits(). El @@unique([coachId, athleteId]) existente no servía para filtrar por status.' },
+      { title: 'DBA-P3 — WeeklyCheckIn sin @@index([userId, weekNumber]): lookup de semana actual ineficiente', done: true, priority: 'P3', note: 'Fix (migración 20260702000003): @@index([userId, weekNumber]) en WeeklyCheckIn. findFirst({ where: { userId, weekNumber } }) ahora usa índice compuesto en lugar de filtrar weekNumber en memoria sobre @@index([userId]).' },
+      { title: 'DBA-P3 — SessionLog sin @@index([userId, completedAt]): historial cronológico del atleta necesita sort adicional', done: true, priority: 'P3', note: 'Fix (migración 20260702000003): @@index([userId, completedAt(sort: Desc)]) en SessionLog. Queries de historial con orderBy: { completedAt: "desc" } ahora usan índice compuesto — elimina el sort adicional en memoria.' },
     ],
   },
 
@@ -164,6 +178,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'getDayType a lib compartida — eliminar duplicado web vs mobile', done: true, note: 'day-type.ts ya existía como lib compartida. NutritionContent tenía `type DayType` local duplicando la def. Fix: eliminado local, importado de day-type.ts. Tests en day-type.test.ts.' },
           { title: 'buildStaticMealPlan: porciones en gramos reales usando Foods de DB', done: true, note: 'describeFood() con weighsFood=true: "Pollo — 200g (240 kcal, 34g prot)". Vegetales: "Brócoli — 80g (27 kcal)". Snacks: "Almendras — 30g (180 kcal, 5g prot)". Separador \\n cuando weighsFood=true. 9 tests nuevos en generate-meal-plan.test.ts.' },
           { title: 'UI: mostrar gramos y macros por porción en NutritionContent', done: true, note: 'Fix: Meal type extendido con items?: MealFoodItem[]. normalizeDay popula items desde formato coach (foodName+grams+macros). UI: si items disponibles → fila por alimento "Arroz · 150g · 220 kcal · P34g · C28g · G4g". Fallback a foods string para planes AI. Backward-compatible.' },
+          { title: 'Atleta ve cuánto le falta para el target del día: número exacto (kcal + macros restantes)', done: false, priority: 'P2', note: 'Hoy FoodLogTracker muestra 4 barras de progreso con %. Agregar bajo cada barra el número restante: "Faltan 420 kcal · 45g carbos · 18g proteína". Calculado en cliente desde (target - consumed). Sin query adicional — usar datos ya cargados en FoodLogTracker.' },
         ],
       },
       {
@@ -179,6 +194,10 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Gym tracker libre sin AssignedWorkout ni TrainingPlan', done: true, note: 'GET /api/gym/session/today devuelve freeSession:true cuando no hay template/plan FUERZA. POST /api/gym/session/complete: tercera ruta libre (sin assignedWorkoutId/plannedSessionId), workoutExerciseId opcional. UI gym/session/page.tsx: input de nombre de ejercicio + logger de series, canFinish/handleComplete adaptados.' },
           { title: 'Dashboard sin plan: mostrar logs reales de la semana (web + mobile)', done: true, note: 'Fix: dashboard query enriquecida con freeSessionType (SessionLog) + assignedWorkout.template.name (GymSession). weekActivities[] con {dateStr, label, emoji} pasado a DailySessionCard. FREE/RECOVERY mode: "Lo que hiciste esta semana" lista los días con actividad.' },
           { title: 'Historial unificado: plan + libre juntos en /progress cronológico', done: true, note: 'progress/page.tsx: queries paralelas SessionLog + GymSession (últimas 30 c/u) → HistoryItem[] fusionado y ordenado por fecha desc. ProgressClient.tsx: sección "Historial de actividad" con emoji run/gym, label, duración, distancia, RPE.' },
+          { title: 'Comparativa sesión actual vs anterior: Δ distancia, Δ ritmo, Δ RPE en pantalla de log', done: false, priority: 'P2', note: 'Al abrir el log de una sesión planeada, mostrar datos de la última vez que se hizo esa misma sesión (mismo tipo o slot equivalente). Ayuda al atleta a ver si progresa semana a semana.' },
+          { title: 'Carga de entrenamiento acumulada: TSS semanal y tendencia ATL/CTL (forma física estimada)', done: false, priority: 'P3', note: 'TSS = (durationH × avgHR/hrMax)² × 100. ATL = promedio 7d, CTL = promedio 42d. Gráfica en /progress. Requiere hrMax y FC registrada en SessionLog.' },
+          { title: 'Proyección al objetivo: "A este ritmo llegas a tu meta el DD/MM"', done: false, priority: 'P3', note: 'Basado en adherencia últimas 4 semanas y TrainingPlan.totalWeeks. Cálculo lineal. Si adherencia < 70% → proyección en rojo con sugerencia de ajuste.' },
+          { title: 'Editar sesión ya registrada (edit post-log): corregir RPE, distancia o notas después de guardar', done: false, priority: 'P2', note: 'PATCH /api/log/session/[logId] ya existe parcialmente. UI: botón editar en historial de /progress. Útil cuando el atleta registra desde mobile y quiere corregir después en web.' },
         ],
       },
     ],
@@ -215,6 +234,10 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'CoachAthlete.coachGoal + privateNotes: meta visible del atleta + notas privadas en Tab Resumen', done: true, note: 'Campos String? en schema CoachAthlete (db push). PATCH /api/coach/athlete/[id]/config acepta coachGoal y privateNotes junto a features. UI en AthleteDetailClient Tab Resumen: card "Seguimiento del coach" con inputs y botón guardar.' },
           { title: 'Adherencia de atletas calculada correctamente: sessions filtradas por date <= now (no incluye futuras)', done: true, note: 'Fix en athletes/page.tsx query + athletes/_lib/map-athlete.ts usa getPlanWeekNumber() canónico + clampea a totalWeeks. También corregido en /api/mobile/progress.' },
           { title: 'Lista operacional /coach/athletes separada del dashboard — paginación, filtros, SPORT_LABELS ampliados', done: true, note: 'SPORT_LABELS cubre RUNNING|STRENGTH|CYCLING|SWIMMING|TRIATHLON|FOOTBALL en AthleteTabs.tsx y dashboard/page.tsx. Label de alerta unificado: "Carga alta" (antes "RPE alta").' },
+          { title: 'Coach notificado (push + email) cuando atleta completa check-in semanal', done: false, priority: 'P2', note: 'Hoy solo se envía sendPlanUpdatedEmail cuando hay ajustes automáticos. El coach debería recibir notificación siempre que el atleta complete su check-in — permite revisión proactiva. POST /api/checkin y /api/mobile/checkin: notifyCoach() fire-and-forget tras processCheckIn, similar a como se notifica al completar sesión gym.' },
+          { title: 'Coach pre-llena perfil del atleta al crearlo: peso, altura, objetivo, sport — atleta solo confirma y pone contraseña', done: false, priority: 'P1', note: 'Hoy el coach crea al atleta con nombre+email y el atleta hace el onboarding completo desde cero. El coach ya tiene esos datos (los recibió por WhatsApp). Extender POST /api/coach/clients/create para aceptar campos opcionales de HealthProfile. El onboarding del atleta los pre-llena y solo pide confirmación. Reduce fricción: atleta entra en 30s en vez de 3 minutos.' },
+          { title: 'Vista de atletas pendientes de onboarding en /coach/athletes — badge contador + botón reenviar link', done: false, priority: 'P1', note: 'Hoy el coach no sabe si su atleta completó el onboarding o está bloqueado. Añadir tab "Pendientes" en /coach/athletes con atletas cuyo onboardingCompleted=false. Card con fecha de creación, link de invitación copiable y botón "Reenviar". Resuelve el limbo del coach que invitó y no sabe qué pasó.' },
+          { title: 'Onboarding mínimo para atletas B2B: nombre + contraseña → adentro, perfil completa después', done: false, priority: 'P2', note: 'Hoy el onboarding tiene 6+ pasos antes de que el atleta acceda al producto. Para B2B con datos pre-llenados por el coach, reducir a: confirmar datos → contraseña → dashboard. Perfil se completa de forma progresiva. Reduce el drop-off de atletas que abandonan el onboarding antes de terminar.' },
         ],
       },
       {
@@ -264,6 +287,13 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Notificación in-app al coach cuando atleta completa una sesión', done: true, note: 'Fix (push): notifyCoach() helper en gym/session/complete/route.ts envía push al coach vía pushToken tras cada sesión de gym. Idem en log/session/route.ts para sesiones de running. Fire-and-forget (catch→noop). Pendiente: badge in-app requeriría tabla Notification en DB.' },
           { title: 'Finanzas: filtro por atleta en /coach/finanzas', done: true, note: 'Ya implementado: filterAthlete state + select "Todos los atletas" visible cuando athletes.length > 1 + filter client-side byAthlete. Verificado en coach/finanzas/page.tsx.' },
           { title: 'generator.ts: calibrar zonas HR con benchmark reciente de running', done: false, note: 'Si hay 5K_TIME < 90 días → fórmula Riegel → ajusta intensidades del plan.' },
+          { title: 'Duplicar plan entre atletas: copiar semanas de un atleta a otro con offset de fechas', done: false, priority: 'P1', note: 'POST /api/coach/athlete/[id]/plan/copy-from?sourcePlanId=. Crea nueva TrainingPlan con mismas semanas y sesiones, ajustando fechas al nuevo startDate. Coach no reconstruye el mismo plan para distintos atletas.' },
+          { title: 'Preview del plan desde perspectiva del atleta (modo lectura en el constructor)', done: false, priority: 'P2', note: 'Botón "Vista atleta" en PlanBuilderClient → misma vista /plan del atleta en nueva pestaña con query param ?preview=1. Sin edición. Coach verifica lo que ve el atleta antes de compartir.' },
+          { title: 'Alertas de fatiga acumulada: índice compuesto (RPE>7 + sueño<6h + energía<3 en misma semana)', done: false, priority: 'P2', note: 'evaluateCheckInRules ya crea triggers individuales. Nueva regla: 3+ triggers en un check-in = alerta "fatiga acumulada" al coach con CTA reducir carga. Feed de alertas en /coach/dashboard.' },
+          { title: 'Vista comparativa de adherencia entre atletas (ranking o grid por atleta)', done: false, priority: 'P2', note: 'En /coach/athletes o dashboard: tabla ordenada por adherencia esta semana. Verde >80%, ámbar 60-80%, rojo <60%. Identifica quién necesita atención sin abrir cada perfil.' },
+          { title: 'Perfil público del coach (/join/[code]) con métricas reales: atletas activos, adherencia promedio, PRs del mes', done: false, priority: 'P2', note: 'La página /join/[code] ya existe con branding del coach. Agregar sección de métricas anónimas: "X atletas activos · Y% adherencia promedio · Z PRs este mes". Datos agregados sin exponer nombres. Funciona como prueba social para prospectos que llegan al link — el coach puede compartirlo con confianza.' },
+          { title: 'Tarjeta de logro compartible para el atleta: semana perfecta, PR nuevo, racha de sesiones', done: false, priority: 'P2', note: 'Cuando el atleta completa todas las sesiones de la semana, bate un PR o alcanza una racha de 7+ días: generar tarjeta visual (imagen o componente) con el logro, nombre del atleta y logo de Medaliq. El atleta la comparte por WhatsApp o Instagram — el coach aparece en el contexto como su entrenador. Ciclo viral: prospectos del coach ven resultados reales.' },
+          { title: 'Código de referido coach→coach: entrenador invita a otro, ambos reciben mes extendido', done: false, priority: 'P3', note: 'Coach genera su código de referido en /coach/settings. Nuevo coach se registra con el código → ambos reciben 30 días extra de su tier actual. Sistema de crédito simple: tabla CoachReferral { referrerId, newCoachId, redeemedAt, creditDays }. Crecimiento viral entre entrenadores — el canal de adquisición más barato en LatAm es la recomendación entre pares.' },
         ],
       },
       {
@@ -531,6 +561,107 @@ export const GROUPS: RoadmapGroup[] = [
         done: false,
         priority: 'P3',
         note: 'STANDBY — AI deshabilitado intencionalmente (AI_ONBOARDING_ENABLED = false). Activar solo cuando AI esté habilitado en producción.',
+      },
+    ],
+  },
+
+  // ─── MÓDULO NUTRICIÓN ────────────────────────────────────────────────────────
+  // Scope independiente para trabajo a profundidad en nutrición (atleta + coach + sistema)
+  // Los items de atleta-nutricion y coach-nutricion-constructor permanecen en sus scopes originales
+  // Este scope cubre features avanzadas no capturadas allá
+
+  {
+    id: 'modulo-nutricion',
+    label: 'Módulo Nutrición — Profundización',
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    borderColor: '#86efac',
+    phases: [
+      {
+        id: 'nutricion-atleta-avanzado',
+        label: 'Atleta — Tracking Avanzado',
+        period: 'Próximo',
+        items: [
+          { title: 'Biblioteca de alimentos custom del atleta: agregar alimentos propios (nombre, kcal/100g, macros)', done: false, priority: 'P1', note: 'POST /api/nutrition/foods/custom con userId. Alimento visible solo para ese atleta. Útil para comidas típicas colombianas o productos locales no en la DB global. Aparece en búsqueda con badge "Personalizado".' },
+          { title: 'Escaneo de código de barras — Open Food Facts API desde mobile', done: false, priority: 'P2', note: 'Mobile: expo-barcode-scanner + GET https://world.openfoodfacts.org/api/v0/product/{barcode}. Si existe → precargar kcal/macros en LogFoodModal. No requiere DB propia. Fallback a búsqueda manual si no se encuentra.' },
+          { title: 'Recetas compuestas: grupo de alimentos guardados como una unidad (ej. "Mi desayuno habitual")', done: false, priority: 'P2', note: 'Modelo Recipe { userId, name } → RecipeIngredient[] { foodId, grams }. Kcal y macros calculados en tiempo real. Aparece en búsqueda de alimentos como item compuesto. Simplifica el log diario para comidas repetidas.' },
+          { title: 'Historial de adherencia nutricional diario en /progress (gráfica 30 días)', done: false, priority: 'P2', note: 'FoodLog agrupado por fecha → % vs target del día usando getDailyNutritionTarget(). Gráfica de barras similar a adherencia de entrenamiento. Complementa la vista semanal ya existente en /api/mobile/nutrition/log/summary.' },
+          { title: 'Contexto de fase en nutrición: texto explicativo según semana del plan (carga vs descarga)', done: false, priority: 'P2', note: 'PlanWeek.isRecoveryWeek y PlannedSession.intensity ya existen. Texto en NutritionContent: "Semana de carga — prioriza carbos" o "Semana de descarga — baja 10% calorías". Sin cambiar targets automáticamente.' },
+          { title: 'Metas de hidratación diaria: log rápido de agua y barra de progreso en dashboard', done: false, priority: 'P3', note: 'WaterLog { userId, date, ml } modelo nuevo. Quick-tap desde dashboard: +250ml. NutritionPlan.waterMlTarget Int? (default 2000ml). Barra de progreso en tarjeta de nutrición del dashboard.' },
+        ],
+      },
+      {
+        id: 'nutricion-coach-avanzado',
+        label: 'Coach — Supervisión Nutricional',
+        period: 'Próximo',
+        items: [
+          { title: 'Coach ve logs de alimentos del atleta en Tab Nutrición (últimos 7 días + adherencia diaria)', done: false, priority: 'P1', note: 'GET /api/coach/athlete/[id]/nutrition/logs. FoodLog con food.name, grams, kcal, date, mealType. Vista por día con totales vs target. Coach identifica días con baja adherencia sin preguntar al atleta.' },
+          { title: 'Coach ajusta targets de macros del atleta individualmente (sin tocar template base)', done: false, priority: 'P1', note: 'PATCH /api/coach/athlete/[id]/nutrition/targets: { targetKcalHard?, targetKcalEasy?, targetKcalRest?, proteinG? }. Persiste en NutritionPlan del atleta como override. No toca el template del sistema ni del constructor.' },
+          { title: 'Vista de adherencia nutricional del atleta en panel del coach (semana actual + tendencia 4 semanas)', done: false, priority: 'P2', note: 'Tab Nutrición en AthleteDetailClient: card "Adherencia nutricional esta semana" con % y badge color. Sparkline de 4 semanas. Query: FoodLog + NutritionPlan por atleta.' },
+          { title: 'Alerta al coach cuando atleta tiene adherencia nutricional < 60% tres días seguidos', done: false, priority: 'P2', note: 'Cron diario o trigger post-log. Condición: FoodLog con ratio < 0.6 en 3 días consecutivos. Agrega alerta al feed del coach en /coach/dashboard con severidad "medium".' },
+          { title: 'Panel coach: adherencia nutricional calculada (FoodLog) vs auto-reportada (check-in) — vista comparativa', done: false, priority: 'P2', note: 'Hoy el coach ve nutritionAdherencePct del check-in (auto-reportado, subjetivo). Por otro lado, FoodLog tiene la adherencia real calculada. Mostrar ambos en Tab Nutrición del atleta con badge de diferencia: "Reportó 80% · Real: 52% ← posible desconexión". Requiere query de FoodLog para el período del check-in.' },
+        ],
+      },
+      {
+        id: 'nutricion-sistema',
+        label: 'Sistema — Base de Datos y Precisión',
+        period: 'Próximo',
+        items: [
+          { title: 'Ampliar librería con 200+ alimentos colombianos y latinoamericanos', done: false, priority: 'P1', note: 'Hoy la DB tiene alimentos genéricos. Añadir: arepas, bandeja paisa, sancocho, pandebono, empanadas, calentado, jugos, masato, etc. con macros verificados. Seed con category: "LATAM". Diferenciador vs MyFitnessPal para el mercado colombiano.' },
+          { title: 'Categorías de alimentos en búsqueda: proteínas, carbos, grasas, frutas, lácteos, snacks', done: false, priority: 'P2', note: 'FoodProfile.category ya existe en schema. Chips/filtros en modal de búsqueda de alimentos (web + mobile). Reduce fricción del log cuando el atleta no recuerda el nombre exacto.' },
+          { title: 'MealPlan versionado: historial de cambios del plan nutricional asignado por el coach', done: false, priority: 'P3', note: 'MealPlan.version ya existe en schema. Agregar MealPlanVersion { userId, version, data, assignedAt, assignedBy }. Coach puede ver cuándo cambió el plan y comparar versiones. Trazabilidad completa.' },
+        ],
+      },
+    ],
+  },
+
+  // ─── MÓDULO FUERZA ────────────────────────────────────────────────────────────
+  // Scope independiente para trabajo a profundidad en fuerza (tracking, rutinas, progresión)
+  // "Fuerza" cubre gym, home workout, calistenia, fortalecimiento corredor — más amplio que "Gym"
+  // En UI: renombrar a "Fuerza". En código: mantener gym/GymSession/featureGym para evitar migración.
+
+  {
+    id: 'modulo-fuerza',
+    label: 'Módulo Fuerza — Profundización',
+    color: '#1e3a5f',
+    bgColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    phases: [
+      {
+        id: 'fuerza-atleta-ux',
+        label: 'Atleta — UX del Tracker',
+        period: 'Próximo',
+        items: [
+          { title: 'Timer descanso configurable por ejercicio (coach define restSeconds en constructor)', done: false, priority: 'P1', note: 'WorkoutExercise.restSeconds Int?. Coach lo define en el wizard de rutinas. Gym tracker mobile usa ese valor como default del countdown. Atleta puede sobreescribir en sesión para ese día.' },
+          { title: 'Sustitución de ejercicio durante sesión activa (swap in-session)', done: false, priority: 'P1', note: 'Botón "Sustituir" en cada ejercicio del gym tracker. Abre modal de búsqueda por grupo muscular equivalente. Swap registrado en SetLog.exerciseName. Coach ve qué sustituciones hace el atleta en Tab Gym.' },
+          { title: 'Curva de fuerza por ejercicio: gráfica de 1RM estimado histórico', done: false, priority: 'P1', note: 'Brzycki: 1RM = peso × (36 / (37 - reps)). Gráfica de línea en /progress y en Tab Gym del coach. Período: últimas 12 semanas. Permite al atleta ver su progresión real más allá del peso máximo en un solo día.' },
+          { title: 'Sesión auto-dirigida con búsqueda en librería de ejercicios (sin template requerido)', done: false, priority: 'P1', note: 'Gym libre ya funciona. Mejorar: input de búsqueda en la DB de ejercicios (39 globales + custom del coach) en lugar de solo nombre libre. Filtro por grupo muscular. Nombre libre como fallback.' },
+          { title: 'Visualización de sesión anterior mejorada: Δ peso/reps por set (verde si mejora, rojo si baja)', done: false, priority: 'P1', note: 'Ya hay referencia de sesión anterior parcialmente. Mejorar UX: mostrar el delta visual en cada set row (ej. "+2.5kg vs sem anterior"). Atleta ve de inmediato si está progresando.' },
+          { title: 'Drop sets y sets de calentamiento: marcar tipo de set (trabajo / calentamiento / drop)', done: false, priority: 'P2', note: 'SetLog.setType enum: WORK | WARMUP | DROPSET. Sets no-WORK excluidos de cálculo de volumen y PR detection. Visual diferenciado en gym tracker (color gris para warmup, naranja para drop).' },
+          { title: 'RPE por ejercicio individual al terminar todos sus sets (no solo RPE de sesión completa)', done: false, priority: 'P2', note: 'SetLog.rpe Int? o por WorkoutExercise al completar todos sus sets. Promedio pesa en GymSession.rpe. Coach ve distribución de esfuerzo por ejercicio para ajustar volumen individualmente.' },
+        ],
+      },
+      {
+        id: 'fuerza-coach',
+        label: 'Coach — Supervisión y Progresión',
+        period: 'Próximo',
+        items: [
+          { title: 'Coach ve historial completo de gym del atleta: tabla de sesiones, ejercicios, volumen, RPE', done: false, priority: 'P1', note: 'Tab Gym en AthleteDetailClient ya tiene gráfica de peso. Ampliar: tabla con fecha, ejercicios completados, volumen total kg, RPE. Paginación 20/página. Exportable a CSV.' },
+          { title: 'PRs consolidados en panel del coach: todos los récords del atleta agrupados por ejercicio', done: false, priority: 'P1', note: 'GET /api/coach/athlete/[id]/gym/prs. Query: setLog.findMany({ where: { isPR: true }, include: { session } }). Sección "Récords Personales" en Tab Gym con ejercicio, peso, reps y fecha.' },
+          { title: 'Plantillas de rutina reutilizables entre atletas: duplicar plantilla de otro atleta como base', done: false, priority: 'P1', note: 'WorkoutTemplate.isPublic ya existe (coach-to-coach). Flujo: al crear rutina para atleta, opción "Copiar desde" → lista de templates propios del coach → crea copia nueva. Evita reconstruir la misma rutina para cada asesorado.' },
+          { title: 'Progresión automática de cargas ajustada: incremento si >90% sets completados, baja si <60%', done: false, priority: 'P2', note: 'suggestedNextWeightKg ya existe y se incrementa en +2.5 al completar. Agregar lógica: si completedRatio < 0.6 → suggestedNextWeightKg - 2.5. Coach puede desactivar la progresión automática por ejercicio.' },
+          { title: 'Carga de entrenamiento semanal por atleta: volumen total kg y alerta >20% vs semana anterior', done: false, priority: 'P2', note: 'KPI en Tab Gym del coach: sum(weightKg × repsCompleted × completed) esta semana vs anterior. Alerta roja si incremento >20% (misma lógica que carga de running en Tab Plan). Previene sobreentrenamiento.' },
+          { title: 'Vídeos de referencia por ejercicio en el constructor (URL YouTube o Blob)', done: false, priority: 'P3', note: 'Exercise.videoUrl String?. En gym tracker mobile: botón "Ver técnica" abre video en fullscreen. Útil para atletas remotos. Coach puede asignar video por ejercicio en el constructor de rutinas.' },
+        ],
+      },
+      {
+        id: 'fuerza-mobile',
+        label: 'Mobile — Offline & Wearables',
+        period: 'Futuro',
+        items: [
+          { title: 'Offline support para gym session tracker (AsyncStorage con sync al reconectar)', done: false, priority: 'P1', note: 'Guardar sets localmente y sincronizar al reconectar. Crítico para gyms sin WiFi o cobertura. AsyncStorage → cola de sync → POST /api/gym/session/complete al volver online. Feature más crítica para mobile gym.' },
+          { title: 'Apple Watch companion: iniciar sesión de fuerza y registrar sets desde la muñeca', done: false, priority: 'P3', note: 'watchOS extension con WatchConnectivity. Ejercicio actual + timer descanso + conteo de sets en la muñeca. Sync directo al teléfono. Requiere expo bare workflow + native module.' },
+        ],
       },
     ],
   },

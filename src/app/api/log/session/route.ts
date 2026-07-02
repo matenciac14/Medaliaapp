@@ -17,6 +17,7 @@ const LogSessionSchema = z.object({
   hrMax: z.number().int().min(30).max(250).optional(),
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
 })
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
   const body = parsed.data
+  const sessionDate = body.sessionDate ? new Date(`${body.sessionDate}T00:00:00.000Z`) : null
 
   // Si completed === false, no registrar (la sesión queda pendiente)
   if (body.completed === false) {
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
         userId,
         plannedSessionId: body.plannedSessionId ?? null,
         completedAt: new Date(),
+        sessionDate,
         rpe: body.rpe,
         hrAvg: body.hrAvg,
         hrMax: body.hrMax,

@@ -32,7 +32,7 @@ export default async function AdminCoachesPage() {
 
   const allCoachIds = new Set(coaches.map((c) => c.id))
   const activity = computeCoachActivity(
-    recentMessages.map((m) => m.fromId),
+    recentMessages.map((m) => m.fromId).filter((id): id is string => id !== null),
     recentPayments.map((p) => p.coachId),
     allCoachIds,
   )
