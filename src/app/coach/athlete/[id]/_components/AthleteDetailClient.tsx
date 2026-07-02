@@ -493,9 +493,20 @@ export default function AthleteDetailClient({
     kcalPer100g: number; proteinPer100g: number; carbsPer100g: number; fatPer100g: number
     servingG: number; servingLabel?: string | null
   }
+  type FoodLogEntry = {
+    id: string
+    date: string
+    mealType: string
+    kcalLogged: number | null
+    proteinLogged: number | null
+    carbsLogged: number | null
+    fatLogged: number | null
+    food: { name: string }
+  }
   const [mealPlan, setMealPlan] = useState<MealPlanData>(null)
   const [foodProfile, setFoodProfile] = useState<FoodProfileData>(null)
   const [athleteFoods, setAthleteFoods] = useState<AthleteFoodItem[]>([])
+  const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([])
   const [nutritionExtLoaded, setNutritionExtLoaded] = useState(false)
 
   useEffect(() => {
@@ -506,6 +517,7 @@ export default function AthleteDetailClient({
         setMealPlan(d.mealPlan ?? null)
         setFoodProfile(d.foodProfile ?? null)
         setAthleteFoods(d.athleteFoods ?? [])
+        setFoodLogs(d.foodLogs ?? [])
         setNutritionExtLoaded(true)
       })
       .catch(() => setNutritionExtLoaded(true))
@@ -1887,6 +1899,71 @@ export default function AthleteDetailClient({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Logs de alimentos — últimos 7 días */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Registro alimenticio — últimos 7 días</h2>
+                  {!nutritionExtLoaded ? (
+                    <p className="text-sm text-gray-400">Cargando...</p>
+                  ) : foodLogs.length === 0 ? (
+                    <p className="text-sm text-gray-400">El atleta no ha registrado alimentos en los últimos 7 días.</p>
+                  ) : (() => {
+                    // Agrupar por fecha y sumar macros
+                    const byDate = new Map<string, { kcal: number; protein: number; carbs: number; fat: number; items: number }>()
+                    for (const log of foodLogs) {
+                      const dateKey = log.date.slice(0, 10)
+                      const prev = byDate.get(dateKey) ?? { kcal: 0, protein: 0, carbs: 0, fat: 0, items: 0 }
+                      byDate.set(dateKey, {
+                        kcal:    prev.kcal    + (log.kcalLogged    ?? 0),
+                        protein: prev.protein + (log.proteinLogged ?? 0),
+                        carbs:   prev.carbs   + (log.carbsLogged   ?? 0),
+                        fat:     prev.fat     + (log.fatLogged     ?? 0),
+                        items:   prev.items   + 1,
+                      })
+                    }
+                    const avgTargetKcal = nutritionPlan
+                      ? Math.round((nutritionPlan.targetKcalHard + nutritionPlan.targetKcalEasy + nutritionPlan.targetKcalRest) / 3)
+                      : null
+
+                    return (
+                      <div className="space-y-2">
+                        {Array.from(byDate.entries())
+                          .sort((a, b) => b[0].localeCompare(a[0]))
+                          .map(([dateKey, totals]) => {
+                            const pct = avgTargetKcal && totals.kcal > 0
+                              ? Math.round((totals.kcal / avgTargetKcal) * 100)
+                              : null
+                            const color = pct == null ? '#9ca3af' : pct >= 90 ? '#16a34a' : pct >= 70 ? '#f97316' : '#dc2626'
+                            return (
+                              <div key={dateKey} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                                <span className="text-xs text-gray-400 w-20 shrink-0">
+                                  {new Date(dateKey + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                </span>
+                                <div className="flex-1 flex items-center gap-3 flex-wrap text-xs">
+                                  <span className="font-semibold" style={{ color }}>
+                                    {Math.round(totals.kcal)} kcal
+                                    {pct != null && <span className="text-gray-400 font-normal ml-1">({pct}%)</span>}
+                                  </span>
+                                  <span className="text-gray-500">P: {Math.round(totals.protein)}g</span>
+                                  <span className="text-gray-500">C: {Math.round(totals.carbs)}g</span>
+                                  <span className="text-gray-500">G: {Math.round(totals.fat)}g</span>
+                                  <span className="text-gray-400">{totals.items} registros</span>
+                                </div>
+                              </div>
+                            )
+                          })
+                        }
+                        {avgTargetKcal && (
+                          <p className="text-xs text-gray-400 pt-1">
+                            Target promedio: {avgTargetKcal} kcal/día
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
 

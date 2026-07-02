@@ -33,6 +33,37 @@ export async function GET(
     return NextResponse.json({ error: 'Este código expiró.' }, { status: 410 })
   }
 
+  // Aggregate metrics for social proof
+  const coachId = invite.coachId
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const [activeCount, athleteRelations] = await Promise.all([
+    prisma.coachAthlete.count({ where: { coachId, status: 'ACTIVE' } }),
+    prisma.coachAthlete.findMany({ where: { coachId }, select: { athleteId: true } }),
+  ])
+  const athleteIds = athleteRelations.map((r) => r.athleteId)
+
+  const [avgAdherenceResult, prsThisMonth] = await Promise.all([
+    prisma.weeklyCheckIn.aggregate({
+      where: { userId: { in: athleteIds }, dietAdherencePct: { not: null } },
+      _avg: { dietAdherencePct: true },
+    }),
+    athleteIds.length > 0
+      ? prisma.setLog.count({
+          where: {
+            isPR: true,
+            session: { athleteId: { in: athleteIds }, date: { gte: startOfMonth } },
+          },
+        })
+      : Promise.resolve(0),
+  ])
+
+  const avgAdherence =
+    avgAdherenceResult._avg.dietAdherencePct != null
+      ? Math.round(avgAdherenceResult._avg.dietAdherencePct)
+      : null
+
   return NextResponse.json({
     valid: true,
     coachName: invite.coach.name,
@@ -40,6 +71,9 @@ export async function GET(
     coachHeadline: invite.coach.coachProfile?.headline ?? null,
     coachBio: invite.coach.coachProfile?.bio ?? null,
     coachSpecialties: invite.coach.coachProfile?.specialties ?? [],
+    activeAthletes: activeCount,
+    avgAdherence,
+    prsThisMonth,
   })
 }
 

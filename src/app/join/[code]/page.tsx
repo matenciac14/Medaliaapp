@@ -12,6 +12,9 @@ type InviteInfo = {
   coachHeadline: string | null
   coachBio: string | null
   coachSpecialties: string[]
+  activeAthletes: number
+  avgAdherence: number | null
+  prsThisMonth: number
 }
 
 const SPECIALTY_LABELS: Record<string, string> = {
@@ -150,6 +153,26 @@ export default function JoinPage() {
             </div>
           )}
         </div>
+
+        {/* Métricas reales del coach */}
+        {invite && invite.activeAthletes > 0 && (
+          <div className="grid grid-cols-3 gap-px bg-gray-100 border-b border-gray-100">
+            <div className="bg-white px-3 py-3 text-center">
+              <p className="text-lg font-extrabold" style={{ color: '#1e3a5f' }}>{invite.activeAthletes}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Atletas activos</p>
+            </div>
+            <div className="bg-white px-3 py-3 text-center">
+              <p className="text-lg font-extrabold" style={{ color: '#1e3a5f' }}>
+                {invite.avgAdherence != null ? `${invite.avgAdherence}%` : '—'}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Adherencia prom.</p>
+            </div>
+            <div className="bg-white px-3 py-3 text-center">
+              <p className="text-lg font-extrabold" style={{ color: '#f97316' }}>{invite.prsThisMonth}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">PRs este mes</p>
+            </div>
+          </div>
+        )}
 
         {/* Invite content */}
         <div className="px-8 py-6 text-center">
