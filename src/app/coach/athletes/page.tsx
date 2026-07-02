@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import AthleteTabs from './_components/AthleteTabs'
+import PendingAthletesSection from './_components/PendingAthletesSection'
 import { TAKE, mapRelation } from './_lib/map-athlete'
 
 export default async function CoachAthletesPage() {
@@ -15,7 +16,7 @@ export default async function CoachAthletesPage() {
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000)
 
-  const [coachRelations, totalCount, overduePayments] = await Promise.all([
+  const [coachRelations, totalCount, overduePayments, pendingRelations] = await Promise.all([
     prisma.coachAthlete.findMany({
       where: { coachId },
       take: TAKE + 1,
@@ -61,6 +62,11 @@ export default async function CoachAthletesPage() {
     }),
     prisma.coachAthlete.count({ where: { coachId } }),
     prisma.payment.findMany({ where: { coachId, status: 'PENDING', dueDate: { lt: now } }, select: { athleteId: true } }),
+    prisma.coachAthlete.findMany({
+      where: { coachId, athlete: { onboardingCompleted: false } },
+      orderBy: { createdAt: 'desc' },
+      include: { athlete: { select: { id: true, name: true, email: true } } },
+    }),
   ])
 
   const hasMore = coachRelations.length > TAKE
@@ -70,6 +76,13 @@ export default async function CoachAthletesPage() {
 
   const overdueAthleteIds = [...new Set(overduePayments.map((p) => p.athleteId))]
   const totalAlerts = athletes.reduce((acc, a) => acc + a.alerts.length, 0)
+
+  const pendingAthletes = pendingRelations.map((r) => ({
+    athleteId: r.athlete.id,
+    name:      r.athlete.name ?? 'Atleta',
+    email:     r.athlete.email ?? '',
+    addedAt:   r.createdAt.toISOString(),
+  }))
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -119,6 +132,8 @@ export default async function CoachAthletesPage() {
           </div>
         </div>
       )}
+
+      <PendingAthletesSection athletes={pendingAthletes} />
 
       {athletes.length > 0 && (
         <>

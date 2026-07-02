@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
@@ -174,7 +174,7 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
   )
 }
 
-function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (d: Partial<WizardData>) => void; prefilled?: boolean }) {
   const hasGym = data.activityType === 'GYM' || data.activityType === 'BOTH'
   const levels: { value: ExperienceLevel; label: string; subtext: string }[] = [
     { value: 'BEGINNER',     label: 'Principiante', subtext: 'Menos de 1 año' },
@@ -186,6 +186,13 @@ function StepPhysical({ data, update }: { data: WizardData; update: (d: Partial<
     <div className="flex flex-col gap-5">
       <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Datos básicos</h2>
       <p className="text-gray-500 text-sm mb-2">Con esto calculamos tus calorías y macros.</p>
+
+      {prefilled && (
+        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-800">
+          <span className="shrink-0">ℹ️</span>
+          <span>Tu entrenador ya registró estos datos. Confirma que son correctos o ajústalos antes de continuar.</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -307,11 +314,37 @@ const STEP_LABELS: Record<StepId, string> = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { update: refreshSession } = useSession()
+  const { data: session, update: refreshSession } = useSession()
   const [data, setData] = useState<WizardData>(INITIAL_DATA)
   const [stepIndex, setStepIndex] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasPrefilled, setHasPrefilled] = useState(false)
+
+  // Pre-populate physical data for B2B athletes whose coach already filled their profile
+  useEffect(() => {
+    const isB2B = (session?.user as { isB2B?: boolean } | undefined)?.isB2B
+    if (!isB2B) return
+    fetch('/api/onboarding/prefilled')
+      .then((r) => r.json())
+      .then(({ prefilled }) => {
+        if (!prefilled) return
+        setHasPrefilled(true)
+        const dob = prefilled.dateOfBirth ? new Date(prefilled.dateOfBirth) : null
+        const age = dob
+          ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+          : (prefilled.age ?? null)
+        setData((prev) => ({
+          ...prev,
+          age:             age || null,
+          heightCm:        prefilled.heightCm  ?? null,
+          weightKg:        prefilled.weightKg  ?? null,
+          gender:          (prefilled.gender as 'male' | 'female' | null) ?? null,
+          experienceLevel: (prefilled.experienceLevel as WizardData['experienceLevel']) ?? null,
+        }))
+      })
+      .catch(() => {})
+  }, [session?.user])
 
   function update(partial: Partial<WizardData>) {
     setData((prev) => ({ ...prev, ...partial }))
@@ -373,7 +406,7 @@ export default function OnboardingPage() {
 
   const stepContent: Record<StepId, React.ReactNode> = {
     goal:       <StepGoal data={data} update={update} />,
-    physical:   <StepPhysical data={data} update={update} />,
+    physical:   <StepPhysical data={data} update={update} prefilled={hasPrefilled} />,
     generating: <StepGenerating />,
   }
 
