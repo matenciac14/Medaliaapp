@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12)
     const isCoach = userRole === 'COACH'
 
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         name,
         email,
@@ -60,6 +60,17 @@ export async function POST(req: NextRequest) {
         } : {
           // Athlete: defaults de columnas son correctos (all true excepto coach)
         }),
+      },
+    })
+
+    // Crear UserSubscription siempre — evita NPE en cualquier lectura de .subscription.tier
+    await prisma.userSubscription.create({
+      data: {
+        userId:   newUser.id,
+        tier:     isCoach ? 'PRO' : 'TRIAL',
+        ...(isCoach
+          ? { coachTier: 'STARTER' }
+          : { trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }),
       },
     })
 

@@ -113,6 +113,15 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      // UserSubscription para el atleta B2B
+      await tx.userSubscription.create({
+        data: {
+          userId:      newAthlete.id,
+          tier:        'TRIAL',
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      })
+
       // Pre-fill HealthProfile if coach provided physical data
       if (heightCm && weightKg) {
         const dob = dateOfBirth ? new Date(dateOfBirth) : null

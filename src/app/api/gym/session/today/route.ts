@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   ])
 
   const hasCoach = !!coachRelation
-  const todayDay = assigned?.template.days[0] ?? null
+  const todayDay = assigned?.template?.days[0] ?? null
 
   // ─── AssignedWorkout path ───────────────────────────────────────────────────
   if (assigned && todayDay) {
