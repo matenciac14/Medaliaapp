@@ -1,0 +1,167 @@
+import { describe, it, expect } from 'vitest'
+import {
+  isPRSet,
+  isPRByName,
+  computeProgressionUpdates,
+  collectPRsByWeId,
+  collectPRsByName,
+  type WeToExIdMap,
+  type WeNameMap,
+  type WeSetsCountMap,
+  type MaxPerExercise,
+  type MaxPerFreeExerciseName,
+  type SetInput,
+} from './complete-gym-session.use-case'
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+const weExIdMap: WeToExIdMap = new Map([['we-1', 'ex-1'], ['we-2', 'ex-2']])
+const weNameMap: WeNameMap = new Map([['we-1', 'Sentadilla'], ['we-2', 'Press banca']])
+const maxPerExercise: MaxPerExercise = new Map([['ex-1', 100], ['ex-2', 80]])
+const maxPerFree: MaxPerFreeExerciseName = new Map([['Peso muerto', 120]])
+
+// ── isPRSet ───────────────────────────────────────────────────────────────────
+
+describe('isPRSet', () => {
+  it('returns true when weight > historical max', () => {
+    expect(isPRSet('we-1', 110, true, weExIdMap, maxPerExercise)).toBe(true)
+  })
+
+  it('returns false when weight equals historical max', () => {
+    expect(isPRSet('we-1', 100, true, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns false when weight < historical max', () => {
+    expect(isPRSet('we-1', 90, true, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns false when not completed', () => {
+    expect(isPRSet('we-1', 110, false, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns false when weightKg is null', () => {
+    expect(isPRSet('we-1', null, true, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns false when weId is undefined', () => {
+    expect(isPRSet(undefined, 110, true, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns false when weId not in map', () => {
+    expect(isPRSet('we-unknown', 200, true, weExIdMap, maxPerExercise)).toBe(false)
+  })
+
+  it('returns true when no historical max (new exercise)', () => {
+    const emptyMax: MaxPerExercise = new Map()
+    expect(isPRSet('we-1', 50, true, weExIdMap, emptyMax)).toBe(true)
+  })
+})
+
+// ── isPRByName ────────────────────────────────────────────────────────────────
+
+describe('isPRByName', () => {
+  it('returns true when weight > historical max', () => {
+    expect(isPRByName('Peso muerto', 130, true, maxPerFree)).toBe(true)
+  })
+
+  it('returns false when weight <= historical max', () => {
+    expect(isPRByName('Peso muerto', 120, true, maxPerFree)).toBe(false)
+  })
+
+  it('returns false when not completed', () => {
+    expect(isPRByName('Peso muerto', 130, false, maxPerFree)).toBe(false)
+  })
+
+  it('returns false when exerciseName is null', () => {
+    expect(isPRByName(null, 130, true, maxPerFree)).toBe(false)
+  })
+
+  it('returns true when exercise not seen before', () => {
+    expect(isPRByName('Ejercicio nuevo', 50, true, maxPerFree)).toBe(true)
+  })
+})
+
+// ── computeProgressionUpdates ─────────────────────────────────────────────────
+
+describe('computeProgressionUpdates', () => {
+  const weSetsCountMap: WeSetsCountMap = new Map([['we-1', 3]])
+
+  it('suggests max+2.5 when all sets completed', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+      { workoutExerciseId: 'we-1', setNumber: 2, weightKg: 102, repsCompleted: 8, completed: true },
+      { workoutExerciseId: 'we-1', setNumber: 3, weightKg: 100, repsCompleted: 8, completed: true },
+    ]
+    const updates = computeProgressionUpdates(sets, weSetsCountMap)
+    expect(updates).toHaveLength(1)
+    expect(updates[0].workoutExerciseId).toBe('we-1')
+    expect(updates[0].suggestedNextWeightKg).toBe(104.5) // 102 + 2.5
+  })
+
+  it('returns empty when not all sets completed', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+      { workoutExerciseId: 'we-1', setNumber: 2, weightKg: 100, repsCompleted: 0, completed: false },
+      { workoutExerciseId: 'we-1', setNumber: 3, weightKg: 100, repsCompleted: 8, completed: true },
+    ]
+    expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
+  })
+
+  it('returns empty when fewer sets than planned', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+    ]
+    expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
+  })
+
+  it('ignores sets without workoutExerciseId', () => {
+    const sets: SetInput[] = [
+      { exerciseName: 'Libre', setNumber: 1, weightKg: 50, repsCompleted: 10, completed: true },
+    ]
+    expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
+  })
+})
+
+// ── collectPRsByWeId ──────────────────────────────────────────────────────────
+
+describe('collectPRsByWeId', () => {
+  it('returns PRs for sets with weight > max', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 110, repsCompleted: 5, completed: true },
+      { workoutExerciseId: 'we-2', setNumber: 1, weightKg: 75, repsCompleted: 5, completed: true },
+    ]
+    const prs = collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)
+    expect(prs).toHaveLength(1)
+    expect(prs[0].exerciseName).toBe('Sentadilla')
+    expect(prs[0].weightKg).toBe(110)
+  })
+
+  it('returns empty when no PRs', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 90, repsCompleted: 5, completed: true },
+    ]
+    expect(collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)).toHaveLength(0)
+  })
+})
+
+// ── collectPRsByName ──────────────────────────────────────────────────────────
+
+describe('collectPRsByName', () => {
+  it('returns PRs for free-session sets with weight > max', () => {
+    const sets: SetInput[] = [
+      { exerciseName: 'Peso muerto', setNumber: 1, weightKg: 130, repsCompleted: 3, completed: true },
+      { exerciseName: 'Peso muerto', setNumber: 2, weightKg: 115, repsCompleted: 3, completed: true },
+    ]
+    const prs = collectPRsByName(sets, maxPerFree)
+    expect(prs).toHaveLength(1)
+    expect(prs[0].exerciseName).toBe('Peso muerto')
+    expect(prs[0].weightKg).toBe(130)
+  })
+
+  it('returns empty for uncompleted sets', () => {
+    const sets: SetInput[] = [
+      { exerciseName: 'Peso muerto', setNumber: 1, weightKg: 140, repsCompleted: 0, completed: false },
+    ]
+    expect(collectPRsByName(sets, maxPerFree)).toHaveLength(0)
+  })
+})

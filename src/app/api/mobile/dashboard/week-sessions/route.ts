@@ -23,21 +23,11 @@ export async function GET(req: NextRequest) {
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0') || 0
   const todayDow = jsToOurDow(new Date().getDay())
 
-  const [activePlan, assignedWorkout] = await Promise.all([
+  const [planMeta, assignedWorkout] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
-      include: {
-        weeks: {
-          include: {
-            sessions: {
-              where: { type: { not: 'DESCANSO' } },
-              include: { log: true },
-            },
-          },
-          orderBy: { weekNumber: 'asc' },
-        },
-      },
+      select: { id: true, startDate: true, totalWeeks: true },
     }),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
@@ -45,7 +35,7 @@ export async function GET(req: NextRequest) {
     }),
   ])
 
-  if (!activePlan) {
+  if (!planMeta) {
     // GYM user: return recurring weekly schedule from assignedWorkout
     const gymSessions = Array.from({ length: 7 }, (_, i) => ({
       dayIndex: i, type: null as string | null, done: false,
@@ -73,9 +63,24 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const currentWeek = getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks)
+  const currentWeek = getPlanWeekNumber(planMeta.startDate, planMeta.totalWeeks)
   const selectedWeekNum = currentWeek + weekOffset
-  const selectedWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
+
+  // PERF-02: fetch only the requested week instead of all plan weeks
+  const selectedWeek = await prisma.planWeek.findFirst({
+    where: { planId: planMeta.id, weekNumber: selectedWeekNum },
+    select: {
+      startDate: true,
+      endDate: true,
+      sessions: {
+        where: { type: { not: 'DESCANSO' } },
+        select: {
+          id: true, type: true, dayOfWeek: true, durationMin: true, zoneTarget: true,
+          log: { select: { id: true } },
+        },
+      },
+    },
+  })
 
   const weekSessions: {
     dayIndex: number
