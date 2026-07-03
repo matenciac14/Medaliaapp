@@ -131,11 +131,10 @@ export async function POST(req: NextRequest) {
       })
 
       if (!day.isRestDay && day.exercises?.length > 0) {
-        for (let j = 0; j < day.exercises.length; j++) {
-          const ex = day.exercises[j]
-          if (!ex.exerciseId) continue
-          await tx.workoutExercise.create({
-            data: {
+        const validExercises = day.exercises.filter(ex => ex.exerciseId)
+        if (validExercises.length > 0) {
+          await tx.workoutExercise.createMany({
+            data: validExercises.map((ex, j) => ({
               dayId: wDay.id,
               exerciseId: ex.exerciseId,
               order: ex.order ?? j,
@@ -144,7 +143,7 @@ export async function POST(req: NextRequest) {
               restSeconds: typeof ex.restSeconds === 'number' ? ex.restSeconds : null,
               setType: (ex.setType as SetType) ?? 'NORMAL',
               notes: ex.notes?.trim() || null,
-            },
+            })),
           })
         }
       }
