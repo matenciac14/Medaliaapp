@@ -230,7 +230,9 @@ async function syncWeight(
   const runtimeAge = profile?.dateOfBirth ? calcAge(profile.dateOfBirth) : (profile?.age ?? null)
   if (!profile?.heightCm || !runtimeAge) return
 
-  const prev = previousWeight ?? profile.weightKg ?? newWeight
+  // BUG-055: comparar siempre vs el peso base del perfil, no vs el check-in anterior
+  // Evita que ajustes de 0.3kg entre check-ins nunca actualicen el perfil base
+  const prev = profile.weightKg ?? newWeight
   if (Math.abs(newWeight - prev) < CHECK_IN_THRESHOLDS.WEIGHT_DELTA_MIN) return
 
   await healthProfileRepo.updateWeight(userId, newWeight)

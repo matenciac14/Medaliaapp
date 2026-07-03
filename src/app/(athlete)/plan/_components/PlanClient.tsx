@@ -1328,6 +1328,15 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
               onLogged={() => markLogged(selectedSession.id)}
               onEdited={(updates) => { applyEdit(selectedSession.id, updates) }}
             />
+          ) : !week ? (
+            // BUG-058: semana sin PlanWeek en DB ≠ día de descanso real
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
+              <span className="text-4xl">📋</span>
+              <div>
+                <p className="text-lg font-bold text-gray-700">Semana sin sesiones definidas</p>
+                <p className="text-sm text-gray-400 mt-0.5">Tu coach aún no ha planificado las sesiones de esta semana</p>
+              </div>
+            </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
               <span className="text-4xl">😴</span>
