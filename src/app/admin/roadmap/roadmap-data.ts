@@ -1252,15 +1252,15 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'ARCH-02 — CoachSpecialty: enum + columna DB + adaptación del panel del coach',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Coach declara especialidad al registrarse: RUNNING | GYM | NUTRITION | ALL. DB: enum CoachSpecialty + columna coachSpecialty en User (o CoachProfile). Panel: RUNNING → constructor sesiones con zonas FC/pace/distancia; GYM → constructor rutinas; NUTRITION → solo plantillas nutricionales; ALL → acceso completo. Requiere migración + actualizar /register (flujo COACH) + /coach/profile.',
+            note: 'enum CoachSpecialty { RUNNING | GYM | NUTRITION | ALL } + CoachProfile.primarySpecialty @default(ALL) + migration SQL 20260703200000. CoachSidebarClient filtra /coach/gym y /coach/nutrition según especialidad. PATCH /api/coach/profile guarda primarySpecialty. ProfileForm tiene selector de especialidad. Layout fetches desde DB (sin JWT change).',
           },
           {
             title: 'ARCH-03 — Vista calendario del atleta (estilo TrainingPeaks) como navegación principal del plan',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Atleta ve su plan en calendario navegable por fecha. Badge en días con sesión asignada. Click en día → detalle completo (tipo, zonas, distancia, nota del coach). Días pasados completados → check. Historial navegable hacia atrás. Sin plan del coach → calendario vacío con CTA. Aplica web (/plan) y mobile. Mobile-first. Puede coexistir con la vista de semana actual como vista alternativa.',
+            note: 'PlanCalendarView.tsx: navega semanas via /api/athlete/calendar, badges de color por tipo (sport/gym/freeRun), CheckCircle para días completados, panel de detalle al hacer click. Coexiste con PlanClient como vista principal en /plan. Mobile: pendiente sprint siguiente.',
           },
           {
             title: 'ARCH-04 — Sesión libre con tipado completo por disciplina para atleta sin plan',
