@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { parseUserConfig, DEFAULT_USER_CONFIG, getUserPlan, type UserPlan } from './user-config'
 
 // ---------------------------------------------------------------------------
@@ -87,22 +87,55 @@ describe('parseUserConfig', () => {
 })
 
 // ---------------------------------------------------------------------------
-// getUserPlan — siempre devuelve PRO hasta que se integre billing (Stripe/Wompi)
+// getUserPlan — comportamiento según BILLING_ENABLED
 // ---------------------------------------------------------------------------
 describe('getUserPlan', () => {
-  it('siempre devuelve PRO mientras no haya billing activo', () => {
+  const orig = process.env.BILLING_ENABLED
+
+  afterEach(() => {
+    if (orig === undefined) delete process.env.BILLING_ENABLED
+    else process.env.BILLING_ENABLED = orig
+  })
+
+  it('devuelve PRO cuando BILLING_ENABLED no está seteado (beta)', () => {
+    delete process.env.BILLING_ENABLED
     expect(getUserPlan(DEFAULT_USER_CONFIG.features)).toBe('PRO')
+  })
+
+  it('devuelve PRO cuando BILLING_ENABLED=false', () => {
+    process.env.BILLING_ENABLED = 'false'
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'FREE')).toBe('PRO')
+  })
+
+  it('devuelve TRIAL cuando BILLING_ENABLED=true y tier=TRIAL', () => {
+    process.env.BILLING_ENABLED = 'true'
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'TRIAL')).toBe('TRIAL')
+  })
+
+  it('devuelve PRO cuando BILLING_ENABLED=true y tier=PRO', () => {
+    process.env.BILLING_ENABLED = 'true'
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'PRO')).toBe('PRO')
+  })
+
+  it('devuelve FREE cuando BILLING_ENABLED=true y tier=FREE', () => {
+    process.env.BILLING_ENABLED = 'true'
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'FREE')).toBe('FREE')
+  })
+
+  it('devuelve FREE cuando BILLING_ENABLED=true y sin tier', () => {
+    process.env.BILLING_ENABLED = 'true'
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, null)).toBe('FREE')
   })
 })
 
 // ---------------------------------------------------------------------------
-// UserPlan — solo acepta FREE | PRO
+// UserPlan — valores válidos
 // ---------------------------------------------------------------------------
 describe('UserPlan — valores válidos', () => {
-  it('acepta FREE y PRO', () => {
-    const planes: UserPlan[] = ['FREE', 'PRO']
+  it('acepta FREE, PRO y TRIAL', () => {
+    const planes: UserPlan[] = ['FREE', 'PRO', 'TRIAL']
     planes.forEach(plan => {
-      expect(['FREE', 'PRO']).toContain(plan)
+      expect(['FREE', 'PRO', 'TRIAL']).toContain(plan)
     })
   })
 })

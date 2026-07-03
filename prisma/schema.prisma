@@ -593,7 +593,7 @@ model AssignedWorkout {
   isActive      Boolean   @default(true)
   notes         String?
 
-  template    WorkoutTemplate @relation(fields: [templateId], references: [id])
+  template    WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   athlete     User            @relation("AthleteAssignments", fields: [athleteId], references: [id])
   coach       User?           @relation("CoachAssignments", fields: [coachId], references: [id])
   gymSessions GymSession[]
