@@ -12,6 +12,7 @@ import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
+import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -32,6 +33,27 @@ export default async function NutritionPage() {
   const todayDate = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
   const todayDow = jsToOurDow(todayDate.getDay())
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
+
+  // Ajuste nutricional pendiente para hoy (date es @db.Date — comparar por día completo)
+  const todayStart = new Date(todayDate)
+  todayStart.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(todayDate)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(0, 0, 0, 0)
+  const pendingAdjustment = await prisma.pendingNutritionAdjustment.findFirst({
+    where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
+    select: {
+      id: true,
+      deltaKcal: true,
+      deltaCarbsG: true,
+      plannedKcal: true,
+      adjustedKcal: true,
+      plannedCarbsG: true,
+      adjustedCarbsG: true,
+      plannedIntensity: true,
+      actualIntensity: true,
+    },
+  })
 
   // Cargar datos en paralelo
   const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, healthProfile, allFoods] = await Promise.all([
@@ -152,6 +174,21 @@ export default async function NutritionPage() {
           {badge.emoji} {badge.label}
         </span>
       </div>
+
+      {/* Ajuste nutricional pendiente */}
+      {pendingAdjustment && (
+        <NutritionAdjustmentCard
+          id={pendingAdjustment.id}
+          deltaKcal={pendingAdjustment.deltaKcal}
+          deltaCarbsG={pendingAdjustment.deltaCarbsG}
+          plannedKcal={pendingAdjustment.plannedKcal}
+          adjustedKcal={pendingAdjustment.adjustedKcal}
+          plannedCarbsG={pendingAdjustment.plannedCarbsG}
+          adjustedCarbsG={pendingAdjustment.adjustedCarbsG}
+          plannedIntensity={pendingAdjustment.plannedIntensity}
+          actualIntensity={pendingAdjustment.actualIntensity}
+        />
+      )}
 
       {/* Contenido real — si hay meal plan completo */}
       {hasMealPlan && parsedMealPlan && nutritionPlan && (
