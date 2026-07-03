@@ -54,6 +54,7 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'Rate limiting brute-force en login web + mobile (10 intentos/min por cuenta)', done: true, note: 'rateLimitAsync con Upstash Redis.' },
       { title: 'Google OAuth: needsRoleSelection → /select-role → columnas DB por rol', done: true, note: 'POST /api/auth/set-role setea columnas individuales COACH/ATHLETE. session.update() recarga JWT.' },
       { title: 'Onboarding wizard: objetivo salud → ¿deporte? → físico → condición → generando', done: true, note: '5 pasos sin deporte, 7 con deporte. Flujos: RUNNING, STRENGTH, GYM B2C, FREE. Sin day-schedule forzado.' },
+      { title: 'Onboarding B2C mobile: UX nativa — progress indicator, contexto por campo, sensación de rapidez', done: false, priority: 'P2', note: 'El wizard de 2 pasos es correcto y no debe crecer. La mejora es en percepción: (1) barra de progreso "Paso 1 de 2", (2) subtexto explicativo por campo ("Tu peso nos permite calcular tu nutrición diaria"), (3) inputs nativos mobile (number pad, date picker), (4) animación de transición entre pasos. B2B ya tiene pre-llenado del coach — no aplica aquí.' },
       { title: 'Feature flags como columnas Boolean en User (sin JSON blob)', done: true, note: 'featurePlan|featureCheckin|featureNutrition|featureProgress|featureLog|featureCoach|featureGym. Sin User.config JSON.' },
       { title: 'Beta cerrada — acceso bloqueado hasta activación manual del admin', done: true, note: 'JWT campo activated. Middleware → /pending. Polling automático 10s.' },
       { title: 'COACH solo se crea desde admin — /register hardcodea role=ATHLETE', done: true, note: 'Sin selector de rol COACH en /register público.' },
@@ -157,6 +158,8 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           { title: 'Generador de plan determinista (4 templates: 5K, 10K, HM, Recomposición)', done: true, note: 'Sin AI. 100% determinista. generator.ts + templates.ts.' },
           { title: 'Calendario de plan (18 semanas, fases BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO)', done: true, note: 'Vista semanal en /plan.' },
+          { title: 'Eliminar RACE_HALF_MARATHON y RACE_MARATHON de selectores UI (/new-goal + coach plan builder)', done: false, priority: 'P1', note: 'Decisión de producto: scope actual es RUNNING (5K, 10K) + STRENGTH. HALF y MARATHON eliminados de UI igual que CYCLING/SWIMMING. GoalType enum y template HALF_MARATHON_18W se conservan en DB/código para compatibilidad con planes existentes. Solo remover de los arrays de opciones en NewGoalClient.tsx y el selector del constructor del coach.' },
+          { title: 'Recortar templates BODY_RECOMPOSITION y STRENGTH_TRAINING de 16 a 12 semanas', done: false, priority: 'P1', note: 'Decisión de producto: máximo 12 semanas por plan. Planes de 16W superan el ciclo natural de 3 meses. Recortar BODY_RECOMPOSITION_16W y STRENGTH_TRAINING_16W a 12 semanas en templates.ts — eliminar semanas 13-16. Planes existentes en DB no se tocan. Actualizar nota en vercel.json (ya no hay planes de 18W).' },
           { title: 'SessionIntensity enum (HIGH|MODERATE|LOW|REST) + getDailyNutritionTarget()', done: true, note: 'HIGH→targetKcalHard, MODERATE→easy, LOW→easy×0.88, REST→targetKcalRest. Fuente canónica: daily-target.ts.' },
           { title: 'Registro de sesión (log): RPE, FC, distancia, notas', done: true, note: 'POST /api/log/session. SessionLog con plannedSessionId.' },
           { title: 'Check-in semanal + motor de alertas deterministas', done: true, note: 'evaluateRules() puro. Triggers: fc_alta, sueno_bajo, rpe_excesivo, dolor_activo, estres_alto, motivacion_baja, energia_baja, perdida_peso_rap.' },
@@ -190,6 +193,8 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Récords personales visibles en /progress', done: true, note: 'Fix: progress/page.tsx consulta setLog.findMany({ where: { isPR:true, session:{athleteId} }, take:20 }). GymPR type exportado a ProgressClient. Sección "Récords Personales Gym" con ejercicio, weightKg, reps, fecha + badge PR. Tests TS pasan.' },
           { title: 'Offline support para gym session tracker (IndexedDB)', done: false, note: 'Guardar sets localmente y sincronizar al reconectar. Feature más crítica para mobile.' },
           { title: 'Responsive audit completo en móvil real (iPhone SE, iPhone 14, Samsung Galaxy)', done: false, note: 'Fix de padding/overflow por pantalla.' },
+          { title: 'Dashboard FREE — pantalla de bienvenida dedicada para atleta sin plan', done: false, priority: 'P1', note: 'Hoy el dashboard en modo FREE muestra cards vacías + CTA pequeño enterrado ("Comenzar →"). El atleta nuevo ve una app rota. Reemplazar por pantalla de bienvenida con 1 sola acción prominente: "Genera tu primer plan" → /new-goal. Una vez generado el plan, el dashboard se llena completamente (plan + sesión del día + nutrición). No mostrar cards vacías hasta que el atleta tenga plan activo. Verificado en código: buildFreeModeSummary() y CTA existen — el problema es de prominencia y diseño, no de lógica.' },
+          { title: 'Pantalla de celebración al completar plan + elección de siguiente paso', done: false, priority: 'P1', note: 'Hoy cuando el plan expira → status COMPLETED → banner pequeño "¿Lista tu próxima meta?". El atleta termina 12 semanas y no hay celebración. Implementar: pantalla de celebración con logro (nombre del plan, X/Y sesiones completadas, Z semanas). Dos opciones: (1) "Generar nueva meta" → /new-goal, (2) "Seguir entrenando libre" → dashboard FREE. lastCompletedPlanInfo ya captura sessionsLogged/sessionsTotal — solo falta la UI.' },
         ],
       },
       {
@@ -207,6 +212,12 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'buildStaticMealPlan: porciones en gramos reales usando Foods de DB', done: true, note: 'describeFood() con weighsFood=true: "Pollo — 200g (240 kcal, 34g prot)". Vegetales: "Brócoli — 80g (27 kcal)". Snacks: "Almendras — 30g (180 kcal, 5g prot)". Separador \\n cuando weighsFood=true. 9 tests nuevos en generate-meal-plan.test.ts.' },
           { title: 'UI: mostrar gramos y macros por porción en NutritionContent', done: true, note: 'Fix: Meal type extendido con items?: MealFoodItem[]. normalizeDay popula items desde formato coach (foodName+grams+macros). UI: si items disponibles → fila por alimento "Arroz · 150g · 220 kcal · P34g · C28g · G4g". Fallback a foods string para planes AI. Backward-compatible.' },
           { title: 'Atleta ve cuánto le falta para el target del día: número exacto (kcal + macros restantes)', done: true, priority: 'P2', note: 'TrackingSection.tsx: texto "Faltan X{unit}" bajo cada barra cuando val < tgt. Calculado en cliente desde tgt-val, sin query adicional.' },
+          { title: 'Nutrición: comidas guardadas (meal templates) — registrar comida habitual en 1 tap', done: false, priority: 'P1', note: 'El atleta guarda combos de alimentos frecuentes ("Desayuno habitual", "Almuerzo de trabajo") → los registra en 1 tap. En LATAM la gente come lo mismo repetidamente — alta retención con baja complejidad. DB: MealTemplate { userId, name, foods[] }. UI: sección "Mis comidas" antes del buscador de alimentos en FoodLogModal.' },
+          { title: 'Nutrición: resumen semanal de adherencia al plan nutricional', done: false, priority: 'P2', note: 'Mostrar al atleta cuántos días de la semana llegó a su meta de kcal ± 10%. "Esta semana cumpliste tu meta 5 de 7 días." Visible en /nutrition y en el dashboard. Si el atleta tiene coach → el dato también aparece en el panel del coach (Tab Nutrición). Fuente: FoodLog vs NutritionPlan.targetKcal* por día.' },
+          { title: 'Nutrición: recetas propias con cálculo automático de macros', done: false, priority: 'P2', note: 'Atleta crea su receta (nombre + ingredientes + porciones) → sistema calcula kcal/proteína/carbs/grasa totales → guarda como un alimento registrable en 1 tap. Reduce fricción de comidas caseras complejas. DB: Recipe { userId, name, ingredients: RecipeIngredient[], totalMacros, isPublic }.' },
+          { title: 'Nutrición: módulo de recetas comunitarias — usuarios contribuyen recetas con macros', done: false, priority: 'P3', note: 'Extensión del módulo de recetas propias. El atleta puede marcar su receta como pública → aparece en el catálogo comunitario. Otros atletas la encuentran, la usan y la registran en 1 tap. Crea efecto de red: más usuarios = mejor catálogo. Moderación básica (reportar receta). El sistema sugiere calorías por comida, no alimentos específicos — las recetas comunitarias son la capa que conecta targets con comida real LATAM.' },
+          { title: 'Nutrición: pantalla principal — barra de progreso diaria como elemento hero', done: false, priority: 'P1', note: 'La barra de kcal consumidas vs target debe ser el primer elemento visible en /nutrition — no enterrada. El atleta entra, ve en 2 segundos cómo va su día. Actualmente existe TrackingSection pero no tiene jerarquía visual suficiente. Mobile es el canal principal — priorizar ahí.' },
+          { title: 'Nutrición: coach propone ajuste nutricional en tiempo real — atleta acepta/rechaza', done: false, priority: 'P1', note: 'Coach ve FoodLog del atleta en tiempo real desde Tab Nutrición. Detecta déficit/exceso → propone ajuste ("Aumenta 30g de proteína esta semana"). Atleta recibe notificación in-app → acepta o rechaza. Acepta → target actualizado. Rechaza → plan base intacto. Patrón idéntico a PendingNutritionAdjustment del sistema — extender para propuestas manuales del coach. DB: NutritionSuggestion { coachId, athleteId, message, delta{kcal,protein,carbs,fat}, status: PENDING|ACCEPTED|REJECTED, createdAt }.' },
         ],
       },
       {
@@ -226,6 +237,12 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Carga de entrenamiento acumulada: TSS semanal y tendencia ATL/CTL (forma física estimada)', done: false, priority: 'P3', note: 'TSS = (durationH × avgHR/hrMax)² × 100. ATL = promedio 7d, CTL = promedio 42d. Gráfica en /progress. Requiere hrMax y FC registrada en SessionLog.' },
           { title: 'Proyección al objetivo: "A este ritmo llegas a tu meta el DD/MM"', done: false, priority: 'P3', note: 'Basado en adherencia últimas 4 semanas y TrainingPlan.totalWeeks. Cálculo lineal. Si adherencia < 70% → proyección en rojo con sugerencia de ajuste.' },
           { title: 'Editar sesión ya registrada (edit post-log): corregir RPE, distancia o notas después de guardar', done: true, priority: 'P2', note: 'EditRunButton.tsx (client island) embebido en cada RunCard del historial. Muestra "✏️ Editar" footer → inline form (duración, distancia, RPE grid 1-10, notas) → PATCH /api/log/session/[logId] → router.refresh(). src/app/(athlete)/log/history/_components/EditRunButton.tsx.' },
+          { title: '/pending mejorado: progreso visual + CTA log libre + notificación al coach a 48h', done: false, priority: 'P1', note: 'Rediseñar /pending de pantalla estática a experiencia guiada: (1) pasos visuales "Registro ✅ → Perfil ✅ → Esperando coach ⏳", (2) CTA "Registrar sesión de hoy" → log libre mientras espera, (3) cron/webhook que detecta atleta en pending +48h sin activación → push + email al coach "Carlos lleva 2 días esperando. Actívalo en 1 clic →". El historial libre acumulado en pending queda disponible cuando el coach activa.' },
+          { title: 'Check-in: pantalla de resultado post-envío con ajustes aplicados', done: false, priority: 'P1', note: 'Hoy el atleta llena el check-in y vuelve al dashboard sin feedback. processCheckIn ya devuelve triggers[] y adjustments[] — solo falta la UI de resultado. Mostrar: (1) qué se detectó (RPE alto, energía baja, etc.), (2) qué cambió en el plan (volumen -15%, zona bajada), (3) recomendación de texto. Si no hubo ajustes: "Todo en orden — sigue con el plan como está." Cierra el loop atleta→sistema→atleta y justifica el esfuerzo del formulario.' },
+          { title: 'Centro de notificaciones in-app (campana en navbar)', done: false, priority: 'P2', note: 'Canal principal de notificaciones dentro de la app. Items: sesión del día, check-in disponible, mensaje del coach, plan ajustado, logro desbloqueado, plan asignado. Badge con count no leídas. Modelo Notification { userId, type, title, body, read, createdAt }. Push notifications para cuando la app no está abierta. Email solo para re-engagement (+3 días sin abrir la app).' },
+          { title: 'Recompensas Capa 1 — Racha de entrenamiento en dashboard', done: false, priority: 'P2', note: 'Días consecutivos con actividad registrada (SessionLog o GymSession). Visible siempre en el dashboard del atleta. Se rompe si no hay actividad en 48h. Al romper → push notification "¿Volvemos?" al día siguiente. Query: COUNT días distintos con actividad en ventana consecutiva hacia atrás desde hoy.' },
+          { title: 'Recompensas Capa 2 — Hitos de consistencia compartibles', done: false, priority: 'P2', note: 'Milestones: 10 check-ins, 50 sesiones, 3 meses activo, plan completado. Al alcanzar un hito → pantalla de celebración con imagen compartible (WhatsApp/Instagram). Imagen generada server-side con OG image o canvas. DB: tabla Achievement { userId, type, unlockedAt }.' },
+          { title: 'Recompensas Capa 3 — PR gym con celebración prominente (web + mobile)', done: false, priority: 'P2', note: 'SetLog.isPR ya se detecta en gym/session/complete. Hoy hay banner básico. Mejorar: animación de celebración en mobile (confetti o similar), datos del PR (ejercicio, peso, reps, fecha anterior), opción de compartir. Mobile es el canal principal — priorizar ahí.' },
         ],
       },
     ],
@@ -267,6 +284,12 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Coach pre-llena perfil del atleta al crearlo: peso, altura, objetivo, sport — atleta solo confirma y pone contraseña', done: true, priority: 'P1', note: 'POST /api/coach/clients/create acepta opcionales: heightCm, weightKg, dateOfBirth, gender, experienceLevel. Si heightCm+weightKg presentes → tx.healthProfile.create(). Formulario /coach/clients/new tiene sección colapsable "Datos físicos". Derivan sport+goal a HealthProfile.sport/sportGoal.' },
           { title: 'Vista de atletas pendientes de onboarding en /coach/athletes — badge contador + botón reenviar link', done: true, priority: 'P1', note: 'Query paralela en /coach/athletes/page.tsx filtra coachAthletes donde athlete.onboardingCompleted=false. PendingAthletesSection (client component) muestra nombre, email, días desde invitación y botón "Copiar link" que llama GET /api/coach/athlete/[id]/invite-link (JWT 7d).' },
           { title: 'Onboarding mínimo para atletas B2B: nombre + contraseña → adentro, perfil completa después', done: true, priority: 'P2', note: 'GET /api/onboarding/prefilled devuelve HealthProfile del atleta si existe. OnboardingPage llama el endpoint en useEffect si session.user.isB2B. Pre-popula age/heightCm/weightKg/gender/experienceLevel en el estado del wizard. StepPhysical muestra banner azul "Tu entrenador ya registró estos datos" cuando hasPrefilled=true.' },
+          { title: 'Dashboard coach: CTA "Copiar link de invitación" prominente junto a "+ Nuevo asesorado"', done: false, priority: 'P2', note: 'El invite link es el flujo principal de adquisición de atletas. Hoy el CTA visible es "+ Nuevo asesorado" (creación manual). Agregar botón "Copiar link" igual de visible en el header del dashboard.' },
+          { title: 'Dashboard coach: alertas con tipo diferenciado (fatiga, dolor, estrés, motivación baja)', done: false, priority: 'P2', note: 'Hoy todas las alertas muestran "Carga alta". Mostrar el tipo real del trigger: DOLOR, RPE_ALTO, SUENO_BAJO, MOTIVACION_BAJA, etc. — mismo label que genera evaluateCheckInRules().' },
+          { title: 'Dashboard coach: widget "Atletas sin plan asignado" y "Pendientes de onboarding"', done: false, priority: 'P2', note: 'Coach crea atletas pero puede olvidar asignarles plan o que estén en /pending. Agregar sección o badge en dashboard que muestre ambos conteos con link directo.' },
+          { title: 'Dashboard coach: pagos vencidos visibles en dashboard principal', done: false, priority: 'P2', note: 'Si el coach tiene pagos OVERDUE (dueDate < now && PENDING), deben aparecer en el dashboard como alerta. Hoy solo están visibles en /coach/finanzas.' },
+          { title: 'Dashboard coach: fix "Adherencia promedio 0%" cuando hay check-ins completados', done: false, priority: 'P1', note: 'KPI "Adherencia promedio" muestra 0% aunque check-ins semana = 5/5. Probable causa: adherencia al plan de entrenamiento (SessionLog) vs adherencia de check-in son métricas distintas y la primera no tiene datos. Clarificar label y fuente de datos.' },
+          { title: 'Dashboard coach: widget "Distribución deporte" sin datos — conectar o eliminar', done: false, priority: 'P3', note: 'Widget muestra "Sin datos de deporte". Si el query no devuelve datos con la data real de producción, eliminar el widget o conectar correctamente a CoachAthlete → User.sport.' },
         ],
       },
       {
@@ -491,10 +514,11 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'EAS Build: perfiles dev/preview/production + publicar en App Store y Google Play', done: false, note: 'Apple Developer ($99/año) + Google Play ($25). Assets: icono 1024x1024, screenshots, Privacy Policy en medaliq.com/privacy.' },
           { title: 'OTA Updates con EAS Update para hotfixes post-publicación', done: false, note: 'eas update --branch production. Cambios JS/UI sin re-review de store.' },
           { title: 'Monorepo pnpm (apps/web + apps/mobile + packages/shared-types)', done: false, note: 'Hoy web y mobile tienen tipos duplicados. pnpm-workspace.yaml cuando sea prioritario.' },
-          { title: 'BLE: conectar HRM (Polar, Wahoo, Garmin) — FC en tiempo real durante sesión', done: false, note: 'react-native-ble-plx. UUID 0x180D (Heart Rate). Requiere expo bare workflow o config plugin.' },
-          { title: 'Apple HealthKit + Google Health Connect (actividades, FC, sueño)', done: false, note: 'Requiere dispositivo real. Sync desde cualquier wearable.' },
-          { title: 'Strava OAuth: importar actividades completadas → auto-completa SessionLog', done: false, note: 'OAuth in-app + polling de actividades.' },
-          { title: 'Garmin Connect API: HRV, Training Status, sueño', done: false, note: 'Muy popular en LatAm gyms. OAuth + webhook.' },
+          { title: 'INT-01 — Apple HealthKit + Google Health Connect: sync automático de actividades, FC, sueño y VO2max', done: false, priority: 'P1', note: 'Mayor impacto/esfuerzo: cualquier wearable que sincronice con el teléfono alimenta Medaliq automáticamente. iOS: expo-health o react-native-health (investigar si requiere bare workflow para VO2max/HRV). Android: react-native-health-connect (Android 9+). Datos: workouts → auto-completa SessionLog, FC en reposo → pre-rellena check-in, VO2max (Apple Watch) → HealthProfile.vo2maxEstimate, HRV → WeeklyCheckIn.hrvMs. Requiere campos nuevos en SessionLog: hrAvg, hrMax, caloriesBurned, avgPaceSecPerKm, dataSource, externalId. Ver integraciones.md.' },
+          { title: 'INT-02 — Strava OAuth: importar actividades completadas → auto-completa SessionLog', done: false, priority: 'P1', note: 'API pública, OAuth 2.0, no requiere aprobación especial. Webhook para recibir actividades nuevas en tiempo real. Rate limit: 100 req/15min OK. Datos: tipo, distancia, duración, pace, HR media/máxima, splits por km. Muchos corredores ya tienen Strava — reduce fricción de registro a 0 para running. Ver integraciones.md.' },
+          { title: 'INT-03 — Garmin Connect API: VO2max, HRV, Training Status, sueño, Body Battery', done: false, priority: 'P2', note: 'Más popular entre corredores serios en LatAm. Los datos más ricos del mercado: VO2max, HRV, Training Status (productivo/sobrecarga), Body Battery. REQUIERE INVESTIGACIÓN: partnership con Garmin Health API — proceso de aprobación y tiempo estimado desconocidos. Alternativa MVP: importar .fit files manualmente. Ver integraciones.md.' },
+          { title: 'INT-04 — BLE HRM: conectar monitor de FC por Bluetooth durante sesión (Polar H10, Wahoo TICKR)', done: false, priority: 'P2', note: 'FC en tiempo real durante entrenamiento — visual de zona actual en gym tracker mobile. react-native-ble-plx, UUID 0x180D (Heart Rate Service). Atletas sin smartwatch pero con banda de FC (~$50-80 USD). Requiere bare workflow o config plugin. FC media/máxima → auto-guardada en SessionLog.' },
+          { title: 'INT-05 — Schema DB: campos nuevos para datos de wearables en SessionLog y HealthProfile', done: false, priority: 'P1', note: 'Prerequisito para cualquier integración. Campos: SessionLog.hrAvg Int?, SessionLog.hrMax Int?, SessionLog.caloriesBurned Int?, SessionLog.avgPaceSecPerKm Int?, SessionLog.dataSource String? (MANUAL/STRAVA/GARMIN/HEALTHKIT), SessionLog.externalId String?. HealthProfile.vo2maxEstimate Float?. WeeklyCheckIn.hrvMs Float?. Una migración limpia antes de la primera integración.' },
         ],
       },
     ],
@@ -590,6 +614,49 @@ export const GROUPS: RoadmapGroup[] = [
         done: false,
         priority: 'P3',
         note: 'STANDBY — AI deshabilitado intencionalmente (AI_ONBOARDING_ENABLED = false). Activar solo cuando AI esté habilitado en producción.',
+      },
+    ],
+  },
+
+  // ─── PLATAFORMA — ADMIN + MARKETPLACE + NOTIFICACIONES ──────────────────────
+
+  {
+    id: 'plataforma',
+    label: 'Plataforma — Admin, Marketplace & Notificaciones',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#c4b5fd',
+    phases: [
+      {
+        id: 'plataforma-admin',
+        label: 'Admin — Gestión y BI',
+        period: 'P1-P2',
+        items: [
+          { title: 'PLT-01 — Estados de usuario: ACTIVE / SUSPENDED / BLOCKED / DELETED en DB y admin panel', done: false, priority: 'P1', note: 'Hoy solo existe activación vía feature flags. Agregar enum UserStatus { ACTIVE, SUSPENDED, BLOCKED, DELETED } en User model. SUSPENDED: temporal (pago), BLOCKED: por admin (términos), DELETED: soft-delete con anonimización de datos. Admin puede cambiar estado desde /admin/users/[id]. Middleware chequea status !== ACTIVE → 401. Migración + endpoints + UI en admin.' },
+          { title: 'PLT-02 — Distribución geográfica de usuarios en /admin/metrics', done: false, priority: 'P2', note: 'User.timezone ya existe (ej. "America/Bogota"). Derivar país/ciudad desde timezone. Mostrar mapa de calor o tabla: país → coaches activos / atletas. Identifica dónde está la tracción para priorizar marketing y soporte. Sin necesidad de campo country explícito — timezone es suficiente para LatAm.' },
+          { title: 'PLT-03 — Atletas sin coach (B2C tracker puro) como segmento visible en /admin/metrics', done: false, priority: 'P2', note: 'Hoy solo se ven coaches y atletas totales. Agregar: atletas con coach activo vs atletas B2C sin coach. Este segmento B2C puro es importante — son usuarios del producto que podrían ser futuros B2B. Query: User[ATHLETE] WHERE NOT EXISTS CoachAthlete[ACTIVE].' },
+          { title: 'PLT-04 — Configuración de AI en /admin: modelo, guardrails, kill switch', done: false, priority: 'P3', note: 'Cuando AI-Coach se integre, el admin necesita: (1) selección de modelo Anthropic, (2) edición de system prompt y guardrails desde UI, (3) toggle por tier (¿qué atletas tienen acceso?), (4) métricas de uso: tokens/semana y costo estimado, (5) kill switch para deshabilitar sin deploy. Implementar solo cuando AI esté activa. Requiere SystemConfig en DB para persistir config.' },
+        ],
+      },
+      {
+        id: 'plataforma-marketplace',
+        label: 'Marketplace — Directorio de coaches',
+        period: 'P2 — cuando 20+ coaches activos',
+        items: [
+          { title: 'PLT-05 — Abrir /coaches con filtros: especialidad, ciudad, nivel, precio referencial', done: false, priority: 'P2', note: 'Hoy /coaches existe en código pero está oculto de la navegación. Condición de apertura: 20+ coaches activos con perfil completo. Filtros: CoachSpecialty (RUNNING/GYM/NUTRITION/ALL), ciudad derivada de timezone, precio referencial (rango). Ordenamiento: atletas activos DESC. Requiere CoachSpecialty en DB (ARCH-02).' },
+          { title: 'PLT-06 — Botón "Contactar coach" en /p/[slug] con WhatsApp como canal primario', done: false, priority: 'P2', note: 'Flujo marketplace: atleta descubre coach → click "Contactar" → abre WhatsApp del coach (CoachProfile.whatsapp) con mensaje pre-redactado. Acuerdan términos fuera de la plataforma. Coach activa atleta desde su panel. Medaliq NO intermedia el pago — 0% fee es permanente. El botón es de contacto, no de pago.' },
+        ],
+      },
+      {
+        id: 'plataforma-notificaciones',
+        label: 'Notificaciones — Centro in-app y crons',
+        period: 'P1-P2',
+        items: [
+          { title: 'PLT-07 — Centro de notificaciones in-app (campana + feed de eventos)', done: false, priority: 'P1', note: 'Modelo Notification { userId, type, title, body, read, createdAt, metadata }. Feed en sidebar con badge de no leídas. Tipos: SESION_HOY, CHECKIN_DISPONIBLE, PLAN_ACTUALIZADO, MENSAJE_COACH, AJUSTE_NUTRICIONAL, LOGRO, PROPUESTA_COACH. El centro in-app es el canal primario — push y email son fallback cuando el atleta no está en la app.' },
+          { title: 'PLT-08 — Cron: atleta sin actividad 3+ días → push + email re-engagement', done: false, priority: 'P2', note: 'Query: User[ATHLETE] WHERE max(SessionLog.completedAt) < now()-3d AND onboardingCompleted=true. Push: "Te extrañamos — tu plan te espera". Email: re-engagement con resumen de última sesión y CTA. Frecuencia máxima: 1/semana por usuario. No enviar si ya recibió otro email ese día.' },
+          { title: 'PLT-09 — Cron: racha en riesgo → push al atleta (1 día sin actividad)', done: false, priority: 'P2', note: 'Atleta que registró actividad ayer pero no hoy → push "¿Hoy no entrenas? Tu racha de N días sigue activa." Solo si el atleta tiene racha activa ≥ 3 días. Query: users con SessionLog ayer pero no hoy. Hora: 20:00 timezone del atleta.' },
+          { title: 'PLT-10 — Cron: atleta en /pending 48h → push + email al coach', done: false, priority: 'P1', note: 'Ya documentado en atleta.md. Query: CoachAthlete[ACTIVE] WHERE User.onboardingCompleted=true AND User.featurePlan=false AND coachAthlete.createdAt < now()-48h. Notificación al coach: "Miguel Atencia completó su perfil hace 2 días. Actívalo para que pueda empezar." Push + email al coach.' },
+        ],
       },
     ],
   },
@@ -690,6 +757,22 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           { title: 'Offline support para gym session tracker (AsyncStorage con sync al reconectar)', done: false, priority: 'P1', note: 'Guardar sets localmente y sincronizar al reconectar. Crítico para gyms sin WiFi o cobertura. AsyncStorage → cola de sync → POST /api/gym/session/complete al volver online. Feature más crítica para mobile gym.' },
           { title: 'Apple Watch companion: iniciar sesión de fuerza y registrar sets desde la muñeca', done: false, priority: 'P3', note: 'watchOS extension con WatchConnectivity. Ejercicio actual + timer descanso + conteo de sets en la muñeca. Sync directo al teléfono. Requiere expo bare workflow + native module.' },
+        ],
+      },
+
+      // ── EJERCICIOS — PRODUCTO ────────────────────────────────────────────────
+      {
+        id: 'fuerza-producto',
+        label: 'Módulo Ejercicios — producto',
+        period: 'P1-P2',
+        items: [
+          { title: 'EJ-01 — Renombrar "Gym" → "Ejercicios" en UI (nav, labels, títulos)', done: false, priority: 'P2', note: 'Solo renombrado de UI/producto — NO tocar código, DB ni feature flags (featureGym, GymSession, AssignedWorkout se mantienen). Actualizar: sidebar atleta, sidebar coach, títulos de página, botones de registro de sesión. Validar que ningún string de UI exponga los nombres técnicos.' },
+          { title: 'EJ-02 — Atleta crea su propia rutina (self-coach path sin coach asignado)', done: false, priority: 'P2', note: 'Atleta B2C puede crear una rutina estructurada desde la app: define días de entrenamiento, agrega ejercicios por día desde la biblioteca. Rutina guardada como WorkoutTemplate del atleta (isPublic=false, createdBy=athleteId). Si coach le asigna rutina después → la del coach tiene prioridad y reemplaza la del atleta. API: POST /api/athlete/routines + GET/PATCH/DELETE. UI: /gym/routines (atleta).' },
+          { title: 'EJ-03 — Selector de disciplina en sesión libre: Gym / Running / Fortalecimiento / Descanso', done: false, priority: 'P1', note: 'Cuando el atleta registra una sesión libre, debe elegir la disciplina primero. Gym: ejercicios + sets + cargas. Running: distancia + duración + FC + pace + RPE. Fortalecimiento funcional: ejercicios sin carga fija. Descanso/Off: sin campos de actividad, solo nota opcional. Cada disciplina carga su propio formulario. Aplica web y mobile.' },
+          { title: 'EJ-04 — Día off/descanso como sesión registrada que cuenta para métricas', done: false, priority: 'P2', note: 'El atleta puede registrar un día de descanso deliberado (SessionType: DESCANSO). Este registro aparece en el historial y cuenta como "día activo en la app" para métricas de racha y consistencia — no como sesión de entrenamiento completada. Diferencia para el coach: día off registrado = atleta siguió el plan de recuperación; sin registro = sin información.' },
+          { title: 'EJ-05 — Métricas multi-período en /progress: mensual, trimestral, semestral, anual', done: false, priority: 'P2', note: 'Hoy solo existe vista semanal en dashboard y /progress. Agregar: (1) mensual: volumen total, sesiones, PRs del mes. (2) trimestral: curva de fuerza y tendencia de adherencia en 12 semanas. (3) semestral: progresión de composición corporal (peso + medidas del check-in). (4) anual: hitos y logros del año. Aplica web y mobile /progress.' },
+          { title: 'EJ-06 — Benchmarks UI para el atleta: registrar y ver sus propios tests de rendimiento', done: false, priority: 'P3', note: 'PerformanceBenchmark ya existe en DB (1RM_SQUAT, 1RM_BENCH, 5K_TIME, etc.). El atleta los registra desde /progress o /gym después de un test formal. Los ve como historial con fecha y valor. El coach puede verlos en Tab Rendimiento del perfil del atleta. Endpoints ya existen en /api/mobile/progress/benchmarks — falta UI atleta en web.' },
+          { title: 'EJ-07 — Panel de adherencia del plan por atleta en coach dashboard', done: false, priority: 'P1', note: 'Coach entra al perfil del atleta y ve: % de sesiones completadas vs asignadas esta semana y últimas 4 semanas. Badge semafórico (verde >80%, amarillo 60-80%, rojo <60%). Esta es la señal de gestión principal del coach — no alertas realtime. Tab Adherencia en AthleteDetailClient. Query: PlannedSession.log vs total por período.' },
         ],
       },
     ],
@@ -860,6 +943,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-036 — NutritionPlan lazy-init en web pero no en mobile: estado diverge entre canales', done: true, priority: 'P3', note: 'Fix: lazy-init con calculateTDEE+calculateMacros+upsert añadido a api/mobile/nutrition/route.ts. Mismo bloque que nutrition/page.tsx para paridad entre canales.' },
           { title: 'BUG-037 — volumeKm ausente en /api/mobile/progress: semanas sin dato de volumen en mobile', done: true, priority: 'P3', note: 'Fix: volumeKm: w.sessions.reduce((acc, s) => acc + (s.log?.distanceKm ?? 0), 0) añadido al map de semanas en api/mobile/progress/route.ts.' },
           { title: 'INFO-001 — Tres implementaciones del cálculo de macros por tipo de día (riesgo de divergencia futura)', done: true, priority: 'P3', note: 'Fix: api/mobile/nutrition/route.ts reemplazado cálculo inline por getDailyNutritionTarget(sessionIntensity, nutritionPlan). Fuente canónica única usada en mobile, web y summary.' },
+          { title: 'BUG-038 — Ajuste nutricional pendiente solo visible y accionable en mobile, no en web', done: false, priority: 'P2', note: 'Los endpoints de aceptar/rechazar PendingNutritionAdjustment solo existen en /api/mobile/nutrition/adjustment/[id]/accept|reject. La web /nutrition no muestra pendingAdjustment ni tiene UI para aceptar/rechazar. Atleta que usa web nunca ve ajustes pendientes. Fix: (1) crear endpoints web /api/nutrition/adjustment/[id]/accept|reject, (2) añadir card de ajuste pendiente en nutrition/page.tsx con botones Aceptar/Rechazar.' },
         ],
       },
 
@@ -877,6 +961,53 @@ export const GROUPS: RoadmapGroup[] = [
         ],
       },
 
+    ],
+  },
+
+  // ── ARQUITECTURA DE PLANES — PIVOT PRODUCTO ────────────────────────────────
+  {
+    id: 'arch-planes',
+    title: 'Arquitectura de Planes — Pivot',
+    description: 'Redefinición del modelo de planes: coach asigna, sistema NO auto-genera. Incluye especialidades de coach y vista calendario.',
+    items: [],
+    phases: [
+      {
+        id: 'arch-planes-pivot',
+        label: 'Pivot: planes del coach, no del sistema',
+        period: 'P1 — Próxima iteración',
+        items: [
+          {
+            title: 'ARCH-01 — Deprecar /new-goal y generación automática de planes desde templates',
+            done: false,
+            priority: 'P1',
+            note: 'El sistema NO debe generar planes automáticamente. Los planes vienen del coach (B2B) o del AI-Coach (futuro). Impacto: (1) eliminar /new-goal de la navegación atleta, (2) marcar generate-plan.use-case.ts como legacy/deprecado, (3) atleta B2C sin plan → modo sesiones libres con CTA contextual. Los planes existentes en DB se conservan intactos. Archivos: src/app/(athlete)/new-goal/ + src/domain/plan/generate-plan.use-case.ts + src/lib/plan/templates.ts.',
+          },
+          {
+            title: 'ARCH-02 — CoachSpecialty: enum + columna DB + adaptación del panel del coach',
+            done: false,
+            priority: 'P1',
+            note: 'Coach declara especialidad al registrarse: RUNNING | GYM | NUTRITION | ALL. DB: enum CoachSpecialty + columna coachSpecialty en User (o CoachProfile). Panel: RUNNING → constructor sesiones con zonas FC/pace/distancia; GYM → constructor rutinas; NUTRITION → solo plantillas nutricionales; ALL → acceso completo. Requiere migración + actualizar /register (flujo COACH) + /coach/profile.',
+          },
+          {
+            title: 'ARCH-03 — Vista calendario del atleta (estilo TrainingPeaks) como navegación principal del plan',
+            done: false,
+            priority: 'P1',
+            note: 'Atleta ve su plan en calendario navegable por fecha. Badge en días con sesión asignada. Click en día → detalle completo (tipo, zonas, distancia, nota del coach). Días pasados completados → check. Historial navegable hacia atrás. Sin plan del coach → calendario vacío con CTA. Aplica web (/plan) y mobile. Mobile-first. Puede coexistir con la vista de semana actual como vista alternativa.',
+          },
+          {
+            title: 'ARCH-04 — Sesión libre con tipado completo por disciplina para atleta sin plan',
+            done: false,
+            priority: 'P2',
+            note: 'Running libre: tipos RODAJE_Z2/FARTLEK/TEMPO/INTERVALOS/TIRADA_LARGA/OTRO con distancia, duración, FC media/máxima, pace, RPE. Gym libre: FUERZA con ejercicios/series/cargas + PR detection activa. Sesiones libres visibles en calendario del atleta y en panel del coach (sección "Sesiones libres"). El registro libre ya existe parcialmente — mejorar tipado y variaciones disponibles en web y mobile.',
+          },
+          {
+            title: 'ARCH-05 — Eliminar RACE_HALF_MARATHON y RACE_MARATHON de todos los selectores UI',
+            done: false,
+            priority: 'P1',
+            note: 'Scope UI: solo RUNNING (5K, 10K) + STRENGTH. HALF_MARATHON y MARATHON eliminados de onboarding, coach panel y cualquier selector de GoalType. Schema DB intacto — GoalType enum no se toca. Planes existentes intactos. Máximo plan = 12 semanas.',
+          },
+        ],
+      },
     ],
   },
 ]
