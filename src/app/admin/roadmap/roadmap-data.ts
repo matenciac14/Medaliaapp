@@ -158,7 +158,7 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           { title: 'Generador de plan determinista (4 templates: 5K, 10K, HM, Recomposición)', done: true, note: 'Sin AI. 100% determinista. generator.ts + templates.ts.' },
           { title: 'Calendario de plan (18 semanas, fases BASE→DESARROLLO→ESPECÍFICO→AFINAMIENTO)', done: true, note: 'Vista semanal en /plan.' },
-          { title: 'Eliminar RACE_HALF_MARATHON y RACE_MARATHON de selectores UI (/new-goal + coach plan builder)', done: false, priority: 'P1', note: 'Decisión de producto: scope actual es RUNNING (5K, 10K) + STRENGTH. HALF y MARATHON eliminados de UI igual que CYCLING/SWIMMING. GoalType enum y template HALF_MARATHON_18W se conservan en DB/código para compatibilidad con planes existentes. Solo remover de los arrays de opciones en NewGoalClient.tsx y el selector del constructor del coach.' },
+          { title: 'Eliminar RACE_HALF_MARATHON y RACE_MARATHON de selectores UI (/new-goal + coach plan builder)', done: true, priority: 'P1', note: 'Eliminados de NewGoalClient.tsx, coach/clients/new/page.tsx y AthleteDetailClient.tsx (TEMPLATE_PREVIEW + select + estado inicial). GoalType enum y templates en DB intactos.' },
           { title: 'Recortar templates BODY_RECOMPOSITION y STRENGTH_TRAINING de 16 a 12 semanas', done: false, priority: 'P1', note: 'Decisión de producto: máximo 12 semanas por plan. Planes de 16W superan el ciclo natural de 3 meses. Recortar BODY_RECOMPOSITION_16W y STRENGTH_TRAINING_16W a 12 semanas en templates.ts — eliminar semanas 13-16. Planes existentes en DB no se tocan. Actualizar nota en vercel.json (ya no hay planes de 18W).' },
           { title: 'SessionIntensity enum (HIGH|MODERATE|LOW|REST) + getDailyNutritionTarget()', done: true, note: 'HIGH→targetKcalHard, MODERATE→easy, LOW→easy×0.88, REST→targetKcalRest. Fuente canónica: daily-target.ts.' },
           { title: 'Registro de sesión (log): RPE, FC, distancia, notas', done: true, note: 'POST /api/log/session. SessionLog con plannedSessionId.' },
@@ -1003,9 +1003,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'ARCH-05 — Eliminar RACE_HALF_MARATHON y RACE_MARATHON de todos los selectores UI',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Scope UI: solo RUNNING (5K, 10K) + STRENGTH. HALF_MARATHON y MARATHON eliminados de onboarding, coach panel y cualquier selector de GoalType. Schema DB intacto — GoalType enum no se toca. Planes existentes intactos. Máximo plan = 12 semanas.',
+            note: 'Eliminados de NewGoalClient.tsx, coach/clients/new/page.tsx y AthleteDetailClient.tsx. Schema DB intacto. Planes existentes intactos.',
           },
         ],
       },
