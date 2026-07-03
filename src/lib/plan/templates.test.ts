@@ -123,20 +123,20 @@ describe('getTemplate — routing por goalType', () => {
     expect(t).toBe(getTemplate('RACE_HALF_MARATHON')) // mismo objeto
   })
 
-  it('BODY_RECOMPOSITION → 16 semanas', () => {
-    expect(getTemplate('BODY_RECOMPOSITION')!.totalWeeks).toBe(16)
+  it('BODY_RECOMPOSITION → 12 semanas (recortado de 16W para MVP)', () => {
+    expect(getTemplate('BODY_RECOMPOSITION')!.totalWeeks).toBe(12)
   })
 
-  it('STRENGTH_TRAINING → 16 semanas', () => {
-    expect(getTemplate('STRENGTH_TRAINING')!.totalWeeks).toBe(16)
+  it('STRENGTH_TRAINING → 12 semanas (recortado de 16W para MVP)', () => {
+    expect(getTemplate('STRENGTH_TRAINING')!.totalWeeks).toBe(12)
   })
 
-  it('GENERAL_FITNESS → 16 semanas (fallback)', () => {
-    expect(getTemplate('GENERAL_FITNESS')!.totalWeeks).toBe(16)
+  it('GENERAL_FITNESS → 12 semanas (fallback, recortado)', () => {
+    expect(getTemplate('GENERAL_FITNESS')!.totalWeeks).toBe(12)
   })
 
-  it('WEIGHT_LOSS → 16 semanas (fallback)', () => {
-    expect(getTemplate('WEIGHT_LOSS')!.totalWeeks).toBe(16)
+  it('WEIGHT_LOSS → 12 semanas (fallback, recortado)', () => {
+    expect(getTemplate('WEIGHT_LOSS')!.totalWeeks).toBe(12)
   })
 
   it('goalType desconocido → null', () => {
@@ -219,8 +219,8 @@ describe('FIVE_K_8W — estructura', () => {
 
 // ── BODY_RECOMPOSITION_16W ────────────────────────────────────────────────────
 
-describe('BODY_RECOMPOSITION_16W — estructura', () => {
-  assertTemplateIntegrity(BODY_RECOMPOSITION_16W, 16)
+describe('BODY_RECOMPOSITION_16W — estructura (recortado a 12W)', () => {
+  assertTemplateIntegrity(BODY_RECOMPOSITION_16W, 12)
 
   it('solo usa tipos de sesión de fuerza o DESCANSO (sin TIRADA_LARGA, sin TEMPO)', () => {
     const invalidForStrength = new Set(['TIRADA_LARGA', 'SIMULACRO', 'NATACION', 'CICLA'])
@@ -237,8 +237,8 @@ describe('BODY_RECOMPOSITION_16W — estructura', () => {
 
 // ── STRENGTH_TRAINING_16W ─────────────────────────────────────────────────────
 
-describe('STRENGTH_TRAINING_16W — estructura', () => {
-  assertTemplateIntegrity(STRENGTH_TRAINING_16W, 16)
+describe('STRENGTH_TRAINING_16W — estructura (recortado a 12W)', () => {
+  assertTemplateIntegrity(STRENGTH_TRAINING_16W, 12)
 
   it('no contiene ningún tipo de running (RODAJE_Z2, TEMPO, FARTLEK, INTERVALOS, TIRADA_LARGA)', () => {
     const runningTypes = new Set(['RODAJE_Z2', 'TEMPO', 'FARTLEK', 'INTERVALOS', 'TIRADA_LARGA', 'SIMULACRO'])
