@@ -52,31 +52,31 @@ export async function POST(
     )
   }
 
-  // Deactivate ALL active assignments for this athlete (un atleta = una rutina activa)
-  await prisma.assignedWorkout.updateMany({
-    where: { athleteId, isActive: true },
-    data: { isActive: false },
-  })
-
   const start = new Date(startDate)
   let endDate: Date | null = null
-
   if (weeksDuration && weeksDuration > 0) {
     endDate = new Date(start)
     endDate.setDate(endDate.getDate() + weeksDuration * 7)
   }
 
-  const assignment = await prisma.assignedWorkout.create({
-    data: {
-      templateId,
-      athleteId,
-      coachId,
-      startDate: start,
-      endDate: endDate,
-      weeksDuration: weeksDuration ?? null,
-      isActive: true,
-      notes: notes ?? null,
-    },
+  // PERSIST-05: desactivar anterior y crear nueva en una sola tx — evita race condition
+  const assignment = await prisma.$transaction(async (tx) => {
+    await tx.assignedWorkout.updateMany({
+      where: { athleteId, isActive: true },
+      data: { isActive: false },
+    })
+    return tx.assignedWorkout.create({
+      data: {
+        templateId,
+        athleteId,
+        coachId,
+        startDate: start,
+        endDate: endDate,
+        weeksDuration: weeksDuration ?? null,
+        isActive: true,
+        notes: notes ?? null,
+      },
+    })
   })
 
   return NextResponse.json(assignment, { status: 201 })

@@ -7,7 +7,6 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -64,33 +63,10 @@ export async function GET(req: NextRequest) {
     }),
   ])
 
-  // Lazy-init: create NutritionPlan from HealthProfile if missing (mirrors web behavior)
-  let nutritionPlan = nutritionPlanRaw
-  if (!nutritionPlan && healthProfile?.weightKg && healthProfile?.heightCm && healthProfile?.age) {
-    const tdee = calculateTDEE(
-      healthProfile.weightKg,
-      healthProfile.heightCm,
-      healthProfile.age,
-      (healthProfile.gender ?? 'male') as 'male' | 'female',
-      5
-    )
-    const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)
-    nutritionPlan = await prisma.nutritionPlan.upsert({
-      where: { userId },
-      update: {},
-      create: {
-        userId,
-        tdee,
-        targetKcalHard: macros.hard.kcal,
-        targetKcalEasy: macros.easy.kcal,
-        targetKcalRest: macros.rest.kcal,
-        proteinG: macros.hard.protein,
-        carbsHardG: macros.hard.carbs,
-        carbsEasyG: macros.easy.carbs,
-        fatG: macros.hard.fat,
-      },
-    })
-  }
+  // PERSIST-09: GET no hace writes. El lazy-init fue eliminado para no violar REST
+  // y evitar race conditions entre requests concurrentes. La inicialización del plan
+  // nutricional ocurre en POST /api/onboarding/generate o POST /api/nutrition/generate.
+  const nutritionPlan = nutritionPlanRaw
 
   const hasGymToday = !!(gymToday?.template.days[0] && !gymToday.template.days[0].isRestDay)
   const sessionIntensity = todaySession?.intensity ?? (hasGymToday ? 'HIGH' : null)

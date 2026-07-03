@@ -23,6 +23,7 @@ const checkInBodySchema = z.object({
   nutritionAdherencePct: z.number().min(0).max(100).optional(),
   motivationLevel:       z.number().min(0).max(10).optional(),
   notes:                 z.string().max(5000).optional(),
+  painDescription:       z.string().max(500).optional(),
   waistCm:               z.number().min(40).max(200).optional(),
   armsCm:                z.number().min(10).max(100).optional(),
   hipsCm:                z.number().min(40).max(200).optional(),

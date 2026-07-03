@@ -2,7 +2,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { rateLimitAsync } from '@/lib/rate-limit'
-import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 export async function POST(_req: Request) {
   const session = await auth()
@@ -31,33 +30,29 @@ export async function POST(_req: Request) {
   const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)
   const macros = calculateMacros(tdee, profile.weightKg, !!profile.weightGoalKg)
 
-  // Guardar en DB
-  const nutritionPlan = await prisma.nutritionPlan.upsert({
-    where: { userId },
-    update: {
-      tdee,
-      targetKcalHard: macros.hard.kcal,
-      targetKcalEasy: macros.easy.kcal,
-      targetKcalRest: macros.rest.kcal,
-      proteinG: macros.hard.protein,
-      carbsHardG: macros.hard.carbs,
-      carbsEasyG: macros.easy.carbs,
-      fatG: macros.hard.fat,
-    },
-    create: {
-      userId,
-      tdee,
-      targetKcalHard: macros.hard.kcal,
-      targetKcalEasy: macros.easy.kcal,
-      targetKcalRest: macros.rest.kcal,
-      proteinG: macros.hard.protein,
-      carbsHardG: macros.hard.carbs,
-      carbsEasyG: macros.easy.carbs,
-      fatG: macros.hard.fat,
-    },
-  })
-
-  await new PrismaUserRepository().enableFeatures(userId, ['nutrition', 'progress'])
+  // PERSIST-04: upsert + enableFeatures en una sola tx — si enableFeatures falla,
+  // el plan no queda sin features activas.
+  const nutritionPlanData = {
+    tdee,
+    targetKcalHard: macros.hard.kcal,
+    targetKcalEasy: macros.easy.kcal,
+    targetKcalRest: macros.rest.kcal,
+    proteinG: macros.hard.protein,
+    carbsHardG: macros.hard.carbs,
+    carbsEasyG: macros.easy.carbs,
+    fatG: macros.hard.fat,
+  }
+  const [nutritionPlan] = await prisma.$transaction([
+    prisma.nutritionPlan.upsert({
+      where: { userId },
+      update: nutritionPlanData,
+      create: { userId, ...nutritionPlanData },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { featureNutrition: true, featureProgress: true },
+    }),
+  ])
 
   return Response.json({ ok: true, plan: nutritionPlan })
 }
