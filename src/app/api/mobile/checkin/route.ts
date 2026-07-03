@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
         severity: result.severity,
         recommendation: result.recommendation,
         adjustments: result.adjustments,
+        triggers: result.triggers,
       },
     })
   } catch (err) {

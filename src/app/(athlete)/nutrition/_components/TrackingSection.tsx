@@ -94,39 +94,53 @@ export default function TrackingSection({ target, foods, date }: Props) {
     <>
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
-        {/* Header — siempre visible */}
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-start">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lo que comí hoy</span>
+        {/* Hero — siempre visible: barra kcal prominente */}
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Lo que comí hoy</span>
               {loading ? (
-                <span className="text-xs text-gray-400">Cargando...</span>
+                <span className="text-sm text-gray-400">Cargando...</span>
               ) : (
-                <span className="text-sm font-bold text-gray-900">
-                  <span className="text-orange-500">{consumed}</span>
-                  {target ? ` / ${targetKcal} kcal` : ' kcal'}
-                  {target && pct > 0 && (
-                    <span className="ml-2 text-xs font-normal text-gray-400">{pct}%</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-black text-orange-500 leading-none">{consumed}</span>
+                  {target && (
+                    <span className="text-sm text-gray-400">/ {targetKcal} kcal</span>
                   )}
-                </span>
+                </div>
               )}
             </div>
+            <div className="flex items-center gap-3">
+              {target && pct > 0 && (
+                <span className={`text-lg font-black ${pct >= 100 ? 'text-red-500' : pct >= 80 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {pct}%
+                </span>
+              )}
+              <button
+                onClick={() => setShowModal(true)}
+                className="text-xs font-semibold text-white bg-[#1e3a5f] hover:bg-[#162d4a] transition-colors px-3 py-1.5 rounded-lg"
+              >
+                + Registrar
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">{logs.length} {logs.length === 1 ? 'registro' : 'registros'}</span>
-            <span className="text-gray-400 text-sm">{expanded ? '▲' : '▼'}</span>
-          </div>
-        </button>
-
-        {/* Barra kcal rápida */}
-        {!expanded && target && (
-          <div className="px-5 pb-4">
-            <ProgressBar value={consumed} max={targetKcal} color="#f97316" />
-          </div>
-        )}
+          {/* Barra kcal hero */}
+          {target && (
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? '#ef4444' : '#f97316' }}
+              />
+            </div>
+          )}
+          {/* Botón expandir detalles */}
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="mt-3 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
+          >
+            {expanded ? '▲ Ocultar macros' : '▼ Ver macros y registros'}
+          </button>
+        </div>
 
         {/* Expanded */}
         {expanded && (
@@ -198,17 +212,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
           </div>
         )}
 
-        {/* Botón compacto cuando está colapsado */}
-        {!expanded && (
-          <div className="px-5 pb-4 -mt-1">
-            <button
-              onClick={e => { e.stopPropagation(); setShowModal(true) }}
-              className="text-xs font-semibold text-[#1e3a5f] hover:underline"
-            >
-              + Registrar
-            </button>
-          </div>
-        )}
+        {/* Nada extra si está colapsado — el botón está en el hero */}
       </div>
 
       {showModal && (

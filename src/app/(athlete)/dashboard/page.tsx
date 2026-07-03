@@ -12,6 +12,8 @@ import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
 import CoachCard from '../_components/CoachCard'
 import WeeklySummaryCard from '../_components/WeeklySummaryCard'
 import DailySessionCard from '../_components/DailySessionCard'
+import FreeDashboard from '../_components/FreeDashboard'
+import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
@@ -527,7 +529,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Hero cards — 3 stats enfocados en el atleta */}
+      {/* Hero cards — 3 stats enfocados en el atleta (ocultar para nuevo usuario sin historial de plan) */}
+      {!(dashboardMode === 'FREE' && !lastCompletedPlanInfo) && (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
         {/* Card 1: Tu Carrera (con raceDate) o Tu Objetivo (recomp) */}
@@ -722,6 +725,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Link>
 
       </div>
+      )}
 
       <div className="space-y-6">
 
@@ -764,52 +768,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
             <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4">
 
-              {/* ── RECOVERY: banner plan completado ── */}
+              {/* ── RECOVERY: tarjeta de celebración plan completado ── */}
               {dashboardMode === 'RECOVERY' && lastCompletedPlanInfo && (
-                <div className="mb-4 p-3 bg-green-50 rounded-xl border border-green-100 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-green-800">🏆 {lastCompletedPlanInfo.name}</p>
-                    <p className="text-xs text-green-700 mt-0.5">
-                      {lastCompletedPlanInfo.sessionsLogged}/{lastCompletedPlanInfo.sessionsTotal} sesiones completadas
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-green-600 whitespace-nowrap shrink-0">
-                    Recuperación · día {(recoveryDaysSinceEnd ?? 0) + 1}/14
-                  </span>
+                <div className="mb-4">
+                  <PlanCompletionCard
+                    planName={lastCompletedPlanInfo.name}
+                    totalWeeks={lastCompletedPlanInfo.totalWeeks}
+                    sessionsLogged={lastCompletedPlanInfo.sessionsLogged}
+                    sessionsTotal={lastCompletedPlanInfo.sessionsTotal}
+                    recoveryDaysSinceEnd={recoveryDaysSinceEnd ?? 0}
+                    isB2B={session.user.isB2B ?? false}
+                  />
                 </div>
               )}
 
-              {/* ── FREE nuevo usuario: CTA crear primer plan ── */}
-              {dashboardMode === 'FREE' && !lastCompletedPlanInfo && (
-                <div className="mb-4 p-3 bg-[#f97316]/5 rounded-xl border border-[#f97316]/20 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-[#1e3a5f]">Crea tu primer plan</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Elige tu meta y generamos tu plan periodizado</p>
-                  </div>
-                  <Link
-                    href="/new-goal"
-                    className="text-xs font-bold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0"
-                  >
-                    Comenzar →
-                  </Link>
-                </div>
-              )}
-
-              {/* ── FREE: CTA nueva meta (si hay plan completado) ── */}
-              {dashboardMode === 'FREE' && lastCompletedPlanInfo && (
-                <div className="mb-4 p-3 bg-[#1e3a5f]/5 rounded-xl border border-[#1e3a5f]/10 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-[#1e3a5f]">¿Lista tu próxima meta?</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Completaste {lastCompletedPlanInfo.name} hace {recoveryDaysSinceEnd} días
-                    </p>
-                  </div>
-                  <Link
-                    href="/new-goal"
-                    className="text-xs font-bold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0"
-                  >
-                    Nueva meta
-                  </Link>
+              {/* ── FREE: bienvenida prominente — reemplaza CTAs a /new-goal (deprecado ARCH-01) ── */}
+              {dashboardMode === 'FREE' && (
+                <div className="mb-4">
+                  <FreeDashboard
+                    firstName={firstName}
+                    isNewUser={!lastCompletedPlanInfo}
+                    completedPlanName={lastCompletedPlanInfo?.name ?? null}
+                    streakDays={streakDays}
+                    weekSessionCount={weekSessionCount}
+                  />
                 </div>
               )}
 

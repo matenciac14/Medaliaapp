@@ -49,6 +49,8 @@ export default auth((req) => {
       isB2B &&
       !activated &&
       !pathname.startsWith('/pending') &&
+      !pathname.startsWith('/log') &&
+      !pathname.startsWith('/nutrition') &&
       !pathname.startsWith('/api') &&
       !isPublicRoute
     ) {

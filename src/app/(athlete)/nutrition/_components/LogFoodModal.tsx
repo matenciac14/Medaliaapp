@@ -1,7 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+
+type MealTemplateItem = {
+  foodId: string
+  grams: number
+  food: { id: string; name: string; kcalPer100g: number; proteinPer100g: number; carbsPer100g: number; fatPer100g: number }
+}
+type MealTemplate = { id: string; name: string; mealType: string | null; items: MealTemplateItem[] }
+
+function calcTemplateKcal(t: MealTemplate) {
+  return t.items.reduce((sum, i) => sum + Math.round(i.food.kcalPer100g * i.grams / 100), 0)
+}
 
 type FoodItem = {
   id: string
@@ -35,7 +46,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   LEGUME:    'Legumbres',
 }
 
-type Step = 'search' | 'detail'
+type Step = 'search' | 'detail' | 'save-template'
 
 type Props = {
   foods: FoodItem[]
@@ -52,6 +63,17 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   const [grams, setGrams]             = useState('')
   const [mealType, setMealType]       = useState('BREAKFAST')
   const [submitting, setSubmitting]   = useState(false)
+  const [templates, setTemplates]     = useState<MealTemplate[]>([])
+  const [templateName, setTemplateName] = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const [loggingTemplate, setLoggingTemplate] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/nutrition/meal-templates')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.templates && setTemplates(d.templates))
+      .catch(() => {})
+  }, [])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return foods.slice(0, 30)
@@ -83,12 +105,61 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     }
   }
 
+  async function handleLogTemplate(template: MealTemplate) {
+    setLoggingTemplate(template.id)
+    try {
+      await Promise.all(
+        template.items.map(item =>
+          fetch('/api/nutrition/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foodId: item.foodId, grams: item.grams, mealType, date }),
+          })
+        )
+      )
+      router.refresh()
+      handleClose()
+    } finally {
+      setLoggingTemplate(null)
+    }
+  }
+
+  async function handleSaveTemplate() {
+    if (!selected || !grams || !templateName.trim()) return
+    setSavingTemplate(true)
+    try {
+      const res = await fetch('/api/nutrition/meal-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          mealType,
+          items: [{ foodId: selected.id, grams: Number(grams) }],
+        }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setTemplates(prev => [d.template, ...prev])
+        setStep('detail')
+        setTemplateName('')
+      }
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    await fetch(`/api/nutrition/meal-templates/${id}`, { method: 'DELETE' })
+    setTemplates(prev => prev.filter(t => t.id !== id))
+  }
+
   function handleClose() {
     setStep('search')
     setQuery('')
     setSelected(null)
     setGrams('')
     setMealType('BREAKFAST')
+    setTemplateName('')
     onClose()
   }
 
@@ -112,13 +183,16 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            {step === 'detail' && (
-              <button onClick={() => setStep('search')} className="text-gray-400 hover:text-gray-600 text-xl leading-none">
+            {(step === 'detail' || step === 'save-template') && (
+              <button
+                onClick={() => step === 'save-template' ? setStep('detail') : setStep('search')}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
                 ←
               </button>
             )}
             <h2 className="text-base font-bold text-gray-900">
-              {step === 'search' ? 'Registrar comida' : selected?.name}
+              {step === 'search' ? 'Registrar comida' : step === 'save-template' ? 'Guardar plantilla' : selected?.name}
             </h2>
           </div>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
@@ -144,6 +218,53 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-5">
+              {/* Mis comidas (templates) — solo cuando no hay búsqueda activa */}
+              {!query.trim() && templates.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mis comidas</p>
+                  <div className="flex flex-col gap-2">
+                    {templates.map(t => {
+                      const kcal = calcTemplateKcal(t)
+                      return (
+                        <div key={t.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleLogTemplate(t)}
+                            disabled={loggingTemplate === t.id}
+                            className="flex-1 flex items-center justify-between px-3.5 py-3 rounded-xl border border-gray-200 hover:border-[#1e3a5f]/30 hover:bg-gray-50 transition-colors text-left disabled:opacity-60"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {t.items.length} {t.items.length === 1 ? 'alimento' : 'alimentos'}
+                                {t.mealType ? ` · ${MEAL_TYPES.find(m => m.key === t.mealType)?.label ?? t.mealType}` : ''}
+                              </p>
+                            </div>
+                            <div className="text-right ml-4 shrink-0">
+                              {loggingTemplate === t.id ? (
+                                <span className="text-xs text-gray-400">Registrando...</span>
+                              ) : (
+                                <>
+                                  <p className="text-sm font-bold text-orange-500">{kcal} kcal</p>
+                                  <p className="text-xs text-gray-400">Registrar todo</p>
+                                </>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTemplate(t.id)}
+                            className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                            aria-label="Eliminar plantilla"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="border-t border-gray-100 mt-4 mb-2" />
+                </div>
+              )}
+
               {filtered.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 mt-10">Sin resultados para "{query}"</p>
               ) : (
@@ -256,13 +377,83 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-4 border-t border-gray-100">
+            <div className="px-5 py-4 border-t border-gray-100 space-y-2">
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !grams || Number(grams) <= 0}
                 className="w-full py-3.5 rounded-2xl text-sm font-bold transition-colors disabled:bg-gray-100 disabled:text-gray-400 bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
               >
                 {submitting ? 'Registrando...' : 'Registrar comida'}
+              </button>
+              <button
+                onClick={() => setStep('save-template')}
+                disabled={!grams || Number(grams) <= 0}
+                className="w-full py-2.5 rounded-2xl text-xs font-semibold text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50 transition-colors disabled:opacity-40"
+              >
+                + Guardar como plantilla
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* STEP: save-template */}
+        {step === 'save-template' && selected && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pt-5 pb-2 space-y-5">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Alimento</p>
+                <p className="text-sm font-semibold text-gray-900">{selected.name}</p>
+                {preview && (
+                  <p className="text-xs text-gray-400 mt-0.5">{grams}g · {preview.kcal} kcal · P {preview.proteinG}g</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Nombre de la plantilla</p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  placeholder="Ej: Desayuno proteico, Snack post-entreno..."
+                  maxLength={100}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:border-[#1e3a5f] transition-colors placeholder:text-gray-400"
+                />
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Momento del día (opcional)</p>
+                <div className="flex flex-wrap gap-2">
+                  {MEAL_TYPES.map(mt => (
+                    <button
+                      key={mt.key}
+                      onClick={() => setMealType(mt.key)}
+                      className={`px-3.5 py-2 rounded-full border text-xs font-medium transition-colors ${
+                        mealType === mt.key
+                          ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {mt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100 space-y-2">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate || !templateName.trim()}
+                className="w-full py-3.5 rounded-2xl text-sm font-bold transition-colors disabled:bg-gray-100 disabled:text-gray-400 bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+              >
+                {savingTemplate ? 'Guardando...' : 'Guardar plantilla'}
+              </button>
+              <button
+                onClick={() => setStep('detail')}
+                className="w-full py-2.5 rounded-2xl text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
               </button>
             </div>
           </>
