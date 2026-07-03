@@ -131,16 +131,6 @@ export type Translations = {
       coachF3: string
       coachF4: string
       coachF5: string
-      // Trial tier
-      trialLabel: string
-      trialPeriod: string
-      trialBadge: string
-      trialCta: string
-      trialF1: string
-      trialF2: string
-      trialF3: string
-      trialF4: string
-      trialF5: string
       // Coach tier new fields
       perAthlete: string
       forCoachesLabel: string
