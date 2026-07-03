@@ -84,8 +84,18 @@ export default async function CheckinPage() {
   let weekAdherence = { completed: 0, total: 0 }
 
   if (activePlan) {
-    const weekData = activePlan.weeks.find((w) => w.weekNumber === currentWeek)
-      ?? activePlan.weeks[activePlan.weeks.length - 1]
+    // BUG-050: si el plan tiene menos semanas en DB que las ya transcurridas,
+    // construir weekData sintético con fechas calculadas desde la fecha de inicio del plan
+    const foundWeek = activePlan.weeks.find((w) => w.weekNumber === currentWeek)
+    const weekData = foundWeek ?? (() => {
+      const startMs = new Date(activePlan.startDate).getTime() + (currentWeek - 1) * 7 * 24 * 60 * 60 * 1000
+      return {
+        weekNumber: currentWeek,
+        startDate: new Date(startMs),
+        endDate: new Date(startMs + 6 * 24 * 60 * 60 * 1000),
+        sessions: [] as typeof activePlan.weeks[0]['sessions'],
+      }
+    })()
 
     if (weekData) {
       weekSessions = weekData.sessions.map((s) => ({

@@ -21,13 +21,6 @@ const GOALS: GoalOption[] = [
   { value: 'GENERAL_FITNESS',    icon: '⚡', label: 'Fitness general',        subtext: 'Condición física base — 12 semanas', weeks: 12, hasDate: false },
 ]
 
-const LOADING_STEPS = [
-  'Analizando tu perfil...',
-  'Calculando zonas de entrenamiento...',
-  'Estructurando semanas y fases...',
-  'Guardando tu plan...',
-]
-
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
 }
@@ -39,33 +32,26 @@ export default function NewGoalClient({ defaultGoal }: { defaultGoal: string | n
   )
   const [raceDate, setRaceDate] = useState('')
   const [loading, setLoading] = useState(false)
-  const [loadingStep, setLoadingStep] = useState(0)
   const [error, setError] = useState('')
 
-  async function handleGenerate() {
+  // UX-04 + BUG-071: guardar meta en HealthProfile, sin generar plan
+  // El plan lo crea el coach (B2B) o el sistema cuando el atleta lo solicite explícitamente
+  async function handleSaveGoal() {
     if (!selected) return
     setLoading(true)
     setError('')
 
-    let step = 0
-    const interval = setInterval(() => {
-      step = Math.min(step + 1, LOADING_STEPS.length - 1)
-      setLoadingStep(step)
-    }, 1200)
-
     try {
-      const res = await fetch('/api/plan/new', {
-        method: 'POST',
+      const res = await fetch('/api/athlete/sport', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goalType: selected.value, raceDate: raceDate || undefined }),
       })
       const data = await res.json()
-      clearInterval(interval)
-      if (!res.ok) throw new Error(data.error ?? 'Error generando plan')
-      router.push('/plan')
+      if (!res.ok) throw new Error(data.error ?? 'Error guardando meta')
+      router.push('/dashboard')
       router.refresh()
     } catch (err) {
-      clearInterval(interval)
       setError(err instanceof Error ? err.message : 'Error inesperado')
       setLoading(false)
     }
@@ -74,23 +60,9 @@ export default function NewGoalClient({ defaultGoal }: { defaultGoal: string | n
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm text-center space-y-6">
+        <div className="w-full max-w-sm text-center space-y-4">
           <div className="text-5xl animate-bounce">{selected?.icon}</div>
-          <div>
-            <p className="font-bold text-[#1e3a5f] text-lg mb-1">{selected?.label}</p>
-            <p className="text-sm text-gray-500">{selected?.weeks} semanas de entrenamiento</p>
-          </div>
-          <div className="space-y-2">
-            {LOADING_STEPS.map((s, i) => (
-              <div key={i} className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all',
-                i < loadingStep ? 'text-green-600' : i === loadingStep ? 'text-[#1e3a5f] font-medium bg-white shadow-sm' : 'text-gray-300'
-              )}>
-                <span className="text-base">{i < loadingStep ? '✓' : i === loadingStep ? '⏳' : '○'}</span>
-                {s}
-              </div>
-            ))}
-          </div>
+          <p className="font-bold text-[#1e3a5f] text-lg">Guardando tu meta...</p>
         </div>
       </div>
     )
@@ -157,12 +129,12 @@ export default function NewGoalClient({ defaultGoal }: { defaultGoal: string | n
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
         <button
-          onClick={handleGenerate}
+          onClick={handleSaveGoal}
           disabled={!selected}
           className="w-full py-4 rounded-2xl text-white font-bold text-sm disabled:opacity-40 transition-opacity"
           style={{ backgroundColor: selected ? '#f97316' : '#9ca3af' }}
         >
-          {selected ? `Generar plan — ${selected.label} →` : 'Elige una meta primero'}
+          {selected ? `Guardar meta — ${selected.label} →` : 'Elige una meta primero'}
         </button>
 
       </div>
