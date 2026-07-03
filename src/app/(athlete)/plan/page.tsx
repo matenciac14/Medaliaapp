@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
+import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { selectActivePlan } from '@/lib/plan/active-plan'
@@ -185,7 +186,38 @@ export default async function PlanPage() {
   }
 
   if (!plan) {
-    const isB2B = session.user.isB2B
+    const isB2B = session.user.isB2B ?? false
+
+    // Buscar último plan completado para mostrar celebración en lugar de pantalla vacía
+    const lastCompleted = await prisma.trainingPlan.findFirst({
+      where: { userId: session.user.id, status: 'COMPLETED' },
+      orderBy: { endDate: 'desc' },
+      select: {
+        endDate: true, name: true, totalWeeks: true,
+        weeks: { select: { sessions: { select: { log: { select: { id: true } } } } } },
+      },
+    }).catch(() => null)
+
+    if (lastCompleted) {
+      const allSessions = lastCompleted.weeks.flatMap(w => w.sessions)
+      const sessionsLogged = allSessions.filter(s => s.log).length
+      const recoveryDaysSinceEnd = Math.floor(
+        (Date.now() - new Date(lastCompleted.endDate).getTime()) / 86_400_000
+      )
+      return (
+        <div className="px-4 py-6 md:px-8 md:py-8 max-w-md mx-auto space-y-4">
+          <PlanCompletionCard
+            planName={lastCompleted.name}
+            totalWeeks={lastCompleted.totalWeeks}
+            sessionsLogged={sessionsLogged}
+            sessionsTotal={allSessions.length}
+            recoveryDaysSinceEnd={recoveryDaysSinceEnd}
+            isB2B={isB2B}
+          />
+        </div>
+      )
+    }
+
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
@@ -194,15 +226,33 @@ export default async function PlanPage() {
           <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
             {isB2B
               ? 'Tu coach aún no ha asignado un plan de entrenamiento.'
-              : 'Aún no tienes un plan activo. Genera uno nuevo para empezar.'}
+              : 'Empieza a entrenar o consigue un plan personalizado con un entrenador.'}
           </p>
-          <a
-            href={isB2B ? '/dashboard' : '/new-goal'}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#f97316' }}
-          >
-            {isB2B ? 'Volver al inicio →' : 'Generar mi plan →'}
-          </a>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <a
+              href="/log"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              Registrar sesión libre →
+            </a>
+            {!isB2B && (
+              <a
+                href="/coaches"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Buscar entrenador
+              </a>
+            )}
+            {isB2B && (
+              <a
+                href="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Volver al inicio
+              </a>
+            )}
+          </div>
         </div>
       </div>
     )

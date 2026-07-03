@@ -190,6 +190,19 @@ export default async function NutritionPage() {
         />
       )}
 
+      {/* Tracking hero — Lo que comí hoy (primer elemento visible) */}
+      {nutritionPlan && allFoods.length > 0 && (
+        <TrackingSection
+          target={{
+            kcal:     todayKcal,
+            proteinG: todayProtein,
+            carbsG:   todayCarbs,
+            fatG:     todayFat,
+          }}
+          foods={allFoods}
+        />
+      )}
+
       {/* Contenido real — si hay meal plan completo */}
       {hasMealPlan && parsedMealPlan && nutritionPlan && (
         <NutritionContent
@@ -243,19 +256,6 @@ export default async function NutritionPage() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
           Completa el onboarding para activar tu plan nutricional base.
         </div>
-      )}
-
-      {/* Tracking — Lo que comí hoy */}
-      {nutritionPlan && allFoods.length > 0 && (
-        <TrackingSection
-          target={{
-            kcal:     todayKcal,
-            proteinG: todayProtein,
-            carbsG:   todayCarbs,
-            fatG:     todayFat,
-          }}
-          foods={allFoods}
-        />
       )}
 
       {/* Guía de alimentos — siempre visible si hay alimentos en la librería */}
