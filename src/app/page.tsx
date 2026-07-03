@@ -1163,10 +1163,7 @@ export default async function Home() {
                     </div>
                   </div>
                   <div className="text-blue-400 text-xs mt-1">
-                    $79.99/año ·{" "}
-                    <span className="text-[#f97316] font-semibold">
-                      30 días gratis para probar
-                    </span>
+                    $79.99/año
                   </div>
                 </div>
                 <ul className="space-y-3 text-sm text-blue-100 flex-1 mb-6">
