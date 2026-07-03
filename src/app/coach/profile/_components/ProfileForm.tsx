@@ -5,6 +5,7 @@ import { useState } from 'react'
 type CoachProfile = {
   id: string
   slug: string
+  primarySpecialty: string
   bio: string | null
   headline: string | null
   specialties: string[]
@@ -29,6 +30,7 @@ const SPECIALTIES = [
 ]
 
 export default function ProfileForm({ initialProfile }: Props) {
+  const [primarySpecialty, setPrimarySpecialty] = useState(initialProfile?.primarySpecialty ?? 'ALL')
   const [slug, setSlug] = useState(initialProfile?.slug ?? '')
   const [headline, setHeadline] = useState(initialProfile?.headline ?? '')
   const [bio, setBio] = useState(initialProfile?.bio ?? '')
@@ -75,6 +77,7 @@ export default function ProfileForm({ initialProfile }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slug: slug.toLowerCase().replace(/\s+/g, '-'),
+          primarySpecialty,
           headline,
           bio,
           city,
@@ -103,6 +106,26 @@ export default function ProfileForm({ initialProfile }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Especialidad principal */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Especialidad principal
+        </label>
+        <p className="text-xs text-gray-400 mb-2">
+          Define las herramientas que ves en tu panel — no afecta tu perfil público.
+        </p>
+        <select
+          value={primarySpecialty}
+          onChange={e => setPrimarySpecialty(e.target.value)}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 bg-white"
+        >
+          <option value="ALL">Completo — Running + Fuerza + Nutrición</option>
+          <option value="RUNNING">Running — planes de carrera y zonas FC</option>
+          <option value="GYM">Fuerza — rutinas de gimnasio y progresión</option>
+          <option value="NUTRITION">Nutrición — solo planes alimentarios</option>
+        </select>
+      </div>
+
       {/* Slug */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">

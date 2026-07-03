@@ -8,32 +8,43 @@ import { cn } from '@/lib/utils'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
-type Props = { coachName: string }
+type CoachSpecialty = 'RUNNING' | 'GYM' | 'NUTRITION' | 'ALL'
+type Props = { coachName: string; specialty: CoachSpecialty }
 
-export default function CoachSidebarClient({ coachName }: Props) {
+function showGym(sp: CoachSpecialty)       { return sp === 'GYM' || sp === 'ALL' }
+function showNutrition(sp: CoachSpecialty) { return sp === 'NUTRITION' || sp === 'ALL' }
+
+export default function CoachSidebarClient({ coachName, specialty }: Props) {
   const pathname = usePathname()
   const { t } = useLanguage()
   const s = t.app.sidebar
   const initials = coachName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
 
-  const navLinks = [
-    { href: '/coach/dashboard', label: 'Dashboard',      icon: LayoutDashboard },
-    { href: '/coach/athletes',  label: s.myAthletes,     icon: Users           },
-    { href: '/coach/gym',       label: s.gym,            icon: Dumbbell        },
-    { href: '/coach/nutrition', label: 'Nutrición',      icon: Salad           },
-    { href: '/coach/profile',   label: 'Mi Perfil',      icon: Globe           },
-    { href: '/coach/finanzas',  label: 'Finanzas',       icon: Wallet          },
-    { href: '/coach/invite',    label: 'Invitar atleta', icon: UserPlus        },
-    { href: '/coach/settings',  label: s.settings,       icon: Settings        },
+  const allNavLinks = [
+    { href: '/coach/dashboard', label: 'Dashboard',      icon: LayoutDashboard, always: true   },
+    { href: '/coach/athletes',  label: s.myAthletes,     icon: Users,           always: true   },
+    { href: '/coach/gym',       label: s.gym,            icon: Dumbbell,        show: showGym(specialty)       },
+    { href: '/coach/nutrition', label: 'Nutrición',      icon: Salad,           show: showNutrition(specialty) },
+    { href: '/coach/profile',   label: 'Mi Perfil',      icon: Globe,           always: true   },
+    { href: '/coach/finanzas',  label: 'Finanzas',       icon: Wallet,          always: true   },
+    { href: '/coach/invite',    label: 'Invitar atleta', icon: UserPlus,        always: true   },
+    { href: '/coach/settings',  label: s.settings,       icon: Settings,        always: true   },
   ]
+  const navLinks = allNavLinks.filter(l => l.always || l.show)
 
-  // Mobile: 5 tabs planos
+  // Mobile: 5 tabs planos — respeta especialidad en tab de herramientas
+  const mobileTool = showGym(specialty)
+    ? { href: '/coach/gym',       label: s.gym,       icon: Dumbbell }
+    : showNutrition(specialty)
+    ? { href: '/coach/nutrition', label: 'Nutrición', icon: Salad    }
+    : { href: '/coach/athletes',  label: s.myAthletes, icon: Users   }
+
   const mobileNavLinks = [
-    { href: '/coach/dashboard',  label: 'Dashboard',    icon: LayoutDashboard },
-    { href: '/coach/athletes',   label: s.myAthletes,   icon: Users           },
-    { href: '/coach/clients/new',label: 'Nuevo',        icon: Plus            },
-    { href: '/coach/gym',        label: s.gym,          icon: Dumbbell        },
-    { href: '/coach/settings',   label: s.settings,     icon: Settings        },
+    { href: '/coach/dashboard',   label: 'Dashboard',    icon: LayoutDashboard },
+    { href: '/coach/athletes',    label: s.myAthletes,   icon: Users           },
+    { href: '/coach/clients/new', label: 'Nuevo',        icon: Plus            },
+    mobileTool,
+    { href: '/coach/settings',    label: s.settings,     icon: Settings        },
   ]
 
   function isActive(href: string) {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
+import PlanCalendarView from './_components/PlanCalendarView'
 import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
@@ -258,5 +259,16 @@ export default async function PlanPage() {
     )
   }
 
-  return <PlanClient plan={plan} weeks={weeks} nutritionTarget={nutritionTarget} weightData={weightData} />
+  return (
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+      {/* ARCH-03: Vista calendario como navegación principal */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Calendario</h2>
+        <PlanCalendarView />
+      </div>
+
+      {/* Vista semanal detallada (detalle del plan) */}
+      <PlanClient plan={plan} weeks={weeks} nutritionTarget={nutritionTarget} weightData={weightData} />
+    </div>
+  )
 }
