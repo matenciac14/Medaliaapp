@@ -79,7 +79,7 @@ export function mapRelation(rel: InputRow, now: Date): MappedAthlete {
     ? getPlanWeekNumber(new Date(plan.startDate), plan.totalWeeks)
     : 0
 
-  const allPastSessions = plan?.weeks.flatMap((w) => w.sessions) ?? []
+  const allPastSessions = plan?.weeks.filter((w) => w.weekNumber <= currentWeek).flatMap((w) => w.sessions) ?? []
   const completedCount = allPastSessions.filter((s) => s.log !== null).length
   const adherencePct =
     allPastSessions.length > 0
