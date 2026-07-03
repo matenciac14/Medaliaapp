@@ -1,5 +1,20 @@
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Entrenadores certificados | Medaliq',
+  description: 'Encuentra tu entrenador ideal. Coaches certificados en running, fuerza y nutrición para LatAm.',
+  openGraph: {
+    title: 'Entrenadores certificados | Medaliq',
+    description: 'Encuentra tu entrenador ideal. Coaches certificados en running, fuerza y nutrición para LatAm.',
+    url: 'https://medaliq.com/coaches',
+  },
+  twitter: {
+    title: 'Entrenadores certificados | Medaliq',
+    description: 'Encuentra tu entrenador ideal. Coaches certificados en running, fuerza y nutrición para LatAm.',
+  },
+}
 
 async function getCoaches() {
   return prisma.coachProfile.findMany({

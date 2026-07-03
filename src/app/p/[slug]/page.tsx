@@ -1,8 +1,41 @@
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import { auth } from '@/auth'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { JoinProgramButton } from '@/app/p/_components/JoinProgramButton'
+import { JsonLd } from '@/components/seo/json-ld'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const profile = await prisma.coachProfile.findFirst({
+    where: { slug, isPublic: true },
+    select: { headline: true, bio: true, coach: { select: { name: true } } },
+  })
+  if (!profile) return {}
+
+  const name = profile.coach.name ?? 'Coach'
+  const title = `${name} — Coach deportivo | Medaliq`
+  const description =
+    profile.headline ??
+    (profile.bio ? profile.bio.slice(0, 160) : `Entrena con ${name} en Medaliq.`)
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://medaliq.com/p/${slug}`,
+      type: 'profile',
+    },
+    twitter: { title, description },
+  }
+}
 
 function initials(name: string | null): string {
   if (!name) return '?'
@@ -83,6 +116,16 @@ export default async function CoachProfilePage({
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        name: profile.coach.name,
+        description: profile.headline ?? profile.bio ?? undefined,
+        url: `https://medaliq.com/p/${slug}`,
+        image: profile.avatarUrl ?? undefined,
+        jobTitle: 'Coach deportivo',
+        worksFor: { '@type': 'Organization', name: 'Medaliq', url: 'https://medaliq.com' },
+      }} />
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

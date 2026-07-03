@@ -492,7 +492,7 @@ function buildRecompWeek(
 
 export const BODY_RECOMPOSITION_16W: PlanTemplate = {
   goalType: 'BODY_RECOMPOSITION',
-  totalWeeks: 16,
+  totalWeeks: 12,
   weeks: [
     // === BASE (1-4) — Adaptar al movimiento, crear hábito ===
     buildRecompWeek(1,  'BASE', 10, false, 'Adaptación al movimiento y técnica básica', 45, 25),
@@ -508,15 +508,9 @@ export const BODY_RECOMPOSITION_16W: PlanTemplate = {
     buildRecompWeek(9,  'DESARROLLO', 16, false, 'Retomar con más carga', 60, 35),
     buildRecompWeek(10, 'DESARROLLO', 10, true,  'Semana de transición a fase específica', 40, 25),
 
-    // === ESPECÍFICO (11-14) — Definición + mantenimiento masa muscular ===
+    // === ESPECÍFICO (11-12) — Definición + mantenimiento masa muscular ===
     buildRecompWeek(11, 'ESPECIFICO', 18, false, 'Aumentar cardio, mantener fuerza', 55, 35),
-    buildRecompWeek(12, 'ESPECIFICO', 18, false, 'Pico cardio-metabólico', 55, 35),
-    buildRecompWeek(13, 'ESPECIFICO', 14, false, 'Mantener músculo con menos volumen', 50, 30),
-    buildRecompWeek(14, 'ESPECIFICO', 16, false, 'Última semana de intensidad alta', 55, 35),
-
-    // === AFINAMIENTO (15-16) — Evaluar y proyectar siguiente ciclo ===
-    buildRecompWeek(15, 'AFINAMIENTO', 12, false, 'Reducir volumen, mantener movimiento', 45, 25),
-    buildRecompWeek(16, 'AFINAMIENTO', 8,  false, 'Test de rendimiento y evaluación', 40, 20),
+    buildRecompWeek(12, 'ESPECIFICO', 18, false, 'Pico cardio-metabólico y evaluación final', 55, 35),
   ],
 }
 
@@ -601,7 +595,7 @@ function buildStrengthWeek(
 
 export const STRENGTH_TRAINING_16W: PlanTemplate = {
   goalType: 'STRENGTH_TRAINING',
-  totalWeeks: 16,
+  totalWeeks: 12,
   weeks: [
     // === BASE (1-4) — Técnica y activación neuromuscular ===
     buildStrengthWeek(1, 'BASE', false, 'Técnica de movimientos básicos — conexión mente-músculo', 50, 50),
@@ -617,15 +611,9 @@ export const STRENGTH_TRAINING_16W: PlanTemplate = {
     buildStrengthWeek(9,  'DESARROLLO', false, 'Retomar con más carga tras descarga', 65, 70),
     buildStrengthWeek(10, 'DESARROLLO', true,  'Transición a fase específica — deload ligero', 50, 50),
 
-    // === ESPECÍFICO (11-14) — Fuerza máxima y definición ===
+    // === ESPECÍFICO (11-12) — Fuerza máxima ===
     buildStrengthWeek(11, 'ESPECIFICO', false, 'Trabajo pesado — rango 4-6 reps en compuestos', 65, 70),
-    buildStrengthWeek(12, 'ESPECIFICO', false, 'Pico de fuerza — cargas máximas controladas', 65, 70),
-    buildStrengthWeek(13, 'ESPECIFICO', false, 'Mantener fuerza, reducir volumen levemente', 60, 65),
-    buildStrengthWeek(14, 'ESPECIFICO', false, 'Última semana de intensidad alta — preparar evaluación', 60, 65),
-
-    // === AFINAMIENTO (15-16) — Evaluar y proyectar siguiente ciclo ===
-    buildStrengthWeek(15, 'AFINAMIENTO', false, 'Reducir volumen — mantener movimientos', 50, 50),
-    buildStrengthWeek(16, 'AFINAMIENTO', false, 'Test de fuerza máxima — 1RM estimado en press y sentadilla', 45, 45),
+    buildStrengthWeek(12, 'ESPECIFICO', false, 'Pico de fuerza — cargas máximas y test de rendimiento', 65, 70),
   ],
 }
 

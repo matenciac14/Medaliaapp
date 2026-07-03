@@ -5,6 +5,8 @@ import { getServerLocale } from "@/lib/i18n/server";
 import Providers from "./_components/Providers";
 import ServiceWorkerRegistration from "./_components/ServiceWorkerRegistration";
 import CookieConsent from "./_components/CookieConsent";
+import { WhatsAppButton } from "@/components/ui/whatsapp-button";
+import { JsonLd } from "@/components/seo/json-ld";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +28,8 @@ const inter = Inter({
 const META_TITLE = 'Medaliq — Coaching deportivo inteligente'
 const META_DESCRIPTION = 'La plataforma de coaching deportivo para LatAm. Planes periodizados, nutrición y seguimiento en tiempo real.'
 const META_URL = 'https://medaliq.com'
-const META_IMAGE = 'https://medaliq.com/og-image.png'
+// opengraph-image.tsx en src/app/ genera la imagen dinámicamente en /opengraph-image
+const META_IMAGE = 'https://medaliq.com/opengraph-image'
 
 export const metadata: Metadata = {
   title: META_TITLE,
@@ -85,11 +88,24 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <JsonLd data={{
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Medaliq',
+          url: META_URL,
+          description: META_DESCRIPTION,
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: { '@type': 'EntryPoint', urlTemplate: `${META_URL}/coaches?q={search_term_string}` },
+            'query-input': 'required name=search_term_string',
+          },
+        }} />
         <Providers initialLocale={locale}>
           {children}
         </Providers>
         <ServiceWorkerRegistration />
         <CookieConsent />
+        <WhatsAppButton />
       </body>
     </html>
   );
