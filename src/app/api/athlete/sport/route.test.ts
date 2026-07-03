@@ -89,7 +89,7 @@ describe('PATCH /api/athlete/sport', () => {
     expect(res.status).toBe(200)
 
     const call = vi.mocked(prisma.healthProfile.update).mock.calls[0][0]
-    expect(call.data.raceDate).toBeInstanceOf(Date)
+    expect((call.data as any).raceDate).toBeInstanceOf(Date)
     expect(call.data.sportGoal).toBe('RACE_5K')
   })
 
