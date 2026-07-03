@@ -40,34 +40,34 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12)
     const isCoach = userRole === 'COACH'
 
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: userRole,
-        // Coach: solo feature coach activa, onboarding completado
-        ...(isCoach ? {
-          featurePlan:      false,
-          featureCheckin:   false,
-          featureNutrition: false,
-          featureProgress:  false,
-          featureLog:       false,
-          featureCoach:     true,
-          featureGym:       false,
-          onboardingCompleted:   true,
-          onboardingCompletedAt: new Date(),
-        } : {
-          // Athlete: defaults de columnas son correctos (all true excepto coach)
-        }),
-      },
-    })
-
-    // Crear UserSubscription + CoachProfile skeleton atómicamente para garantizar invariantes
-    await prisma.$transaction(async (tx) => {
+    // PERSIST-02: user.create dentro del $transaction para evitar usuario huérfano
+    // si la creación de userSubscription o coachProfile falla.
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          role: userRole,
+          // Coach: solo feature coach activa, onboarding completado
+          ...(isCoach ? {
+            featurePlan:      false,
+            featureCheckin:   false,
+            featureNutrition: false,
+            featureProgress:  false,
+            featureLog:       false,
+            featureCoach:     true,
+            featureGym:       false,
+            onboardingCompleted:   true,
+            onboardingCompletedAt: new Date(),
+          } : {
+            // Athlete: defaults de columnas son correctos (all true excepto coach)
+          }),
+        },
+      })
       await tx.userSubscription.create({
         data: {
-          userId:   newUser.id,
+          userId:   user.id,
           tier:     isCoach ? 'PRO' : 'TRIAL',
           ...(isCoach
             ? { coachTier: 'STARTER' }
@@ -76,11 +76,12 @@ export async function POST(req: NextRequest) {
       })
       if (isCoach) {
         const baseSlug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-        const slug = `${baseSlug}-${newUser.id.slice(-6)}`
+        const slug = `${baseSlug}-${user.id.slice(-6)}`
         await tx.coachProfile.create({
-          data: { coachId: newUser.id, slug },
+          data: { coachId: user.id, slug },
         })
       }
+      return user
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://medaliq.com'

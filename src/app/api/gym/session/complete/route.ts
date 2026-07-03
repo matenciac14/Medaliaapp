@@ -204,6 +204,13 @@ export async function POST(req: NextRequest) {
     })
     if (!fuerzaSession) return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
 
+    // PERSIST-07: idempotencia — si ya existe una sesión para este plannedSessionId, devolver éxito
+    const existingPlan = await prisma.gymSession.findFirst({
+      where: { athleteId, plannedSessionId: fuerzaSession.id },
+      select: { id: true },
+    })
+    if (existingPlan) return NextResponse.json({ sessionId: existingPlan.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
+
     const gymSession = await prisma.gymSession.create({
       data: {
         athleteId,
@@ -281,6 +288,13 @@ export async function POST(req: NextRequest) {
     where: { id: body.assignedWorkoutId, athleteId, isActive: true },
   })
   if (!assigned) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 })
+
+  // PERSIST-07: idempotencia — si ya existe sesión para este assignedWorkout en el mismo día
+  const existingAssigned = await prisma.gymSession.findFirst({
+    where: { athleteId, assignedWorkoutId: body.assignedWorkoutId, date: today },
+    select: { id: true },
+  })
+  if (existingAssigned) return NextResponse.json({ sessionId: existingAssigned.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
 
   const gymSession = await prisma.gymSession.create({
     data: {

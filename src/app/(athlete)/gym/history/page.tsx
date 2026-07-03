@@ -49,11 +49,13 @@ export default async function GymHistoryPage() {
         include: {
           workoutExercise: {
             include: {
+              // BUG-039: exercise puede ser null si el WorkoutTemplate fue eliminado
               exercise: { select: { name: true } },
             },
           },
         },
-        orderBy: [{ workoutExercise: { order: 'asc' } }, { setNumber: 'asc' }],
+        // BUG-039: ordenar solo por setNumber cuando workoutExercise puede ser null
+        orderBy: [{ setNumber: 'asc' }],
       },
       assignedWorkout: {
         include: {
@@ -114,7 +116,8 @@ export default async function GymHistoryPage() {
             }> = {}
 
             for (const sl of gs.setLogs) {
-              const exName = sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio'
+              // BUG-039: preferir exerciseName (snapshot) sobre el join, por si el template fue eliminado
+              const exName = sl.exerciseName ?? sl.workoutExercise?.exercise?.name ?? 'Ejercicio eliminado'
               const exId = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
               if (!exerciseGroups[exId]) {
                 exerciseGroups[exId] = { name: exName, sets: [] }

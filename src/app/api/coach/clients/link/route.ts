@@ -45,7 +45,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  await prisma.coachAthlete.create({ data: { coachId, athleteId } })
+  // PERSIST-08: catch P2002 por si dos requests concurrentes del mismo coach pasan los checks
+  try {
+    await prisma.coachAthlete.create({ data: { coachId, athleteId } })
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      return NextResponse.json({ error: 'El atleta ya está vinculado a este coach' }, { status: 409 })
+    }
+    throw err
+  }
 
   const loginUrl = `${process.env.NEXTAUTH_URL ?? 'https://medaliq.com'}/login`
   sendAthleteCoachAssignedEmail(athlete.email!, athlete.name!, session.user.name ?? 'Tu coach', loginUrl).catch(() => {})
