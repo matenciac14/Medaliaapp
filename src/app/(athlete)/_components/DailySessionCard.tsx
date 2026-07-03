@@ -169,7 +169,7 @@ export default function DailySessionCard({
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
                     {todayRoutineDay.activity === 'GYM'
-                      ? (todayRoutineDay.split ? SPLIT_LABELS[todayRoutineDay.split] ?? todayRoutineDay.split : 'Gym')
+                      ? (todayRoutineDay.split ? SPLIT_LABELS[todayRoutineDay.split] ?? todayRoutineDay.split : 'Ejercicios')
                       : (todayRoutineDay.runType ? RUN_TYPE_LABELS[todayRoutineDay.runType] ?? todayRoutineDay.runType : 'Running')}
                   </p>
                   <p className="text-xs text-gray-400">Según tu rutina semanal</p>
@@ -197,7 +197,7 @@ export default function DailySessionCard({
                 <p className="text-xs text-gray-400">¿Qué entrenas hoy?</p>
                 <div className="flex gap-2">
                   <Link href="/gym/session" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
-                    💪 Gym
+                    💪 Ejercicios
                   </Link>
                   <Link href="/log/run" className="text-xs font-semibold border border-gray-200 text-[#1e3a5f] px-3 py-1.5 rounded-lg">
                     🏃 Correr

@@ -179,7 +179,7 @@ export default async function ActivityHistoryPage() {
             </div>
             <div>
               <p className="text-xl font-bold text-[#1e3a5f]">{totalGym}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Gym</p>
+              <p className="text-xs text-gray-500 mt-0.5">Ejercicios</p>
             </div>
             <div>
               <p className="text-xl font-bold text-[#f97316]">{totalRun}</p>

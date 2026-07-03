@@ -17,7 +17,7 @@ function initials(name: string | null): string {
 function sportLabel(s: string): string {
   const map: Record<string, string> = {
     RUNNING: 'Running',
-    GYM: 'Gym',
+    GYM: 'Ejercicios',
     FUNCTIONAL: 'Funcional',
   }
   return map[s] ?? s

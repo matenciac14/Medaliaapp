@@ -63,7 +63,7 @@ export default async function AICoachProfilePage() {
               ajusta la carga según tu check-in semanal y responde tus preguntas las 24 horas.
             </p>
             <div className="flex gap-2 flex-wrap mt-4 justify-center sm:justify-start">
-              {['Running', 'Gym'].map((s) => (
+              {['Running', 'Ejercicios'].map((s) => (
                 <span
                   key={s}
                   className="px-3 py-1 rounded-full text-xs font-semibold"
@@ -89,7 +89,7 @@ export default async function AICoachProfilePage() {
               { icon: '🔄', title: 'Ajuste automático', desc: 'El plan se adapta cada semana según tu check-in de RPE, peso y energía.' },
               { icon: '🥗', title: 'Nutrición integrada', desc: 'Macros y kcal sincronizados con la carga del entrenamiento del día.' },
               { icon: '💬', title: 'Chat 24/7', desc: 'Pregunta sobre tu plan, lesiones leves, nutrición o progresión de cargas.' },
-              { icon: '💪', title: 'Módulo de Gym', desc: 'Tracker de series y pesos con detección de récords personales.' },
+              { icon: '💪', title: 'Módulo de Ejercicios', desc: 'Tracker de series y pesos con detección de récords personales.' },
               { icon: '📈', title: 'Progresión visible', desc: 'Gráficas de peso, FC reposo, adherencia y volumen semanal.' },
             ].map((item) => (
               <div key={item.title} className="flex gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -112,7 +112,7 @@ export default async function AICoachProfilePage() {
               <p className="text-3xl font-black text-gray-900 mb-1">Gratis</p>
               <p className="text-xs text-gray-400 mb-4">30 días · acceso completo</p>
               <ul className="space-y-1.5 text-sm text-gray-600">
-                {['Plan AI completo', 'Check-in + nutrición', 'Gym tracker', 'Chat AI (ilimitado en trial)'].map((f) => (
+                {['Plan AI completo', 'Check-in + nutrición', 'Tracker de ejercicios', 'Chat AI (ilimitado en trial)'].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <span className="text-green-500 text-xs">✓</span> {f}
                   </li>

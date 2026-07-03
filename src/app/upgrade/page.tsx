@@ -27,7 +27,7 @@ export default async function UpgradePage() {
             <li className="text-gray-300">✗ Plan adaptativo</li>
             <li className="text-gray-300">✗ Nutrición personalizada</li>
             <li className="text-gray-300">✗ Check-ins semanales</li>
-            <li className="text-gray-300">✗ Gym tracker</li>
+            <li className="text-gray-300">✗ Tracker de ejercicios</li>
           </ul>
           <DowngradeButton />
         </div>
@@ -48,7 +48,7 @@ export default async function UpgradePage() {
             <li>✓ Plan adaptativo periodizado</li>
             <li>✓ Nutrición personalizada</li>
             <li>✓ Check-ins semanales con ajuste de carga</li>
-            <li>✓ Gym tracker completo</li>
+            <li>✓ Tracker de ejercicios completo</li>
             <li>✓ Soporte de coach</li>
           </ul>
           <a
