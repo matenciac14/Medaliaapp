@@ -118,7 +118,7 @@ export const GROUPS: RoadmapGroup[] = [
 
       // ── AUDITORÍA FK + PARIDAD WEB/MOBILE — julio 2026 ───────────────────────
       { title: 'DBI-01 — InviteCode race condition: dos atletas pueden canjear el mismo código simultáneamente', done: true, priority: 'P0', note: 'Fix: updateMany WHERE usedBy IS NULL + expiresAt > now() — atómico, sin $transaction extra. Si count===0 → 400. Después fetch coachId y upsert CoachAthlete. src/app/api/invite/[code]/route.ts.' },
-      { title: 'DBI-02 — AssignedWorkout.templateId sin onDelete: borrar WorkoutTemplate activo → P2003', done: false, priority: 'P0', note: 'DEFERRED: No existe endpoint DELETE para WorkoutTemplate en coach/gym/routines/[id]/route.ts (solo GET+PATCH). La relación AssignedWorkout.templateId YA tiene onDelete: Cascade. Si se agrega DELETE en futuro, evaluar si cascade es apropiado o si se requiere guard 409.' },
+      { title: 'DBI-02 — AssignedWorkout.templateId sin onDelete: borrar WorkoutTemplate activo → P2003', done: true, priority: 'P0', note: 'DONE: Agregado onDelete: Cascade en prisma/schema.prisma + migración SQL 20260703100000_add_assigned_workout_cascade. Ahora borrar un WorkoutTemplate elimina en cascada sus AssignedWorkout.' },
       { title: 'DBI-03 — WorkoutExercise.exerciseId sin onDelete: borrar Exercise usado en rutinas → P2003', done: true, priority: 'P0', note: 'FIXED: admin/exercises/[id]/route.ts DELETE ahora verifica workoutExercise.count() y retorna 409 si el ejercicio está en uso en rutinas.' },
       { title: 'DBI-04 — AssignedNutritionPlan.templateId sin onDelete: borrar NutritionTemplate activa → P2003', done: true, priority: 'P0', note: 'VERIFIED: ya implementado — coach/nutrition/templates/[templateId]/route.ts ya tiene guard assignedNutritionPlan.count() → 409. Falso positivo del audit.' },
       { title: 'DBI-05 — PlannedSession.workoutDayId sin onDelete: SetNull: borrar WorkoutDay deja FK huérfana', done: true, priority: 'P1', note: 'Fix: onDelete: SetNull añadido a relación workoutDay en PlannedSession. Migración 20260702050350_add_setnull_nullable_fks. prisma/schema.prisma L344.' },
@@ -586,15 +586,15 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'TIER-MODEL — Actualizar computeAthleteFeatures() al modelo definitivo',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Modelo definitivo (2026-07-03): FREE={ plan:false, checkin:false, nutrition:true, progress:false, log:true, gym:true } PRO={ plan:true, checkin:true, nutrition:true, progress:true, log:true, gym:true }. B2B no tiene tier — coach activa via mergeFeatures(). Gate de pago: checkin + progress. Archivo: src/domain/subscription/tier-features.ts. Actualizar tier-features.test.ts. Ejecutar ANTES de Wompi.',
+        note: 'DONE: FREE={ plan:true, checkin:false, nutrition:true, progress:false, log:true, gym:true } — capa de registro. PRO/TRIAL={ todo true excepto coach }. Gate de pago: checkin + progress. Actualizado en tier-features.ts + test. Nótese que note original tenía plan:false incorrecto.',
       },
       {
         title: 'BILLING-PREP — getUserPlan() real + migración usuarios beta',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Hoy getUserPlan() hardcodea PRO (intencional en beta). Al activar Wompi: (1) leer UserSubscription.tier desde DB. (2) Migración: usuarios beta → FREE (sin Trial). (3) Atletas B2B: nunca asignar tier PRO por tener coach — su acceso viene del coach. Archivo: src/lib/config/user-config.ts.',
+        note: 'DONE: getUserPlan() ahora lee BILLING_ENABLED env. Si false (beta) → PRO para todos. Si true → lee subscriptionTier param (TRIAL|PRO|FREE). Script scripts/migrate-beta-users.ts para migrar usuarios sin sub → TRIAL 30 días. Ejecutar con DRY_RUN=false antes de activar Wompi.',
       },
       {
         title: 'Admin — Panel manual de coachTier (P0 para design partners)',

@@ -121,11 +121,16 @@ export const COACH_CONFIG: UserConfig = {
 }
 
 /**
- * Todos los usuarios tienen acceso completo hasta que se active billing (Stripe/Wompi).
- * Cuando se integre billing, esta función leerá de UserSubscription.tier en DB.
+ * Devuelve el plan del usuario.
+ * Mientras BILLING_ENABLED=false (beta), todos son PRO.
+ * Al activar billing, lee de UserSubscription.tier pasado como argumento.
  */
-export function getUserPlan(_features: UserConfig['features']): UserPlan {
-  return 'PRO'
+export function getUserPlan(_features: UserConfig['features'], subscriptionTier?: string | null): UserPlan {
+  const billingEnabled = process.env.BILLING_ENABLED === 'true'
+  if (!billingEnabled) return 'PRO'
+  if (subscriptionTier === 'TRIAL') return 'TRIAL'
+  if (subscriptionTier === 'PRO') return 'PRO'
+  return 'FREE'
 }
 
 /**

@@ -33,18 +33,19 @@ describe('computeAthleteFeatures — PRO', () => {
 })
 
 describe('computeAthleteFeatures — FREE', () => {
-  it('solo tiene acceso a log manual', () => {
+  // FREE = capa de registro: plan, log, nutrición, gym — SIN inteligencia (checkin, progress)
+  it('tiene acceso a plan, log, nutrition y gym', () => {
     const f = computeAthleteFeatures('FREE')
+    expect(f.plan).toBe(true)
     expect(f.log).toBe(true)
+    expect(f.nutrition).toBe(true)
+    expect(f.gym).toBe(true)
   })
 
-  it('no tiene acceso a plan, checkin, nutrition, progress, gym ni coach', () => {
+  it('no tiene acceso a checkin ni progress (gate de pago)', () => {
     const f = computeAthleteFeatures('FREE')
-    expect(f.plan).toBe(false)
     expect(f.checkin).toBe(false)
-    expect(f.nutrition).toBe(false)
     expect(f.progress).toBe(false)
-    expect(f.gym).toBe(false)
     expect(f.coach).toBe(false)
   })
 })
