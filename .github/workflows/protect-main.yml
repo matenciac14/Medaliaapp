@@ -1,0 +1,22 @@
+name: Protect main — solo PRs desde develop
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que el PR viene de develop
+        if: github.head_ref != 'develop'
+        run: |
+          echo "❌ PRs a main solo se permiten desde develop."
+          echo "   Branch origen: ${{ github.head_ref }}"
+          echo ""
+          echo "   Flujo correcto:"
+          echo "   feature/* o bugfix/*  →  develop  →  main"
+          exit 1
+
+      - name: PR válido
+        run: echo "✅ PR desde develop — ok para mergear a main."
