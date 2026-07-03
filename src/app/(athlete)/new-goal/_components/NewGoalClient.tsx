@@ -16,8 +16,6 @@ type GoalOption = {
 const GOALS: GoalOption[] = [
   { value: 'RACE_5K',            icon: '🏃', label: '5K',                     subtext: 'Carrera de 5 km — 8 semanas',         weeks: 8,  hasDate: true  },
   { value: 'RACE_10K',           icon: '🏃', label: '10K',                    subtext: 'Carrera de 10 km — 12 semanas',       weeks: 12, hasDate: true  },
-  { value: 'RACE_HALF_MARATHON', icon: '🏃', label: 'Media Maratón',          subtext: '21.1 km — 18 semanas',               weeks: 18, hasDate: true  },
-  { value: 'RACE_MARATHON',      icon: '🏃', label: 'Maratón',                subtext: '42.2 km — 18 semanas',               weeks: 18, hasDate: true  },
   { value: 'STRENGTH_TRAINING',  icon: '🏋️', label: 'Ganar músculo',          subtext: 'Fuerza e hipertrofia — 16 semanas',  weeks: 16, hasDate: false },
   { value: 'BODY_RECOMPOSITION', icon: '💪', label: 'Recomposición corporal', subtext: 'Fuerza + composición — 16 semanas',  weeks: 16, hasDate: false },
   { value: 'GENERAL_FITNESS',    icon: '⚡', label: 'Fitness general',        subtext: 'Condición física base — 12 semanas', weeks: 12, hasDate: false },

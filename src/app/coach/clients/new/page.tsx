@@ -16,8 +16,6 @@ const GOALS = [
   { value: '', label: 'Sin especificar' },
   { value: 'RACE_5K', label: 'Carrera 5K' },
   { value: 'RACE_10K', label: 'Carrera 10K' },
-  { value: 'RACE_HALF_MARATHON', label: 'Media Maratón' },
-  { value: 'RACE_MARATHON', label: 'Maratón' },
   { value: 'BODY_RECOMPOSITION', label: 'Recomposición Corporal' },
   { value: 'WEIGHT_LOSS', label: 'Pérdida de Peso' },
   { value: 'GENERAL_FITNESS', label: 'Condición General' },

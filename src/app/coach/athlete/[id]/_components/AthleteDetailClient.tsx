@@ -145,8 +145,6 @@ const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmar
 const TEMPLATE_PREVIEW: Record<string, { weeks: number; description: string; phases: string[] }> = {
   RACE_5K:             { weeks: 8,  description: 'Intervalos progresivos + fartlek semanal.', phases: ['BASE 3 sem', 'DESARROLLO 3 sem', 'AFINAMIENTO 2 sem'] },
   RACE_10K:            { weeks: 12, description: 'Volumen aeróbico + tempo runs y series.', phases: ['BASE 4 sem', 'DESARROLLO 5 sem', 'ESPECÍFICO 2 sem', 'AFINAMIENTO 1 sem'] },
-  RACE_HALF_MARATHON:  { weeks: 18, description: 'Tiradas largas progresivas + zonas HR 2-3.', phases: ['BASE 5 sem', 'DESARROLLO 7 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
-  RACE_MARATHON:       { weeks: 18, description: 'Volumen máximo + simulacro de carrera.', phases: ['BASE 5 sem', 'DESARROLLO 7 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
   STRENGTH_TRAINING:   { weeks: 16, description: 'Splits Push/Pull/Legs con progresión de cargas.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
   BODY_RECOMPOSITION:  { weeks: 16, description: 'Fuerza + cardio moderado para recomposición.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
 }
@@ -256,7 +254,7 @@ export default function AthleteDetailClient({
 
   // Plan creation state
   const [creatingPlan, setCreatingPlan] = useState(false)
-  const [planGoalType, setPlanGoalType] = useState('RACE_HALF_MARATHON')
+  const [planGoalType, setPlanGoalType] = useState('RACE_5K')
   const [planDaysPerWeek, setPlanDaysPerWeek] = useState(4)
   const [planGenerating, setPlanGenerating] = useState(false)
   const [planError, setPlanError] = useState<string | null>(null)
@@ -1206,8 +1204,6 @@ export default function AthleteDetailClient({
                         >
                           <option value="RACE_5K">Carrera 5K (8 semanas)</option>
                           <option value="RACE_10K">Carrera 10K (12 semanas)</option>
-                          <option value="RACE_HALF_MARATHON">Media maratón (18 semanas)</option>
-                          <option value="RACE_MARATHON">Maratón (18 semanas)</option>
                           <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
                           <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
                           <option value="WEIGHT_LOSS">Pérdida de peso</option>
