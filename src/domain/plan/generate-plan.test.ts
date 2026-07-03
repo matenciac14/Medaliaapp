@@ -66,13 +66,13 @@ describe('generatePlan — template selection', () => {
     expect(hm.weeks[0].phase).toBe(m.weeks[0].phase)
   })
 
-  it('BODY_RECOMPOSITION → 16 semanas de fuerza', () => {
-    expect(getTemplate('BODY_RECOMPOSITION')!.totalWeeks).toBe(16)
+  it('BODY_RECOMPOSITION → 12 semanas de fuerza (recortado de 16W para MVP)', () => {
+    expect(getTemplate('BODY_RECOMPOSITION')!.totalWeeks).toBe(12)
   })
 
-  it('STRENGTH_TRAINING → 16 semanas sin running', () => {
+  it('STRENGTH_TRAINING → 12 semanas sin running (recortado de 16W para MVP)', () => {
     const t = getTemplate('STRENGTH_TRAINING')!
-    expect(t.totalWeeks).toBe(16)
+    expect(t.totalWeeks).toBe(12)
     const runningTypes = new Set(['RODAJE_Z2', 'TEMPO', 'FARTLEK', 'INTERVALOS', 'TIRADA_LARGA'])
     const hasRunning = t.weeks.some((w) => w.sessions.some((s) => runningTypes.has(s.type)))
     expect(hasRunning).toBe(false)
