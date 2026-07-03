@@ -194,7 +194,7 @@ export async function GET(req: NextRequest) {
   const fakeDays = fuerzaSessions.map(s => ({
     dayOfWeek: s.dayOfWeek,
     isRestDay: false,
-    label: s.workoutDay?.label ?? 'Gym',
+    label: s.workoutDay?.label ?? 'Ejercicios',
     muscleGroups: s.workoutDay?.muscleGroups ?? [],
   }))
 

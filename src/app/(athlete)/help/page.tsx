@@ -59,11 +59,11 @@ const SECTIONS = [
   },
   {
     icon: Dumbbell,
-    title: 'Gym / Rutina de fuerza',
+    title: 'Ejercicios / Rutina de fuerza',
     href: '/gym',
     color: '#f97316',
     items: [
-      { q: '¿Cómo empiezo una sesión de gym?', a: 'Ve a Gym → selecciona el día de hoy → toca "Iniciar sesión". Registra el peso y repeticiones de cada serie. El timer de descanso se activa automáticamente.' },
+      { q: '¿Cómo empiezo una sesión de ejercicios?', a: 'Ve a Ejercicios → selecciona el día de hoy → toca "Iniciar sesión". Registra el peso y repeticiones de cada serie. El timer de descanso se activa automáticamente.' },
       { q: '¿Qué significa el badge "+2.5 kg recomendado"?', a: 'Completaste todos los sets con las repeticiones objetivo — eso indica que el peso ya no es un estímulo suficiente. La próxima sesión sube 2.5 kg en ese ejercicio.' },
       { q: '¿Quién asigna mi rutina de gym?', a: 'Tu coach crea la rutina y te la asigna. Si no tienes coach, puedes escribirnos a hola@medaliq.com para que te ayudemos.' },
     ],

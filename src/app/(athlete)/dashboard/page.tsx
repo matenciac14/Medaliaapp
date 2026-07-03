@@ -100,7 +100,7 @@ function buildFreeModeSummary({
   if (dashboardMode === 'RECOVERY' && recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 7) {
     lines.push('Semana de recuperación — mantén la intensidad baja.')
   } else if (todayRoutineDay && todayRoutineDay.activity !== 'REST') {
-    const label = todayRoutineDay.activity === 'GYM' ? 'Gym' : 'Salida a correr'
+    const label = todayRoutineDay.activity === 'GYM' ? 'Ejercicios' : 'Salida a correr'
     lines.push(`Hoy: ${label}.`)
   }
 
@@ -294,7 +294,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     })),
     ...weekGymSessions.map(g => ({
       dateStr: new Date(g.date).toLocaleDateString('es-CO', { weekday: 'short' }),
-      label: g.assignedWorkout?.template.name ?? 'Gym',
+      label: g.assignedWorkout?.template.name ?? 'Ejercicios',
       emoji: '💪',
     })),
   ].sort((a, b) => a.dateStr.localeCompare(b.dateStr))

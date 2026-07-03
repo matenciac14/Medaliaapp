@@ -23,7 +23,7 @@ type Props = {
 
 const SPECIALTIES = [
   { value: 'RUNNING', label: 'Running' },
-  { value: 'GYM', label: 'Gym / Fuerza' },
+  { value: 'GYM', label: 'Ejercicios / Fuerza' },
   { value: 'FUNCTIONAL', label: 'Funcional' },
   { value: 'NUTRITION', label: 'Nutrición' },
 ]

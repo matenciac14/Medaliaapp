@@ -217,7 +217,7 @@ export default async function ProgressPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">{hasGymSessions ? '💪' : '📈'}</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">
-          {hasGymSessions ? `${gymSessionsCount} sesiones de gym completadas` : 'Aún no hay datos de progreso'}
+          {hasGymSessions ? `${gymSessionsCount} sesiones de ejercicios completadas` : 'Aún no hay datos de progreso'}
         </h2>
         <p className="text-gray-500 text-sm max-w-xs">
           {hasGymSessions
@@ -227,7 +227,7 @@ export default async function ProgressPage() {
         <div className="flex gap-3 mt-2 flex-wrap justify-center">
           <a href="/checkin" className="inline-block rounded-xl bg-[#f97316] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
           {hasGymSessions
-            ? <a href="/gym/history" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver historial gym</a>
+            ? <a href="/gym/history" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver historial ejercicios</a>
             : <a href="/plan" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver mi plan</a>
           }
         </div>

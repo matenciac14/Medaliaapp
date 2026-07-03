@@ -139,7 +139,7 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   OTRO: 'Otro',
 }
 
-const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmarks', 'Gym', 'Mensajes']
+const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmarks', 'Ejercicios', 'Mensajes']
 
 // ── Template preview info (feature C) ────────────────────────────────────────
 const TEMPLATE_PREVIEW: Record<string, { weeks: number; description: string; phases: string[] }> = {
@@ -569,7 +569,7 @@ export default function AthleteDetailClient({
   const [gymAssignedLoaded, setGymAssignedLoaded] = useState(false)
 
   useEffect(() => {
-    if (activeTab !== 'Gym' || gymAssignedLoaded) return
+    if (activeTab !== 'Ejercicios' || gymAssignedLoaded) return
     setGymAssignedLoading(true)
     fetch(`/api/coach/gym/athlete/${athleteId}/assigned`)
       .then(r => r.json())
@@ -2248,7 +2248,7 @@ export default function AthleteDetailClient({
       )}
 
       {/* ── Tab: Gym ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'Gym' && (
+      {activeTab === 'Ejercicios' && (
         <div className="space-y-5">
           {gymAssignedLoading && (
             <div className="text-center py-16 text-gray-400 text-sm">Cargando rutina...</div>

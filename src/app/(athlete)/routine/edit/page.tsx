@@ -46,7 +46,7 @@ const ACTIVITY_STYLES: Record<Activity, string> = {
 
 const ACTIVITY_LABELS: Record<Activity, string> = {
   REST: 'Descanso',
-  GYM:  '💪 Gym',
+  GYM:  '💪 Ejercicios',
   RUN:  '🏃 Correr',
 }
 
@@ -170,7 +170,7 @@ export default function RoutineEditPage() {
       <div className="flex items-center gap-4 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-[#1e3a5f]" />
-          <span>Gym</span>
+          <span>Ejercicios</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-[#f97316]" />

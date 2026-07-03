@@ -738,7 +738,7 @@ export default function ProgressClient({
 
       {/* ── Récords personales gym ──────────────────────────────────────────── */}
       {gymPRs.length > 0 && (
-        <SectionCard title={`Récords Personales Gym — ${gymPRs.length} PRs`}>
+        <SectionCard title={`Récords Personales Ejercicios — ${gymPRs.length} PRs`}>
           <div className="space-y-2">
             {gymPRs.map(pr => (
               <div key={pr.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">

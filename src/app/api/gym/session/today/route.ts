@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   // Feature gate
   const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true, timezone: true } })
   if (!userRecord?.featureGym) {
-    return NextResponse.json({ error: 'La función de Gym está disponible en el plan Pro.' }, { status: 403 })
+    return NextResponse.json({ error: 'La función de Ejercicios está disponible en el plan Pro.' }, { status: 403 })
   }
 
   const tz = userRecord.timezone ?? 'America/Bogota'
