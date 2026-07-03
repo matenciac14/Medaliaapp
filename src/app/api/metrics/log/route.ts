@@ -26,6 +26,14 @@ export async function POST(req: Request) {
 
   if (!date) return NextResponse.json({ error: 'date requerido' }, { status: 400 })
 
+  // PERSIST-10: solo sobreescribir campos que vienen definidos en el body
+  const updateData = {
+    ...(weightKg   !== undefined && { weightKg }),
+    ...(hrResting  !== undefined && { hrResting }),
+    ...(sleepHours !== undefined && { sleepHours }),
+    ...(energyLevel !== undefined && { energyLevel }),
+    ...(notes      !== undefined && { notes }),
+  }
   const log = await prisma.dailyLog.upsert({
     where: { userId_date: { userId: session.user.id, date: new Date(date) } },
     create: {
@@ -37,13 +45,7 @@ export async function POST(req: Request) {
       energyLevel: energyLevel ?? null,
       notes: notes ?? null,
     },
-    update: {
-      weightKg: weightKg ?? null,
-      hrResting: hrResting ?? null,
-      sleepHours: sleepHours ?? null,
-      energyLevel: energyLevel ?? null,
-      notes: notes ?? null,
-    },
+    update: updateData,
   })
 
   return NextResponse.json(log)

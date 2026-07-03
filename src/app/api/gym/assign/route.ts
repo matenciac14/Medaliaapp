@@ -26,21 +26,22 @@ export async function POST(req: NextRequest) {
   })
   if (!template) return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 })
 
-  // Desactivar cualquier rutina activa anterior
-  await prisma.assignedWorkout.updateMany({
-    where: { athleteId, isActive: true },
-    data: { isActive: false },
-  })
-
-  // Crear la auto-asignación (sin coachId)
-  const assigned = await prisma.assignedWorkout.create({
-    data: {
-      templateId,
-      athleteId,
-      coachId: null,
-      startDate: new Date(),
-      isActive: true,
-    },
+  // PERSIST-05: desactivar rutina anterior y crear la nueva en una sola tx
+  // para evitar race condition (2 requests → atleta con 2 rutinas activas)
+  const assigned = await prisma.$transaction(async (tx) => {
+    await tx.assignedWorkout.updateMany({
+      where: { athleteId, isActive: true },
+      data: { isActive: false },
+    })
+    return tx.assignedWorkout.create({
+      data: {
+        templateId,
+        athleteId,
+        coachId: null,
+        startDate: new Date(),
+        isActive: true,
+      },
+    })
   })
 
   return NextResponse.json({ ok: true, id: assigned.id })

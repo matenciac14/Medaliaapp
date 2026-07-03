@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ ok: true, id: existing.id, alreadyLogged: true })
   }
 
-  const [log, coachRelation] = await Promise.all([
-    prisma.sessionLog.create({
+  // PERSIST-06: catch P2002 específicamente en create para devolver 409 en doble submit
+  let log: Awaited<ReturnType<typeof prisma.sessionLog.create>>
+  try {
+    log = await prisma.sessionLog.create({
       data: {
         userId,
         plannedSessionId: body.plannedSessionId ?? null,
@@ -75,12 +77,17 @@ export async function POST(req: NextRequest) {
         notes: body.notes,
         actualIntensity: body.actualIntensity ?? null,
       },
-    }),
-    prisma.coachAthlete.findFirst({
-      where: { athleteId: userId, status: 'ACTIVE' },
-      select: { coach: { select: { pushToken: true } }, athlete: { select: { name: true } } },
-    }),
-  ])
+    })
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      return NextResponse.json({ ok: true, alreadyLogged: true }, { status: 200 })
+    }
+    throw err
+  }
+  const coachRelation = await prisma.coachAthlete.findFirst({
+    where: { athleteId: userId, status: 'ACTIVE' },
+    select: { coach: { select: { pushToken: true } }, athlete: { select: { name: true } } },
+  })
 
   if (coachRelation?.coach.pushToken) {
     const name = coachRelation.athlete.name ?? 'Tu atleta'

@@ -46,6 +46,7 @@ export type WebCheckinBody = {
   nutritionAdherencePct?:number  // 0–100 → nutritionAdherence 1–10
   motivationLevel?:     number   // 0–10 → motivation
   notes?:               string
+  painDescription?:     string
   waistCm?:             number
   armsCm?:              number
   hipsCm?:              number
@@ -67,6 +68,7 @@ export function mapWebCheckinBody(body: WebCheckinBody): CheckInInput {
                           : undefined,
     motivation:         body.motivationLevel,
     notes:              body.notes,
+    painDescription:    body.painDescription,
     waistCm:            body.waistCm,
     armsCm:             body.armsCm,
     hipsCm:             body.hipsCm,
