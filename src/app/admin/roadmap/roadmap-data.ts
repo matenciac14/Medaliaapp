@@ -967,9 +967,10 @@ export const GROUPS: RoadmapGroup[] = [
   // ── ARQUITECTURA DE PLANES — PIVOT PRODUCTO ────────────────────────────────
   {
     id: 'arch-planes',
-    title: 'Arquitectura de Planes — Pivot',
-    description: 'Redefinición del modelo de planes: coach asigna, sistema NO auto-genera. Incluye especialidades de coach y vista calendario.',
-    items: [],
+    label: 'Arquitectura de Planes — Pivot',
+    color: '#b45309',
+    bgColor: '#fffbeb',
+    borderColor: '#fcd34d',
     phases: [
       {
         id: 'arch-planes-pivot',
