@@ -181,7 +181,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { winner: _activePlanWinner, loserIds: _dashboardLoserIds } = selectActivePlan(activePlansRaw)
   let activePlanRaw = _activePlanWinner
   if (_dashboardLoserIds.length > 0) {
-    await prisma.trainingPlan.updateMany({
+    prisma.trainingPlan.updateMany({
       where: { id: { in: _dashboardLoserIds } },
       data: { status: PlanStatus.COMPLETED },
     }).catch(() => {})
@@ -196,7 +196,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const now = new Date()
     const rawWeek = Math.floor((now.getTime() - new Date(activePlanRaw.startDate).getTime()) / 86400000 / 7) + 1
     if (rawWeek > activePlanRaw.totalWeeks && now > new Date(activePlanRaw.endDate)) {
-      await prisma.trainingPlan.update({
+      prisma.trainingPlan.update({
         where: { id: activePlanRaw.id },
         data: { status: PlanStatus.COMPLETED },
       }).catch(() => {})

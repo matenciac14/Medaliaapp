@@ -50,39 +50,48 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const profile = await prisma.coachProfile.upsert({
-    where: { coachId: session.user.id },
-    create: {
-      coachId: session.user.id,
-      slug: slug ?? session.user.id,
-      bio: bio ?? null,
-      avatarUrl: avatarUrl ?? null,
-      headline: headline ?? null,
-      specialties: specialties ?? [],
-      city: city ?? null,
-      country: country ?? 'CO',
-      whatsapp: whatsapp ?? null,
-      instagram: instagram ?? null,
-      yearsExp: yearsExp ? parseInt(yearsExp) : null,
-      certifications: certifications ?? [],
-      isPublic: isPublic ?? false,
-    },
-    update: {
-      ...(slug !== undefined && { slug }),
-      ...(bio !== undefined && { bio }),
-      ...(avatarUrl !== undefined && { avatarUrl }),
-      ...(headline !== undefined && { headline }),
-      ...(specialties !== undefined && { specialties }),
-      ...(city !== undefined && { city }),
-      ...(country !== undefined && { country }),
-      ...(whatsapp !== undefined && { whatsapp }),
-      ...(instagram !== undefined && { instagram }),
-      ...(yearsExp !== undefined && { yearsExp: yearsExp ? parseInt(yearsExp) : null }),
-      ...(certifications !== undefined && { certifications }),
-      ...(isPublic !== undefined && { isPublic }),
-      ...(primarySpecialty !== undefined && { primarySpecialty }),
-    },
-  })
+  let profile
+  try {
+    profile = await prisma.coachProfile.upsert({
+      where: { coachId: session.user.id },
+      create: {
+        coachId: session.user.id,
+        slug: slug ?? session.user.id,
+        bio: bio ?? null,
+        avatarUrl: avatarUrl ?? null,
+        headline: headline ?? null,
+        specialties: specialties ?? [],
+        city: city ?? null,
+        country: country ?? 'CO',
+        whatsapp: whatsapp ?? null,
+        instagram: instagram ?? null,
+        yearsExp: yearsExp ? parseInt(yearsExp) : null,
+        certifications: certifications ?? [],
+        isPublic: isPublic ?? false,
+      },
+      update: {
+        ...(slug !== undefined && { slug }),
+        ...(bio !== undefined && { bio }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        ...(headline !== undefined && { headline }),
+        ...(specialties !== undefined && { specialties }),
+        ...(city !== undefined && { city }),
+        ...(country !== undefined && { country }),
+        ...(whatsapp !== undefined && { whatsapp }),
+        ...(instagram !== undefined && { instagram }),
+        ...(yearsExp !== undefined && { yearsExp: yearsExp ? parseInt(yearsExp) : null }),
+        ...(certifications !== undefined && { certifications }),
+        ...(isPublic !== undefined && { isPublic }),
+        ...(primarySpecialty !== undefined && { primarySpecialty }),
+      },
+    })
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code
+    if (code === 'P2002') {
+      return NextResponse.json({ error: 'Ese slug ya está en uso.' }, { status: 409 })
+    }
+    throw err
+  }
 
   return NextResponse.json({ profile })
 }

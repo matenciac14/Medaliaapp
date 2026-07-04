@@ -35,9 +35,15 @@ export async function PATCH(req: NextRequest) {
 
   const { goalType, raceDate } = parsed.data
 
-  await prisma.healthProfile.update({
+  await prisma.healthProfile.upsert({
     where: { userId: session.user.id },
-    data: {
+    update: {
+      sportGoal: goalType,
+      ...(raceDate ? { raceDate: new Date(raceDate) } : {}),
+    },
+    create: {
+      userId: session.user.id,
+      age: 0, heightCm: 0, weightKg: 0,
       sportGoal: goalType,
       ...(raceDate ? { raceDate: new Date(raceDate) } : {}),
     },
