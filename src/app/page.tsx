@@ -1,7 +1,7 @@
 /** @format */
 
 import RevealOnScroll from "./_components/RevealOnScroll";
-import { getT } from "@/lib/i18n/server";
+import { allTranslations } from "@/lib/i18n";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
 import ProfileTabs from "./_components/ProfileTabs";
 import {
@@ -28,8 +28,9 @@ import {
   Trophy,
 } from "lucide-react";
 
-export default async function Home() {
-  const t = await getT();
+export default function Home() {
+  // Landing siempre en español — idioma del producto (BUG-045)
+  const t = allTranslations['es'];
   const l = t.landing;
 
   return (

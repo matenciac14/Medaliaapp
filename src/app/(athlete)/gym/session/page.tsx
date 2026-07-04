@@ -734,7 +734,7 @@ export default function GymSessionPage() {
 
                           {/* Done button */}
                           <button
-                            onClick={() => toggleSetDone(we.id, setIdx, we.restSeconds)}
+                            onClick={(e) => { e.stopPropagation(); toggleSetDone(we.id, setIdx, we.restSeconds) }}
                             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                               s.completed
                                 ? 'bg-green-500 text-white scale-110'
@@ -848,7 +848,7 @@ export default function GymSessionPage() {
                           />
                         </div>
                         <button
-                          onClick={() => toggleSetDone(fe.id, setIdx, null)}
+                          onClick={(e) => { e.stopPropagation(); toggleSetDone(fe.id, setIdx, null) }}
                           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${s.completed ? 'bg-green-500 text-white scale-110' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                           aria-label={s.completed ? 'Desmarcar serie' : 'Marcar serie completa'}
                         >
