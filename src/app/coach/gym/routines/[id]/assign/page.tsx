@@ -106,7 +106,7 @@ export default async function AssignRoutinePage({ params }: Props) {
           <Link
             href="/coach/invite"
             className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-            style={{ color: '#f97316' }}
+            style={{ color: '#ea580c' }}
           >
             Invitar atleta →
           </Link>

@@ -97,7 +97,7 @@ function formatBenchmarkValue(value: number, unit: string): string {
 
 const PHASE_BAR_COLOR: Record<string, string> = {
   BASE: '#1e3a5f',
-  DESARROLLO: '#f97316',
+  DESARROLLO: '#ea580c',
   ESPECIFICO: '#dc2626',
   AFINAMIENTO: '#7c3aed',
 }
@@ -360,7 +360,7 @@ function AdherenceVerticalChart({ data }: { data: WeekData[] }) {
 
 function WellbeingChart({ data }: { data: WellbeingPoint[] }) {
   const rows = [
-    { key: 'energyLevel' as const, label: 'Energía', color: '#f97316' },
+    { key: 'energyLevel' as const, label: 'Energía', color: '#ea580c' },
     { key: 'motivationLevel' as const, label: 'Motivación', color: '#22c55e' },
     { key: 'stressLevel' as const, label: 'Estrés', color: '#8b5cf6' },
   ]
@@ -395,7 +395,7 @@ function WellbeingChart({ data }: { data: WellbeingPoint[] }) {
             {data.slice(-8).map((p, i) => (
               <div key={i} className="text-center">
                 <div className="flex flex-col gap-0.5 mb-0.5">
-                  {p.energyLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#f97316', opacity: p.energyLevel / 10 + 0.2 }} />}
+                  {p.energyLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#ea580c', opacity: p.energyLevel / 10 + 0.2 }} />}
                   {p.motivationLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#22c55e', opacity: p.motivationLevel / 10 + 0.2 }} />}
                   {p.stressLevel != null && <div className="w-5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: '#8b5cf6', opacity: p.stressLevel / 10 + 0.2 }} />}
                 </div>
@@ -413,7 +413,7 @@ function WellbeingChart({ data }: { data: WellbeingPoint[] }) {
 
 const MEASUREMENT_ROWS = [
   { key: 'waistCm'  as const, label: 'Cintura',  color: '#6366f1' },
-  { key: 'armsCm'   as const, label: 'Brazos',   color: '#f97316' },
+  { key: 'armsCm'   as const, label: 'Brazos',   color: '#ea580c' },
   { key: 'hipsCm'   as const, label: 'Cadera',   color: '#ec4899' },
   { key: 'thighsCm' as const, label: 'Muslos',   color: '#14b8a6' },
 ]
@@ -564,7 +564,7 @@ export default function ProgressClient({
                 <p className="text-xs text-gray-500">Objetivo</p>
               </div>
             ) : (
-              <Link href="/profile" className="text-xs text-[#f97316] font-medium hover:underline">
+              <Link href="/profile" className="text-xs text-[#ea580c] font-medium hover:underline">
                 + Define tu meta de peso
               </Link>
             )}
@@ -691,7 +691,7 @@ export default function ProgressClient({
               {row.status === 'igual' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 shrink-0">Sin cambio</span>}
               {row.status === 'empeorando' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626] shrink-0">Empeorando</span>}
               {row.status === 'logrado' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a] shrink-0">Logrado</span>}
-              {row.status === 'pendiente' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316] shrink-0">Pendiente</span>}
+              {row.status === 'pendiente' && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#ea580c] shrink-0">Pendiente</span>}
             </div>
           ))}
         </div>
@@ -717,7 +717,7 @@ export default function ProgressClient({
                   <td className="py-3">
                     {weightEnd <= weightGoal
                       ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-[#16a34a]">Logrado</span>
-                      : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#f97316]">Pendiente</span>}
+                      : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#ea580c]">Pendiente</span>}
                   </td>
                 </tr>
               )}
@@ -750,12 +750,12 @@ export default function ProgressClient({
                 </div>
                 <div className="text-right shrink-0">
                   {pr.weightKg != null && (
-                    <p className="text-base font-black text-[#f97316]">{pr.weightKg} kg</p>
+                    <p className="text-base font-black text-[#ea580c]">{pr.weightKg} kg</p>
                   )}
                   {pr.repsCompleted != null && (
                     <p className="text-xs text-gray-500">{pr.repsCompleted} reps</p>
                   )}
-                  <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-[#f97316] mt-0.5">PR</span>
+                  <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-[#ea580c] mt-0.5">PR</span>
                 </div>
               </div>
             ))}
@@ -785,7 +785,7 @@ export default function ProgressClient({
                   </div>
                 </div>
                 {item.rpe != null && (
-                  <span className="text-xs font-bold text-[#f97316] shrink-0">RPE {item.rpe}</span>
+                  <span className="text-xs font-bold text-[#ea580c] shrink-0">RPE {item.rpe}</span>
                 )}
               </div>
             ))}
@@ -816,7 +816,7 @@ export default function ProgressClient({
                           {b.notes && <p className="text-xs text-gray-400 mt-0.5 truncate">{b.notes}</p>}
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-base font-black text-[#f97316]">{formatBenchmarkValue(b.value, b.unit)}</p>
+                          <p className="text-base font-black text-[#ea580c]">{formatBenchmarkValue(b.value, b.unit)}</p>
                           <p className="text-xs text-gray-400">
                             {new Date(b.testedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>

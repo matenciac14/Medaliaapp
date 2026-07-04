@@ -291,7 +291,7 @@ export default function EditRoutinePage() {
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                 s === step ? 'text-white' : s < step ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
               }`}
-              style={s === step ? { backgroundColor: '#f97316' } : {}}
+              style={s === step ? { backgroundColor: '#ea580c' } : {}}
             >
               {s < step ? '✓' : s}
             </div>
@@ -343,12 +343,12 @@ export default function EditRoutinePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Días por semana: <span className="font-bold" style={{ color: '#f97316' }}>{daysPerWeek}</span>
+              Días por semana: <span className="font-bold" style={{ color: '#ea580c' }}>{daysPerWeek}</span>
             </label>
-            <input type="range" min={1} max={7} value={daysPerWeek} onChange={(e) => setDaysPerWeek(Number(e.target.value))} className="w-full accent-orange-500" />
+            <input type="range" min={1} max={7} value={daysPerWeek} onChange={(e) => setDaysPerWeek(Number(e.target.value))} className="w-full accent-orange-600" />
           </div>
           <div className="flex justify-end">
-            <button onClick={() => setStep(2)} disabled={name.trim().length < 2} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#f97316' }}>
+            <button onClick={() => setStep(2)} disabled={name.trim().length < 2} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#ea580c' }}>
               Siguiente →
             </button>
           </div>
@@ -363,7 +363,7 @@ export default function EditRoutinePage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">{DAY_LABELS[dayIndex] ?? `Día ${dayIndex + 1}`}</h3>
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input type="checkbox" checked={day.isRestDay} onChange={(e) => updateDay(dayIndex, { isRestDay: e.target.checked })} className="accent-orange-500" />
+                  <input type="checkbox" checked={day.isRestDay} onChange={(e) => updateDay(dayIndex, { isRestDay: e.target.checked })} className="accent-orange-600" />
                   Día de descanso
                 </label>
               </div>
@@ -402,7 +402,7 @@ export default function EditRoutinePage() {
           ))}
           <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm hover:bg-gray-50">← Atrás</button>
-            <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#f97316' }}>Siguiente →</button>
+            <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#ea580c' }}>Siguiente →</button>
           </div>
         </div>
       )}
@@ -429,7 +429,7 @@ export default function EditRoutinePage() {
                   <h3 className="font-semibold text-gray-900">{days[activeDay]?.label || DAY_LABELS[activeDay]}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">{days[activeDay]?.exercises.length} ejercicios</p>
                 </div>
-                <button onClick={() => addExercise(activeDay)} className="px-3 py-1.5 rounded-lg text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#f97316' }}>+ Agregar</button>
+                <button onClick={() => addExercise(activeDay)} className="px-3 py-1.5 rounded-lg text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#ea580c' }}>+ Agregar</button>
               </div>
 
               {libLoading && <p className="text-sm text-gray-400">Cargando biblioteca...</p>}
@@ -483,7 +483,7 @@ export default function EditRoutinePage() {
 
           <div className="flex justify-between">
             <button onClick={() => setStep(2)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm hover:bg-gray-50">← Atrás</button>
-            <button onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#f97316' }}>Revisar →</button>
+            <button onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#ea580c' }}>Revisar →</button>
           </div>
         </div>
       )}
@@ -523,7 +523,7 @@ export default function EditRoutinePage() {
 
           <div className="flex justify-between">
             <button onClick={() => setStep(3)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm hover:bg-gray-50">← Atrás</button>
-            <button onClick={handleSubmit} disabled={loading} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#f97316' }}>
+            <button onClick={handleSubmit} disabled={loading} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#ea580c' }}>
               {loading ? 'Guardando...' : 'Guardar cambios'}
             </button>
           </div>

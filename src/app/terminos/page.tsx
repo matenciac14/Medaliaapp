@@ -63,8 +63,8 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">4. Suscripciones y pagos</h2>
             <p>
-              Medaliq ofrece un período de prueba gratuito de 30 días con acceso completo al plan Pro. Al finalizar
-              el trial, puedes continuar con el plan Gratuito (funciones básicas) o suscribirte al plan Pro.
+              Medaliq ofrece un plan Gratuito permanente con acceso a registro de entrenamientos y nutrición, y un
+              plan Pro con funciones avanzadas como check-in adaptativo, ajustes automáticos de carga y métricas de progreso.
             </p>
             <ul className="list-disc pl-6 space-y-2 mt-3">
               <li>Los precios están expresados en dólares estadounidenses (USD) e incluyen todos los impuestos aplicables.</li>
@@ -124,7 +124,7 @@ export default function TerminosPage() {
               El tratamiento de los datos personales de los usuarios se rige por la Ley 1581 de 2012 y el Decreto
               1377 de 2013 de la República de Colombia. Para usuarios en Brasil, aplica adicionalmente la Lei Geral
               de Proteção de Dados (LGPD — Lei nº 13.709/2018). Para más información, consulta nuestra{' '}
-              <a href="/privacidad" className="text-[#f97316] hover:underline font-medium">Política de Privacidad</a>.
+              <a href="/privacidad" className="text-[#ea580c] hover:underline font-medium">Política de Privacidad</a>.
             </p>
           </section>
 
@@ -141,7 +141,7 @@ export default function TerminosPage() {
             <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">11. Contacto</h2>
             <p>
               Para preguntas sobre estos términos, escríbenos a{' '}
-              <a href="mailto:hola@medaliq.com" className="text-[#f97316] hover:underline font-medium">
+              <a href="mailto:hola@medaliq.com" className="text-[#ea580c] hover:underline font-medium">
                 hola@medaliq.com
               </a>
             </p>

@@ -270,7 +270,7 @@ export default function NewRoutinePage() {
                   ? 'bg-green-100 text-green-700'
                   : 'bg-gray-100 text-gray-400'
               }`}
-              style={s === step ? { backgroundColor: '#f97316' } : {}}
+              style={s === step ? { backgroundColor: '#ea580c' } : {}}
             >
               {s < step ? '✓' : s}
             </div>
@@ -341,7 +341,7 @@ export default function NewRoutinePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Días por semana: <span className="font-bold" style={{ color: '#f97316' }}>{daysPerWeek}</span>
+              Días por semana: <span className="font-bold" style={{ color: '#ea580c' }}>{daysPerWeek}</span>
             </label>
             <input
               type="range"
@@ -349,7 +349,7 @@ export default function NewRoutinePage() {
               max={7}
               value={daysPerWeek}
               onChange={(e) => setDaysPerWeek(Number(e.target.value))}
-              className="w-full accent-orange-500"
+              className="w-full accent-orange-600"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>1</span><span>7</span>
@@ -361,7 +361,7 @@ export default function NewRoutinePage() {
               onClick={() => setStep(2)}
               disabled={!canGoStep2()}
               className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               Siguiente →
             </button>
@@ -381,7 +381,7 @@ export default function NewRoutinePage() {
                     type="checkbox"
                     checked={day.isRestDay}
                     onChange={(e) => updateDay(dayIndex, { isRestDay: e.target.checked })}
-                    className="accent-orange-500"
+                    className="accent-orange-600"
                   />
                   Día de descanso
                 </label>
@@ -461,7 +461,7 @@ export default function NewRoutinePage() {
             <button
               onClick={() => setStep(3)}
               className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               Siguiente →
             </button>
@@ -507,7 +507,7 @@ export default function NewRoutinePage() {
                 <button
                   onClick={() => addExercise(activeDay)}
                   className="px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#f97316' }}
+                  style={{ backgroundColor: '#ea580c' }}
                 >
                   + Agregar
                 </button>
@@ -642,7 +642,7 @@ export default function NewRoutinePage() {
             <button
               onClick={() => setStep(4)}
               className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               Revisar →
             </button>
@@ -703,7 +703,7 @@ export default function NewRoutinePage() {
               onClick={handleSubmit}
               disabled={loading}
               className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               {loading ? 'Guardando...' : 'Guardar rutina'}
             </button>

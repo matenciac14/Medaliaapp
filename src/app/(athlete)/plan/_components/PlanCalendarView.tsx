@@ -13,7 +13,7 @@ const SESSION_COLORS: Record<string, string> = {
   RODAJE_Z2:    'bg-blue-500',
   FARTLEK:      'bg-blue-600',
   TEMPO:        'bg-amber-500',
-  INTERVALOS:   'bg-orange-500',
+  INTERVALOS:   'bg-orange-600',
   TIRADA_LARGA: 'bg-indigo-500',
   SIMULACRO:    'bg-purple-600',
   TEST:         'bg-purple-500',
@@ -94,7 +94,7 @@ function DayCell({
         isSelected
           ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 ring-1 ring-[#1e3a5f]/30'
           : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50',
-        isToday && !isSelected && 'border-[#f97316]/40 bg-orange-50/40'
+        isToday && !isSelected && 'border-[#ea580c]/40 bg-orange-50/40'
       )}
     >
       {/* Day number */}
@@ -102,7 +102,7 @@ function DayCell({
         className={cn(
           'w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium',
           isToday
-            ? 'bg-[#f97316] text-white font-bold'
+            ? 'bg-[#ea580c] text-white font-bold'
             : isSelected
             ? 'bg-[#1e3a5f] text-white'
             : 'text-gray-700'
@@ -297,7 +297,7 @@ export default function PlanCalendarView() {
           {weekOffset !== 0 && (
             <button
               onClick={goToToday}
-              className="text-xs text-[#f97316] hover:underline mt-0.5"
+              className="text-xs text-[#ea580c] hover:underline mt-0.5"
             >
               Ir a esta semana
             </button>

@@ -223,7 +223,7 @@ export default function CheckInClient({
   const adherencePct = weekAdherence.total > 0
     ? Math.round((weekAdherence.completed / weekAdherence.total) * 100)
     : null
-  const painColor = painLevel >= 7 ? '#ef4444' : painLevel >= 4 ? '#f97316' : '#22c55e'
+  const painColor = painLevel >= 7 ? '#ef4444' : painLevel >= 4 ? '#ea580c' : '#22c55e'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -260,7 +260,7 @@ export default function CheckInClient({
                 <MetricInput label="Peso corporal" value={weightKg} onChange={setWeightKg} unit="kg" step="0.1" inputMode="decimal" placeholder="ej. 70.5" prevValue={prevMetrics.weightKg} />
                 <MetricInput label="Horas de sueño (prom.)" value={sleepHours} onChange={setSleepHours} unit="h" step="0.5" inputMode="decimal" placeholder="ej. 7.5" prevValue={prevMetrics.sleepHours} />
                 <MetricInput label="FC reposo" value={hrResting} onChange={setHrResting} unit="bpm" placeholder="ej. 58" prevValue={prevMetrics.hrResting} invertDelta />
-                <MetricSlider label="Energía percibida" value={energyLevel} onChange={setEnergyLevel} color="#f97316" lowLabel="Sin energía" highLabel="Al 100%" prevValue={prevMetrics.energyLevel} />
+                <MetricSlider label="Energía percibida" value={energyLevel} onChange={setEnergyLevel} color="#ea580c" lowLabel="Sin energía" highLabel="Al 100%" prevValue={prevMetrics.energyLevel} />
                 <MetricSlider label="RPE sesión más dura" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
               </div>
             </section>
@@ -326,7 +326,7 @@ export default function CheckInClient({
               {formError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError}</p>}
               {saveError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{saveError}</p>}
               <p className="text-xs text-center text-gray-400">Estos datos ajustarán tu plan de la próxima semana automáticamente.</p>
-              <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#f97316] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
+              <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
                 {saving ? 'Guardando...' : 'Enviar check-in'}
               </button>
             </div>
@@ -344,7 +344,7 @@ export default function CheckInClient({
               {adherencePct !== null && (
                 <div className="px-6 pt-4 pb-2">
                   <div className="h-[6px] bg-[#e6e6e6] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${adherencePct}%`, backgroundColor: adherencePct >= 80 ? '#1a9933' : adherencePct >= 50 ? '#f97316' : '#ef4444' }} />
+                    <div className="h-full rounded-full transition-all" style={{ width: `${adherencePct}%`, backgroundColor: adherencePct >= 80 ? '#1a9933' : adherencePct >= 50 ? '#ea580c' : '#ef4444' }} />
                   </div>
                 </div>
               )}
@@ -363,7 +363,7 @@ export default function CheckInClient({
             {(formError || saveError) && (
               <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError ?? saveError}</p>
             )}
-            <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#f97316] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
+            <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
               {saving ? 'Guardando...' : 'Enviar check-in'}
             </button>
           </div>

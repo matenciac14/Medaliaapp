@@ -531,7 +531,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-sm text-gray-500 capitalize">{formatDate()}</p>
           {streakDays >= 2 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#f97316]">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#ea580c]">
               🔥 {streakDays} días · racha activa
             </span>
           )}
@@ -592,7 +592,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           /* Atleta de carrera */
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="flex h-full">
-              <div className="w-1 bg-[#f97316] shrink-0" />
+              <div className="w-1 bg-[#ea580c] shrink-0" />
               <div className="flex-1 px-4 py-4">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">🏁 Tu Carrera</p>
                 {raceDays !== null && raceDays > 0 ? (
@@ -609,12 +609,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     {activePlan && (
                       <>
                         <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
-                          <div className="h-full bg-[#f97316] rounded-full"
+                          <div className="h-full bg-[#ea580c] rounded-full"
                             style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
                         </div>
                         <div className="flex justify-between items-center">
                           <p className="text-[10px] text-gray-400">Semana {planData.currentWeek} de {planData.totalWeeks}</p>
-                          <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
+                          <Link href="/plan" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver plan →</Link>
                         </div>
                       </>
                     )}
@@ -627,7 +627,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     </div>
                     <p className="text-[11px] text-gray-500 mb-3">{activePlan.name}</p>
                     <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-[#f97316] rounded-full"
+                      <div className="h-full bg-[#ea580c] rounded-full"
                         style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
                     </div>
                     <div className="flex justify-between items-center">
@@ -636,7 +636,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           {phaseDisplay}
                         </span>
                       </p>
-                      <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
+                      <Link href="/plan" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver plan →</Link>
                     </div>
                   </>
                 ) : (
@@ -846,7 +846,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {checkinPending && (
             <Link href="/checkin" className="block">
               <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden flex hover:shadow-[0_2px_8px_rgba(249,115,22,0.12)] transition-shadow">
-                <div className="w-1 bg-[#f97316] shrink-0" />
+                <div className="w-1 bg-[#ea580c] shrink-0" />
                 <div className="flex-1 flex items-center justify-between px-4 py-3.5 gap-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Check-in semanal pendiente</p>

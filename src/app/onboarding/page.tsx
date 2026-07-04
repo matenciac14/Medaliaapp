@@ -42,13 +42,13 @@ function SelectCard({
       className={cn(
         'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
         selected
-          ? 'border-[#f97316] bg-[#f97316]/8'
+          ? 'border-[#ea580c] bg-[#ea580c]/8'
           : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
       )}
     >
       <span className="text-2xl leading-none mt-0.5">{icon}</span>
       <span className="flex flex-col gap-0.5">
-        <span className={cn('font-semibold text-base', selected ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
+        <span className={cn('font-semibold text-base', selected ? 'text-[#ea580c]' : 'text-[#1e3a5f]')}>
           {label}
         </span>
         {subtext && <span className="text-sm text-gray-500">{subtext}</span>}
@@ -56,7 +56,7 @@ function SelectCard({
       <span
         className={cn(
           'ml-auto w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 transition-colors',
-          selected ? 'border-[#f97316] bg-[#f97316]' : 'border-gray-300'
+          selected ? 'border-[#ea580c] bg-[#ea580c]' : 'border-gray-300'
         )}
       >
         {selected && (
@@ -89,7 +89,7 @@ function ToggleBtn({
       className={cn(
         'px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-150',
         selected
-          ? 'border-[#f97316] bg-[#f97316] text-white'
+          ? 'border-[#ea580c] bg-[#ea580c] text-white'
           : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
       )}
     >
@@ -159,7 +159,7 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
                 className={cn(
                   'px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center gap-2',
                   data.gymGoal === g.value
-                    ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
+                    ? 'border-[#ea580c] bg-[#ea580c]/10 text-[#ea580c]'
                     : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
                 )}
               >
@@ -291,7 +291,7 @@ function StepGenerating() {
     <div className="flex flex-col items-center justify-center gap-8 py-12">
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-[#1e3a5f]/10" />
-        <div className="absolute inset-0 rounded-full border-4 border-t-[#f97316] animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-t-[#ea580c] animate-spin" />
         <span className="absolute inset-0 flex items-center justify-center text-2xl">⚡</span>
       </div>
       <div className="text-center">
@@ -431,7 +431,7 @@ export default function OnboardingPage() {
         </div>
         <div className="h-1 bg-gray-100 w-full">
           <div
-            className="h-1 bg-[#f97316] transition-all duration-300"
+            className="h-1 bg-[#ea580c] transition-all duration-300"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -466,7 +466,7 @@ export default function OnboardingPage() {
             <button
               onClick={nextStep}
               disabled={!isStepValid(currentStepId, data) || isGenerating}
-              className="flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isLastDataStep ? 'Guardar y entrar →' : 'Siguiente →'}
             </button>

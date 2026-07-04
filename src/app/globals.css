@@ -70,7 +70,7 @@
   --ring: oklch(0.27 0.072 240);
   /* Brand chart palette */
   --chart-1: oklch(0.27 0.072 240);  /* navy  #1e3a5f */
-  --chart-2: oklch(0.70 0.18 47);    /* orange #f97316 */
+  --chart-2: oklch(0.65 0.19 47);    /* orange #ea580c */
   --chart-3: oklch(0.52 0.14 152);   /* green  */
   --chart-4: oklch(0.45 0.15 299);   /* purple */
   --chart-5: oklch(0.62 0.10 202);   /* teal   */
@@ -148,8 +148,8 @@
   --brand-navy: #1e3a5f;
   --brand-navy-mid: #2d5a8e;
   --brand-navy-light: #3a6ea8;
-  --brand-orange: #f97316;
-  --brand-orange-dark: #ea6c0a;
+  --brand-orange: #ea580c;
+  --brand-orange-dark: #c2410c;
 }
 
 /* Metric number display — tabular, tight, heavy */
@@ -168,12 +168,12 @@
 
 /* Orange CTA gradient */
 .bg-brand-cta {
-  background: linear-gradient(135deg, #f97316 0%, #ea6c0a 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
 }
 
 /* Active nav pill indicator */
 .nav-pill-active {
-  background-color: rgba(249, 115, 22, 0.12);
+  background-color: rgba(234, 88, 12, 0.12);
   border-radius: 9999px;
 }
 

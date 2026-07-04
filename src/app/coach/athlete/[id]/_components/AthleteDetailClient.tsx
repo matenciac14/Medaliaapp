@@ -1353,7 +1353,7 @@ export default function AthleteDetailClient({
                 )}
                 <div className="space-y-4">
                   {week.sessions.map((session) => (
-                    <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#f97316' }}>
+                    <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#ea580c' }}>
                       {editingSession === session.id ? (
                         // ── Inline editor ──
                         <div className="bg-blue-50 rounded-lg p-3 space-y-2">
@@ -1621,7 +1621,7 @@ export default function AthleteDetailClient({
                   <div className="space-y-5">
                     {([
                       { key: 'waistCm' as const, label: 'Cintura', color: '#6366f1' },
-                      { key: 'armsCm'  as const, label: 'Brazos',  color: '#f97316' },
+                      { key: 'armsCm'  as const, label: 'Brazos',  color: '#ea580c' },
                       { key: 'hipsCm'  as const, label: 'Cadera',  color: '#ec4899' },
                       { key: 'thighsCm' as const, label: 'Muslos', color: '#14b8a6' },
                     ]).map(({ key, label, color }) => {
@@ -1932,7 +1932,7 @@ export default function AthleteDetailClient({
                             const pct = avgTargetKcal && totals.kcal > 0
                               ? Math.round((totals.kcal / avgTargetKcal) * 100)
                               : null
-                            const color = pct == null ? '#9ca3af' : pct >= 90 ? '#16a34a' : pct >= 70 ? '#f97316' : '#dc2626'
+                            const color = pct == null ? '#9ca3af' : pct >= 90 ? '#16a34a' : pct >= 70 ? '#ea580c' : '#dc2626'
                             return (
                               <div key={dateKey} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                                 <span className="text-xs text-gray-400 w-20 shrink-0">
@@ -2042,7 +2042,7 @@ export default function AthleteDetailClient({
                               className="w-full rounded-t-sm transition-all"
                               style={{
                                 height: `${Math.max(heightPct, 4)}%`,
-                                backgroundColor: '#f97316',
+                                backgroundColor: '#ea580c',
                                 opacity: 0.5 + (li / ex.logs.length) * 0.5,
                               }}
                             />
@@ -2177,7 +2177,7 @@ export default function AthleteDetailClient({
                   onClick={handleAddBenchmark}
                   disabled={savingBenchmark || !benchmarkValueStr}
                   className="px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#f97316' }}
+                  style={{ backgroundColor: '#ea580c' }}
                 >
                   {savingBenchmark ? 'Guardando...' : 'Guardar benchmark'}
                 </button>
@@ -2217,7 +2217,7 @@ export default function AthleteDetailClient({
                           <span className="text-sm font-semibold text-gray-900">
                             {METRIC_LABELS[b.metric] ?? b.metric}
                           </span>
-                          <span className="text-base font-black text-[#f97316]">
+                          <span className="text-base font-black text-[#ea580c]">
                             {formatBenchmarkValue(b.value, b.unit, b.metric)}
                           </span>
                         </div>
@@ -2400,7 +2400,7 @@ export default function AthleteDetailClient({
                                 className="text-xs font-bold px-2.5 py-0.5 rounded-full"
                                 style={{
                                   backgroundColor: s.rpe >= 8 ? '#fef2f2' : s.rpe >= 6 ? '#fff7ed' : '#f0fdf4',
-                                  color: s.rpe >= 8 ? '#dc2626' : s.rpe >= 6 ? '#f97316' : '#16a34a',
+                                  color: s.rpe >= 8 ? '#dc2626' : s.rpe >= 6 ? '#ea580c' : '#16a34a',
                                 }}
                               >
                                 RPE {s.rpe}

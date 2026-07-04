@@ -56,7 +56,7 @@ export default function InstallPWABanner() {
 
   return (
     <div className="mx-4 mb-2 bg-[#1e3a5f] text-white rounded-2xl px-4 py-3 flex items-start gap-3 shadow-lg">
-      <div className="w-9 h-9 rounded-xl bg-[#f97316] flex items-center justify-center font-bold text-white text-base shrink-0 mt-0.5">
+      <div className="w-9 h-9 rounded-xl bg-[#ea580c] flex items-center justify-center font-bold text-white text-base shrink-0 mt-0.5">
         M
       </div>
       <div className="flex-1 min-w-0">
@@ -73,7 +73,7 @@ export default function InstallPWABanner() {
         {!isIOS && (
           <button
             onClick={install}
-            className="mt-2 flex items-center gap-1.5 bg-[#f97316] hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            className="mt-2 flex items-center gap-1.5 bg-[#ea580c] hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download size={13} />
             Instalar app

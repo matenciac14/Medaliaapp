@@ -168,7 +168,7 @@ export default function JoinPage() {
               <p className="text-[10px] text-gray-400 mt-0.5">Adherencia prom.</p>
             </div>
             <div className="bg-white px-3 py-3 text-center">
-              <p className="text-lg font-extrabold" style={{ color: '#f97316' }}>{invite.prsThisMonth}</p>
+              <p className="text-lg font-extrabold" style={{ color: '#ea580c' }}>{invite.prsThisMonth}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">PRs este mes</p>
             </div>
           </div>

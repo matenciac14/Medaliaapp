@@ -67,7 +67,7 @@ export default function EarlyCheckInScreen({ lastWeekSummary, onForce, onBack }:
         )}
 
         <div className="space-y-2 pb-8">
-          <button onClick={onBack} className="w-full bg-[#f97316] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
+          <button onClick={onBack} className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
             Volver al dashboard
           </button>
           <button onClick={onForce} className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors">

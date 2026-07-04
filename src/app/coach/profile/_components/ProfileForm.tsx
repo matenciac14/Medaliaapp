@@ -189,7 +189,7 @@ export default function ProfileForm({ initialProfile }: Props) {
                 type="checkbox"
                 checked={specialties.includes(value)}
                 onChange={() => toggleSpecialty(value)}
-                className="w-4 h-4 accent-[#f97316]"
+                className="w-4 h-4 accent-[#ea580c]"
               />
               <span className="text-sm text-gray-700">{label}</span>
             </label>
@@ -319,7 +319,7 @@ export default function ProfileForm({ initialProfile }: Props) {
             onChange={e => setIsPublic(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#f97316]"></div>
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ea580c]"></div>
         </label>
       </div>
 
@@ -339,7 +339,7 @@ export default function ProfileForm({ initialProfile }: Props) {
         type="submit"
         disabled={loading}
         className="w-full py-2.5 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50"
-        style={{ backgroundColor: '#f97316' }}
+        style={{ backgroundColor: '#ea580c' }}
       >
         {loading ? 'Guardando...' : 'Guardar perfil'}
       </button>

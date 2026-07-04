@@ -163,7 +163,7 @@ function AlertsFeed({ athletes, overdueAthleteIds }: { athletes: { id: string; n
     if (f.noCheckin)
       items.push({ athleteId: a.id, name: a.name, type: 'sin-checkin', message: 'Sin check-in hace +7 días', color: '#dc2626' })
     if (f.highRpe)
-      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'Carga/fatiga alta (RPE ≥ 8)', color: '#f97316' })
+      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'Carga/fatiga alta (RPE ≥ 8)', color: '#ea580c' })
     if (f.weightDrop)
       items.push({ athleteId: a.id, name: a.name, type: 'peso', message: `Bajó ${f.weightDropKg.toFixed(1)} kg esta semana`, color: '#eab308' })
     if (f.adjustments.length > 0)

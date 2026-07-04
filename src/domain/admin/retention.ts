@@ -49,6 +49,6 @@ export function computeRetention(
  */
 export function retentionColor(rate: number): string {
   if (rate >= 70) return '#16a34a' // green
-  if (rate >= 40) return '#f97316' // amber
+  if (rate >= 40) return '#ea580c' // amber
   return '#dc2626'                 // red
 }

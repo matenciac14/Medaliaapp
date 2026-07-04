@@ -377,7 +377,7 @@ export const GROUPS: RoadmapGroup[] = [
     id: 'plataforma',
     label: 'Plataforma — Marketplace & Admin',
     period: 'En construcción',
-    color: '#f97316',
+    color: '#ea580c',
     bgColor: '#fff7ed',
     borderColor: '#fed7aa',
     items: [
@@ -540,7 +540,7 @@ export const GROUPS: RoadmapGroup[] = [
     id: 'pre-launch',
     label: 'Pre-lanzamiento — QA & Tests E2E',
     period: 'En construcción',
-    color: '#f97316',
+    color: '#ea580c',
     bgColor: '#fff7ed',
     borderColor: '#fed7aa',
     items: [

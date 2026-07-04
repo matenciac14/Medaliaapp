@@ -61,7 +61,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
       >
         <div className="px-6 py-5 border-b border-white/10">
           <Link href="/coach/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: '#f97316' }}>M</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: '#ea580c' }}>M</div>
             <span className="text-white font-bold text-lg tracking-tight">Medaliq</span>
           </Link>
         </div>
@@ -81,7 +81,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
                 )}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#f97316]" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#ea580c]" />
                 )}
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
                 <span>{label}</span>
@@ -95,7 +95,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
             <LanguageSwitcher variant="dark" />
           </div>
           <div className="flex items-center gap-3 px-3 py-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: '#f97316' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: '#ea580c' }}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -112,7 +112,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
         <Link href="/coach/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>M</div>
+          <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#ea580c' }}>M</div>
           <span className="text-white font-bold text-base">Medaliq Coach</span>
         </Link>
         <div className="flex items-center gap-3">
@@ -135,7 +135,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
               <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-end pb-2 gap-1">
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg -mt-6"
-                  style={{ backgroundColor: '#f97316' }}
+                  style={{ backgroundColor: '#ea580c' }}
                 >
                   <Icon size={22} color="white" strokeWidth={2.5} />
                 </div>
@@ -154,7 +154,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
               )}
             >
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#f97316]" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#ea580c]" />
               )}
               <Icon size={22} strokeWidth={active ? 2.5 : 2} />
               {label}

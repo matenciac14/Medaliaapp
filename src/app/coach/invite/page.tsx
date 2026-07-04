@@ -15,7 +15,7 @@ type InviteCode = {
 function codeStatus(code: InviteCode): { label: string; color: string } {
   if (code.usedBy) return { label: 'Usado', color: '#16a34a' }
   if (new Date(code.expiresAt) < new Date()) return { label: 'Expirado', color: '#9ca3af' }
-  return { label: 'Activo', color: '#f97316' }
+  return { label: 'Activo', color: '#ea580c' }
 }
 
 export default function InvitePage() {
@@ -131,7 +131,7 @@ export default function InvitePage() {
                 <button
                   onClick={() => handleCopy(code)}
                   className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: copiedId === code.id ? '#16a34a' : '#f97316' }}
+                  style={{ backgroundColor: copiedId === code.id ? '#16a34a' : '#ea580c' }}
                 >
                   {copiedId === code.id ? '✓ Copiado' : 'Copiar link'}
                 </button>

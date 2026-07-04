@@ -31,7 +31,7 @@ export default async function ProgressPage() {
         <span className="text-5xl">📊</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Progreso disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Visualiza tu evolución de peso, FC y adherencia semana a semana con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
       </div>
     )
   }
@@ -225,7 +225,7 @@ export default async function ProgressPage() {
             : 'Haz tu primer check-in semanal y completa sesiones para ver tu evolución aquí.'}
         </p>
         <div className="flex gap-3 mt-2 flex-wrap justify-center">
-          <a href="/checkin" className="inline-block rounded-xl bg-[#f97316] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
+          <a href="/checkin" className="inline-block rounded-xl bg-[#ea580c] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
           {hasGymSessions
             ? <a href="/gym/history" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver historial ejercicios</a>
             : <a href="/plan" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver mi plan</a>

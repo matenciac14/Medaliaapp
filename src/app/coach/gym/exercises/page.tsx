@@ -89,7 +89,7 @@ export default async function ExercisesPage({ searchParams }: Props) {
           <Link
             href="/coach/gym/exercises?adding=1"
             className="self-start sm:self-auto px-4 py-2 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             + Agregar ejercicio
           </Link>

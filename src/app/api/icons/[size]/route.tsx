@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ size: s
             width: innerSize,
             height: innerSize,
             borderRadius: innerRadius,
-            background: '#f97316',
+            background: '#ea580c',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

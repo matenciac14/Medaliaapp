@@ -133,7 +133,7 @@ export default function PostForm({ onCreated }: Props) {
           id="isPublic"
           checked={isPublic}
           onChange={e => setIsPublic(e.target.checked)}
-          className="w-4 h-4 accent-[#f97316]"
+          className="w-4 h-4 accent-[#ea580c]"
         />
         <label htmlFor="isPublic" className="text-sm text-gray-700 cursor-pointer">
           Publicación pública (visible en mi perfil)
@@ -150,7 +150,7 @@ export default function PostForm({ onCreated }: Props) {
         type="submit"
         disabled={loading}
         className="w-full py-2.5 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50"
-        style={{ backgroundColor: '#f97316' }}
+        style={{ backgroundColor: '#ea580c' }}
       >
         {loading ? 'Publicando...' : 'Publicar'}
       </button>

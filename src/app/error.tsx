@@ -30,7 +30,7 @@ export default function Error({
           <button
             onClick={reset}
             className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             Intentar de nuevo
           </button>

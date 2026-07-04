@@ -28,7 +28,7 @@ export default function Image() {
             style={{
               width: 64,
               height: 64,
-              background: 'linear-gradient(135deg, #f97316, #ea580c)',
+              background: 'linear-gradient(135deg, #ea580c, #ea580c)',
               borderRadius: 16,
               display: 'flex',
               alignItems: 'center',

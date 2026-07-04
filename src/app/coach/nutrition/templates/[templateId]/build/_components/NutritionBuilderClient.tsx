@@ -188,7 +188,7 @@ function FoodSearchModal({
 
             {macros && (
               <div className="flex gap-4 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
-                <span className="flex items-center gap-1"><Flame size={11} className="text-orange-500" /><strong>{Math.round(macros.kcal)}</strong> kcal</span>
+                <span className="flex items-center gap-1"><Flame size={11} className="text-orange-600" /><strong>{Math.round(macros.kcal)}</strong> kcal</span>
                 <span><strong>{Math.round(macros.proteinG)}</strong>g prot</span>
                 <span><strong>{Math.round(macros.carbsG)}</strong>g carb</span>
                 <span><strong>{Math.round(macros.fatG)}</strong>g gras</span>
@@ -199,7 +199,7 @@ function FoodSearchModal({
               onClick={() => { onAdd(selected, grams); setSelected(null); setQuery(''); setResults([]) }}
               disabled={isPending}
               className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               Agregar al plan
             </button>
@@ -257,7 +257,7 @@ function AssignModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[70vh]">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Users size={18} className="text-orange-500" /> Asignar a atletas</h3>
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Users size={18} className="text-orange-600" /> Asignar a atletas</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"><X size={18} /></button>
         </div>
 
@@ -287,7 +287,7 @@ function AssignModal({
                 {loading ? (
                   <div className="w-5 h-5 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
                 ) : assigned ? (
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#f97316' }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ea580c' }}>
                     <Check size={13} color="white" strokeWidth={3} />
                   </div>
                 ) : (
@@ -414,7 +414,7 @@ export default function NutritionBuilderClient({
         <button
           onClick={() => setShowAssign(true)}
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#f97316' }}
+          style={{ backgroundColor: '#ea580c' }}
         >
           <Users size={15} />
           <span className="hidden sm:inline">Asignar</span>
@@ -433,7 +433,7 @@ export default function NutritionBuilderClient({
                 key={dt}
                 onClick={() => setActiveDayType(dt)}
                 className={`flex-1 sm:flex-none px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  active ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  active ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
                 <div className="flex items-center gap-1.5 justify-center">

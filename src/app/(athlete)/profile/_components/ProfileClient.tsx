@@ -181,7 +181,7 @@ export default function ProfileClient({ user }: Props) {
           <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
           <p className="text-sm text-gray-500">{user.email}</p>
           {user.plan && (
-            <p className="text-xs text-[#f97316] font-medium mt-0.5">{user.plan.name} · {user.plan.totalWeeks} semanas</p>
+            <p className="text-xs text-[#ea580c] font-medium mt-0.5">{user.plan.name} · {user.plan.totalWeeks} semanas</p>
           )}
         </div>
       </div>
@@ -190,10 +190,10 @@ export default function ProfileClient({ user }: Props) {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-semibold text-gray-700">Completitud del perfil</p>
-          <span className="text-sm font-bold" style={{ color: completePct === 100 ? '#22c55e' : '#f97316' }}>{completePct}%</span>
+          <span className="text-sm font-bold" style={{ color: completePct === 100 ? '#22c55e' : '#ea580c' }}>{completePct}%</span>
         </div>
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${completePct}%`, backgroundColor: completePct === 100 ? '#22c55e' : '#f97316' }} />
+          <div className="h-full rounded-full transition-all" style={{ width: `${completePct}%`, backgroundColor: completePct === 100 ? '#22c55e' : '#ea580c' }} />
         </div>
         <div className="mt-3 space-y-1">
           {profileFields.map(f => (
@@ -359,7 +359,7 @@ export default function ProfileClient({ user }: Props) {
               <div className="pt-3 border-t border-gray-100 space-y-2">
                 {p.injuries.length > 0 && (
                   <div className="flex items-start gap-2">
-                    <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
+                    <AlertTriangle size={14} className="text-orange-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs font-semibold text-gray-700">Lesiones</p>
                       <p className="text-xs text-gray-500">{p.injuries.join(', ')}</p>
@@ -379,7 +379,7 @@ export default function ProfileClient({ user }: Props) {
             )}
           </>
         ) : (
-          <p className="text-sm text-gray-500">No hay datos de perfil. <button onClick={() => setEditingProfile(true)} className="text-[#f97316] font-medium underline">Agregar datos →</button></p>
+          <p className="text-sm text-gray-500">No hay datos de perfil. <button onClick={() => setEditingProfile(true)} className="text-[#ea580c] font-medium underline">Agregar datos →</button></p>
         )}
       </div>
 
@@ -387,10 +387,10 @@ export default function ProfileClient({ user }: Props) {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Target size={16} className="text-[#f97316]" />
+            <Target size={16} className="text-[#ea580c]" />
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Registro diario</h2>
           </div>
-          <a href="/checkin" className="text-xs text-gray-400 hover:text-[#f97316] transition-colors py-2 -my-2 inline-block">
+          <a href="/checkin" className="text-xs text-gray-400 hover:text-[#ea580c] transition-colors py-2 -my-2 inline-block">
             Check-in semanal →
           </a>
         </div>
@@ -477,7 +477,7 @@ export default function ProfileClient({ user }: Props) {
           onClick={handleSave}
           disabled={saving}
           className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          style={{ backgroundColor: saved ? '#22c55e' : '#f97316' }}
+          style={{ backgroundColor: saved ? '#22c55e' : '#ea580c' }}
         >
           {saved ? <><Check size={16} /> Guardado</> : saving ? 'Guardando...' : 'Guardar métricas'}
         </button>
