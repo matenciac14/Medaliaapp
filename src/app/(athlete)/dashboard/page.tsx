@@ -5,7 +5,6 @@ import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
 import WeekNavBar from '../_components/WeekNavBar'
 import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
@@ -17,7 +16,8 @@ import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
-import { getCurrentISOWeek, getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -377,23 +377,90 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
   }
 
-  // ── Métricas reales ────────────────────────────────────────────────────────
-  const weightKg = lastCheckIn?.weightKg ?? profile?.weightKg ?? null
-  const hrResting = lastCheckIn?.hrResting ?? profile?.hrResting ?? null
-  const sleepHours = lastCheckIn?.sleepHours ?? profile?.sleepHoursAvg ?? null
-  const hasMetrics = !!(weightKg || hrResting || sleepHours)
+  // ── getDashboardSummary — eliminates duplicated computation ─────────────
+  // streakDays, raceDays, isRecomp, formStatus/formMessage, weight progress,
+  // weeklyWeightChange, checkinPending, nutritionTarget, volumeDelta
+  // Note: todaySession + weekSessions from use case are NOT used — web computes
+  // them separately (BUG-056 fallback + week navigation require web-specific logic)
+  const { summary: dashSummary } = getDashboardSummary({
+    user: {
+      name: dbUser.name,
+      profile: profile ? {
+        weightKg: profile.weightKg,
+        hrResting: profile.hrResting,
+        weightGoalKg: profile.weightGoalKg,
+        sleepHoursAvg: profile.sleepHoursAvg,
+        sportDetails: profile.sportDetails,
+        sportGoal: profile.sportGoal,
+      } : null,
+    },
+    activePlanRaw: activePlan ? {
+      id: activePlan.id,
+      name: activePlan.name,
+      startDate: new Date(activePlan.startDate),
+      totalWeeks: activePlan.totalWeeks,
+      weeks: activePlan.weeks.map(w => ({
+        weekNumber: w.weekNumber,
+        phase: w.phase,
+        volumeKm: w.volumeKm ?? null,
+        // dayOfWeek stubs — use case todaySession/weekSessions outputs are unused
+        sessions: w.sessions.map(s => ({
+          id: s.id, type: s.type, dayOfWeek: 0, durationMin: null,
+          zone: null, intensity: null, description: null, log: s.log,
+        })),
+      })),
+    } : null,
+    lastCompletedPlan: lastCompletedPlanInfo
+      ? { name: lastCompletedPlanInfo.name, endDate: lastCompletedPlanInfo.endDate }
+      : null,
+    checkIns: dbUser.checkIns.map(c => ({
+      recordedAt: c.recordedAt,
+      weekNumber: c.weekNumber,
+      weightKg: c.weightKg,
+      hrResting: c.hrResting,
+      sleepHours: c.sleepHours,
+      energyLevel: c.energyLevel,
+      hardestSessionRpe: c.hardestSessionRpe,
+    })),
+    recentLogs: recentLogs.map(l => ({
+      completedAt: l.completedAt,
+      freeSessionType: l.freeSessionType ?? null,
+      durationMin: l.durationMin ?? null,
+    })),
+    nutritionPlan: nutritionPlan ? {
+      targetKcalHard: nutritionPlan.targetKcalHard,
+      targetKcalEasy: nutritionPlan.targetKcalEasy,
+      targetKcalRest: nutritionPlan.targetKcalRest,
+      proteinG: nutritionPlan.proteinG,
+      carbsHardG: nutritionPlan.carbsHardG,
+      carbsEasyG: nutritionPlan.carbsEasyG,
+      fatG: nutritionPlan.fatG,
+    } : null,
+    assignedWorkout: assignedWorkout ? {
+      template: {
+        days: assignedWorkout.template.days.map(d => ({
+          dayOfWeek: d.dayOfWeek,
+          isRestDay: d.isRestDay,
+        })),
+      },
+    } : null,
+  })
 
-  // ── Nutrición del día ────────────────────────────────────────────────────
-  const dailyNutrition = nutritionPlan
-    ? getDailyNutritionTarget(todaySession?.intensity ?? null, {
-        targetKcalHard: nutritionPlan.targetKcalHard,
-        targetKcalEasy: nutritionPlan.targetKcalEasy,
-        targetKcalRest: nutritionPlan.targetKcalRest,
-        proteinG: nutritionPlan.proteinG,
-        carbsHardG: nutritionPlan.carbsHardG,
-        carbsEasyG: nutritionPlan.carbsEasyG,
-        fatG: nutritionPlan.fatG,
-      })
+  const streakDays = dashSummary.streakDays
+  const raceDays = dashSummary.raceDays
+  const isRecomp = dashSummary.isRecomp
+  const weeklyWeightChange = dashSummary.weeklyWeightChange
+  const weightProgressPct = dashSummary.weightProgressPct
+  const formStatus = dashSummary.formStatus
+  const formMessage = dashSummary.formMessage
+  const checkinPending = dashSummary.checkinPending
+  const currentWeight = dashSummary.metrics.weightKg
+  const targetWeight = dashSummary.metrics.weightGoalKg
+  const formCheckInDate: string | null = lastCheckIn
+    ? (() => {
+        const daysAgo = Math.floor((Date.now() - new Date(lastCheckIn.recordedAt).getTime()) / 86400000)
+        return daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
+      })()
     : null
 
   // ── Rango de fechas de la semana actual ────────────────────────────────────
@@ -435,77 +502,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const completedCount = planCompletedCount + freeLogsSelectedWeek
   const totalTraining  = planTotalTraining  + freeLogsSelectedWeek
 
-  // ── Check-in semanal pendiente ─────────────────────────────────────────────
-  // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
-  const checkinWeekNumber = activePlan
-    ? planData.currentWeek
-    : getCurrentISOWeek()
-  const thisWeekCheckIn = dbUser.checkIns.find(c => c.weekNumber === checkinWeekNumber) ?? null
-  const checkinPending = !thisWeekCheckIn
-
   const phaseDisplay = phaseLabel(planData.phase)
-
-  // ── Streak (días consecutivos con sesión completada) ─────────────────────
-  let streakDays = 0
-  const todayStr = new Date()
-  todayStr.setHours(0, 0, 0, 0)
-  const logDateSet = new Set(recentLogs.map((l: { completedAt: Date }) => new Date(l.completedAt).toDateString()))
-  for (let i = 0; i <= 59; i++) {
-    const d = new Date(todayStr)
-    d.setDate(d.getDate() - i)
-    if (logDateSet.has(d.toDateString())) streakDays++
-    else break
-  }
 
   // ── Hero card 1: Tu Carrera / Tu Objetivo ─────────────────────────────────
   const raceDate = (profile?.sportDetails as Record<string, unknown> | null)?.raceDate as string | undefined
-  const raceDays = raceDate
-    ? Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000)
-    : null
-  const isRecomp = !!(
-    (dbUser?.profile?.sportGoal ?? '').includes('BODY') ||
-    activePlan?.name?.toLowerCase().includes('recomp') ||
-    activePlan?.name?.toLowerCase().includes('body')
-  )
-
-  // ── Hero card 2: Meta de peso ──────────────────────────────────────────────
-  const currentWeight = weightKg
-  const targetWeight = profile?.weightGoalKg ?? null
-  const prevCheckIn = dbUser.checkIns[1] ?? null
-  let weeklyWeightChange: number | null = null
-  if (lastCheckIn?.weightKg && prevCheckIn?.weightKg) {
-    const daysDiff = Math.max(1,
-      (new Date(lastCheckIn.recordedAt).getTime() - new Date(prevCheckIn.recordedAt).getTime()) / 86400000
-    )
-    weeklyWeightChange = Math.round(((lastCheckIn.weightKg - prevCheckIn.weightKg) / daysDiff) * 7 * 10) / 10
-  }
-  const oldestCheckInWeight = [...dbUser.checkIns].reverse().find((c: { weightKg: number | null }) => c.weightKg != null)?.weightKg ?? null
-  let weightProgressPct: number | null = null
-  if (currentWeight && targetWeight && oldestCheckInWeight && oldestCheckInWeight !== targetWeight) {
-    weightProgressPct = Math.min(100, Math.max(0,
-      Math.round(((oldestCheckInWeight - currentWeight) / (oldestCheckInWeight - targetWeight)) * 100)
-    ))
-  }
-
-  // ── Hero card 3: Cómo llegás hoy ──────────────────────────────────────────
-  type FormStatus = 'good' | 'moderate' | 'rest'
-  let formStatus: FormStatus = 'good'
-  let formMessage = 'Sin datos de check-in'
-  let formCheckInDate: string | null = null
-  if (lastCheckIn) {
-    const energy = lastCheckIn.energyLevel ?? 3
-    const rpe = lastCheckIn.hardestSessionRpe ?? 5
-    const sleep = (lastCheckIn.sleepHours ?? 7) >= 6.5
-    if (energy >= 4 && rpe <= 7 && sleep) {
-      formStatus = 'good'; formMessage = 'Listo para entrenar fuerte'
-    } else if (energy >= 3 && rpe <= 8) {
-      formStatus = 'moderate'; formMessage = 'Carga moderada recomendada'
-    } else {
-      formStatus = 'rest'; formMessage = 'Prioriza la recuperación hoy'
-    }
-    const daysAgo = Math.floor((Date.now() - new Date(lastCheckIn.recordedAt).getTime()) / 86400000)
-    formCheckInDate = daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
-  }
 
   // ── Carga semanal (volumen planificado) ─────────────────────────────────────
   const currentVolume = currentWeekVolumeKm
