@@ -72,7 +72,7 @@ export default function NutritionTemplatesClient({ templates }: { templates: Tem
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ChefHat size={24} className="text-orange-500" />
+            <ChefHat size={24} className="text-orange-600" />
             Planes Nutricionales
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -82,7 +82,7 @@ export default function NutritionTemplatesClient({ templates }: { templates: Tem
         <button
           onClick={() => { setCreating(true); setError(null) }}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#f97316' }}
+          style={{ backgroundColor: '#ea580c' }}
         >
           <Plus size={16} />
           Nuevo plan
@@ -120,7 +120,7 @@ export default function NutritionTemplatesClient({ templates }: { templates: Tem
                 onClick={handleCreate}
                 disabled={isPending || !newName.trim()}
                 className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#f97316' }}
+                style={{ backgroundColor: '#ea580c' }}
               >
                 {isPending ? 'Creando…' : 'Crear y abrir'}
               </button>
@@ -140,7 +140,7 @@ export default function NutritionTemplatesClient({ templates }: { templates: Tem
           <button
             onClick={() => setCreating(true)}
             className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             Crear primer plan
           </button>

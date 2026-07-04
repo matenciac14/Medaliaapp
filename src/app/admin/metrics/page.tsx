@@ -70,7 +70,7 @@ export default async function AdminMetricsPage() {
     { label: 'Check-ins totales',     value: checkInsTotal,       sub: `+${checkInsThisWeek} esta semana`,  color: '#1e3a5f' },
     { label: 'Sesiones registradas',  value: sessionLogsTotal,    sub: `+${sessionLogsThisWeek} esta semana`, color: '#1e3a5f' },
     { label: 'Planes activos',        value: activePlans,         sub: 'atletas con plan en curso',          color: '#7c3aed' },
-    { label: 'Coaches con atletas',   value: coachesWithAthletes, sub: 'al menos 1 asesorado activo',        color: '#f97316' },
+    { label: 'Coaches con atletas',   value: coachesWithAthletes, sub: 'al menos 1 asesorado activo',        color: '#ea580c' },
     { label: 'Onboarding completado', value: onboardingCompleted, sub: `${onboardingRate}% del total`,       color: '#16a34a' },
   ]
 

@@ -24,7 +24,7 @@ type Props = {
 }
 
 const MACRO_CONFIG = [
-  { key: 'kcal'     as const, label: 'Calorías', unit: 'kcal', color: '#f97316', bg: 'bg-orange-100 text-orange-700' },
+  { key: 'kcal'     as const, label: 'Calorías', unit: 'kcal', color: '#ea580c', bg: 'bg-orange-100 text-orange-700' },
   { key: 'proteinG' as const, label: 'Proteína', unit: 'g',    color: '#3b82f6', bg: 'bg-blue-100 text-blue-700'     },
   { key: 'carbsG'   as const, label: 'Carbos',   unit: 'g',    color: '#eab308', bg: 'bg-yellow-100 text-yellow-700' },
   { key: 'fatG'     as const, label: 'Grasas',   unit: 'g',    color: '#22c55e', bg: 'bg-green-100 text-green-700'   },
@@ -103,7 +103,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
                 <span className="text-sm text-gray-400">Cargando...</span>
               ) : (
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-black text-orange-500 leading-none">{consumed}</span>
+                  <span className="text-3xl font-black text-orange-600 leading-none">{consumed}</span>
                   {target && (
                     <span className="text-sm text-gray-400">/ {targetKcal} kcal</span>
                   )}
@@ -112,7 +112,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
             </div>
             <div className="flex items-center gap-3">
               {target && pct > 0 && (
-                <span className={`text-lg font-black ${pct >= 100 ? 'text-red-500' : pct >= 80 ? 'text-orange-500' : 'text-gray-400'}`}>
+                <span className={`text-lg font-black ${pct >= 100 ? 'text-red-500' : pct >= 80 ? 'text-orange-600' : 'text-gray-400'}`}>
                   {pct}%
                 </span>
               )}
@@ -129,7 +129,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? '#ef4444' : '#f97316' }}
+                style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? '#ef4444' : '#ea580c' }}
               />
             </div>
           )}

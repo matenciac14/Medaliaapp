@@ -22,7 +22,7 @@ export default function CoachCard({ name, headline, slug }: Props) {
         {slug && (
           <Link
             href={`/p/${slug}`}
-            className="text-xs font-semibold text-[#1e3a5f] hover:text-[#f97316] transition-colors shrink-0"
+            className="text-xs font-semibold text-[#1e3a5f] hover:text-[#ea580c] transition-colors shrink-0"
           >
             Ver perfil →
           </Link>

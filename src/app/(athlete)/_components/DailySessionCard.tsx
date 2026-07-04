@@ -139,7 +139,7 @@ export default function DailySessionCard({
               <p className="text-xs text-gray-500">{todayGymDay.exercises.length} ejercicios</p>
             </div>
           </div>
-          <Link href="/gym/session" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg">
+          <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg">
             Empezar
           </Link>
         </div>
@@ -176,11 +176,11 @@ export default function DailySessionCard({
                 </div>
               </div>
               {todayRoutineDay.activity === 'GYM' ? (
-                <Link href="/gym/session" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
+                <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
                   Empezar
                 </Link>
               ) : (
-                <Link href="/log/run" className="text-xs font-semibold bg-[#f97316] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
+                <Link href="/log/run" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
                   Registrar
                 </Link>
               )}
@@ -206,7 +206,7 @@ export default function DailySessionCard({
               </div>
               <Link
                 href="/routine/edit"
-                className="block w-full text-center text-xs font-semibold text-[#f97316] border border-dashed border-[#f97316]/40 rounded-lg py-2 hover:bg-[#f97316]/5 transition-colors"
+                className="block w-full text-center text-xs font-semibold text-[#ea580c] border border-dashed border-[#ea580c]/40 rounded-lg py-2 hover:bg-[#ea580c]/5 transition-colors"
               >
                 + Configurar mi rutina semanal
               </Link>
@@ -234,7 +234,7 @@ export default function DailySessionCard({
               {Array.from({ length: weekSessionTarget }).map((_, i) => (
                 <div
                   key={i}
-                  className={`w-3 h-3 rounded-full transition-colors ${i < weekSessionCount ? 'bg-[#f97316]' : 'bg-gray-200'}`}
+                  className={`w-3 h-3 rounded-full transition-colors ${i < weekSessionCount ? 'bg-[#ea580c]' : 'bg-gray-200'}`}
                 />
               ))}
               <span className="text-[11px] text-gray-500 ml-1">
@@ -242,7 +242,7 @@ export default function DailySessionCard({
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <Link href="/routine/edit" className="text-[11px] text-gray-400 hover:text-[#f97316]">
+              <Link href="/routine/edit" className="text-[11px] text-gray-400 hover:text-[#ea580c]">
                 Editar rutina
               </Link>
               <Link href="/log/history" className="text-[11px] text-gray-400 hover:text-[#1e3a5f]">

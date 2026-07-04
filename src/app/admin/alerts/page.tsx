@@ -150,7 +150,7 @@ export default async function AdminAlertsPage() {
 
                 <Link
                   href={`/admin/users/${alert.userId}`}
-                  className="shrink-0 text-xs text-orange-500 hover:underline"
+                  className="shrink-0 text-xs text-orange-600 hover:underline"
                 >
                   Ver perfil →
                 </Link>

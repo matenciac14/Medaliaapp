@@ -266,7 +266,7 @@ export default function FinanzasPage() {
               onClick={handleCreate}
               disabled={saving}
               className="px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               {saving ? 'Guardando...' : 'Guardar pago'}
             </button>
@@ -349,7 +349,7 @@ export default function FinanzasPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-base font-black" style={{ color: '#f97316' }}>
+                      <span className="text-base font-black" style={{ color: '#ea580c' }}>
                         {fmt(p.amount, p.currency)}
                       </span>
                       {p.description && (

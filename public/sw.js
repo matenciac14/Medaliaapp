@@ -120,7 +120,7 @@ async function networkFirstWithFallback(request) {
         <title>Medaliq — Sin conexión</title>
         <style>
           body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; color: #1e3a5f; text-align: center; padding: 1rem; }
-          .logo { width: 64px; height: 64px; border-radius: 16px; background: #f97316; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; color: white; margin: 0 auto 1.5rem; }
+          .logo { width: 64px; height: 64px; border-radius: 16px; background: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; color: white; margin: 0 auto 1.5rem; }
           h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem; }
           p { color: #64748b; font-size: 0.9rem; margin: 0 0 2rem; }
           button { background: #1e3a5f; color: white; border: none; padding: 0.875rem 2rem; border-radius: 0.75rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; }

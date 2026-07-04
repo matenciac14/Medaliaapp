@@ -54,11 +54,11 @@ export function AdminSidebarClient() {
       >
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>
+            <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#ea580c' }}>
               M
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
-              Medaliq <span style={{ color: '#f97316' }}>Admin</span>
+              Medaliq <span style={{ color: '#ea580c' }}>Admin</span>
             </span>
           </div>
         </div>
@@ -83,7 +83,7 @@ export function AdminSidebarClient() {
               href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
               style={{
-                backgroundColor: isActive(href) ? '#f97316' : 'transparent',
+                backgroundColor: isActive(href) ? '#ea580c' : 'transparent',
                 color: isActive(href) ? '#fff' : '#9ca3af',
               }}
             >
@@ -117,11 +117,11 @@ export function AdminSidebarClient() {
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#f97316' }}>
+          <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#ea580c' }}>
             M
           </div>
           <span className="text-white font-bold text-base tracking-tight">
-            Medaliq <span style={{ color: '#f97316' }}>Admin</span>
+            Medaliq <span style={{ color: '#ea580c' }}>Admin</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -143,7 +143,7 @@ export function AdminSidebarClient() {
             key={href}
             href={href}
             className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors"
-            style={{ color: isActive(href) ? '#f97316' : '#6b7280' }}
+            style={{ color: isActive(href) ? '#ea580c' : '#6b7280' }}
           >
             <Icon size={20} />
             <span>{label}</span>

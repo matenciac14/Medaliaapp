@@ -33,7 +33,7 @@ export default async function GymHistoryPage() {
         <span className="text-5xl">🏋️</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Historial de gym disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Accede a tu historial completo de sesiones con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default async function GymHistoryPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/gym"
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#f97316] transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#ea580c] transition-colors"
         >
           <ChevronLeft size={16} />
           Ejercicios
@@ -97,7 +97,7 @@ export default async function GymHistoryPage() {
           </div>
           <Link
             href="/gym/session"
-            className="mt-2 inline-flex items-center gap-2 bg-[#f97316] hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
+            className="mt-2 inline-flex items-center gap-2 bg-[#ea580c] hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
           >
             Comenzar sesión de hoy
           </Link>
@@ -167,13 +167,13 @@ export default async function GymHistoryPage() {
                       </span>
                     )}
                     {sessionVolume > 0 && (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-[#f97316]">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-[#ea580c]">
                         <Zap size={11} />
                         {Math.round(sessionVolume).toLocaleString()}kg
                       </span>
                     )}
                     {prCount > 0 && (
-                      <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                      <span className="bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
                         🏆 {prCount} PR
                       </span>
                     )}
@@ -228,7 +228,7 @@ export default async function GymHistoryPage() {
                               )}
                               <span className="ml-auto flex items-center gap-1.5">
                                 {sl.isPR && (
-                                  <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                                  <span className="bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
                                     🏆 PR
                                   </span>
                                 )}
@@ -286,7 +286,7 @@ export default async function GymHistoryPage() {
               <p className="text-xs text-gray-500 mt-0.5">Series totales</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-[#f97316]">
+              <p className="text-xl font-bold text-[#ea580c]">
                 {totalVolume > 1000
                   ? `${(totalVolume / 1000).toFixed(1)}t`
                   : Math.round(totalVolume).toLocaleString()}

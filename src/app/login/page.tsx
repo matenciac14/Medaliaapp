@@ -56,7 +56,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <span className="text-3xl font-bold text-[#1e3a5f]">Medal</span>
-          <span className="text-3xl font-bold text-[#f97316]">iq</span>
+          <span className="text-3xl font-bold text-[#ea580c]">iq</span>
         </div>
 
         <h1 className="text-xl font-semibold text-[#1e3a5f] mb-6 text-center">
@@ -89,7 +89,7 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <Link href="/forgot-password" className="text-xs text-[#f97316] hover:underline">
+              <Link href="/forgot-password" className="text-xs text-[#ea580c] hover:underline">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
@@ -145,7 +145,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           ¿No tienes cuenta?{' '}
-          <Link href="/register" className="text-[#f97316] font-medium hover:underline">
+          <Link href="/register" className="text-[#ea580c] font-medium hover:underline">
             Regístrate gratis
           </Link>
         </p>

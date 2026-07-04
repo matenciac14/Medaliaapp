@@ -80,7 +80,7 @@ type Props = {
 
 const SESSION_TYPES = [
   { type: 'RODAJE_Z2',    label: 'Rodaje Z2',    color: '#16a34a' },
-  { type: 'FARTLEK',      label: 'Fartlek',      color: '#f97316' },
+  { type: 'FARTLEK',      label: 'Fartlek',      color: '#ea580c' },
   { type: 'TEMPO',        label: 'Tempo',        color: '#dc2626' },
   { type: 'TIRADA_LARGA', label: 'Tirada larga', color: '#3b82f6' },
   { type: 'INTERVALOS',   label: 'Intervalos',   color: '#ef4444' },
@@ -116,7 +116,7 @@ function formatWeekRange(startDate: string, endDate: string): string {
 const PHASES = ['BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO', 'COMPETICIÓN', 'RECUPERACIÓN']
 
 const PHASE_COLORS: Record<string, string> = {
-  BASE: '#1e3a5f', DESARROLLO: '#f97316', 'ESPECÍFICO': '#dc2626',
+  BASE: '#1e3a5f', DESARROLLO: '#ea580c', 'ESPECÍFICO': '#dc2626',
   AFINAMIENTO: '#7c3aed', 'COMPETICIÓN': '#0891b2', 'RECUPERACIÓN': '#16a34a',
 }
 
@@ -658,7 +658,7 @@ function BuilderHeader({
       <div className="flex items-center gap-2.5 min-w-0">
         <Link href="/coach/athletes" className="font-black text-xl tracking-tight shrink-0">
           <span style={{ color: '#1e3a5f' }}>Medal</span>
-          <span style={{ color: '#f97316' }}>iq</span>
+          <span style={{ color: '#ea580c' }}>iq</span>
         </Link>
         <span className="text-gray-300">·</span>
         <span className="text-sm text-gray-400 shrink-0">Constructor de planes</span>
@@ -996,7 +996,7 @@ function WeekEditModal({
             <button
               onClick={() => setIsRecoveryWeek((v) => !v)}
               className="relative w-10 h-6 rounded-full transition-colors"
-              style={{ backgroundColor: isRecoveryWeek ? '#f97316' : '#d1d5db' }}
+              style={{ backgroundColor: isRecoveryWeek ? '#ea580c' : '#d1d5db' }}
             >
               <span
                 className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"

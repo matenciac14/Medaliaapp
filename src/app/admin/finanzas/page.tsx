@@ -61,7 +61,7 @@ export default async function AdminFinanzasPage() {
       label: 'Fee coaches (est.)',
       value: fmt(coachesMrr),
       sub: `${coachesWithFee.filter((c) => c.athleteCount > 0).length} coaches con atletas`,
-      color: '#f97316',
+      color: '#ea580c',
     },
     {
       label: 'MRR total estimado',

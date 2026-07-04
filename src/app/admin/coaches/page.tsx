@@ -80,7 +80,7 @@ export default async function AdminCoachesPage() {
               {/* Coach header */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0" style={{ backgroundColor: '#f97316' }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0" style={{ backgroundColor: '#ea580c' }}>
                     {(coach.name ?? 'C')[0].toUpperCase()}
                   </div>
                   <div>

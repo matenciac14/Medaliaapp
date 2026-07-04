@@ -41,7 +41,7 @@ function cn(...classes: (string | false | null | undefined)[]) {
 const ACTIVITY_STYLES: Record<Activity, string> = {
   REST: 'border-gray-200 bg-white text-gray-400',
   GYM:  'border-[#1e3a5f] bg-[#1e3a5f] text-white',
-  RUN:  'border-[#f97316] bg-[#f97316] text-white',
+  RUN:  'border-[#ea580c] bg-[#ea580c] text-white',
 }
 
 const ACTIVITY_LABELS: Record<Activity, string> = {
@@ -121,7 +121,7 @@ export default function RoutineEditPage() {
   if (loading) {
     return (
       <div className="max-w-lg mx-auto px-4 py-10 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#ea580c] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -132,7 +132,7 @@ export default function RoutineEditPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#f97316] transition-colors"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#ea580c] transition-colors"
         >
           <ChevronLeft size={16} />
           Dashboard
@@ -155,7 +155,7 @@ export default function RoutineEditPage() {
             className={cn(
               'flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-xs font-bold',
               ACTIVITY_STYLES[d.activity],
-              focusedDow === d.dow && d.activity !== 'REST' && 'ring-2 ring-offset-1 ring-[#f97316]'
+              focusedDow === d.dow && d.activity !== 'REST' && 'ring-2 ring-offset-1 ring-[#ea580c]'
             )}
           >
             <span className="text-[10px] font-semibold opacity-70">{DOW_LABELS[d.dow - 1]}</span>
@@ -173,7 +173,7 @@ export default function RoutineEditPage() {
           <span>Ejercicios</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-[#f97316]" />
+          <div className="w-3 h-3 rounded bg-[#ea580c]" />
           <span>Correr</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -229,19 +229,19 @@ export default function RoutineEditPage() {
                   className={cn(
                     'w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-3',
                     focusedDay.runType === t.value
-                      ? 'border-[#f97316] bg-[#f97316]/5'
+                      ? 'border-[#ea580c] bg-[#ea580c]/5'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   )}
                 >
                   <span className="text-lg leading-none">{t.icon}</span>
                   <span className="flex-1">
-                    <span className={cn('font-semibold text-sm block', focusedDay.runType === t.value ? 'text-[#f97316]' : 'text-gray-800')}>
+                    <span className={cn('font-semibold text-sm block', focusedDay.runType === t.value ? 'text-[#ea580c]' : 'text-gray-800')}>
                       {t.label}
                     </span>
                     <span className="text-xs text-gray-400">{t.sub}</span>
                   </span>
                   {focusedDay.runType === t.value && (
-                    <Check size={16} className="text-[#f97316] shrink-0" />
+                    <Check size={16} className="text-[#ea580c] shrink-0" />
                   )}
                 </button>
               ))}
@@ -263,7 +263,7 @@ export default function RoutineEditPage() {
                 onClick={() => setFocusedDow(focusedDow === d.dow ? null : d.dow)}
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all',
-                  focusedDow === d.dow ? 'border-[#f97316] bg-[#f97316]/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                  focusedDow === d.dow ? 'border-[#ea580c] bg-[#ea580c]/5' : 'border-gray-100 bg-white hover:border-gray-200'
                 )}
               >
                 <div className="flex items-center gap-2.5">
@@ -292,7 +292,7 @@ export default function RoutineEditPage() {
           <button
             onClick={handleSave}
             disabled={saving || saved}
-            className="flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 transition-colors"
+            className="flex-1 bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 transition-colors"
           >
             {saved ? '✓ Guardado' : saving ? 'Guardando...' : 'Guardar rutina'}
           </button>

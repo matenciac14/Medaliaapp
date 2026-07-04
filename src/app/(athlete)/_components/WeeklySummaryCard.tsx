@@ -34,7 +34,7 @@ export default function WeeklySummaryCard({
             <div className="grid grid-cols-3 gap-2">
               {lastCheckIn.hardestSessionRpe != null && (
                 <div className="bg-orange-50 rounded-xl px-3 py-2">
-                  <p className="text-base font-semibold text-[#f97316] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
+                  <p className="text-base font-semibold text-[#ea580c] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
                   <p className="text-[10px] text-gray-500 mt-1">RPE</p>
                 </div>
               )}
@@ -67,7 +67,7 @@ export default function WeeklySummaryCard({
             </div>
             <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
               <div
-                className="h-full bg-[#f97316] rounded-full"
+                className="h-full bg-[#ea580c] rounded-full"
                 style={{ width: `${Math.min(100, Math.round((completedCount / Math.max(totalTraining, 1)) * 100))}%` }}
               />
             </div>

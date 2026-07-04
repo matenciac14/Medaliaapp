@@ -70,7 +70,7 @@ export default async function AdminAuditPage() {
                           <span className="text-xs text-gray-300">·</span>
                           <a
                             href={`/admin/users/${log.targetUser.id}`}
-                            className="text-xs text-orange-500 hover:underline"
+                            className="text-xs text-orange-600 hover:underline"
                           >
                             {log.targetUser.email}
                           </a>

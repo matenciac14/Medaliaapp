@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md px-8 py-10 bg-white rounded-2xl shadow-xl">
         <div className="mb-8 text-center">
           <span className="text-3xl font-bold text-[#1e3a5f]">Medal</span>
-          <span className="text-3xl font-bold text-[#f97316]">iq</span>
+          <span className="text-3xl font-bold text-[#ea580c]">iq</span>
         </div>
 
         {sent ? (
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="text-sm text-[#f97316] font-medium hover:underline"
+              className="text-sm text-[#ea580c] font-medium hover:underline"
             >
               ← Volver al inicio de sesión
             </Link>
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
             </form>
 
             <p className="mt-6 text-center text-sm text-gray-500">
-              <Link href="/login" className="text-[#f97316] font-medium hover:underline">
+              <Link href="/login" className="text-[#ea580c] font-medium hover:underline">
                 ← Volver al inicio de sesión
               </Link>
             </p>

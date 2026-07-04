@@ -61,7 +61,7 @@ function RegisterForm() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <span className="text-3xl font-bold text-[#1e3a5f]">Medal</span>
-          <span className="text-3xl font-bold text-[#f97316]">iq</span>
+          <span className="text-3xl font-bold text-[#ea580c]">iq</span>
         </div>
 
         <h1 className="text-xl font-semibold text-[#1e3a5f] mb-6 text-center">
@@ -75,7 +75,7 @@ function RegisterForm() {
             onClick={() => setRole('ATHLETE')}
             className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-4 py-4 text-sm font-semibold transition-all ${
               role === 'ATHLETE'
-                ? 'border-[#f97316] bg-orange-50 text-[#f97316]'
+                ? 'border-[#ea580c] bg-orange-50 text-[#ea580c]'
                 : 'border-gray-200 text-gray-500 hover:border-gray-300'
             }`}
           >
@@ -183,7 +183,7 @@ function RegisterForm() {
 
         <p className="mt-4 text-center text-sm text-gray-500">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="text-[#f97316] font-medium hover:underline">
+          <Link href="/login" className="text-[#ea580c] font-medium hover:underline">
             Inicia sesión
           </Link>
         </p>

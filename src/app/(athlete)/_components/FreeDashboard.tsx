@@ -62,9 +62,9 @@ export default function FreeDashboard({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <Link href="/log" className="group block">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#f97316]/40 transition-all p-5 h-full">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#ea580c]/40 transition-all p-5 h-full">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#f97316]/10 flex items-center justify-center text-2xl shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-[#ea580c]/10 flex items-center justify-center text-2xl shrink-0">
                 🏃
               </div>
               <div className="flex-1 min-w-0">
@@ -74,7 +74,7 @@ export default function FreeDashboard({
                 </p>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-1 text-[#f97316] text-sm font-semibold">
+            <div className="mt-4 flex items-center gap-1 text-[#ea580c] text-sm font-semibold">
               Registrar sesión{' '}
               <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
             </div>

@@ -202,7 +202,7 @@ export default function ExerciseForm() {
             type="submit"
             disabled={loading}
             className="px-6 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             {loading ? 'Guardando...' : 'Guardar ejercicio'}
           </button>

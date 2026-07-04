@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db/prisma'
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 const SESSION_COLORS: Record<string, string> = {
-  RODAJE_Z2: '#16a34a', FARTLEK: '#f97316', TEMPO: '#dc2626',
+  RODAJE_Z2: '#16a34a', FARTLEK: '#ea580c', TEMPO: '#dc2626',
   TIRADA_LARGA: '#3b82f6', INTERVALOS: '#ef4444', FUERZA: '#7c3aed',
   DESCANSO: '#9ca3af', TEST: '#6366f1', CICLA: '#d97706', NATACION: '#0891b2',
 }
@@ -54,7 +54,7 @@ export default async function PlanViewPage({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-2.5">
           <span className="font-black text-lg tracking-tight">
             <span style={{ color: '#1e3a5f' }}>Medal</span>
-            <span style={{ color: '#f97316' }}>iq</span>
+            <span style={{ color: '#ea580c' }}>iq</span>
           </span>
           <span className="text-gray-300">·</span>
           <span className="text-sm text-gray-500">Vista atleta</span>

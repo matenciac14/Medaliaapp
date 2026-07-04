@@ -41,7 +41,7 @@ export function JoinProgramButton({
     <button
       onClick={handleJoin}
       disabled={status === 'loading'}
-      className="bg-[#f97316] hover:bg-[#ea6c0a] disabled:opacity-60 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
+      className="bg-[#ea580c] hover:bg-[#ea6c0a] disabled:opacity-60 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
     >
       {status === 'loading' ? 'Procesando…' : 'Unirme a este programa'}
     </button>

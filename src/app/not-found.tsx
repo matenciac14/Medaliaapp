@@ -22,7 +22,7 @@ export default function NotFound() {
           <Link
             href="/"
             className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             Ir al inicio
           </Link>

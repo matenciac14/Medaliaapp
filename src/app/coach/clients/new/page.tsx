@@ -213,7 +213,7 @@ export default function CreateAthletePage() {
       <div className="p-6 max-w-lg mx-auto">
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-3" style={{ backgroundColor: '#f97316' }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-3" style={{ backgroundColor: '#ea580c' }}>
               ✓
             </div>
             <h1 className="text-xl font-bold text-gray-900">
@@ -309,7 +309,7 @@ export default function CreateAthletePage() {
               type="submit"
               disabled={checking || !email.trim()}
               className="flex-1 py-2.5 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               {checking ? 'Verificando...' : 'Continuar'}
             </button>
@@ -359,7 +359,7 @@ export default function CreateAthletePage() {
               onClick={handleLink}
               disabled={linking}
               className="flex-1 py-2.5 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               {linking ? 'Vinculando...' : 'Vincular a mi roster'}
             </button>
@@ -544,7 +544,7 @@ export default function CreateAthletePage() {
             type="submit"
             disabled={creating}
             className="flex-1 py-2.5 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             {creating ? 'Creando...' : 'Crear asesorado'}
           </button>

@@ -98,7 +98,7 @@ export default function Home() {
               Iniciar sesión
             </a>
             <a href="/register" className="block w-full sm:w-auto">
-              <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
+              <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
                 <span className="sm:hidden">Reservar</span>
                 <span className="hidden sm:inline">{l.nav.cta}</span>
               </button>
@@ -136,7 +136,7 @@ export default function Home() {
         <div className="lg:hidden absolute top-[50px] right-4 z-20 anim-fade-in delay-400">
           <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-[14px] px-[10px] py-[5px] flex flex-col gap-[1px] w-[180px] shadow-[0px_12px_30px_-6px_rgba(0,0,0,0.35)]">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+              <div className="w-2 h-2 rounded-full bg-[#ea580c]" />
               <span className="text-[#bfdbfe] text-[10px] font-semibold uppercase">
                 Sesión de hoy
               </span>
@@ -171,14 +171,14 @@ export default function Home() {
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold leading-[1.06] tracking-[-0.02em] text-white mb-5 anim-fade-up delay-100">
               {l.hero.title}{" "}
-              <span className="text-[#f97316]">{l.hero.titleHighlight}</span>
+              <span className="text-[#ea580c]">{l.hero.titleHighlight}</span>
             </h1>
             <p className="text-lg text-[#dbeafe] leading-[1.5] mb-8 max-w-lg anim-fade-up delay-200">
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
               <a href="/register" className="block w-full sm:w-auto">
-                <button className="anim-pulse-cta bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
+                <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                   {l.hero.cta1}
                 </button>
               </a>
@@ -189,7 +189,7 @@ export default function Home() {
                 {l.hero.cta2}
               </a>
               <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
-                <span className="text-[#f97316] text-sm leading-none">
+                <span className="text-[#ea580c] text-sm leading-none">
                   ★★★★★
                 </span>
                 <p className="text-blue-200 text-xs">
@@ -216,7 +216,7 @@ export default function Home() {
             </div>
             <div className="bg-white/12 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3.5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+                <div className="w-2 h-2 rounded-full bg-[#ea580c]" />
                 <span className="text-[#bfdbfe] text-[10px] font-semibold uppercase">
                   Sesión de hoy
                 </span>
@@ -267,7 +267,7 @@ export default function Home() {
                 key={item.title}
                 className="flex items-center gap-3 flex-1 px-8 first:pl-0 last:pr-0"
               >
-                <span className="text-[#f97316] shrink-0">{item.icon}</span>
+                <span className="text-[#ea580c] shrink-0">{item.icon}</span>
                 <div>
                   <p className="text-[#1e3a5f] text-sm font-bold leading-tight">
                     {item.title}
@@ -302,7 +302,7 @@ export default function Home() {
               },
             ].map((item) => (
               <div key={item.title} className="flex items-center gap-3">
-                <span className="text-[#f97316] shrink-0">{item.icon}</span>
+                <span className="text-[#ea580c] shrink-0">{item.icon}</span>
                 <div>
                   <p className="text-[#1e3a5f] text-sm font-bold leading-tight">
                     {item.title}
@@ -364,7 +364,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 bg-[#1e3a5f]/06 px-6 py-3.5 rounded-full">
               <p className="text-[#1e3a5f] font-semibold text-base">
                 Medaliq reemplaza tu Excel y tus WhatsApps con{" "}
-                <span className="text-[#f97316]">un solo panel.</span>
+                <span className="text-[#ea580c]">un solo panel.</span>
               </p>
             </div>
           </RevealOnScroll>
@@ -444,7 +444,7 @@ export default function Home() {
             ].map((card) => (
               <RevealOnScroll key={card.title} delay={card.delay}>
                 <div className="bg-gray-50 rounded-2xl p-6 text-left h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                  <div className="w-11 h-11 rounded-xl bg-[rgba(249,115,22,0.12)] flex items-center justify-center mb-4 text-[#f97316]">
+                  <div className="w-11 h-11 rounded-xl bg-[rgba(249,115,22,0.12)] flex items-center justify-center mb-4 text-[#ea580c]">
                     {card.icon}
                   </div>
                   <h3 className="text-base font-bold text-[#1e3a5f] mb-2">
@@ -472,7 +472,7 @@ export default function Home() {
                   { v: "92%", label: "Adherencia" },
                 ].map(({ v, label }) => (
                   <div key={label} className="bg-white/10 rounded-xl p-3">
-                    <div className="text-lg font-extrabold text-[#f97316]">
+                    <div className="text-lg font-extrabold text-[#ea580c]">
                       {v}
                     </div>
                     <div className="text-[10px] text-blue-300 mt-0.5">
@@ -485,7 +485,7 @@ export default function Home() {
                 {[
                   {
                     initials: "AG",
-                    color: "#f97316",
+                    color: "#ea580c",
                     bg: "rgba(249,115,22,0.2)",
                     name: "Ana García",
                     sport: "Running",
@@ -527,11 +527,11 @@ export default function Home() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <div className="w-16 bg-white/20 rounded-full h-1.5">
                         <div
-                          className="h-1.5 rounded-full bg-[#f97316]"
+                          className="h-1.5 rounded-full bg-[#ea580c]"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-[#f97316] font-semibold">
+                      <span className="text-[10px] text-[#ea580c] font-semibold">
                         {pct}%
                       </span>
                     </div>
@@ -566,7 +566,7 @@ export default function Home() {
                   <div className="bg-[rgba(249,115,22,0.18)] mx-2 rounded-lg px-3 py-2 flex items-center gap-2.5 mb-1">
                     <LayoutDashboard
                       size={15}
-                      className="text-[#f97316] shrink-0"
+                      className="text-[#ea580c] shrink-0"
                     />
                     <span className="text-white text-xs font-semibold">
                       Dashboard
@@ -588,7 +588,7 @@ export default function Home() {
                   ))}
                   {/* Coach profile */}
                   <div className="mt-auto mx-2 px-3 py-2 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-[#ea580c] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                       CM
                     </div>
                     <div>
@@ -659,7 +659,7 @@ export default function Home() {
                     {[
                       {
                         initials: "AG",
-                        color: "#f97316",
+                        color: "#ea580c",
                         bg: "rgba(249,115,22,0.15)",
                         name: "Ana García",
                         sport: "Running",
@@ -669,7 +669,7 @@ export default function Home() {
                       },
                       {
                         initials: "CL",
-                        color: "#f97316",
+                        color: "#ea580c",
                         bg: "rgba(249,115,22,0.15)",
                         name: "Carlos López",
                         sport: "Fuerza",
@@ -747,13 +747,13 @@ export default function Home() {
                               />
                             </div>
                             <span
-                              className={`text-[10px] font-semibold ${pct >= 88 ? "text-green-600" : "text-orange-500"}`}
+                              className={`text-[10px] font-semibold ${pct >= 88 ? "text-green-600" : "text-orange-600"}`}
                             >
                               {pct}%
                             </span>
                           </div>
                           <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full text-center ${paid ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full text-center ${paid ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}
                           >
                             {paid ? "Pagado" : "Pendiente"}
                           </span>
@@ -796,7 +796,7 @@ export default function Home() {
                 { icon: <ClipboardCheck size={20} />, text: l.features.item4 },
               ].map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
-                  <span className="text-[#f97316] shrink-0 mt-0.5">
+                  <span className="text-[#ea580c] shrink-0 mt-0.5">
                     {item.icon}
                   </span>
                   <span className="text-gray-700 text-sm leading-relaxed">
@@ -813,7 +813,7 @@ export default function Home() {
                 <span className="text-xs font-semibold text-blue-200 uppercase tracking-widest">
                   {l.features.sessionLabel}
                 </span>
-                <span className="bg-[#f97316] text-white text-xs font-bold px-2 py-1 rounded-full">
+                <span className="bg-[#ea580c] text-white text-xs font-bold px-2 py-1 rounded-full">
                   Zona 3
                 </span>
               </div>
@@ -833,7 +833,7 @@ export default function Home() {
                     key={label}
                     className="bg-white/10 rounded-xl p-3 text-center"
                   >
-                    <div className="text-xl font-bold text-[#f97316]">
+                    <div className="text-xl font-bold text-[#ea580c]">
                       {value}
                     </div>
                     <div className="text-xs text-blue-200 mt-1">{label}</div>
@@ -841,7 +841,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
-                <span className="text-[#f97316] font-semibold">Resumen: </span>
+                <span className="text-[#ea580c] font-semibold">Resumen: </span>
                 {l.features.aiMsg}
               </div>
             </div>
@@ -884,7 +884,7 @@ export default function Home() {
               <RevealOnScroll key={item.step} delay={item.delay}>
                 <div className="flex gap-5 group">
                   <div className="flex flex-col items-center shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold group-hover:bg-[#f97316] transition-colors duration-300 z-10">
+                    <div className="w-10 h-10 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-sm font-bold group-hover:bg-[#ea580c] transition-colors duration-300 z-10">
                       {item.step}
                     </div>
                     {idx < 2 && (
@@ -936,7 +936,7 @@ export default function Home() {
                 name: l.testimonials.t2Name,
                 role: l.testimonials.t2Role,
                 initials: "VR",
-                color: "#f97316",
+                color: "#ea580c",
                 bg: "rgba(249,115,22,0.15)",
                 delay: 100,
               },
@@ -952,7 +952,7 @@ export default function Home() {
             ].map((testimonial) => (
               <RevealOnScroll key={testimonial.name} delay={testimonial.delay}>
                 <div className="bg-white border border-gray-100 rounded-2xl p-6 text-left flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-[#f97316] font-bold text-sm mb-3">★★★★★</p>
+                  <p className="text-[#ea580c] font-bold text-sm mb-3">★★★★★</p>
                   <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-5">
                     {testimonial.quote}
                   </p>
@@ -1038,11 +1038,11 @@ export default function Home() {
                 ].map((tier) => (
                   <div
                     key={tier.name}
-                    className={`relative rounded-xl p-4 text-center border ${tier.highlight ? "bg-[rgba(249,115,22,0.06)] border-[#f97316]" : "bg-gray-50 border-gray-100"}`}
+                    className={`relative rounded-xl p-4 text-center border ${tier.highlight ? "bg-[rgba(249,115,22,0.06)] border-[#ea580c]" : "bg-gray-50 border-gray-100"}`}
                   >
                     {tier.highlight && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        <span className="bg-[#f97316] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                        <span className="bg-[#ea580c] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
                           MÁS POPULAR
                         </span>
                       </div>
@@ -1137,14 +1137,14 @@ export default function Home() {
 
             <RevealOnScroll delay={80}>
               <div
-                className="rounded-2xl p-6 border-2 border-[#f97316] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full"
+                className="rounded-2xl p-6 border-2 border-[#ea580c] shadow-xl text-left flex flex-col relative hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 h-full"
                 style={{
                   background:
                     "linear-gradient(135deg, #1e3a5f 0%, #0f2240 100%)",
                 }}
               >
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                  <span className="bg-[#f97316] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">
+                  <span className="bg-[#ea580c] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">
                     {l.pricing.popular}
                   </span>
                 </div>
@@ -1176,12 +1176,12 @@ export default function Home() {
                     l.pricing.proF5,
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2">
-                      <span className="text-[#f97316]">✓</span> {f}
+                      <span className="text-[#ea580c]">✓</span> {f}
                     </li>
                   ))}
                 </ul>
                 <a href="/register" className="block w-full sm:w-auto">
-                  <button className="w-full bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
+                  <button className="w-full bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
                     {l.pricing.proCta}
                   </button>
                 </a>
@@ -1208,7 +1208,7 @@ export default function Home() {
           <RevealOnScroll delay={50}>
             <div className="bg-[rgba(249,115,22,0.08)] border border-[rgba(249,115,22,0.3)] rounded-2xl px-7 py-6 flex items-start gap-5 mb-8">
               <div className="w-12 h-12 rounded-full bg-[rgba(249,115,22,0.15)] flex items-center justify-center shrink-0">
-                <span className="text-[#f97316] text-xl">🛡️</span>
+                <span className="text-[#ea580c] text-xl">🛡️</span>
               </div>
               <div>
                 <p className="font-bold text-[#1e3a5f] text-lg mb-1">
@@ -1252,7 +1252,7 @@ export default function Home() {
             {l.finalCta.subtitle}
           </p>
           <a href="/register" className="block w-full sm:w-auto">
-            <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
+            <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
               {l.finalCta.cta}
             </button>
           </a>

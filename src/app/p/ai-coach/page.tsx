@@ -32,7 +32,7 @@ export default async function AICoachProfilePage() {
               <Link
                 href="/register"
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#f97316' }}
+                style={{ backgroundColor: '#ea580c' }}
               >
                 Empieza gratis
               </Link>
@@ -108,23 +108,28 @@ export default async function AICoachProfilePage() {
           <h2 className="text-xl font-bold text-gray-900 mb-5">Planes</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-5 border border-gray-200 rounded-2xl">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Trial</p>
-              <p className="text-3xl font-black text-gray-900 mb-1">Gratis</p>
-              <p className="text-xs text-gray-400 mb-4">30 días · acceso completo</p>
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Gratis</p>
+              <p className="text-3xl font-black text-gray-900 mb-1">$0</p>
+              <p className="text-xs text-gray-400 mb-4">Para siempre</p>
               <ul className="space-y-1.5 text-sm text-gray-600">
-                {['Plan AI completo', 'Check-in + nutrición', 'Tracker de ejercicios', 'Chat AI (ilimitado en trial)'].map((f) => (
+                {['Dashboard + log de entrenamientos', 'Registro de nutrición y gym', 'Tracker de ejercicios'].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <span className="text-green-500 text-xs">✓</span> {f}
+                  </li>
+                ))}
+                {['Check-in adaptativo', 'Métricas de progreso'].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-gray-300">
+                    <span className="text-xs">✗</span> {f}
                   </li>
                 ))}
               </ul>
             </div>
             <div className="p-5 border-2 rounded-2xl" style={{ borderColor: '#1e3a5f', backgroundColor: '#f0f4f9' }}>
               <p className="text-sm font-semibold uppercase tracking-wide mb-1" style={{ color: '#1e3a5f' }}>Pro</p>
-              <p className="text-3xl font-black mb-1" style={{ color: '#1e3a5f' }}>$15<span className="text-base font-normal text-gray-500">/mes</span></p>
-              <p className="text-xs text-gray-400 mb-4">después del trial</p>
+              <p className="text-3xl font-black mb-1" style={{ color: '#1e3a5f' }}>$9.99<span className="text-base font-normal text-gray-500">/mes</span></p>
+              <p className="text-xs text-gray-400 mb-4">Todo lo del plan Gratis, más:</p>
               <ul className="space-y-1.5 text-sm text-gray-700">
-                {['Todo del trial', 'Plan adaptativo continuo', 'Chat AI (100 mensajes/mes)', 'Historial ilimitado'].map((f) => (
+                {['Plan adaptativo periodizado', 'Check-in semanal + ajuste de carga', 'Nutrición personalizada diaria', 'Métricas de progreso'].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: '#1e3a5f' }}>✓</span> {f}
                   </li>
@@ -150,9 +155,9 @@ export default async function AICoachProfilePage() {
               <Link
                 href="/register"
                 className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-white text-base transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#f97316' }}
+                style={{ backgroundColor: '#ea580c' }}
               >
-                Empezar 30 días gratis
+                Empezar gratis
               </Link>
               <Link
                 href="/login"
