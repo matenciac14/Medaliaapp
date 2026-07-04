@@ -14,10 +14,10 @@ type GoalOption = {
 }
 
 const GOALS: GoalOption[] = [
-  { value: 'RACE_5K',            icon: '🏃', label: '5K',                     subtext: 'Carrera de 5 km — 8 semanas',         weeks: 8,  hasDate: true  },
-  { value: 'RACE_10K',           icon: '🏃', label: '10K',                    subtext: 'Carrera de 10 km — 12 semanas',       weeks: 12, hasDate: true  },
-  { value: 'STRENGTH_TRAINING',  icon: '🏋️', label: 'Ganar músculo',          subtext: 'Fuerza e hipertrofia — 16 semanas',  weeks: 16, hasDate: false },
-  { value: 'BODY_RECOMPOSITION', icon: '💪', label: 'Recomposición corporal', subtext: 'Fuerza + composición — 16 semanas',  weeks: 16, hasDate: false },
+  { value: 'RACE_5K',            icon: '🏃', label: '5K',                     subtext: 'Carrera de 5 km',                   weeks: 8,  hasDate: true  },
+  { value: 'RACE_10K',           icon: '🏃', label: '10K',                    subtext: 'Carrera de 10 km',                  weeks: 12, hasDate: true  },
+  { value: 'STRENGTH_TRAINING',  icon: '🏋️', label: 'Ganar músculo',          subtext: 'Fuerza e hipertrofia — 12 semanas', weeks: 12, hasDate: false },
+  { value: 'BODY_RECOMPOSITION', icon: '💪', label: 'Recomposición corporal', subtext: 'Fuerza + composición — 12 semanas', weeks: 12, hasDate: false },
   { value: 'GENERAL_FITNESS',    icon: '⚡', label: 'Fitness general',        subtext: 'Condición física base — 12 semanas', weeks: 12, hasDate: false },
 ]
 
@@ -33,6 +33,19 @@ export default function NewGoalClient({ defaultGoal }: { defaultGoal: string | n
   const [raceDate, setRaceDate] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // UX-03: calcular semanas desde la fecha del evento
+  const weeksFromDate = (dateStr: string, defaultWeeks: number): number => {
+    if (!dateStr) return defaultWeeks
+    const weeks = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+    return Math.max(4, weeks)
+  }
+
+  const minRaceDate = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 28) // mínimo 4 semanas
+    return d.toISOString().slice(0, 10)
+  })()
 
   // UX-04 + BUG-071: guardar meta en HealthProfile, sin generar plan
   // El plan lo crea el coach (B2B) o el sistema cuando el atleta lo solicite explícitamente
@@ -119,10 +132,14 @@ export default function NewGoalClient({ defaultGoal }: { defaultGoal: string | n
               type="date"
               value={raceDate}
               onChange={(e) => setRaceDate(e.target.value)}
-              min={new Date().toISOString().slice(0, 10)}
+              min={minRaceDate}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40"
             />
-            <p className="text-xs text-gray-400 mt-2">Si no tienes fecha fija, el plan igual se estructura a {selected.weeks} semanas desde hoy.</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {raceDate
+                ? `${weeksFromDate(raceDate, selected.weeks)} semanas desde hoy hasta tu carrera.`
+                : `Sin fecha: el plan se estructura a ${selected.weeks} semanas desde hoy. Mínimo 4 semanas.`}
+            </p>
           </div>
         )}
 

@@ -145,7 +145,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
-          include: { sessions: { orderBy: { dayOfWeek: 'asc' }, include: { log: true } } },
+          // PERF-01: solo metadata de semanas + id/type/log por sesión
+          // Los campos completos de sesión (dayOfWeek, durationMin, etc.) se cargan
+          // por separado para la semana actual únicamente
+          include: {
+            sessions: {
+              select: { id: true, type: true, log: { select: { id: true } } },
+            },
+          },
         },
       },
     }),
@@ -318,7 +325,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     isCurrentWeek = weekOffset === 0
 
     const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek) ?? null
-
     const selectedPlanWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
 
     planData = {
@@ -328,8 +334,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       phase: currentPlanWeek?.phase ?? 'BASE',
     }
 
+    // PERF-01: cargar sesiones completas solo para la semana actual (dayOfWeek, durationMin, etc.)
     if (currentPlanWeek) {
-      const todayPlanned = currentPlanWeek.sessions.find(s => s.dayOfWeek === todayDow) ?? null
+      const currentWeekFullSessions = await prisma.plannedSession.findMany({
+        where: { week: { planId: activePlan.id, weekNumber: currentWeek } },
+        include: { log: true },
+        orderBy: { dayOfWeek: 'asc' },
+      })
+      const todayPlanned = currentWeekFullSessions.find(s => s.dayOfWeek === todayDow) ?? null
       if (todayPlanned && todayPlanned.type !== 'DESCANSO') {
         todaySession = {
           id: todayPlanned.id,
@@ -384,11 +396,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       })
     : null
 
-  // ── KPIs de la semana — solo sesiones de plan (sport adherence) ──────────
-  const selectedPlanWeekSessions = activePlan?.weeks.find(w => w.weekNumber === selectedWeekNum)?.sessions ?? []
-  const completedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== 'DESCANSO').length
-  const totalTraining  = selectedPlanWeekSessions.filter(s => s.type !== 'DESCANSO').length
-
   // ── Rango de fechas de la semana actual ────────────────────────────────────
   // Usamos el lunes calendario real de la semana de hoy (igual que PlanClient.getWeekMonday).
   // NO usamos startDate del plan + offset: eso daría el límite interno del plan, no el lunes real.
@@ -413,6 +420,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       : `${startStr} – ${endStr}`
     return activePlan ? `Sem. ${selectedWeekNum || planData.currentWeek} · ${rangeStr}` : rangeStr
   })()
+  // ── KPIs de la semana ─────────────────────────────────────────────────────
+  const selectedPlanWeekSessions = activePlan?.weeks.find(w => w.weekNumber === selectedWeekNum)?.sessions ?? []
+  const planCompletedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== 'DESCANSO').length
+  const planTotalTraining  = selectedPlanWeekSessions.filter(s => s.type !== 'DESCANSO').length
+  // BUG-057: sumar sesiones libres del atleta para la semana seleccionada
+  const weekEndDate = new Date(weekStartDate)
+  weekEndDate.setDate(weekStartDate.getDate() + 7)
+  const freeLogsSelectedWeek = recentLogs.filter(l =>
+    l.freeSessionType !== null &&
+    new Date(l.completedAt) >= weekStartDate &&
+    new Date(l.completedAt) < weekEndDate
+  ).length
+  const completedCount = planCompletedCount + freeLogsSelectedWeek
+  const totalTraining  = planTotalTraining  + freeLogsSelectedWeek
+
   // ── Check-in semanal pendiente ─────────────────────────────────────────────
   // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
   const checkinWeekNumber = activePlan

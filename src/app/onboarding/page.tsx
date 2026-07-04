@@ -116,11 +116,10 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 // ---------------------------------------------------------------------------
 
 function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  // UX-01: 2 opciones principales — BOTH y FREE son edge cases manejados post-onboarding
   const activities: { value: ActivityType; icon: string; label: string; subtext: string }[] = [
-    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios',     subtext: 'Rutinas de pesas, recomposición corporal' },
+    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios',     subtext: 'Gym, pesas y recomposición corporal' },
     { value: 'RUNNING', icon: '🏃', label: 'Running',         subtext: 'Correr, mejorar ritmo y resistencia' },
-    { value: 'BOTH',    icon: '🏅', label: 'Ejercicios + Running', subtext: 'Combino entrenamiento de fuerza y cardio' },
-    { value: 'FREE',    icon: '📊', label: 'Solo trackear',   subtext: 'Registro libre — sin plan estructurado' },
   ]
 
   const gymGoals: { value: GymGoal; icon: string; label: string }[] = [
