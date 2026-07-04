@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
         motivationLevel: true,
         sleepHours: true,
         recordedAt: true,
+        dietAdherencePct: true,
         waistCm: true,
         armsCm: true,
         hipsCm: true,
@@ -83,12 +84,17 @@ export async function GET(req: NextRequest) {
       thighsCm: c.thighsCm ?? null,
     }))
 
-  const weeks = plan?.weeks.map(w => ({
-    weekNumber: w.weekNumber,
-    phase: w.phase,
-    adherencePct: adherencePct(w.sessions),
-    volumeKm: w.sessions.reduce((acc, s) => acc + (s.log?.distanceKm ?? 0), 0),
-  })) ?? []
+  const weeks = plan?.weeks.map(w => {
+    // BUG-061: usar dietAdherencePct del check-in si existe — más confiable que contar PlannedSession.log
+    // (el log solo se crea via /log/run, no via gym tracker ni sesiones libres)
+    const checkIn = checkIns.find(c => c.weekNumber === w.weekNumber)
+    return {
+      weekNumber: w.weekNumber,
+      phase: w.phase,
+      adherencePct: checkIn?.dietAdherencePct ?? adherencePct(w.sessions),
+      volumeKm: w.sessions.reduce((acc, s) => acc + (s.log?.distanceKm ?? 0), 0),
+    }
+  }) ?? []
 
   const totalSessions = checkIns.length
   // Solo promediar semanas con sesiones pasadas — semanas futuras (0 sesiones) no deben arrastrar el promedio
