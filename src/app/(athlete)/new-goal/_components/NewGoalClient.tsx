@@ -18,7 +18,6 @@ const GOALS: GoalOption[] = [
   { value: 'RACE_10K',           icon: '🏃', label: '10K',                    subtext: 'Carrera de 10 km',                  weeks: 12, hasDate: true  },
   { value: 'STRENGTH_TRAINING',  icon: '🏋️', label: 'Ganar músculo',          subtext: 'Fuerza e hipertrofia — 12 semanas', weeks: 12, hasDate: false },
   { value: 'BODY_RECOMPOSITION', icon: '💪', label: 'Recomposición corporal', subtext: 'Fuerza + composición — 12 semanas', weeks: 12, hasDate: false },
-  { value: 'GENERAL_FITNESS',    icon: '⚡', label: 'Fitness general',        subtext: 'Condición física base — 12 semanas', weeks: 12, hasDate: false },
 ]
 
 function cn(...classes: (string | false | null | undefined)[]) {

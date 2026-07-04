@@ -42,10 +42,17 @@ export async function GET(req: NextRequest) {
     prisma.trainingPlan.findFirst({
       where: { userId, status: { in: ['ACTIVE', 'COMPLETED'] } },
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
-          include: { sessions: { where: { date: { lte: new Date() } }, include: { log: true } } },
+          select: {
+            weekNumber: true,
+            phase: true,
+            sessions: {
+              where: { date: { lte: new Date() } },
+              select: { log: { select: { id: true, distanceKm: true } } },
+            },
+          },
         },
       },
     }),

@@ -16,26 +16,43 @@ async function main() {
   if (toDelete.length === 0) { console.log('Nothing to delete'); return }
   const ids = toDelete.map(u => u.id)
 
-  // Delete in dependency order
+  // Delete in dependency order (explicit > cascade, safer)
+
+  // Gym: SetLog → GymSession (SetLog has onDelete:Cascade from GymSession, but explicit first)
   await prisma.setLog.deleteMany({ where: { session: { athleteId: { in: ids } } } })
   await prisma.gymSession.deleteMany({ where: { athleteId: { in: ids } } })
+
+  // Workout templates: WorkoutDay/WorkoutExercise/AssignedWorkout cascade from WorkoutTemplate
+  // Exercise.coachId has no onDelete → delete before WorkoutTemplate
+  await prisma.exercise.deleteMany({ where: { coachId: { in: ids } } })
+  await prisma.assignedWorkout.deleteMany({ where: { OR: [{ athleteId: { in: ids } }, { coachId: { in: ids } }] } })
+  await prisma.workoutTemplate.deleteMany({ where: { OR: [{ coachId: { in: ids } }, { athleteId: { in: ids } }] } })
+
+  // AssignedNutritionPlan.coachId has no onDelete → delete before User
+  await prisma.assignedNutritionPlan.deleteMany({ where: { OR: [{ athleteId: { in: ids } }, { coachId: { in: ids } }] } })
+
+  // Plans: PlannedSession → PlanWeek → TrainingPlan all cascade, but explicit for safety
   await prisma.sessionLog.deleteMany({ where: { userId: { in: ids } } })
   await prisma.dailyLog.deleteMany({ where: { userId: { in: ids } } })
   await prisma.plannedSession.deleteMany({ where: { week: { plan: { userId: { in: ids } } } } })
   await prisma.planWeek.deleteMany({ where: { plan: { userId: { in: ids } } } })
   await prisma.trainingPlan.deleteMany({ where: { userId: { in: ids } } })
+
+  // Nutrition, check-ins, goals — all have onDelete:Cascade but explicit for safety
   await prisma.nutritionPlan.deleteMany({ where: { userId: { in: ids } } })
   await prisma.weeklyCheckIn.deleteMany({ where: { userId: { in: ids } } })
-  await prisma.assignedWorkout.deleteMany({ where: { OR: [{ athleteId: { in: ids } }, { coachId: { in: ids } }] } })
-  // WorkoutDay/WorkoutExercise cascade from WorkoutTemplate
-  await prisma.workoutTemplate.deleteMany({ where: { coachId: { in: ids } } })
   await prisma.goal.deleteMany({ where: { userId: { in: ids } } })
   await prisma.healthProfile.deleteMany({ where: { userId: { in: ids } } })
   await prisma.coachAthlete.deleteMany({ where: { OR: [{ athleteId: { in: ids } }, { coachId: { in: ids } }] } })
-  // CoachPost and CoachProgram cascade from CoachProfile
+
+  // CoachProfile (coachId has no explicit onDelete) — CoachPost/CoachProgram cascade from it
   await prisma.coachProfile.deleteMany({ where: { coachId: { in: ids } } })
+
+  // Auth records
   await prisma.account.deleteMany({ where: { userId: { in: ids } } })
   await prisma.session.deleteMany({ where: { userId: { in: ids } } })
+
+  // Finally: User (remaining cascade-linked models auto-delete: UserSubscription, FoodLog, etc.)
   await prisma.user.deleteMany({ where: { id: { in: ids } } })
 
   console.log(`Deleted ${ids.length} users successfully`)

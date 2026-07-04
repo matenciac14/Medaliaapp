@@ -12,7 +12,7 @@ export default function PaywallCard({
   emoji,
   title,
   description,
-  ctaLabel = 'Ver planes → Pro $15/mes',
+  ctaLabel = 'Ver planes → Pro $9.99/mes',
   ctaHref = '/upgrade',
 }: PaywallCardProps) {
   return (

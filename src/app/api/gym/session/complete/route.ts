@@ -203,32 +203,42 @@ export async function POST(req: NextRequest) {
     })
     if (existingPlan) return NextResponse.json({ sessionId: existingPlan.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
 
-    const gymSession = await prisma.gymSession.create({
-      data: {
-        athleteId,
-        plannedSessionId: fuerzaSession.id,
-        assignedWorkoutId: null,
-        dayOfWeek,
-        date: today,
-        durationMin: durationMin ?? null,
-        rpe: rpe ?? null,
-        notes: notes ?? null,
-        completed: true,
-        exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
-        setLogs: {
-          create: sets.map(s => ({
-            workoutExerciseId: s.workoutExerciseId ?? null,
-            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-            setNumber: s.setNumber,
-            weightKg: s.weightKg ?? null,
-            repsCompleted: s.repsCompleted ?? null,
-            completed: s.completed,
-            isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
-          })),
+    let gymSession: { id: string }
+    try {
+      gymSession = await prisma.gymSession.create({
+        data: {
+          athleteId,
+          plannedSessionId: fuerzaSession.id,
+          assignedWorkoutId: null,
+          dayOfWeek,
+          date: today,
+          durationMin: durationMin ?? null,
+          rpe: rpe ?? null,
+          notes: notes ?? null,
+          completed: true,
+          exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
+          setLogs: {
+            create: sets.map(s => ({
+              workoutExerciseId: s.workoutExerciseId ?? null,
+              exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
+              setNumber: s.setNumber,
+              weightKg: s.weightKg ?? null,
+              repsCompleted: s.repsCompleted ?? null,
+              completed: s.completed,
+              isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+            })),
+          },
         },
-      },
-      select: { id: true },
-    })
+        select: { id: true },
+      })
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code
+      if (code === 'P2002') {
+        const dup = await prisma.gymSession.findFirst({ where: { athleteId, plannedSessionId: fuerzaSession.id }, select: { id: true } })
+        return NextResponse.json({ sessionId: dup?.id ?? null, newPRs: [], alreadyCompleted: true }, { status: 200 })
+      }
+      throw err
+    }
 
     const newPRs = collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)
 
@@ -286,32 +296,42 @@ export async function POST(req: NextRequest) {
   })
   if (existingAssigned) return NextResponse.json({ sessionId: existingAssigned.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
 
-  const gymSession = await prisma.gymSession.create({
-    data: {
-      athleteId,
-      assignedWorkoutId: body.assignedWorkoutId,
-      plannedSessionId: null,
-      dayOfWeek,
-      date: today,
-      durationMin: durationMin ?? null,
-      rpe: rpe ?? null,
-      notes: notes ?? null,
-      completed: true,
-      exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
-      setLogs: {
-        create: sets.map(s => ({
-          workoutExerciseId: s.workoutExerciseId ?? null,
-          exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-          setNumber: s.setNumber,
-          weightKg: s.weightKg ?? null,
-          repsCompleted: s.repsCompleted ?? null,
-          completed: s.completed,
-          isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
-        })),
+  let gymSession: { id: string }
+  try {
+    gymSession = await prisma.gymSession.create({
+      data: {
+        athleteId,
+        assignedWorkoutId: body.assignedWorkoutId,
+        plannedSessionId: null,
+        dayOfWeek,
+        date: today,
+        durationMin: durationMin ?? null,
+        rpe: rpe ?? null,
+        notes: notes ?? null,
+        completed: true,
+        exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
+        setLogs: {
+          create: sets.map(s => ({
+            workoutExerciseId: s.workoutExerciseId ?? null,
+            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
+            setNumber: s.setNumber,
+            weightKg: s.weightKg ?? null,
+            repsCompleted: s.repsCompleted ?? null,
+            completed: s.completed,
+            isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+          })),
+        },
       },
-    },
-    select: { id: true },
-  })
+      select: { id: true },
+    })
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code
+    if (code === 'P2002') {
+      const dup = await prisma.gymSession.findFirst({ where: { athleteId, assignedWorkoutId: body.assignedWorkoutId, date: today }, select: { id: true } })
+      return NextResponse.json({ sessionId: dup?.id ?? null, newPRs: [], alreadyCompleted: true }, { status: 200 })
+    }
+    throw err
+  }
 
   const newPRs = collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)
 
