@@ -258,7 +258,7 @@ async function main() {
           userId: athlete1.id, planId: plan1.id, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
-          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+          dietAdherencePct: ci.adh, energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
         },
       })
     }
@@ -1300,7 +1300,7 @@ async function seedRunningPlan(
           userId, planId: null, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
-          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+          dietAdherencePct: ci.adh, energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
         },
       })
     }
@@ -1384,7 +1384,7 @@ async function seedBodyPlan(
           userId, planId: null, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
-          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+          dietAdherencePct: ci.adh, energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
         },
       })
     }
@@ -1475,7 +1475,7 @@ async function seedCyclingPlan(
           userId, planId: null, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
-          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+          dietAdherencePct: ci.adh, energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
         },
       })
     }
@@ -1560,7 +1560,7 @@ async function seedTriathlonPlan(
           userId, planId: null, weekNumber: ci.wn,
           weightKg: ci.wkg, hrResting: ci.hr, sleepHours: ci.sleep, sleepScore: ci.score,
           hardestSessionRpe: ci.rpe, painFlag: ci.pain,
-          energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
+          dietAdherencePct: ci.adh, energyLevel: ci.energy, notes: ci.notes, adjustmentsTriggered: [],
         },
       })
     }

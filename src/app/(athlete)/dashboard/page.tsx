@@ -163,7 +163,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       where: { userId },
       orderBy: { completedAt: 'desc' },
       take: 60,
-      select: { completedAt: true },
+      select: { id: true, completedAt: true, freeSessionType: true, durationMin: true },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
   ])
@@ -344,6 +344,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
 
     currentWeekVolumeKm = selectedPlanWeek?.volumeKm ?? null
+  }
+
+  // BUG-056: si el plan dice "Descanso" o no hay sesión planificada hoy pero el atleta
+  // registró una sesión libre, mostrarla en DailySessionCard en lugar de "Descanso hoy"
+  if (!todaySession) {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayFreeLog = recentLogs.find(l => new Date(l.completedAt) >= todayStart)
+    if (todayFreeLog) {
+      todaySession = {
+        id: todayFreeLog.id,
+        type: todayFreeLog.freeSessionType ?? 'OTRO',
+        intensity: 'MODERATE',
+        durationMin: todayFreeLog.durationMin ?? 0,
+        zoneTarget: 'LIBRE',
+        detailText: 'Sesión libre registrada',
+        completed: true,
+      }
+    }
   }
 
   // ── Métricas reales ────────────────────────────────────────────────────────
