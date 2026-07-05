@@ -409,8 +409,6 @@ export default function OnboardingPage() {
       await refreshSession({ onboardingCompleted: true })
       if (json.isB2B) {
         router.push('/pending')
-      } else if (data.activityType === 'RUNNING' || data.activityType === 'BOTH') {
-        router.push('/new-goal')
       } else {
         router.push('/dashboard')
       }
