@@ -92,21 +92,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       select: { id: true },
     })
 
-    if (coachRelation) {
-      return (
-        <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-sm">
-            <div className="text-5xl mb-4">🏋️</div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Tu coach gestionará tu rutina</h2>
-            <p className="text-gray-500 text-sm max-w-xs mx-auto">
-              Cuando tu coach te asigne una rutina de gym, aparecerá aquí automáticamente.
-            </p>
-          </div>
-        </div>
-      )
-    }
-
-    // Sin coach — mostrar plantillas públicas para auto-asignación
+    // Sin rutina asignada — mostrar plantillas públicas con banner contextual
     const publicTemplates = await prisma.workoutTemplate.findMany({
       where: { isPublic: true, isActive: true },
       include: { days: { select: { isRestDay: true } } },
@@ -114,7 +100,18 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
     })
 
     return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-4">
+        {coachRelation ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🏋️</span>
+            <div>
+              <p className="font-semibold text-blue-800 text-sm">Tu coach aún no te asignó una rutina</p>
+              <p className="text-blue-600 text-xs mt-0.5">
+                Mientras tanto, puedes usar una de estas plantillas para empezar.
+              </p>
+            </div>
+          </div>
+        ) : null}
         <PublicTemplates templates={publicTemplates} />
       </div>
     )

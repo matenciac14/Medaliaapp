@@ -106,10 +106,11 @@ export default async function CoachDashboardPage() {
     return acc + (f.noCheckin ? 1 : 0) + (f.highRpe ? 1 : 0) + (f.weightDrop ? 1 : 0)
   }, 0)
 
-  const avgAdherence =
-    athletes.length > 0
-      ? Math.round(athletes.reduce((acc, a) => acc + a.adherencePct, 0) / athletes.length)
-      : 0
+  const athletesWithPlan = athletes.filter((a) => a.planStatus === 'ACTIVE')
+  const avgAdherence: number | null =
+    athletesWithPlan.length > 0
+      ? Math.round(athletesWithPlan.reduce((acc, a) => acc + a.adherencePct, 0) / athletesWithPlan.length)
+      : null
 
   const checkInsPct = totalCount > 0 ? Math.round((checkInsWeekCount / totalCount) * 100) : 0
   const ingresosMes = totalCount * 6
@@ -200,9 +201,9 @@ export default async function CoachDashboardPage() {
         />
         <KpiCard
           label="Adherencia promedio"
-          value={`${avgAdherence}%`}
+          value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
           sub="al plan de entrenamiento"
-          color={avgAdherence >= 70 ? '#16a34a' : avgAdherence >= 40 ? '#d97706' : '#dc2626'}
+          color={avgAdherence === null ? '#9ca3af' : avgAdherence >= 70 ? '#16a34a' : avgAdherence >= 40 ? '#d97706' : '#dc2626'}
         />
       </div>
 
