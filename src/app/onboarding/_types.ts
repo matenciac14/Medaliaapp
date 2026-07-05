@@ -60,7 +60,11 @@ export function isStepValid(stepId: StepId, data: WizardData): boolean {
       if ((data.activityType === 'GYM' || data.activityType === 'BOTH') && !data.gymGoal) return false
       return true
     case 'physical':
-      return !!(data.age && data.heightCm && data.weightKg && data.gender)
+      if (!data.age || !data.heightCm || !data.weightKg || !data.gender) return false
+      if (data.age < 10 || data.age > 100) return false
+      if (data.heightCm < 100 || data.heightCm > 250) return false
+      if (data.weightKg < 30 || data.weightKg > 300) return false
+      return true
     case 'generating':
       return true
   }
