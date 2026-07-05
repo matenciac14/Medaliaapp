@@ -6,11 +6,11 @@
 
 /** Data submitted by the athlete — both web and mobile share this after normalization. */
 export type CheckInInput = {
-  rpe: number                   // 1–10 perceived exertion (maps to hardestSessionRpe)
-  sleepHours: number            // hours slept
+  rpe?: number                  // 1–10 perceived exertion (maps to hardestSessionRpe) — optional web
+  sleepHours?: number           // hours slept — optional web
   sleepScore?: number           // 1–100 optional quality score
-  energyLevel: number           // 1–10
-  stressLevel: number           // 1–10
+  energyLevel?: number          // 1–10 — optional web
+  stressLevel?: number          // 1–10 — optional web
   weight?: number               // kg (maps to weightKg)
   heartRate?: number            // resting bpm (maps to hrResting)
   painLevel?: number            // 1–10

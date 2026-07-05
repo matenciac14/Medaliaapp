@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const rawWeekOffset = parseInt(weekOffsetParam ?? '0') || 0
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -173,6 +173,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       select: { id: true, completedAt: true, freeSessionType: true, durationMin: true },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
+    prisma.gymSession.findMany({
+      where: { athleteId: userId, completed: true },
+      orderBy: { date: 'desc' },
+      take: 60,
+      select: { date: true },
+    }),
   ])
 
   if (!dbUser) redirect('/login')
@@ -444,6 +450,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         })),
       },
     } : null,
+    gymCompletionDates: recentGymSessions.map(gs => gs.date),
   })
 
   const streakDays = dashSummary.streakDays

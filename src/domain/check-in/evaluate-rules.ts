@@ -41,7 +41,7 @@ export function evaluateCheckInRules(
   }
 
   // Sueño insuficiente
-  if (checkIn.sleepHours < CHECK_IN_THRESHOLDS.LOW_SLEEP) {
+  if (checkIn.sleepHours !== undefined && checkIn.sleepHours < CHECK_IN_THRESHOLDS.LOW_SLEEP) {
     triggers.push('sueno_bajo')
     adjustments.push('Priorizar descanso — convertir una sesión de calidad en rodaje suave')
     severity = 'warning'
@@ -49,6 +49,7 @@ export function evaluateCheckInRules(
 
   // RPE muy alto en fase BASE
   if (
+    checkIn.rpe !== undefined &&
     checkIn.rpe >= CHECK_IN_THRESHOLDS.HIGH_RPE &&
     context.phase === 'BASE'
   ) {
@@ -67,14 +68,14 @@ export function evaluateCheckInRules(
   }
 
   // Energía baja
-  if (checkIn.energyLevel <= CHECK_IN_THRESHOLDS.LOW_ENERGY) {
+  if (checkIn.energyLevel !== undefined && checkIn.energyLevel <= CHECK_IN_THRESHOLDS.LOW_ENERGY) {
     triggers.push('energia_baja')
     adjustments.push('Energía baja — reducir carga esta semana y priorizar recuperación')
     if (severity === 'ok') severity = 'warning'
   }
 
   // Estrés alto
-  if (checkIn.stressLevel >= CHECK_IN_THRESHOLDS.HIGH_STRESS) {
+  if (checkIn.stressLevel !== undefined && checkIn.stressLevel >= CHECK_IN_THRESHOLDS.HIGH_STRESS) {
     triggers.push('estres_alto')
     adjustments.push(
       'Estrés elevado — reducir volumen 15% y priorizar sesiones de baja intensidad'

@@ -55,11 +55,11 @@ export type WebCheckinBody = {
 
 export function mapWebCheckinBody(body: WebCheckinBody): CheckInInput {
   return {
-    rpe:                body.hardestRpe   ?? 5,
-    sleepHours:         body.sleepHours   ?? 7,
+    rpe:                body.hardestRpe,
+    sleepHours:         body.sleepHours,
     sleepScore:         body.sleepScore,
-    energyLevel:        body.energyLevel  ?? 5,
-    stressLevel:        body.stressLevel  ?? 0,
+    energyLevel:        body.energyLevel,
+    stressLevel:        body.stressLevel,
     weight:             body.weightKg,
     heartRate:          body.hrResting,
     painLevel:          body.painLevel,
@@ -99,10 +99,10 @@ export type MobileCheckinBody = {
 export function mapMobileCheckinBody(body: MobileCheckinBody): CheckInInput {
   return {
     rpe:                scale5to10(body.muscleSoreness),
-    sleepHours:         body.sleepHours   ?? 7,
+    sleepHours:         body.sleepHours,
     sleepScore:         body.sleepScore,
     energyLevel:        scale5to10(body.energyLevel),
-    stressLevel:        scale5to10(body.stressLevel ?? 3),
+    stressLevel:        body.stressLevel !== undefined ? scale5to10(body.stressLevel) : undefined,
     weight:             body.weightKg,
     heartRate:          body.hrResting,
     painLevel:          body.painLevel,
