@@ -598,9 +598,9 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Admin — Panel manual de coachTier (P0 para design partners)',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'En /admin/coaches: dropdown para cambiar UserSubscription.coachTier de cada coach (STARTER/GROWTH/PRO/SCALE). Sin Wompi involucrado — el cobro es manual (Nequi/transferencia). Necesario para fase design partners donde se activa el tier del coach manualmente después de recibir el pago. PATCH /api/admin/coach/[id]/tier → valida role=ADMIN → actualiza UserSubscription.coachTier.',
+        note: 'DONE: PATCH /api/admin/coach/[id]/tier + CoachTierDropdown en /admin/coaches. Select con badge por tier (STARTER/GROWTH/PRO/SCALE), upsert UserSubscription.coachTier, audit log. Branch: feature/admin-coach-tier.',
       },
       {
         title: 'B2B-ATHLETE-FREE — Atleta B2B nunca ve pantalla de pago',
