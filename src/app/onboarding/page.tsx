@@ -181,6 +181,10 @@ function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (
     { value: 'ADVANCED',     label: 'Avanzado',     subtext: 'Más de 3 años' },
   ]
 
+  const ageErr = data.age !== null && (data.age < 10 || data.age > 100)
+  const heightErr = data.heightCm !== null && (data.heightCm < 100 || data.heightCm > 250)
+  const weightErr = data.weightKg !== null && (data.weightKg < 30 || data.weightKg > 300)
+
   return (
     <div className="flex flex-col gap-5">
       <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Datos básicos</h2>
@@ -196,32 +200,47 @@ function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Edad (años)</Label>
-          <Input
+          <input
             type="number"
             placeholder="32"
             value={data.age ?? ''}
             onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : null })}
+            className={cn(
+              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+              ageErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+            )}
           />
+          {ageErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 10 y 100 años</p>}
         </div>
         <div>
-          <Label>Talla (cm)</Label>
-          <Input
+          <Label>Altura (cm)</Label>
+          <input
             type="number"
             placeholder="170"
             value={data.heightCm ?? ''}
             onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : null })}
+            className={cn(
+              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+              heightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+            )}
           />
+          {heightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 100 y 250 cm</p>}
         </div>
       </div>
 
       <div>
         <Label>Peso actual (kg)</Label>
-        <Input
+        <input
           type="number"
           placeholder="68"
           value={data.weightKg ?? ''}
           onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : null })}
+          className={cn(
+            'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+            weightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+          )}
         />
+        {weightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 30 y 300 kg</p>}
       </div>
 
       <div>
