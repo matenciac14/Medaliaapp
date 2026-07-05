@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { DuplicateRoutineButton } from './_components/DuplicateRoutineButton'
 
 export default async function GymDashboardPage() {
   const session = await auth()
@@ -128,6 +129,7 @@ export default async function GymDashboardPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <DuplicateRoutineButton templateId={t.id} />
                   <Link
                     href={`/coach/gym/routines/${t.id}/assign`}
                     className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors"
