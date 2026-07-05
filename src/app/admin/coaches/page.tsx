@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { computeCoachActivity } from '@/domain/admin/coach-activity'
+import { CoachTierDropdown } from './_components/CoachTierDropdown'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -11,6 +12,7 @@ export default async function AdminCoachesPage() {
       where: { role: 'COACH' },
       select: {
         id: true, name: true, email: true, createdAt: true,
+        subscription: { select: { coachTier: true } },
         coachOf: {
           select: {
             createdAt: true,
@@ -108,6 +110,10 @@ export default async function AdminCoachesPage() {
                     <p className="text-xs text-gray-400">Desde</p>
                     <p className="text-xs font-medium">{new Date(coach.createdAt).toLocaleDateString('es-CO')}</p>
                   </div>
+                  <CoachTierDropdown
+                    coachId={coach.id}
+                    initialTier={coach.subscription?.coachTier ?? 'STARTER'}
+                  />
                 </div>
               </div>
 
