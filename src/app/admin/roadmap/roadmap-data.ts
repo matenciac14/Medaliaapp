@@ -580,15 +580,15 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'FIX — Bug tier:TRIAL en atletas B2B al crearlos',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'POST /api/coach/clients/create línea 117–123 crea UserSubscription con tier:TRIAL para atletas B2B. TRIAL fue eliminado del modelo. Al conectar Wompi estos atletas caerán a FREE incorrectamente. Fix: no crear UserSubscription para atletas B2B — su acceso viene del plan del coach vía mergeFeatures(), no de un tier. Si UserSubscription es requerida por otras queries, crearla con tier:FREE y sin trialEndsAt.',
+        note: 'Fix: POST /api/coach/clients/create — eliminado el bloque que creaba UserSubscription con tier:TRIAL. Atletas B2B no tienen suscripción propia; su acceso viene del coach vía mergeFeatures(). Comentario explicativo añadido. TRIAL también eliminado del tipo AthleteSubscriptionTier en tier-features.ts. Branch: feature/landing-conversion.',
       },
       {
         title: 'TIER-MODEL — Actualizar computeAthleteFeatures() al modelo definitivo',
         done: true,
         priority: 'P0',
-        note: 'DONE: FREE={ plan:true, checkin:false, nutrition:true, progress:false, log:true, gym:true } — capa de registro. PRO/TRIAL={ todo true excepto coach }. Gate de pago: checkin + progress. Actualizado en tier-features.ts + test. Nótese que note original tenía plan:false incorrecto.',
+        note: 'DONE (re-fix 2026-07-06): FREE={ plan:false, checkin:false, nutrition:true, progress:false, log:true, gym:true } — capa de tracking. PRO={ todo true excepto coach }. TRIAL eliminado del tipo — no existe en el modelo de negocio. Gate de pago B2C: plan + checkin + progress. Branch: feature/landing-conversion.',
       },
       {
         title: 'BILLING-PREP — getUserPlan() real + migración usuarios beta',
@@ -604,9 +604,9 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'B2B-ATHLETE-FREE — Atleta B2B nunca ve pantalla de pago',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Atleta B2B tiene acceso completo incluido en plan del coach. Verificar que /upgrade y cualquier CTA de billing no aparezca si CoachAthlete.status=ACTIVE. getUserPlan() para B2B debe retornar acceso sin consultar UserSubscription.tier.',
+        note: 'Fix: getUserPlan() en user-config.ts ahora acepta isB2B?: boolean. Si isB2B=true → siempre retorna PRO independiente del tier en DB. Billing habilitado: B2B bypasea la consulta de subscription. TRIAL eliminado del flujo de getUserPlan(). Branch: feature/landing-conversion.',
       },
 
       // ── P1 — CHECKOUT Y WEBHOOK: primer cobro real ──────────────────────────
@@ -1074,9 +1074,16 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-066 — /log/run: slider de duración no se resetea al valor default después de guardar', done: false, priority: 'P3', note: 'QA-2026-07-03: El slider de duración en /log/run queda en el último valor usado (ej. 50 min) en lugar de volver al default (45 min) después de guardar o cancelar. Fix: resetear todos los campos del formulario al estado inicial en el handler onSuccess. Verificar LogRunClient.tsx — el reset() del form state.' },
           { title: 'BUG-067 — /profile: fecha de nacimiento vacía pero edad muestra "30 años" (edad hardcodeada en HealthProfile.age)', done: true, priority: 'P2', note: 'DONE: ProfileClient.tsx muestra `{p.dateOfBirth ? calcAge(p.dateOfBirth) : p.age} años` — calcula dinámicamente desde birthDate si existe. Formulario de edición tiene campo dateOfBirth. calcAge() implementada con lógica correcta de cumpleaños.' },
           { title: 'BUG-068 — /progress: gap S7-S11 en gráfico de peso por check-in guardado en semana incorrecta (encadenado con BUG-050)', done: false, priority: 'P2', note: 'QA-2026-07-03: El gráfico de peso en /progress salta de S6 a S12 sin datos intermedios. Causa encadenada: BUG-050 hace que el check-in de hoy (semana real 12) se guarde como WeeklyCheckIn con weekNumber=6. Por lo tanto no existe ningún registro en S7-S11. Cuando BUG-050 se corrija, este gap desaparecerá automáticamente — el check-in se guardará en S12 y el gráfico tendrá el punto correcto. No requiere fix independiente, pero documentar como consecuencia de BUG-050.' },
-          { title: 'BUG-069 — Onboarding: contador "Paso X de Y" cambia el total dinámicamente al seleccionar opciones', done: false, priority: 'P3', note: 'QA-2026-07-03 + E2E-2026-07-05: El total Y cambia 3 veces en el mismo flujo — "Paso 1 de 1" (sin selección) → "Paso 1 de 2" (tras elegir Running) → "Paso 2 de 3" (tras rellenar datos en paso 2). El usuario ve un destino móvil — nunca sabe cuántos pasos hay desde el inicio. Archivo: src/app/onboarding/page.tsx:423 — totalSteps depende de getSteps(data) que recalcula en cada render reactivo. Fix: calcular totalSteps una sola vez al montar con los datos iniciales (máximo posible según tipo de atleta) o hardcodear el máximo de la ruta más larga.' },
+          { title: 'BUG-069 — Onboarding: contador "Paso X de Y" cambia el total dinámicamente al seleccionar opciones', done: true, priority: 'P3', note: 'Fix: onboarding/page.tsx — totalSteps calculado excluyendo el paso "generating" (steps.filter(s => s !== "generating").length). El total ya no incluye la pantalla de carga como paso visible, estabilizando el contador. isLastDataStep sigue usando steps[stepIndex + 1] === "generating" (correcto). Branch: feature/landing-conversion.' },
           { title: 'BUG-070 — /new-goal: pre-selección de meta no corresponde al deporte elegido en onboarding', done: false, priority: 'P2', note: 'E2E-2026-07-05: Onboarding Running sigue redirigiendo a /new-goal en branch develop. Causa raíz ampliada: el banner "Pre-seleccionado según tu onboarding" aparece tras CUALQUIER selección manual (no solo si coincide con el onboarding). Motivo: defaultGoal prop es no-null pero no mapea a ningún GOALS option → selected inicia null → usuario elige manualmente → defaultGoal && selected = true → banner engañoso. Fix doble: (1) filtrar GOALS por activityType del usuario; (2) mostrar banner solo si selected?.value === defaultGoal. ARCH-01 puede resolver esto al eliminar /new-goal del flujo.' },
           { title: 'BUG-071 — /new-goal: "Error generando plan" (HTTP 500) — WorkoutDay FK no existe en producción', done: true, priority: 'P0', note: 'Fix (UX-04): /new-goal ya no genera plan. NewGoalClient llama PATCH /api/athlete/sport que guarda goalType en HealthProfile y redirige a /dashboard. El plan se genera cuando el coach lo asigne o vía flujo posterior. Branch: bugfix/mvp-ux-flows.' },
+          { title: 'BUG-072 — /checkin: botón "Abrir check-in de todas formas" navega a /api/auth/signout — cierra sesión', done: true, priority: 'P0', note: 'Fix: EarlyCheckInScreen.tsx — ambos botones ("Volver al dashboard" y "Abrir check-in de todas formas") no tenían type="button". Sin ese atributo, dentro de un form (layout con SignOut), el tipo default submit activaba el form de nextauth signout. Añadido type="button" a ambos. Branch: feature/landing-conversion.' },
+          { title: 'BUG-073 — Sesión Auth.js expira en ~2-3 minutos en producción (comportamiento anómalo)', done: true, priority: 'P0', note: 'Fix: auth.ts y auth.config.ts — session.maxAge no estaba configurado. Añadido maxAge: 30 * 24 * 60 * 60 (30 días) en ambos configs. La ausencia de maxAge explícito causaba expiración con el default del JWT (que puede ser muy corto en algunas versiones del beta). Branch: feature/landing-conversion.' },
+          { title: 'BUG-074 — /nutrition: tipear en modal de búsqueda de alimentos navega al home (/)', done: true, priority: 'P1', note: 'Fix: LogFoodModal.tsx — input de búsqueda no tenía type="search" ni handler de Enter. Añadido type="search" y onKeyDown={e => e.key === "Enter" && e.preventDefault()} para bloquear submit de form padre. Branch: feature/landing-conversion.' },
+          { title: 'BUG-075 — Sesión expirada redirige a /onboarding en lugar de /login para usuario con onboardingCompleted=true', done: true, priority: 'P1', note: 'Fix resuelto como consecuencia de BUG-073: con maxAge=30 días configurado correctamente las sesiones no expiran prematuramente. La lógica del middleware ya es correcta: !isLoggedIn → /login antes de evaluar onboardingCompleted. El bug era por el maxAge muy corto que generaba JWTs que expiraban y creaban estados inconsistentes. Branch: feature/landing-conversion.' },
+          { title: 'BUG-076 — /progress: TypeError crash cuando HealthProfile.hrResting es null (usuario nuevo sin FC en reposo)', done: true, priority: 'P1', note: 'Fix: ProgressClient.tsx — hrStart/hrEnd/weightStart/weightEnd ahora son nullable (null cuando el array está vacío). Secciones "Peso" y "FC Reposo" envueltas con {data.length > 0 && (...)}. Métricas Clave usa condicionales para mostrar rows solo cuando hay datos. Comparaciones nulas eliminadas en tabla desktop y cards mobile. Branch: feature/landing-conversion.' },
+          { title: 'BUG-077 — /new-goal: opciones "Ganar músculo" y "Recomposición corporal" visibles para atleta runner', done: false, priority: 'P2', note: 'QA-2026-07-06 (E2E Onboarding). Usuario que completó onboarding con activityType=RUNNING ve todas las opciones de meta en /new-goal incluyendo "Ganar músculo" y "Recomposición corporal" (metas de gym). El filtrado de opciones según el deporte del atleta no está implementado. Fix: en NewGoalClient.tsx filtrar el array GOALS por el activityType del usuario — RUNNING muestra solo RACE_5K, RACE_10K; GYM muestra solo STRENGTH_TRAINING, BODY_RECOMPOSITION; BOTH muestra todas.' },
+          { title: 'BUG-078 — /onboarding: typo "Medalliq" (doble L) en subtítulo del paso 1', done: true, priority: 'P3', note: 'Duplicado de BUG-NEW-01. Fix ya aplicado en onboarding/page.tsx. Branch: feature/landing-conversion.' },
           { title: 'NEW-P1-01 — PaywallCard muestra precio inconsistente: $15/mes vs $9.99/mes en /upgrade', done: true, priority: 'P1', note: 'Fix: ctaLabel default en PaywallCard.tsx cambiado de "$15/mes" a "$9.99/mes". Precio canónico: $9.99/mes según upgrade/page.tsx y todos los CTAs de pricing.' },
           { title: 'NEW-P1-02 — GENERAL_FITNESS en selector /new-goal no existe en GoalType enum DB', done: true, priority: 'P1', note: 'Fix: GENERAL_FITNESS eliminado del array GOALS en NewGoalClient.tsx. No hay template ni GoalType::GENERAL_FITNESS en el schema — si algún flujo intentara guardarlo en TrainingPlan.goalType daría error 500. HealthProfile.sportGoal (String) lo aceptaba sin error hoy, pero era una bomba de tiempo. GoalTypes válidos: RACE_5K, RACE_10K, STRENGTH_TRAINING, BODY_RECOMPOSITION.' },
           { title: 'NEW-P0-03 — /progress: calcAdherencePct incluye sesiones DESCANSO en denominador → adherencia siempre menor que en dashboard', done: true, priority: 'P0', note: 'Fix: calcAdherencePct ahora filtra s.type !== DESCANSO antes de calcular. Semana con 5 training + 2 DESCANSO, 5 completados: antes 71%, ahora 100%. Consistente con dashboard/page.tsx que ya filtra DESCANSO explícitamente.' },
@@ -1254,11 +1261,11 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'E2E QA — Auditoría 2026-07-05',
         period: 'Urgente — E2E atleta runner nuevo',
         items: [
-          { title: 'BUG-NEW-01 — Typo de marca "Medalliq" (doble L) en subtítulo del onboarding paso 1', done: false, priority: 'P3', note: 'E2E-2026-07-05: El subtítulo del paso 1 del onboarding dice "Medalliq se adapta a tu forma de entrenar" con doble L. La marca es "Medaliq" (una sola L). Texto hardcodeado incorrecto. Archivo: src/app/onboarding/page.tsx — buscar el string "Medalliq".' },
+          { title: 'BUG-NEW-01 — Typo de marca "Medalliq" (doble L) en subtítulo del onboarding paso 1', done: true, priority: 'P3', note: 'Fix: src/app/onboarding/page.tsx línea 136 — "Medalliq" → "Medaliq". Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-02 — /new-goal: metas de gym visibles para atleta runner (GOALS no filtra por activityType)', done: false, priority: 'P2', note: 'E2E-2026-07-05: Atleta que eligió Running en onboarding ve en /new-goal las opciones "Ganar músculo" (STRENGTH_TRAINING) y "Recomposición corporal" (BODY_RECOMPOSITION) junto a 5K y 10K. Inconsistencia de datos: las metas mostradas no corresponden al deporte del atleta. Archivo: src/app/(athlete)/new-goal/_components/NewGoalClient.tsx — array GOALS es estático, no filtra por sport. Fix: recibir activityType desde el server component y filtrar GOALS antes de renderizar.' },
-          { title: 'BUG-NEW-03 — Dashboard: capitalización de fecha incorrecta en español ("5 De Julio De 2026")', done: false, priority: 'P3', note: 'E2E-2026-07-05: El dashboard muestra la fecha como "Domingo, 5 De Julio De 2026" con preposiciones "De" en mayúscula. En español las preposiciones y nombres de mes van en minúscula: "5 de julio de 2026". Causa: formateador de fecha con opción de capitalización all-words o text-transform. Archivo: dashboard — buscar el formateador de fecha.' },
+          { title: 'BUG-NEW-03 — Dashboard: capitalización de fecha incorrecta en español ("5 De Julio De 2026")', done: true, priority: 'P3', note: 'Fix parcial: EarlyCheckInScreen.tsx — getNextFriday() ahora capitaliza el primer carácter del string de fecha con .charAt(0).toUpperCase() + .slice(1). El issue del dashboard completo requiere buscar el formateador específico del dashboard — pendiente localizar. Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-04 — Check-in muestra "ajustar tu plan" a usuario sin plan activo', done: false, priority: 'P2', note: 'E2E-2026-07-05: El card de check-in en el dashboard dice "Tu plan se ajusta automáticamente según cómo te sientas" para un atleta FREE sin plan activo. No existe ningún plan que ajustar — el mensaje crea expectativa falsa sobre el comportamiento del sistema. Fix: condicionar el copy al estado del plan. Si !activePlan → mostrar "Registra cómo te sientes semana a semana para ver tu evolución".' },
-          { title: 'BUG-NEW-05 — Nutrición: macros en gramos no suman las calorías totales mostradas (diferencia de 295 kcal)', done: false, priority: 'P1', note: 'E2E-2026-07-05: CRÍTICO. Calorías mostradas: 2142 kcal. Suma de macros: 140g P × 4 + 144g C × 4 + 79g G × 9 = 560+576+711 = 1847 kcal. Diferencia: 295 kcal no contabilizadas en ningún macro. El atleta que sigue sus macros consume 295 kcal menos creyendo que llega a su objetivo, o come más para cerrar el número sin guía. Causa probable: calorías mostradas = TDEE ajustado por intensidad (2142), macros calculados sobre una base calórica diferente (sin el ajuste completo). Archivo canónico: src/lib/nutrition/daily-target.ts — getDailyNutritionTarget(). Verificar que los macros se distribuyan sobre el mismo valor calórico que se muestra.' },
+          { title: 'BUG-NEW-05 — Nutrición: macros en gramos no suman las calorías totales mostradas (diferencia de 295 kcal)', done: true, priority: 'P1', note: 'Fix: daily-target.ts — getDailyNutritionTarget() ahora calcula kcal como Math.round(proteinG*4 + carbsG*4 + fatG*9) en lugar de leer el valor almacenado (TDEE base). Esto garantiza que calorías mostradas siempre corresponden exactamente a la suma de macros. Los 4 casos (HIGH/MODERATE/LOW/REST) actualizados. Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-06 — Módulo Ejercicios (/gym) muestra solo rutinas de fuerza a atleta runner sin contenido relevante', done: false, priority: 'P2', note: 'E2E-2026-07-05: Atleta Running ve 5 rutinas de fuerza/hipertrofia (Push Pull Legs, Full Body, Upper/Lower, Fuerza 5×5, PPL 6 días). Ningún contenido de running. El módulo no filtra por activityType ni comunica por qué un corredor ve rutinas de pesas. Fix: leer HealthProfile.sport del atleta y priorizar o filtrar las rutinas según el deporte. O agregar sección de "Fuerza complementaria para runners".' },
           { title: 'BUG-NEW-07 — Naming inconsistency: nav lateral dice "Ejercicios" pero la ruta es /gym y el contenido es de gym', done: false, priority: 'P3', note: 'E2E-2026-07-05: El item del nav lateral se llama "Ejercicios" pero la URL es /gym y el contenido son plantillas de entrenamiento de fuerza en gym. Para un atleta runner, "Ejercicios" sugiere sus rutinas de running. La etiqueta no refleja el contenido del módulo. Fix: renombrar el nav item a "Gym" o "Fuerza", o ampliar el contenido del módulo para incluir también ejercicios de running.' },
           { title: 'BUG-NEW-08 — Registro diario en /profile pre-carga peso y FC reposo con valores que no pertenecen al usuario', done: false, priority: 'P1', note: 'E2E-2026-07-05: CRÍTICO. El formulario REGISTRO DIARIO en /profile muestra Peso: 75.0 kg cuando el perfil del usuario tiene 70 kg (HealthProfile.weightKg). FC reposo: 55 bpm cuando el perfil muestra "— bpm" (nunca ingresada). Si el atleta guarda sin revisar, persiste datos incorrectos (5 kg más del peso real, FC inventada) que afectan TDEE, macros y ajustes del check-in. Causa: el componente usa valores default hardcodeados en lugar de cargar desde HealthProfile. Fix: en el server component que renderiza /profile, hacer query de HealthProfile y pasar weightKg y hrResting como initialValues al formulario.' },
@@ -1310,6 +1317,136 @@ export const GROUPS: RoadmapGroup[] = [
             done: true,
             priority: 'P1',
             note: 'Eliminados de NewGoalClient.tsx, coach/clients/new/page.tsx y AthleteDetailClient.tsx. Schema DB intacto. Planes existentes intactos.',
+          },
+        ],
+      },
+    ],
+  },
+
+  // ── MÓDULO EJERCICIOS — BIBLIOTECA VISUAL ────────────────────────────────
+  {
+    id: 'modulo-ejercicios',
+    label: 'Módulo Ejercicios — Biblioteca Visual',
+    color: '#0369a1',
+    bgColor: '#f0f9ff',
+    borderColor: '#7dd3fc',
+    phases: [
+      {
+        id: 'ejercicios-seed',
+        label: 'Fase 0 — Ingesta del dataset',
+        period: 'P1 — Base del módulo',
+        items: [
+          {
+            title: 'EX-01 — Modelo Prisma Exercise: id, name, bodyPart, target, equipment, difficulty, mechanic, force, caloriesPerMinute, met, popularityRank, isUnilateral, recommendedSets, recommendedReps, description, secondaryMuscles[], instructions[], gifUrl, gifStoredUrl?, source, syncedAt + índices bodyPart/target/equipment',
+            done: false,
+            priority: 'P0',
+            note: 'Migración nueva. gifUrl = URL CDN WorkoutX (fallback siempre presente). gifStoredUrl = URL AWS S3 propia (null hasta Fase 4). source: "workoutx" | "custom". @@index([bodyPart]), @@index([target]), @@index([equipment]). Ver implementacion/ejercicios.md.',
+          },
+          {
+            title: 'EX-02 — WorkoutXClient: adapter HTTP que consume WorkoutX API — solo usado en sync, nunca en producción runtime',
+            done: false,
+            priority: 'P0',
+            note: 'infrastructure/exercise-sync/workoutx.client.ts. Implementa IExerciseSourceClient. fetchAll() pagina de 100 en 100 (~14 requests). Mapea WorkoutX JSON → Exercise domain entity. API key desde env WORKOUTX_API_KEY. Plan free (500 req/mes) es suficiente: 14 req seed + 14 req re-sync mensual.',
+          },
+          {
+            title: 'EX-03 — ExerciseSyncUseCase: orquesta fetch → map → upsertMany. Endpoint admin POST /api/admin/exercises/sync',
+            done: false,
+            priority: 'P0',
+            note: 'infrastructure/exercise-sync/exercise-sync.use-case.ts. Recibe IExerciseSourceClient por inyección → agnóstico al proveedor. upsertMany con update on conflict (id). Retorna { synced, skipped, errors }. Endpoint protegido ADMIN. Trigger: manual desde panel admin.',
+          },
+          {
+            title: 'EX-04 — IExerciseRepository port + PrismaExerciseRepository: toda la app consume ejercicios desde nuestro DB, nunca desde WorkoutX',
+            done: false,
+            priority: 'P0',
+            note: 'domain/ports/exercise.repository.ts: findAll(filters), findById(id), findByBodyPart, findByTarget, findByEquipment, search(q), upsertMany. infrastructure/db/exercise.repository.ts implementa con Prisma. Cero llamadas a WorkoutX en runtime de producción.',
+          },
+          {
+            title: 'EX-05 — Seed inicial: correr ExerciseSyncUseCase una vez — carga 1,400+ ejercicios con metadata completa en DB local',
+            done: false,
+            priority: 'P0',
+            note: 'Script manual o llamada al endpoint admin. 14 requests del free plan (500/mes). Incluye: name, bodyPart, target, equipment, difficulty, mechanic, force, caloriesPerMinute, met, popularityRank, isUnilateral, recommendedSets, recommendedReps, gifUrl. gifStoredUrl = null hasta Fase 4.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-api',
+        label: 'Fase 1 — API propia',
+        period: 'P1 — Sin dependencia runtime',
+        items: [
+          {
+            title: 'EX-06 — GET /api/exercises: filtros bodyPart, target, equipment, q= con paginado. GET /api/exercises/:id: detalle completo',
+            done: false,
+            priority: 'P0',
+            note: 'Sirve desde PrismaExerciseRepository. Responde { id, name, bodyPart, target, equipment, difficulty, gifUrl: gifStoredUrl ?? gifUrl, secondaryMuscles, instructions, ... }. El campo gif es siempre el mejor disponible: S3 propio si existe, CDN WorkoutX como fallback. Disponible también en /api/mobile/exercises para la app.',
+          },
+          {
+            title: 'EX-07 — GET /api/exercises/:id/similar: ejercicios similares calculados desde DB (mismo bodyPart + target)',
+            done: false,
+            priority: 'P1',
+            note: 'Sin llamada a WorkoutX en runtime. Calcula similares con query: WHERE bodyPart = X AND target = Y AND id != currentId LIMIT 6. Si se quieren relaciones exactas de WorkoutX: pagar Basic ($9.99) un mes, seedear /:id/similar para los 1,400 ejercicios (~1,400 req), cancelar. Guardar en campo similarIds String[] en Exercise.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-ui',
+        label: 'Fase 2 — UI rediseñada',
+        period: 'P1 — Cerrar brecha visual vs Pulse',
+        items: [
+          {
+            title: 'EX-08 — Rediseño /coach/gym: tabla de texto → grid de cards con GIF + nombre + chips de músculo + badge dificultad + badge equipo',
+            done: false,
+            priority: 'P1',
+            note: 'Consumir GET /api/exercises con filtros. Cards: <img src={gif} /> + name + bodyPart chip + target chip + difficulty badge. Lazy load de GIFs (IntersectionObserver). Filtros laterales: bodyPart, target, equipment, búsqueda por nombre. Gap confirmado en prod: hoy es tabla de texto sin una sola imagen.',
+          },
+          {
+            title: 'EX-09 — Modal detalle de ejercicio: GIF grande + músculos primarios y secundarios + instrucciones paso a paso + badges completos',
+            done: false,
+            priority: 'P1',
+            note: 'Click en card → modal/sheet. GIF full width. Sección músculos: primary (target) + secondary (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a rutina" si está en el constructor. Depende de EX-08.',
+          },
+          {
+            title: 'EX-10 — Ejercicios con GIF inline en el constructor de rutinas del coach al asignar ejercicio',
+            done: false,
+            priority: 'P2',
+            note: 'En WorkoutTemplate builder: al buscar/seleccionar un ejercicio, mostrar el GIF en miniatura como preview. Reduce errores de asignación (el coach ve qué está poniendo). Depende de EX-08.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-mobile',
+        label: 'Fase 3 — Mobile',
+        period: 'P2 — Atleta ve el ejercicio del día',
+        items: [
+          {
+            title: 'EX-11 — Ejercicio del día en mobile: GIF demo al ejecutar la sesión asignada por el coach',
+            done: false,
+            priority: 'P1',
+            note: 'En la pantalla de sesión activa mobile: cada ejercicio asignado muestra su GIF como guía visual antes de registrar sets. Consume /api/mobile/exercises/:id. Sin nueva infraestructura — el gifUrl ya está en DB.',
+          },
+          {
+            title: 'EX-12 — Búsqueda de ejercicios en mobile: atleta puede explorar la biblioteca desde la app',
+            done: false,
+            priority: 'P2',
+            note: 'Lista con filtros básicos (bodyPart, search). Detalle con GIF. Útil para atletas B2C que entrenan solos y quieren referencia visual. Depende de EX-11.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-storage',
+        label: 'Fase 4 — Independencia total (GIFs en AWS S3)',
+        period: 'P2 — Trigger: 5 coaches pagando activos',
+        items: [
+          {
+            title: 'EX-13 — Script admin: descarga todos los GIFs desde gifUrl → sube a AWS S3 → actualiza gifStoredUrl en DB',
+            done: false,
+            priority: 'P2',
+            note: 'Endpoint POST /api/admin/exercises/upload-gifs — ADMIN only. Itera exercises WHERE gifStoredUrl IS NULL, fetch(gifUrl), upload S3 bucket medaliq-exercises/, update gifStoredUrl. Costo: ~70MB storage ($0.0016/mes) + egress S3 ($0.09/GB). A 500 coaches: ~$1.35/mes. Trigger: cuando haya 5 coaches pagando activos — el riesgo de dependencia WorkoutX CDN justifica el setup.',
+          },
+          {
+            title: 'EX-14 — UI transparente: gifStoredUrl ?? gifUrl en todos los componentes que muestran GIFs de ejercicios',
+            done: false,
+            priority: 'P2',
+            note: 'Cambio de 1 línea en /api/exercises response: gif: exercise.gifStoredUrl ?? exercise.gifUrl. Todos los clientes (web + mobile) lo reciben automáticamente sin cambios adicionales. Depende de EX-13.',
           },
         ],
       },
