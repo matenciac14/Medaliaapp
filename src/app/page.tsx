@@ -25,7 +25,7 @@ import {
   Search,
   FlaskConical,
   Globe,
-  Trophy,
+  BadgePercent,
 } from "lucide-react";
 
 export default function Home() {
@@ -157,7 +157,7 @@ export default function Home() {
                 [
                   { Icon: FlaskConical, label: l.hero.badge1 },
                   { Icon: Globe, label: l.hero.badge2 },
-                  { Icon: Trophy, label: l.hero.badge3 },
+                  { Icon: BadgePercent, label: l.hero.badge3 },
                 ] as { Icon: React.ElementType; label: string }[]
               ).map(({ Icon, label }) => (
                 <span
@@ -189,12 +189,12 @@ export default function Home() {
                 {l.hero.cta2}
               </a>
               <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
-                <span className="text-[#ea580c] text-sm leading-none">
-                  ★★★★★
-                </span>
-                <p className="text-blue-200 text-xs">
-                  8 entrenadores ya reservaron su lugar.
-                </p>
+                <div className="flex items-center gap-2 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full">
+                  <span className="text-[#34d399] text-xs font-bold">Medaliq 0%</span>
+                  <span className="text-white/30 text-xs">vs</span>
+                  <span className="text-white/50 text-xs line-through decoration-red-400">TrueCoach 5%</span>
+                  <span className="text-blue-200 text-xs">· Ahorra ~$60 USD/mes</span>
+                </div>
               </div>
             </div>
           </div>

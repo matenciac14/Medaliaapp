@@ -12,7 +12,7 @@ export const pt: Translations = {
     hero: {
       badge1: 'Periodização real',
       badge2: 'Para LatAm',
-      badge3: 'Acesso antecipado',
+      badge3: '0% de taxa — sempre',
       title: 'Seus atletas veem seu progresso semana a semana.',
       titleHighlight: 'Você cresce sem perder o controle.',
       subtitle: 'Planos periodizados, nutrição recalculada a cada sessão e acompanhamento semanal para cada atleta.',
