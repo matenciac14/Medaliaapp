@@ -52,7 +52,7 @@ export function ActivateButton({ userId, isActive = false }: Props) {
       <button
         disabled={loading !== null}
         onClick={() => callPlan('COACH')}
-        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 transition-colors"
+        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-orange-600 text-white hover:bg-orange-600 disabled:opacity-50 transition-colors"
       >
         {loading === 'COACH' ? '...' : 'Activar Coach'}
       </button>

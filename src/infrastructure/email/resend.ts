@@ -18,7 +18,7 @@ export async function sendCoachWelcomeEmail(to: string, name: string, loginUrl: 
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -33,7 +33,7 @@ export async function sendCoachWelcomeEmail(to: string, name: string, loginUrl: 
               <li>Agrega tu primer asesorado desde el dashboard</li>
               <li>Genera su plan de entrenamiento</li>
             </ol>
-            <a href="${loginUrl}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${loginUrl}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ir a mi panel →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -70,7 +70,7 @@ export async function sendAthleteCoachAssignedEmail(to: string, name: string, co
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -79,7 +79,7 @@ export async function sendAthleteCoachAssignedEmail(to: string, name: string, co
             <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6">
               <strong>${coachName}</strong> te agregó como asesorado en Medaliq. A partir de ahora podrás ver el plan que tu coach diseñe para ti y hacer seguimiento de tu progreso juntos.
             </p>
-            <a href="${loginUrl}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${loginUrl}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver mi plan →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -116,7 +116,7 @@ export async function sendAthleteWelcomeEmail(to: string, name: string, coachNam
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -126,7 +126,7 @@ export async function sendAthleteWelcomeEmail(to: string, name: string, coachNam
               <strong>${coachName}</strong> te agregó como asesorado en Medaliq. Aquí podrás ver tu plan de entrenamiento, registrar sesiones y hacer seguimiento de tu progreso.
             </p>
             <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#374151">Para empezar, crea tu contraseña:</p>
-            <a href="${resetLink}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${resetLink}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Crear mi cuenta →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -163,7 +163,7 @@ export async function sendCheckinReminderEmail(to: string, name: string) {
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -175,7 +175,7 @@ export async function sendCheckinReminderEmail(to: string, name: string) {
             <p style="margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.6">
               Registra: peso, energía, calidad del sueño y tu percepción del esfuerzo. Con eso es suficiente.
             </p>
-            <a href="https://medaliq.com/checkin" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/checkin" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Hacer mi check-in →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -216,7 +216,7 @@ export async function sendSessionReminderEmail(
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -235,7 +235,7 @@ export async function sendSessionReminderEmail(
                 </td>
               </tr>
             </table>
-            <a href="https://medaliq.com/plan" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/plan" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver mi plan completo →
             </a>
           </td>
@@ -287,7 +287,7 @@ export async function sendPaymentOverdueCoachEmail(
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -304,7 +304,7 @@ export async function sendPaymentOverdueCoachEmail(
               </tr>
               ${itemsHtml}
             </table>
-            <a href="https://medaliq.com/coach/finanzas" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/coach/finanzas" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ir a Finanzas →
             </a>
           </td>
@@ -339,7 +339,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
         <!-- Header -->
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <!-- Body -->
@@ -349,7 +349,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
             <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6">
               Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón para crear una nueva contraseña.
             </p>
-            <a href="${resetLink}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${resetLink}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Crear nueva contraseña
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -387,7 +387,7 @@ export async function sendEmailVerification(to: string, name: string, verifyUrl:
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -396,7 +396,7 @@ export async function sendEmailVerification(to: string, name: string, verifyUrl:
             <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6">
               Solo falta un paso: verifica tu correo para activar tu cuenta en Medaliq.
             </p>
-            <a href="${verifyUrl}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${verifyUrl}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Verificar correo →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -433,7 +433,7 @@ export async function sendAthleteReadyEmail(to: string, coachName: string, athle
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -445,7 +445,7 @@ export async function sendAthleteReadyEmail(to: string, coachName: string, athle
             <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6">
               Entra al panel, revisa su perfil y actívalo para que pueda empezar a entrenar.
             </p>
-            <a href="https://medaliq.com/coach/athlete/${athleteId}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver perfil de ${athleteName} →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -495,7 +495,7 @@ export async function sendCoachCheckInEmail(
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -505,7 +505,7 @@ export async function sendCoachCheckInEmail(
               <strong>${athleteName}</strong> acaba de completar su check-in semanal.
             </p>
             ${metrics ? `<p style="margin:0 0 24px;font-size:14px;color:#374151;background:#f8fafc;border-radius:10px;padding:14px 18px;line-height:1.8">${metrics}</p>` : ''}
-            <a href="${appUrl}/coach/athlete/${athleteId}" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${appUrl}/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver resumen →
             </a>
           </td>
@@ -543,7 +543,7 @@ export async function sendPlanUpdatedEmail(to: string, name: string, adjustments
       <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
         <tr>
           <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
-            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#f97316">iq</span>
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
           </td>
         </tr>
         <tr>
@@ -558,7 +558,7 @@ export async function sendPlanUpdatedEmail(to: string, name: string, adjustments
             <p style="margin:0 0 24px;font-size:13px;color:#64748b;line-height:1.6">
               Estos cambios ya están en tu plan. El objetivo es que entrenes con la intensidad correcta según tu estado real.
             </p>
-            <a href="https://medaliq.com/plan" style="display:inline-block;background:#f97316;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/plan" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver mi plan actualizado →
             </a>
           </td>

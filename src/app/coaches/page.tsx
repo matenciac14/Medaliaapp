@@ -110,7 +110,7 @@ export default async function CoachesPage({
             <Link href="/#precios" className="hover:text-[#1e3a5f] transition-colors">Precios</Link>
           </div>
           <Link href="/onboarding">
-            <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors">
+            <span className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors">
               Empieza gratis
             </span>
           </Link>
@@ -208,7 +208,7 @@ export default async function CoachesPage({
                     <span className="text-gray-400 text-sm">Precio a consultar</span>
                   )}
                   <Link href={`/p/${coach.slug}`}>
-                    <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+                    <span className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
                       Ver perfil
                     </span>
                   </Link>

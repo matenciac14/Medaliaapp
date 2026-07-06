@@ -50,26 +50,26 @@ export async function POST(req: NextRequest) {
     ...(notes !== undefined ? { notes } : {}),
     ...(availableFoodIds && availableFoodIds.length > 0 ? { availableFoodIds } : {}),
   }
-  await Promise.all([
-    prisma.foodProfile.upsert({
+  const mealData = buildStaticMealPlan(macros, body, dbFoods.length > 0 ? dbFoods : undefined)
+
+  // PERSIST-03: 3 writes en $transaction — evita estado inconsistente si falla mealPlan
+  const mealPlan = await prisma.$transaction(async (tx) => {
+    await tx.foodProfile.upsert({
       where: { userId },
       create: { userId, ...foodProfileData },
       update: foodProfileData,
-    }),
-    prisma.nutritionPlan.upsert({
+    })
+    await tx.nutritionPlan.upsert({
       where: { userId },
       create: { userId, tdee, targetKcalHard: macros.hard.kcal, targetKcalEasy: macros.easy.kcal, targetKcalRest: macros.rest.kcal, proteinG: macros.hard.protein, carbsHardG: macros.hard.carbs, carbsEasyG: macros.easy.carbs, fatG: macros.hard.fat },
       update: {},
-    }),
-  ])
-
-  const mealData = buildStaticMealPlan(macros, body, dbFoods.length > 0 ? dbFoods : undefined)
-
-  const mealPlan = await prisma.mealPlan.upsert({
-    where: { userId },
-    create: { userId, data: mealData as object },
-    update: { data: mealData as object, generatedAt: new Date() },
-  })
+    })
+    return tx.mealPlan.upsert({
+      where: { userId },
+      create: { userId, data: mealData as object },
+      update: { data: mealData as object, generatedAt: new Date() },
+    })
+  }, { timeout: 30_000 })
 
   return NextResponse.json({ ok: true, mealPlanId: mealPlan.id })
 }

@@ -106,7 +106,7 @@ export function EditRunButton({ logId, initDurationMin, initDistanceKm, initRpe,
                     : n <= 6
                     ? 'border-yellow-500 bg-yellow-500 text-white'
                     : n <= 8
-                    ? 'border-orange-500 bg-orange-500 text-white'
+                    ? 'border-orange-600 bg-orange-600 text-white'
                     : 'border-red-500 bg-red-500 text-white'
                   : 'border-gray-200 text-gray-400 bg-white hover:border-gray-300'
               }`}

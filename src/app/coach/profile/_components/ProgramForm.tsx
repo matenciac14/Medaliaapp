@@ -226,7 +226,7 @@ export default function ProgramForm({ onCreated }: Props) {
         type="submit"
         disabled={loading}
         className="w-full py-2.5 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50"
-        style={{ backgroundColor: '#f97316' }}
+        style={{ backgroundColor: '#ea580c' }}
       >
         {loading ? 'Creando...' : 'Crear programa'}
       </button>

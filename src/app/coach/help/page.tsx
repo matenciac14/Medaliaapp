@@ -18,7 +18,7 @@ const SECTIONS = [
     icon: Plus,
     title: 'Crear asesorado',
     href: '/coach/clients/new',
-    color: '#f97316',
+    color: '#ea580c',
     items: [
       { q: '¿Cómo agrego un nuevo atleta?', a: 'Toca el botón "+" central en la nav de abajo (móvil) o "Crear asesorado" en el sidebar (desktop). Ingresa nombre, email, deporte y una nota inicial.' },
       { q: '¿Qué recibe el atleta cuando lo creo?', a: 'Se crea su cuenta con credenciales temporales. El atleta recibe sus datos de acceso y puede completar su onboarding (9 pasos) para que Medaliq genere su plan.' },
@@ -92,7 +92,7 @@ export default function CoachHelpPage() {
             <div key={step} className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-[#1e3a5f] text-white text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{step}</div>
               <p className="text-sm text-gray-700 flex-1">{text}</p>
-              {href && <Link href={href} className="text-xs text-[#f97316] font-medium shrink-0 flex items-center gap-0.5">Ir <ChevronRight size={12} /></Link>}
+              {href && <Link href={href} className="text-xs text-[#ea580c] font-medium shrink-0 flex items-center gap-0.5">Ir <ChevronRight size={12} /></Link>}
             </div>
           ))}
         </div>

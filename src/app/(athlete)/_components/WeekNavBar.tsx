@@ -26,7 +26,7 @@ export default function WeekNavBar({ weekLabel, weekOffset, canGoPrev, canGoNext
       {!isCurrentWeek && (
         <button
           onClick={() => router.push(pathname)}
-          className="text-xs font-semibold text-[#f97316] hover:text-[#ea6c0a] transition-colors px-2 py-1.5 rounded-lg hover:bg-orange-50"
+          className="text-xs font-semibold text-[#ea580c] hover:text-[#ea6c0a] transition-colors px-2 py-1.5 rounded-lg hover:bg-orange-50"
         >
           Hoy
         </button>

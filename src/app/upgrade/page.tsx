@@ -38,7 +38,7 @@ export default async function UpgradePage() {
         >
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: '#1e3a5f' }}>Pro</p>
-            <span className="text-xs font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#f97316' }}>Recomendado</span>
+            <span className="text-xs font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#ea580c' }}>Recomendado</span>
           </div>
           <p className="text-4xl font-bold text-gray-900 mb-1">$9.99</p>
           <p className="text-gray-400 text-sm mb-6">por mes</p>

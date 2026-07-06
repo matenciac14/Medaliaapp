@@ -61,7 +61,7 @@ const SECTIONS = [
     icon: Dumbbell,
     title: 'Ejercicios / Rutina de fuerza',
     href: '/gym',
-    color: '#f97316',
+    color: '#ea580c',
     items: [
       { q: '¿Cómo empiezo una sesión de ejercicios?', a: 'Ve a Ejercicios → selecciona el día de hoy → toca "Iniciar sesión". Registra el peso y repeticiones de cada serie. El timer de descanso se activa automáticamente.' },
       { q: '¿Qué significa el badge "+2.5 kg recomendado"?', a: 'Completaste todos los sets con las repeticiones objetivo — eso indica que el peso ya no es un estímulo suficiente. La próxima sesión sube 2.5 kg en ese ejercicio.' },
@@ -126,7 +126,7 @@ export default function AthleteHelpPage() {
       </div>
 
       <div className="text-center py-4">
-        <p className="text-xs text-gray-400">¿Tienes más preguntas? Escríbenos a <a href="mailto:hola@medaliq.com" className="text-[#f97316] font-medium underline">hola@medaliq.com</a></p>
+        <p className="text-xs text-gray-400">¿Tienes más preguntas? Escríbenos a <a href="mailto:hola@medaliq.com" className="text-[#ea580c] font-medium underline">hola@medaliq.com</a></p>
       </div>
     </div>
   )

@@ -30,13 +30,14 @@ export async function GET(
         id: true,
         date: true,
         mealType: true,
+        grams: true,
         kcalLogged: true,
         proteinLogged: true,
         carbsLogged: true,
         fatLogged: true,
         food: { select: { name: true } },
       },
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { mealType: 'asc' }],
     }),
   ])
 

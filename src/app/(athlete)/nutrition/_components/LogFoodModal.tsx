@@ -244,7 +244,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
                                 <span className="text-xs text-gray-400">Registrando...</span>
                               ) : (
                                 <>
-                                  <p className="text-sm font-bold text-orange-500">{kcal} kcal</p>
+                                  <p className="text-sm font-bold text-orange-600">{kcal} kcal</p>
                                   <p className="text-xs text-gray-400">Registrar todo</p>
                                 </>
                               )}
@@ -286,7 +286,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
                         </p>
                       </div>
                       <div className="text-right ml-4 shrink-0">
-                        <p className="text-sm font-bold text-orange-500">{kcal} kcal</p>
+                        <p className="text-sm font-bold text-orange-600">{kcal} kcal</p>
                         <p className="text-xs text-gray-400">P {prot}g · por porción</p>
                       </div>
                     </button>

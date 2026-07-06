@@ -111,7 +111,7 @@ type NutritionPlanTargets = {
 }
 
 const DAY_TABS: { key: DayType; label: string; Icon: React.ElementType; color: string }[] = [
-  { key: 'hard', label: 'Día duro',   Icon: Flame,    color: '#f97316' },
+  { key: 'hard', label: 'Día duro',   Icon: Flame,    color: '#ea580c' },
   { key: 'easy', label: 'Día fácil',  Icon: Check,    color: '#16a34a' },
   { key: 'low',  label: 'Día suave',  Icon: Activity, color: '#8b5cf6' },
   { key: 'rest', label: 'Descanso',   Icon: Moon,     color: '#6b7280' },
@@ -182,7 +182,7 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
         <p className="text-xs font-semibold uppercase tracking-wide text-white/60 mb-4">Macros objetivo del día</p>
         <div className="grid grid-cols-4 gap-3 mb-5">
           <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-[#f97316]">{target.kcal.toLocaleString()}</p>
+            <p className="text-2xl md:text-3xl font-bold text-[#ea580c]">{target.kcal.toLocaleString()}</p>
             <p className="text-xs text-white/60 mt-0.5">kcal</p>
           </div>
           <div className="text-center">
@@ -242,7 +242,7 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
                       <p className="text-sm font-semibold text-gray-900">{meal.label}</p>
                       <p className="text-xs text-gray-400">{meal.time}</p>
                     </div>
-                    <span className="text-sm font-bold text-[#f97316]">{meal.kcal} kcal</span>
+                    <span className="text-sm font-bold text-[#ea580c]">{meal.kcal} kcal</span>
                   </div>
                   {meal.items && meal.items.length > 0 ? (
                     <div className="mt-2 space-y-1.5">

@@ -123,7 +123,7 @@ export default function PublicTemplates({ templates }: { templates: PublicTempla
                     'w-full py-2.5 rounded-xl text-sm font-semibold transition-all',
                     isDone
                       ? 'bg-[#22c55e] text-white'
-                      : 'bg-[#f97316] hover:bg-orange-600 text-white disabled:opacity-50'
+                      : 'bg-[#ea580c] hover:bg-orange-600 text-white disabled:opacity-50'
                   )}
                 >
                   {isDone ? (

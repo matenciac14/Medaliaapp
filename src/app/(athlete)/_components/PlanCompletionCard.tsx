@@ -69,7 +69,7 @@ export default function PlanCompletionCard({
         ) : (
           <Link
             href="/coaches"
-            className="flex-1 text-center bg-[#f97316] hover:bg-[#ea6c0b] transition-colors rounded-xl px-3 py-2.5"
+            className="flex-1 text-center bg-[#ea580c] hover:bg-[#ea6c0b] transition-colors rounded-xl px-3 py-2.5"
           >
             <p className="text-sm font-bold">Buscar entrenador</p>
           </Link>

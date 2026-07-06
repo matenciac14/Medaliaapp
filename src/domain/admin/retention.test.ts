@@ -94,8 +94,8 @@ describe('retentionColor', () => {
   })
 
   it('amber para ≥ 40% y < 70%', () => {
-    expect(retentionColor(40)).toBe('#f97316')
-    expect(retentionColor(69)).toBe('#f97316')
+    expect(retentionColor(40)).toBe('#ea580c')
+    expect(retentionColor(69)).toBe('#ea580c')
   })
 
   it('rojo para < 40%', () => {

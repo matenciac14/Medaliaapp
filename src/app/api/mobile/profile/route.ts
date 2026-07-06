@@ -76,9 +76,10 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(data).length === 0) return badRequest('Nada que actualizar.')
 
   try {
-    const profile = await prisma.healthProfile.update({
+    const profile = await prisma.healthProfile.upsert({
       where: { userId: mobile.id },
-      data,
+      update: data,
+      create: { userId: mobile.id, age: 0, heightCm: 0, weightKg: 0, ...data },
       select: {
         age: true, dateOfBirth: true,
         weightKg: true, weightGoalKg: true, heightCm: true,

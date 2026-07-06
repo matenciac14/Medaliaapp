@@ -165,7 +165,7 @@ function CompleteModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-700">Esfuerzo percibido (RPE)</label>
-              <span className="text-lg font-bold text-[#f97316]">{rpe}/10</span>
+              <span className="text-lg font-bold text-[#ea580c]">{rpe}/10</span>
             </div>
             <input
               type="range"
@@ -173,7 +173,7 @@ function CompleteModal({
               max={10}
               value={rpe}
               onChange={(e) => setRpe(Number(e.target.value))}
-              className="w-full accent-[#f97316]"
+              className="w-full accent-[#ea580c]"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>Muy fácil</span>
@@ -190,7 +190,7 @@ function CompleteModal({
               max={300}
               value={durationMin}
               onChange={(e) => setDurationMin(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
             />
           </div>
 
@@ -202,7 +202,7 @@ function CompleteModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="¿Alguna observación sobre la sesión?"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
             />
           </div>
         </div>
@@ -218,7 +218,7 @@ function CompleteModal({
           <button
             onClick={() => onSubmit(rpe, durationMin, notes)}
             disabled={loading}
-            className="flex-1 bg-[#f97316] hover:bg-orange-600 text-white font-semibold text-sm py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-sm py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             Guardar sesión
@@ -469,7 +469,7 @@ export default function GymSessionPage() {
         <span className="text-5xl">🏋️</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Tracker de ejercicios disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Registra tus sesiones de ejercicios con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#f97316] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
       </div>
     )
   }
@@ -489,7 +489,7 @@ export default function GymSessionPage() {
           <p className="text-red-600 font-medium">{error}</p>
           <button
             onClick={() => router.back()}
-            className="mt-4 text-sm text-gray-600 hover:text-[#f97316] transition-colors"
+            className="mt-4 text-sm text-gray-600 hover:text-[#ea580c] transition-colors"
           >
             ← Volver
           </button>
@@ -507,7 +507,7 @@ export default function GymSessionPage() {
           <p className="text-sm text-gray-500 mt-1">Disfruta tu recuperación</p>
           <button
             onClick={() => router.push('/gym')}
-            className="mt-5 text-sm font-medium text-[#1e3a5f] hover:text-[#f97316] transition-colors"
+            className="mt-5 text-sm font-medium text-[#1e3a5f] hover:text-[#ea580c] transition-colors"
           >
             ← Volver al gym
           </button>
@@ -540,7 +540,7 @@ export default function GymSessionPage() {
         <div>
           <button
             onClick={() => router.push('/gym')}
-            className="text-sm text-gray-500 hover:text-[#f97316] transition-colors mb-2 block"
+            className="text-sm text-gray-500 hover:text-[#ea580c] transition-colors mb-2 block"
           >
             ← Volver
           </button>
@@ -558,7 +558,7 @@ export default function GymSessionPage() {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-[#f97316] tabular-nums">{timerDisplay}</p>
+          <p className="text-2xl font-bold text-[#ea580c] tabular-nums">{timerDisplay}</p>
           <p className="text-xs text-gray-500">{completedSets}/{totalSets} series</p>
         </div>
       </div>
@@ -640,7 +640,7 @@ export default function GymSessionPage() {
                       {we.exercise.equipment}
                     </span>
                     {we.setType !== 'NORMAL' && (
-                      <span className="text-xs bg-[#f97316]/10 text-[#f97316] px-1.5 py-0.5 rounded font-semibold">
+                      <span className="text-xs bg-[#ea580c]/10 text-[#ea580c] px-1.5 py-0.5 rounded font-semibold">
                         {we.setType}
                       </span>
                     )}
@@ -710,7 +710,7 @@ export default function GymSessionPage() {
                                 placeholder="kg"
                                 value={s.weightKg}
                                 onChange={(e) => updateSet(we.id, setIdx, 'weightKg', e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c] min-w-0"
                               />
                             </div>
                             <span className="text-gray-400 text-sm">×</span>
@@ -727,14 +727,14 @@ export default function GymSessionPage() {
                                 placeholder="reps"
                                 value={s.repsCompleted}
                                 onChange={(e) => updateSet(we.id, setIdx, 'repsCompleted', e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c] min-w-0"
                               />
                             </div>
                           </div>
 
                           {/* Done button */}
                           <button
-                            onClick={() => toggleSetDone(we.id, setIdx, we.restSeconds)}
+                            onClick={(e) => { e.stopPropagation(); toggleSetDone(we.id, setIdx, we.restSeconds) }}
                             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                               s.completed
                                 ? 'bg-green-500 text-white scale-110'
@@ -784,7 +784,7 @@ export default function GymSessionPage() {
               value={newExerciseName}
               onChange={(e) => setNewExerciseName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') addFreeExercise() }}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316]"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
             />
             <button
               onClick={addFreeExercise}
@@ -837,18 +837,18 @@ export default function GymSessionPage() {
                             type="number" inputMode="decimal" min={0} step={0.5} placeholder="kg"
                             value={s.weightKg}
                             onChange={(e) => updateSet(fe.id, setIdx, 'weightKg', e.target.value)}
-                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c] min-w-0"
                           />
                           <span className="text-gray-400 text-sm">×</span>
                           <input
                             type="number" inputMode="numeric" min={0} placeholder="reps"
                             value={s.repsCompleted}
                             onChange={(e) => updateSet(fe.id, setIdx, 'repsCompleted', e.target.value)}
-                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 focus:border-[#f97316] min-w-0"
+                            className="flex-1 border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c] min-w-0"
                           />
                         </div>
                         <button
-                          onClick={() => toggleSetDone(fe.id, setIdx, null)}
+                          onClick={(e) => { e.stopPropagation(); toggleSetDone(fe.id, setIdx, null) }}
                           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${s.completed ? 'bg-green-500 text-white scale-110' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                           aria-label={s.completed ? 'Desmarcar serie' : 'Marcar serie completa'}
                         >
@@ -859,7 +859,7 @@ export default function GymSessionPage() {
 
                     <button
                       onClick={() => addFreeSet(fe.id)}
-                      className="w-full text-center text-xs text-gray-500 hover:text-[#f97316] border border-dashed border-gray-300 rounded-lg py-2 transition-colors"
+                      className="w-full text-center text-xs text-gray-500 hover:text-[#ea580c] border border-dashed border-gray-300 rounded-lg py-2 transition-colors"
                     >
                       + Serie
                     </button>
@@ -888,7 +888,7 @@ export default function GymSessionPage() {
           disabled={!canFinish}
           className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${
             canFinish
-              ? 'bg-[#f97316] hover:bg-orange-600 text-white shadow-md'
+              ? 'bg-[#ea580c] hover:bg-orange-600 text-white shadow-md'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
@@ -901,7 +901,7 @@ export default function GymSessionPage() {
           disabled={!canFinish}
           className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${
             canFinish
-              ? 'bg-[#f97316] hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
+              ? 'bg-[#ea580c] hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
@@ -920,7 +920,7 @@ export default function GymSessionPage() {
                 <div key={i} className="bg-orange-50 rounded-xl px-4 py-2">
                   <p className="font-semibold text-gray-800 text-sm">{pr.exerciseName}</p>
                   {pr.weightKg && (
-                    <p className="text-[#f97316] font-black text-lg">{pr.weightKg} kg</p>
+                    <p className="text-[#ea580c] font-black text-lg">{pr.weightKg} kg</p>
                   )}
                 </div>
               ))}

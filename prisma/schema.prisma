@@ -593,7 +593,7 @@ model AssignedWorkout {
   isActive      Boolean   @default(true)
   notes         String?
 
-  template    WorkoutTemplate @relation(fields: [templateId], references: [id])
+  template    WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   athlete     User            @relation("AthleteAssignments", fields: [athleteId], references: [id])
   coach       User?           @relation("CoachAssignments", fields: [coachId], references: [id])
   gymSessions GymSession[]
@@ -653,13 +653,14 @@ model SetLog {
 // ─── MARKETPLACE DE COACHES ─────────────────────────────────────────────────
 
 model CoachProfile {
-  id             String   @id @default(cuid())
-  coachId        String   @unique
-  slug           String   @unique   // "carlos-entrenador"
-  bio            String?
-  avatarUrl      String?
-  headline       String?            // "Especialista en media maratón y recomposición"
-  specialties    String[]           // ["RUNNING", "GYM", "CYCLING", "TRIATHLON", "FUNCTIONAL"]
+  id               String         @id @default(cuid())
+  coachId          String         @unique
+  slug             String         @unique   // "carlos-entrenador"
+  primarySpecialty CoachSpecialty @default(ALL) // Especialidad principal — controla herramientas del panel
+  bio              String?
+  avatarUrl        String?
+  headline         String?            // "Especialista en media maratón y recomposición"
+  specialties      String[]           // ["RUNNING", "GYM", "CYCLING", "TRIATHLON", "FUNCTIONAL"] — para marketplace
   city           String?
   country        String   @default("CO")
   whatsapp       String?
@@ -918,6 +919,15 @@ model PaymentAuditLog {
   actor   User    @relation(fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([paymentId])
+}
+
+// ─── ESPECIALIDAD COACH ──────────────────────────────────────────────────────
+
+enum CoachSpecialty {
+  RUNNING     // Constructor de sesiones con zonas FC/pace/distancia
+  GYM         // Constructor de rutinas de fuerza
+  NUTRITION   // Solo plantillas nutricionales
+  ALL         // Acceso completo — todas las herramientas
 }
 
 // ─── SUSCRIPCIONES ───────────────────────────────────────────────────────────

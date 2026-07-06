@@ -184,7 +184,7 @@ export default function AdminRoadmapPage() {
         <div className="w-full bg-gray-100 rounded-full h-3">
           <div
             className="h-3 rounded-full transition-all"
-            style={{ width: `${totalPct}%`, backgroundColor: '#f97316' }}
+            style={{ width: `${totalPct}%`, backgroundColor: '#ea580c' }}
           />
         </div>
 

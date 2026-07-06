@@ -7,7 +7,7 @@ vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     healthProfile: {
       findUnique: vi.fn(),
-      update: vi.fn(),
+      upsert: vi.fn(),
     },
   },
 }))
@@ -68,41 +68,42 @@ describe('PATCH /api/athlete/sport', () => {
 
   it('guarda goalType en healthProfile y retorna ok', async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as any)
-    vi.mocked(prisma.healthProfile.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.healthProfile.upsert).mockResolvedValue({} as any)
 
     const res = await PATCH(patchReq({ goalType: 'RACE_10K' }))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
 
-    expect(prisma.healthProfile.update).toHaveBeenCalledWith({
+    expect(prisma.healthProfile.upsert).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
-      data: { sportGoal: 'RACE_10K' },
+      update: { sportGoal: 'RACE_10K' },
+      create: { userId: 'user-1', age: 0, heightCm: 0, weightKg: 0, sportGoal: 'RACE_10K' },
     })
   })
 
   it('guarda raceDate cuando viene en el body', async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as any)
-    vi.mocked(prisma.healthProfile.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.healthProfile.upsert).mockResolvedValue({} as any)
 
     const res = await PATCH(patchReq({ goalType: 'RACE_5K', raceDate: '2026-08-15' }))
     expect(res.status).toBe(200)
 
-    const call = vi.mocked(prisma.healthProfile.update).mock.calls[0][0]
-    expect((call.data as any).raceDate).toBeInstanceOf(Date)
-    expect(call.data.sportGoal).toBe('RACE_5K')
+    const call = vi.mocked(prisma.healthProfile.upsert).mock.calls[0][0]
+    expect((call.update as any).raceDate).toBeInstanceOf(Date)
+    expect((call.update as any).sportGoal).toBe('RACE_5K')
   })
 
   it('NO llama a /api/plan/new ni genera plan (BUG-071)', async () => {
     // Verificar que el endpoint PATCH no interactúa con plan generation
     vi.mocked(auth).mockResolvedValue(SESSION as any)
-    vi.mocked(prisma.healthProfile.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.healthProfile.upsert).mockResolvedValue({} as any)
 
     await PATCH(patchReq({ goalType: 'RACE_5K' }))
 
-    // Solo debe llamar healthProfile.update, nada de plan
-    expect(prisma.healthProfile.update).toHaveBeenCalledTimes(1)
+    // Solo debe llamar healthProfile.upsert, nada de plan
+    expect(prisma.healthProfile.upsert).toHaveBeenCalledTimes(1)
     // No hay plan creation en el mock — si se llamara, fallaría aquí
-    expect(vi.mocked(prisma.healthProfile.update).mock.calls[0][0].data).not.toHaveProperty('plan')
+    expect(vi.mocked(prisma.healthProfile.upsert).mock.calls[0][0].update).not.toHaveProperty('plan')
   })
 })

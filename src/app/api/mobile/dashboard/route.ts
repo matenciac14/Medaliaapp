@@ -4,6 +4,7 @@ import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
 import { PlanStatus } from '@/generated/prisma/enums'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -13,7 +14,8 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [user, activePlanRaw, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine] = await Promise.all([
+  // PERF-01 Phase 1: plan metadata sin sesiones
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -24,12 +26,7 @@ export async function GET(req: NextRequest) {
     prisma.trainingPlan.findFirst({
       where: { userId, status: PlanStatus.ACTIVE },
       orderBy: { createdAt: 'desc' },
-      include: {
-        weeks: {
-          include: { sessions: { include: { log: true } } },
-          orderBy: { weekNumber: 'asc' },
-        },
-      },
+      select: { id: true, name: true, startDate: true, endDate: true, totalWeeks: true },
     }),
     prisma.weeklyCheckIn.findMany({
       where: { userId },
@@ -58,14 +55,30 @@ export async function GET(req: NextRequest) {
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
   ])
 
-  const lastCompletedPlan = activePlanRaw ? null : await prisma.trainingPlan.findFirst({
+  // PERF-01 Phase 2: cargar solo la semana actual con sesiones completas
+  const currentWeekNum = planMeta ? getPlanWeekNumber(planMeta.startDate, planMeta.totalWeeks) : 0
+  const planIsExpired = planMeta
+    ? currentWeekNum > planMeta.totalWeeks && Date.now() > new Date(planMeta.endDate).getTime()
+    : false
+
+  const currentWeekData = planMeta && !planIsExpired ? await prisma.planWeek.findFirst({
+    where: { planId: planMeta.id, weekNumber: currentWeekNum },
+    include: { sessions: { include: { log: true }, orderBy: { dayOfWeek: 'asc' } } },
+  }) : null
+
+  const activePlanRaw = planMeta ? {
+    ...planMeta,
+    weeks: currentWeekData ? [currentWeekData] : [],
+  } : null
+
+  const lastCompletedPlan = activePlanRaw && !planIsExpired ? null : await prisma.trainingPlan.findFirst({
     where: { userId, status: PlanStatus.COMPLETED },
     orderBy: { endDate: 'desc' },
     select: { name: true, endDate: true },
   }).then(r => r?.endDate ? { name: r.name, endDate: new Date(r.endDate) } : null)
 
   // Map Prisma field names → domain names before passing to the pure use case
-  const activePlan = activePlanRaw
+  const activePlan = activePlanRaw && !planIsExpired
     ? {
         ...activePlanRaw,
         weeks: activePlanRaw.weeks.map((w) => ({

@@ -229,7 +229,7 @@ export default function AddFoodModal({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-[#f97316] hover:bg-orange-600 text-white font-bold text-sm py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full bg-[#ea580c] hover:bg-orange-600 text-white font-bold text-sm py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {saving ? <Loader2 size={15} className="animate-spin" /> : null}
               Guardar alimento

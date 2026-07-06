@@ -106,10 +106,11 @@ export default async function CoachDashboardPage() {
     return acc + (f.noCheckin ? 1 : 0) + (f.highRpe ? 1 : 0) + (f.weightDrop ? 1 : 0)
   }, 0)
 
-  const avgAdherence =
-    athletes.length > 0
-      ? Math.round(athletes.reduce((acc, a) => acc + a.adherencePct, 0) / athletes.length)
-      : 0
+  const athletesWithPlan = athletes.filter((a) => a.planStatus === 'ACTIVE')
+  const avgAdherence: number | null =
+    athletesWithPlan.length > 0
+      ? Math.round(athletesWithPlan.reduce((acc, a) => acc + a.adherencePct, 0) / athletesWithPlan.length)
+      : null
 
   const checkInsPct = totalCount > 0 ? Math.round((checkInsWeekCount / totalCount) * 100) : 0
   const ingresosMes = totalCount * 6
@@ -160,7 +161,7 @@ export default async function CoachDashboardPage() {
               <a
                 href="/coach/clients/new"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#f97316' }}
+                style={{ backgroundColor: '#ea580c' }}
               >
                 + Agregar primer asesorado
               </a>
@@ -200,9 +201,9 @@ export default async function CoachDashboardPage() {
         />
         <KpiCard
           label="Adherencia promedio"
-          value={`${avgAdherence}%`}
+          value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
           sub="al plan de entrenamiento"
-          color={avgAdherence >= 70 ? '#16a34a' : avgAdherence >= 40 ? '#d97706' : '#dc2626'}
+          color={avgAdherence === null ? '#9ca3af' : avgAdherence >= 70 ? '#16a34a' : avgAdherence >= 40 ? '#d97706' : '#dc2626'}
         />
       </div>
 
@@ -233,7 +234,7 @@ export default async function CoachDashboardPage() {
               {athletesWithAlerts.slice(0, 5).map((a) => {
                 const alerts: { msg: string; color: string }[] = []
                 if (a.alertFlags.noCheckin) alerts.push({ msg: 'Sin check-in +7d', color: '#dc2626' })
-                if (a.alertFlags.highRpe) alerts.push({ msg: 'Carga alta', color: '#f97316' })
+                if (a.alertFlags.highRpe) alerts.push({ msg: 'Carga alta', color: '#ea580c' })
                 if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#eab308' })
                 return (
                   <li key={a.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">

@@ -12,7 +12,7 @@ export default function PaywallCard({
   emoji,
   title,
   description,
-  ctaLabel = 'Ver planes → Pro $15/mes',
+  ctaLabel = 'Ver planes → Pro $9.99/mes',
   ctaHref = '/upgrade',
 }: PaywallCardProps) {
   return (
@@ -29,7 +29,7 @@ export default function PaywallCard({
         <Link
           href={ctaHref}
           className="inline-flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95"
-          style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea6c0a 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #ea580c 0%, #ea6c0a 100%)' }}
         >
           {ctaLabel}
         </Link>

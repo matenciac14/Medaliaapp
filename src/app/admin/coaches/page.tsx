@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { computeCoachActivity } from '@/domain/admin/coach-activity'
+import { CoachTierDropdown } from './_components/CoachTierDropdown'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -11,6 +12,7 @@ export default async function AdminCoachesPage() {
       where: { role: 'COACH' },
       select: {
         id: true, name: true, email: true, createdAt: true,
+        subscription: { select: { coachTier: true } },
         coachOf: {
           select: {
             createdAt: true,
@@ -80,7 +82,7 @@ export default async function AdminCoachesPage() {
               {/* Coach header */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0" style={{ backgroundColor: '#f97316' }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0" style={{ backgroundColor: '#ea580c' }}>
                     {(coach.name ?? 'C')[0].toUpperCase()}
                   </div>
                   <div>
@@ -108,6 +110,10 @@ export default async function AdminCoachesPage() {
                     <p className="text-xs text-gray-400">Desde</p>
                     <p className="text-xs font-medium">{new Date(coach.createdAt).toLocaleDateString('es-CO')}</p>
                   </div>
+                  <CoachTierDropdown
+                    coachId={coach.id}
+                    initialTier={coach.subscription?.coachTier ?? 'STARTER'}
+                  />
                 </div>
               </div>
 

@@ -37,7 +37,7 @@ const SECTIONS = [
     icon: CreditCard,
     title: 'Suscripciones',
     href: '/admin/subscriptions',
-    color: '#f97316',
+    color: '#ea580c',
     items: [
       { q: '¿Cómo se determina el plan de cada usuario?', a: 'Se infiere de columnas Boolean individuales en la tabla User (featurePlan, featureLog, featureCoach, etc.). Con featurePlan → "Pro". Solo featureLog → "Free". Sin ninguna → "Inactivo". No hay Stripe todavía.' },
       { q: '¿Cuándo se integra Stripe?', a: 'Fase 7 del roadmap — post-lanzamiento. El webhook de Stripe actualizará automáticamente el config del usuario al confirmar el pago.' },

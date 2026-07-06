@@ -8,6 +8,7 @@ import PostForm from './PostForm'
 type CoachProfileData = {
   id: string
   slug: string
+  primarySpecialty: string
   bio: string | null
   headline: string | null
   specialties: string[]

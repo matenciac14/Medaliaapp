@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { DuplicateRoutineButton } from './_components/DuplicateRoutineButton'
 
 export default async function GymDashboardPage() {
   const session = await auth()
@@ -68,7 +69,7 @@ export default async function GymDashboardPage() {
           <Link
             href="/coach/gym/routines/new"
             className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#f97316' }}
+            style={{ backgroundColor: '#ea580c' }}
           >
             + Nueva rutina
           </Link>
@@ -78,7 +79,7 @@ export default async function GymDashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard label="Rutinas creadas" value={templates.length} color="#1e3a5f" />
-        <StatCard label="Atletas con rutina activa" value={activeAssignments} color="#f97316" />
+        <StatCard label="Atletas con rutina activa" value={activeAssignments} color="#ea580c" />
         <StatCard label="Ejercicios en biblioteca" value={exerciseCount} color="#16a34a" />
       </div>
 
@@ -97,7 +98,7 @@ export default async function GymDashboardPage() {
             <Link
               href="/coach/gym/routines/new"
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#f97316' }}
+              style={{ backgroundColor: '#ea580c' }}
             >
               + Crear primera rutina
             </Link>
@@ -128,6 +129,7 @@ export default async function GymDashboardPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <DuplicateRoutineButton templateId={t.id} />
                   <Link
                     href={`/coach/gym/routines/${t.id}/assign`}
                     className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors"

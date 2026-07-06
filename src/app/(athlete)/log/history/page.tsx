@@ -132,7 +132,7 @@ export default async function ActivityHistoryPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#f97316] transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#ea580c] transition-colors"
         >
           <ChevronLeft size={16} />
           Dashboard
@@ -163,7 +163,7 @@ export default async function ActivityHistoryPage() {
             </Link>
             <Link
               href="/log/run"
-              className="inline-flex items-center gap-2 bg-[#f97316] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 bg-[#ea580c] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
             >
               Registrar corrida
             </Link>
@@ -182,7 +182,7 @@ export default async function ActivityHistoryPage() {
               <p className="text-xs text-gray-500 mt-0.5">Ejercicios</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-[#f97316]">{totalRun}</p>
+              <p className="text-xl font-bold text-[#ea580c]">{totalRun}</p>
               <p className="text-xs text-gray-500 mt-0.5">Corridas</p>
             </div>
           </div>
@@ -266,13 +266,13 @@ function GymCard({ gs }: { gs: GymSessionData }) {
           )}
           <span className="text-xs text-gray-400">{exerciseList.length} ejercicios</span>
           {sessionVolume > 0 && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-[#f97316]">
+            <span className="flex items-center gap-1 text-xs font-semibold text-[#ea580c]">
               <Zap size={11} />
               {Math.round(sessionVolume).toLocaleString()}kg
             </span>
           )}
           {prCount > 0 && (
-            <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+            <span className="bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
               🏆 {prCount} PR
             </span>
           )}
@@ -322,7 +322,7 @@ function GymCard({ gs }: { gs: GymSessionData }) {
                     )}
                     <span className="ml-auto flex items-center gap-1.5">
                       {sl.isPR && (
-                        <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
+                        <span className="bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wide">
                           🏆 PR
                         </span>
                       )}

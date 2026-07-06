@@ -99,7 +99,7 @@ const INTENSITY_BADGE: Record<string, { bg: string; label: string }> = {
 }
 
 const ZONE_COLORS: Record<string, string> = {
-  Z1: '#22c55e', Z2: '#3b82f6', Z3: '#eab308', Z4: '#f97316', Z5: '#ef4444',
+  Z1: '#22c55e', Z2: '#3b82f6', Z3: '#eab308', Z4: '#ea580c', Z5: '#ef4444',
 }
 
 const PHASES_ORDER = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
@@ -395,7 +395,7 @@ function EditModal({ session, onClose, onSaved }: {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium text-gray-600">RPE — Esfuerzo percibido</p>
-                  <span className="text-base font-black text-[#f97316]">{rpe > 0 ? rpe : '–'}</span>
+                  <span className="text-base font-black text-[#ea580c]">{rpe > 0 ? rpe : '–'}</span>
                 </div>
                 <div className="flex gap-1">
                   {[1,2,3,4,5,6,7,8,9,10].map(n => (
@@ -406,9 +406,9 @@ function EditModal({ session, onClose, onSaved }: {
                       className={cn(
                         'flex-1 h-8 rounded-lg text-[11px] font-bold border transition-colors',
                         rpe === n
-                          ? 'bg-[#f97316] border-[#f97316] text-white'
+                          ? 'bg-[#ea580c] border-[#ea580c] text-white'
                           : n < rpe
-                          ? 'bg-orange-50 border-[#f97316] text-[#f97316]'
+                          ? 'bg-orange-50 border-[#ea580c] text-[#ea580c]'
                           : 'border-gray-200 text-gray-400 hover:border-gray-300'
                       )}
                     >{n}</button>
@@ -484,9 +484,9 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
           const cardBg = isToday && isSelected && todayActive
             ? 'bg-[#ea580c] active:bg-[#d4520b]'
             : isToday && isSelected
-            ? 'bg-[#f97316] active:bg-[#ea580c]'
+            ? 'bg-[#ea580c] active:bg-[#ea580c]'
             : isToday
-            ? 'bg-orange-50 ring-1 ring-inset ring-[#f97316]/30 active:bg-[#f97316]'
+            ? 'bg-orange-50 ring-1 ring-inset ring-[#ea580c]/30 active:bg-[#ea580c]'
             : isSelected ? 'bg-[#1e3a5f] hover:bg-[#243f6a] active:bg-[#243f6a]'
             : isDone ? 'bg-green-50/60 hover:bg-gray-100 active:bg-gray-100'
             : 'bg-white hover:bg-gray-100 active:bg-gray-100'
@@ -498,11 +498,11 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
               className={cn('flex flex-col items-center py-4 px-1 transition-colors text-center relative group', cardBg)}
             >
               {isToday && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316] rounded-b" />
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#ea580c] rounded-b" />
               )}
               <span className={cn('text-xs font-semibold mb-1',
                 isToday && isSelected ? 'text-white font-bold' :
-                isToday ? 'text-[#f97316] font-bold group-active:text-white' :
+                isToday ? 'text-[#ea580c] font-bold group-active:text-white' :
                 isSelected ? 'text-blue-200' :
                 'text-gray-400'
               )}>
@@ -512,7 +512,7 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
               <div className="flex items-center gap-1 mb-2">
                 <span className={cn('text-xl font-black leading-none',
                   isToday && isSelected ? 'text-white' :
-                  isToday ? 'text-[#f97316] group-active:text-white' :
+                  isToday ? 'text-[#ea580c] group-active:text-white' :
                   isSelected ? 'text-white' :
                   isRest ? 'text-gray-300' :
                   isDone ? 'text-green-600' :
@@ -521,7 +521,7 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
                   {dateObj.getDate()}
                 </span>
                 {isToday && (
-                  <span className="text-[9px] font-bold bg-[#f97316] text-white px-1.5 py-0.5 rounded-full leading-none">
+                  <span className="text-[9px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none">
                     HOY
                   </span>
                 )}
@@ -722,7 +722,7 @@ function LogModal({ session, onClose, onSuccess }: {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-800">RPE — Esfuerzo percibido</p>
-                  <span className="text-lg font-black text-[#f97316]">{rpe > 0 ? rpe : '–'}</span>
+                  <span className="text-lg font-black text-[#ea580c]">{rpe > 0 ? rpe : '–'}</span>
                 </div>
                 <div className="flex gap-1">
                   {[1,2,3,4,5,6,7,8,9,10].map(n => (
@@ -732,9 +732,9 @@ function LogModal({ session, onClose, onSuccess }: {
                       className={cn(
                         'flex-1 h-9 rounded-lg text-[11px] font-bold border transition-colors',
                         rpe === n
-                          ? 'bg-[#f97316] border-[#f97316] text-white'
+                          ? 'bg-[#ea580c] border-[#ea580c] text-white'
                           : n < rpe
-                          ? 'bg-orange-50 border-[#f97316] text-[#f97316]'
+                          ? 'bg-orange-50 border-[#ea580c] text-[#ea580c]'
                           : 'border-gray-200 text-gray-400 hover:border-gray-300'
                       )}
                     >
@@ -766,7 +766,7 @@ function LogModal({ session, onClose, onSuccess }: {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-[#f97316] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
+            className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
           >
             {loading ? 'Guardando...' : 'Guardar sesión'}
           </button>
@@ -809,7 +809,7 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
   const badge = INTENSITY_BADGE[intensityKey] ?? INTENSITY_BADGE.MODERATE
   const isGym = session.type === 'FUERZA'
   const accentColor = isToday
-    ? 'bg-[#f97316]'
+    ? 'bg-[#ea580c]'
     : logDone ? 'bg-green-400'
     : isGym ? 'bg-purple-500'
     : 'bg-[#1e3a5f]'
@@ -834,7 +834,7 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
               </h3>
               <div className="flex items-center gap-2 mt-1.5">
                 {isToday && (
-                  <span className="text-[10px] font-bold bg-[#f97316] text-white px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
                     HOY
                   </span>
                 )}
@@ -917,7 +917,7 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
               <>
                 <button
                   onClick={() => setShowModal(true)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#f97316] hover:opacity-90 text-white text-sm font-bold px-5 py-3 rounded-xl transition-opacity"
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#ea580c] hover:opacity-90 text-white text-sm font-bold px-5 py-3 rounded-xl transition-opacity"
                 >
                   Registrar sesión →
                 </button>
@@ -966,7 +966,7 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
 function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } }) {
   const macros = [
     { label: 'Proteína', value: nt.proteinG, colorVal: 'text-blue-600',   bg: 'bg-blue-50'   },
-    { label: 'Carbos',   value: nt.carbsG,   colorVal: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Carbos',   value: nt.carbsG,   colorVal: 'text-orange-600', bg: 'bg-orange-50' },
     { label: 'Grasas',   value: nt.fatG,     colorVal: 'text-green-600',  bg: 'bg-green-50'  },
   ]
   return (
@@ -980,7 +980,7 @@ function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: n
       <div className="flex items-end gap-5">
         <div className="shrink-0">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-4xl font-black text-[#f97316] leading-none">
+            <span className="text-4xl font-black text-[#ea580c] leading-none">
               {nt.kcal.toLocaleString('es')}
             </span>
             <span className="text-sm font-medium text-gray-400">kcal</span>
@@ -1003,19 +1003,19 @@ function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: n
 // ── KPICards ──────────────────────────────────────────────────────────
 
 function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
-  completed: number; total: number; volumeLabel: string; adherencePct: number; isGym: boolean
+  completed: number; total: number; volumeLabel: string; adherencePct: number | null; isGym: boolean
 }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {[
         { label: 'Completadas',               value: `${completed} / ${total}`, sub: 'sesiones',    accent: false },
         { label: isGym ? 'Vol. entren.' : 'Volumen', value: volumeLabel,        sub: 'esta semana', accent: false },
-        { label: 'Adherencia',                  value: `${adherencePct}%`,        sub: 'esta semana', accent: true  },
+        { label: 'Adherencia',                  value: adherencePct !== null ? `${adherencePct}%` : '—', sub: 'esta semana', accent: true  },
       ].map((kpi, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">{kpi.label}</p>
           <p className={cn('text-2xl font-black leading-none',
-            kpi.accent ? 'text-[#f97316]' : 'text-gray-900'
+            kpi.accent ? 'text-[#ea580c]' : 'text-gray-900'
           )}>
             {kpi.value}
           </p>
@@ -1096,21 +1096,23 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds
       : weekData.sessions
     const t = sessions.filter(s => s.type !== 'DESCANSO').length
     const c = sessions.filter(s => (s.done || (isCurrent && loggedIds.has(s.id))) && s.type !== 'DESCANSO').length
-    return { weekNum, pct: t > 0 ? (c / t) * 100 : 0, isCurrent, isFuture: false }
-  }).filter(Boolean) as { weekNum: number; pct: number; isCurrent: boolean; isFuture: boolean }[]
+    // BUG-059: t===0 → null (sin sesiones planificadas) en lugar de 0% (mal desempeño)
+    return { weekNum, pct: t > 0 ? (c / t) * 100 : null, isCurrent, isFuture: false }
+  }).filter(Boolean) as { weekNum: number; pct: number | null; isCurrent: boolean; isFuture: boolean }[]
 
   if (slots.length === 0) return null
 
   const pastSlots = slots.filter(s => !s.isFuture)
-  const avgPct = pastSlots.length > 0
-    ? Math.round(pastSlots.reduce((sum, s) => sum + s.pct, 0) / pastSlots.length)
-    : 0
+  const validPastSlots = pastSlots.filter(s => s.pct !== null)
+  const avgPct = validPastSlots.length > 0
+    ? Math.round(validPastSlots.reduce((sum, s) => sum + (s.pct ?? 0), 0) / validPastSlots.length)
+    : null
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-bold text-gray-900">Historial de adherencia</span>
-        <span className="text-xs text-gray-400">Promedio histórico {avgPct}%</span>
+        <span className="text-xs text-gray-400">{avgPct !== null ? `Promedio histórico ${avgPct}%` : 'Sin datos históricos'}</span>
       </div>
       <div className="flex items-end gap-2 h-14">
         {slots.map(({ weekNum, pct, isCurrent, isFuture }) => (
@@ -1118,8 +1120,8 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds
             <div
               className="w-full rounded-md transition-all duration-500"
               style={{
-                height: isFuture ? '4px' : pct === 0 ? '3px' : `${Math.max(8, pct * 0.52)}px`,
-                backgroundColor: isFuture ? '#e5e7eb' : pct === 0 ? '#d1d5db' : isCurrent ? '#f97316' : '#3b82f6',
+                height: isFuture || pct === null ? '4px' : pct === 0 ? '3px' : `${Math.max(8, pct * 0.52)}px`,
+                backgroundColor: isFuture || pct === null ? '#e5e7eb' : pct === 0 ? '#d1d5db' : isCurrent ? '#ea580c' : '#3b82f6',
               }}
             />
             <span className="text-[9px] text-gray-400">S{weekNum}</span>
@@ -1234,7 +1236,8 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   // KPI — combina done del servidor + loggedIds optimista
   const completedCount = week?.sessions.filter(s => (s.done || loggedIds.has(s.id)) && s.type !== 'DESCANSO').length ?? 0
   const totalTraining  = week?.sessions.filter(s => s.type !== 'DESCANSO').length ?? 0
-  const adherencePct   = totalTraining > 0 ? Math.round((completedCount / totalTraining) * 100) : 0
+  // BUG-059: null cuando no hay sesiones planificadas — evitar mostrar 0% engañoso
+  const adherencePct: number | null = totalTraining > 0 ? Math.round((completedCount / totalTraining) * 100) : null
 
   // Volume & gym detection
   const isGym = plan.name.toLowerCase().includes('recomp')

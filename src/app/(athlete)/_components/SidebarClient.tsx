@@ -84,7 +84,7 @@ export default function SidebarClient({ user, config }: Props) {
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
         <div className="px-6 py-5 border-b border-white/10">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#f97316] flex items-center justify-center font-bold text-white text-sm">M</div>
+            <div className="w-8 h-8 rounded-lg bg-[#ea580c] flex items-center justify-center font-bold text-white text-sm">M</div>
             <span className="text-xl font-bold tracking-tight">Medaliq</span>
           </Link>
         </div>
@@ -104,12 +104,12 @@ export default function SidebarClient({ user, config }: Props) {
                 )}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#f97316]" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[#ea580c]" />
                 )}
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
                 <span className="flex-1">{label}</span>
                 {badge != null && badge > 0 && (
-                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#f97316] text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#ea580c] text-white text-[10px] font-bold flex items-center justify-center">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
@@ -123,7 +123,7 @@ export default function SidebarClient({ user, config }: Props) {
             <LanguageSwitcher variant="dark" />
           </div>
           <div className="flex items-center gap-3 px-3 py-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#f97316] flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#ea580c] flex items-center justify-center text-white text-sm font-bold shrink-0">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -131,7 +131,7 @@ export default function SidebarClient({ user, config }: Props) {
               <p className="text-xs text-white/50 capitalize">{user.role.toLowerCase()}</p>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
               className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg"
               aria-label={s.logout}
               title={s.logout}
@@ -145,13 +145,13 @@ export default function SidebarClient({ user, config }: Props) {
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-[#f97316] flex items-center justify-center font-bold text-white text-xs">M</div>
+          <div className="w-7 h-7 rounded-md bg-[#ea580c] flex items-center justify-center font-bold text-white text-xs">M</div>
           <span className="text-base font-bold">Medaliq</span>
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
           >
             <LogOut size={16} />
@@ -185,7 +185,7 @@ export default function SidebarClient({ user, config }: Props) {
                   <div className="relative">
                     <Icon size={22} strokeWidth={active ? 2.5 : 2} />
                     {badge != null && badge > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#f97316] text-white text-[9px] font-bold flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#ea580c] text-white text-[9px] font-bold flex items-center justify-center">
                         {badge > 9 ? '9+' : badge}
                       </span>
                     )}
@@ -211,7 +211,7 @@ export default function SidebarClient({ user, config }: Props) {
               )}
             >
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#f97316]" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#ea580c]" />
               )}
               <Icon size={22} strokeWidth={active ? 2.5 : 2} />
               {label}

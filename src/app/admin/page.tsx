@@ -50,7 +50,7 @@ export default async function AdminOverviewPage() {
   const stats = [
     { label: 'Usuarios totales',       value: totalUsers,          icon: '👥', color: '#1e3a5f' },
     { label: 'Atletas',                value: totalAthletes,       icon: '🏃', color: '#1e3a5f' },
-    { label: 'Coaches',                value: totalCoaches,        icon: '🏋️', color: '#f97316' },
+    { label: 'Coaches',                value: totalCoaches,        icon: '🏋️', color: '#ea580c' },
     { label: 'Nuevos esta semana',     value: newThisWeek,         icon: '📈', color: '#16a34a' },
     { label: 'Nuevos este mes',        value: newThisMonth,        icon: '📅', color: '#16a34a' },
     { label: 'Onboarding completado',  value: completedOnboarding, icon: '✅', color: '#7c3aed' },
@@ -131,7 +131,7 @@ export default async function AdminOverviewPage() {
                     <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
-                        style={{ width: barWidth, backgroundColor: i === 0 ? '#1e3a5f' : convRate >= 70 ? '#16a34a' : convRate >= 40 ? '#f97316' : '#dc2626' }}
+                        style={{ width: barWidth, backgroundColor: i === 0 ? '#1e3a5f' : convRate >= 70 ? '#16a34a' : convRate >= 40 ? '#ea580c' : '#dc2626' }}
                       />
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
@@ -139,7 +139,7 @@ export default async function AdminOverviewPage() {
                       {i > 0 && (
                         <span
                           className="text-xs font-semibold"
-                          style={{ color: convRate >= 70 ? '#16a34a' : convRate >= 40 ? '#f97316' : '#dc2626' }}
+                          style={{ color: convRate >= 70 ? '#16a34a' : convRate >= 40 ? '#ea580c' : '#dc2626' }}
                         >
                           {convRate}% del paso anterior
                         </span>
@@ -157,7 +157,7 @@ export default async function AdminOverviewPage() {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-800">Últimos registros</h2>
-          <Link href="/admin/users" className="text-sm text-orange-500 hover:underline">
+          <Link href="/admin/users" className="text-sm text-orange-600 hover:underline">
             Ver todos →
           </Link>
         </div>

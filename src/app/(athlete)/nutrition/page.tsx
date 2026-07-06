@@ -228,7 +228,7 @@ export default async function NutritionPage() {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Tus macros de hoy</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Calorías', value: todayKcal, unit: 'kcal', color: 'text-[#f97316]' },
+                { label: 'Calorías', value: todayKcal, unit: 'kcal', color: 'text-[#ea580c]' },
                 { label: 'Proteína', value: nutritionPlan.proteinG, unit: 'g', color: 'text-blue-600' },
                 { label: 'Carbohidratos', value: todayCarbs, unit: 'g', color: 'text-yellow-600' },
                 { label: 'Grasas', value: nutritionPlan.fatG, unit: 'g', color: 'text-green-600' },

@@ -85,7 +85,7 @@ export default function LogRunPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#f97316] transition-colors"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#ea580c] transition-colors"
         >
           <ChevronLeft size={16} />
           Dashboard
@@ -106,13 +106,13 @@ export default function LogRunPage() {
               className={cn(
                 'w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-3',
                 runType === t.value
-                  ? 'border-[#f97316] bg-[#f97316]/8'
+                  ? 'border-[#ea580c] bg-[#ea580c]/8'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               )}
             >
               <span className="text-xl leading-none">{t.icon}</span>
               <span className="flex-1">
-                <span className={cn('font-semibold text-sm block', runType === t.value ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
+                <span className={cn('font-semibold text-sm block', runType === t.value ? 'text-[#ea580c]' : 'text-[#1e3a5f]')}>
                   {t.label}
                 </span>
                 <span className="text-xs text-gray-400">{t.subtext}</span>
@@ -151,7 +151,7 @@ export default function LogRunPage() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-[#1e3a5f]">Duración</p>
-          <span className="text-lg font-bold text-[#f97316]">{durationMin} min</span>
+          <span className="text-lg font-bold text-[#ea580c]">{durationMin} min</span>
         </div>
         <input
           type="range"
@@ -160,7 +160,7 @@ export default function LogRunPage() {
           step={5}
           value={durationMin}
           onChange={(e) => setDurationMin(Number(e.target.value))}
-          className="w-full accent-[#f97316]"
+          className="w-full accent-[#ea580c]"
         />
         <div className="flex justify-between text-xs text-gray-400">
           <span>10 min</span>
@@ -211,7 +211,7 @@ export default function LogRunPage() {
                 rpe === n
                   ? n <= 4 ? 'border-green-500 bg-green-500 text-white'
                   : n <= 6 ? 'border-yellow-500 bg-yellow-500 text-white'
-                  : n <= 8 ? 'border-orange-500 bg-orange-500 text-white'
+                  : n <= 8 ? 'border-orange-600 bg-orange-600 text-white'
                   : 'border-red-500 bg-red-500 text-white'
                   : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
               )}
@@ -253,7 +253,7 @@ export default function LogRunPage() {
           <button
             onClick={handleSubmit}
             disabled={!isValid || submitting}
-            className="flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? 'Guardando...' : 'Guardar corrida ✓'}
           </button>

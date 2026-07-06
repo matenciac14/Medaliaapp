@@ -86,7 +86,7 @@ function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => v
         </span>
         {done && <span className="text-white text-xs leading-none">✓</span>}
         {isToday && sessionType && !done && (
-          <span className="text-[8px] font-bold bg-[#f97316] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+          <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
         )}
         {isToday && !sessionType && (
           <span className="text-[8px] font-bold bg-gray-400 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
@@ -142,11 +142,11 @@ function GridCell({ cell, isSelected, onClick }: { cell: WeekDayCell; isSelected
       onClick={onClick}
       className={cn('relative flex flex-col items-center py-4 px-1 text-center transition-colors', cardBg, onClick && 'cursor-pointer')}
     >
-      {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316]" />}
+      {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#ea580c]" />}
 
       <span className={cn('text-[10px] font-semibold mb-1',
         isSelected ? 'text-blue-200' :
-        isToday ? 'text-[#f97316] font-bold' : 'text-gray-400'
+        isToday ? 'text-[#ea580c] font-bold' : 'text-gray-400'
       )}>
         {WEEK_DAYS_SHORT[cell.idx]}
       </span>
@@ -154,14 +154,14 @@ function GridCell({ cell, isSelected, onClick }: { cell: WeekDayCell; isSelected
       <div className="flex items-center gap-0.5 mb-1.5">
         <span className={cn('text-xl font-black leading-none',
           isSelected ? 'text-white' :
-          isToday ? 'text-[#f97316]' :
+          isToday ? 'text-[#ea580c]' :
           isRest ? 'text-gray-300' :
           done ? 'text-green-600' : 'text-gray-800'
         )}>
           {cell.dateNum}
         </span>
         {isToday && !isSelected && (
-          <span className="text-[8px] font-bold bg-[#f97316] text-white px-1 py-0.5 rounded-full leading-none ml-0.5">HOY</span>
+          <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1 py-0.5 rounded-full leading-none ml-0.5">HOY</span>
         )}
       </div>
 

@@ -128,7 +128,7 @@ export default function PrivacidadPage() {
             </ul>
             <p className="mt-3">
               Para ejercer cualquiera de estos derechos, escríbenos a{' '}
-              <a href="mailto:hola@medaliq.com" className="text-[#f97316] hover:underline font-medium">
+              <a href="mailto:hola@medaliq.com" className="text-[#ea580c] hover:underline font-medium">
                 hola@medaliq.com
               </a>{' '}
               y responderemos en un plazo máximo de 10 días hábiles.
@@ -178,7 +178,7 @@ export default function PrivacidadPage() {
             <h2 className="text-xl font-bold text-[#1e3a5f] mb-3">10. Contacto</h2>
             <p>
               Para cualquier consulta sobre privacidad o tratamiento de datos, contáctanos en{' '}
-              <a href="mailto:hola@medaliq.com" className="text-[#f97316] hover:underline font-medium">
+              <a href="mailto:hola@medaliq.com" className="text-[#ea580c] hover:underline font-medium">
                 hola@medaliq.com
               </a>
             </p>

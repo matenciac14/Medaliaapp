@@ -6,6 +6,13 @@ import { autoCompleteStrengthSession } from '@/infrastructure/db/auto-complete-s
 import { revalidatePath } from 'next/cache'
 import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
+import {
+  isPRSet,
+  isPRByName,
+  computeProgressionUpdates,
+  collectPRsByWeId,
+  collectPRsByName,
+} from '@/domain/gym/complete-gym-session.use-case'
 
 const SetPayloadSchema = z.object({
   workoutExerciseId: z.string().min(1).optional(),
@@ -140,32 +147,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  function isPRSet(weId: string, weightKg: number | null, completed: boolean): boolean {
-    if (!completed || weightKg === null) return false
-    const exId = weExIdMap.get(weId)
-    return exId ? weightKg > (maxPerExercise.get(exId) ?? 0) : false
+  // PERF-04: PR detection and progression logic extracted to domain use case
+  function applyPRSet(weId: string | undefined, weightKg: number | null, completed: boolean): boolean {
+    return isPRSet(weId, weightKg, completed, weExIdMap, maxPerExercise)
   }
 
-  // Persiste suggestedNextWeightKg: si todos los sets de un ejercicio se completaron → max+2.5kg
   function persistProgression(completedSets: SetPayload[]) {
-    const byWeId = new Map<string, SetPayload[]>()
-    for (const s of completedSets) {
-      if (!s.workoutExerciseId) continue
-      const arr = byWeId.get(s.workoutExerciseId) ?? []
-      arr.push(s)
-      byWeId.set(s.workoutExerciseId, arr)
+    const updates = computeProgressionUpdates(completedSets, weSetsCountMap)
+    if (updates.length > 0) {
+      Promise.all(
+        updates.map(u => prisma.workoutExercise.update({ where: { id: u.workoutExerciseId }, data: { suggestedNextWeightKg: u.suggestedNextWeightKg } }))
+      ).catch(() => {})
     }
-    const updates: Promise<unknown>[] = []
-    for (const [weId, weSets] of byWeId) {
-      const targetSets = weSetsCountMap.get(weId) ?? weSets.length
-      const allDone = weSets.length >= targetSets && weSets.every(s => s.completed)
-      if (!allDone) continue
-      const weights = weSets.map(s => s.weightKg ?? 0).filter(w => w > 0)
-      if (weights.length === 0) continue
-      const suggested = Math.max(...weights) + 2.5
-      updates.push(prisma.workoutExercise.update({ where: { id: weId }, data: { suggestedNextWeightKg: suggested } }))
-    }
-    if (updates.length > 0) Promise.all(updates).catch(() => {})
   }
 
   // ── Name-based PR detection for free sessions ─────────────────────────────
@@ -185,9 +178,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  function isPRByName(exerciseName: string | null | undefined, weightKg: number | null, completed: boolean): boolean {
-    if (!completed || weightKg === null || !exerciseName) return false
-    return weightKg > (maxPerFreeExerciseName.get(exerciseName) ?? 0)
+  function applyPRByName(exerciseName: string | null | undefined, weightKg: number | null, completed: boolean): boolean {
+    return isPRByName(exerciseName, weightKg, completed, maxPerFreeExerciseName)
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -211,35 +203,44 @@ export async function POST(req: NextRequest) {
     })
     if (existingPlan) return NextResponse.json({ sessionId: existingPlan.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
 
-    const gymSession = await prisma.gymSession.create({
-      data: {
-        athleteId,
-        plannedSessionId: fuerzaSession.id,
-        assignedWorkoutId: null,
-        dayOfWeek,
-        date: today,
-        durationMin: durationMin ?? null,
-        rpe: rpe ?? null,
-        notes: notes ?? null,
-        completed: true,
-        exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
-        setLogs: {
-          create: sets.map(s => ({
-            workoutExerciseId: s.workoutExerciseId ?? null,
-            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-            setNumber: s.setNumber,
-            weightKg: s.weightKg ?? null,
-            repsCompleted: s.repsCompleted ?? null,
-            completed: s.completed,
-            isPR: isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed),
-          })),
+    let gymSession: { id: string }
+    try {
+      gymSession = await prisma.gymSession.create({
+        data: {
+          athleteId,
+          plannedSessionId: fuerzaSession.id,
+          assignedWorkoutId: null,
+          dayOfWeek,
+          date: today,
+          durationMin: durationMin ?? null,
+          rpe: rpe ?? null,
+          notes: notes ?? null,
+          completed: true,
+          exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
+          setLogs: {
+            create: sets.map(s => ({
+              workoutExerciseId: s.workoutExerciseId ?? null,
+              exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
+              setNumber: s.setNumber,
+              weightKg: s.weightKg ?? null,
+              repsCompleted: s.repsCompleted ?? null,
+              completed: s.completed,
+              isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+            })),
+          },
         },
-      },
-      select: { id: true },
-    })
+        select: { id: true },
+      })
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code
+      if (code === 'P2002') {
+        const dup = await prisma.gymSession.findFirst({ where: { athleteId, plannedSessionId: fuerzaSession.id }, select: { id: true } })
+        return NextResponse.json({ sessionId: dup?.id ?? null, newPRs: [], alreadyCompleted: true }, { status: 200 })
+      }
+      throw err
+    }
 
-    const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed))
-      .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null, weightKg: s.weightKg }))
+    const newPRs = collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)
 
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
@@ -269,14 +270,13 @@ export async function POST(req: NextRequest) {
             weightKg: s.weightKg ?? null,
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
-            isPR: isPRByName(s.exerciseName, s.weightKg, s.completed),
+            isPR: applyPRByName(s.exerciseName, s.weightKg, s.completed),
           })),
         },
       },
       select: { id: true },
     })
-    const newPRsFree = sets.filter(s => isPRByName(s.exerciseName, s.weightKg, s.completed))
-      .map(s => ({ exerciseName: s.exerciseName ?? null, weightKg: s.weightKg }))
+    const newPRsFree = collectPRsByName(sets, maxPerFreeExerciseName)
     notifyCoach(athleteId, userRecord.name, 'Sesión libre de gym completada 💪').catch(() => {})
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs: newPRsFree }, { status: 201 })
@@ -296,35 +296,44 @@ export async function POST(req: NextRequest) {
   })
   if (existingAssigned) return NextResponse.json({ sessionId: existingAssigned.id, newPRs: [], alreadyCompleted: true }, { status: 200 })
 
-  const gymSession = await prisma.gymSession.create({
-    data: {
-      athleteId,
-      assignedWorkoutId: body.assignedWorkoutId,
-      plannedSessionId: null,
-      dayOfWeek,
-      date: today,
-      durationMin: durationMin ?? null,
-      rpe: rpe ?? null,
-      notes: notes ?? null,
-      completed: true,
-      exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
-      setLogs: {
-        create: sets.map(s => ({
-          workoutExerciseId: s.workoutExerciseId ?? null,
-          exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-          setNumber: s.setNumber,
-          weightKg: s.weightKg ?? null,
-          repsCompleted: s.repsCompleted ?? null,
-          completed: s.completed,
-          isPR: isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed),
-        })),
+  let gymSession: { id: string }
+  try {
+    gymSession = await prisma.gymSession.create({
+      data: {
+        athleteId,
+        assignedWorkoutId: body.assignedWorkoutId,
+        plannedSessionId: null,
+        dayOfWeek,
+        date: today,
+        durationMin: durationMin ?? null,
+        rpe: rpe ?? null,
+        notes: notes ?? null,
+        completed: true,
+        exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
+        setLogs: {
+          create: sets.map(s => ({
+            workoutExerciseId: s.workoutExerciseId ?? null,
+            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
+            setNumber: s.setNumber,
+            weightKg: s.weightKg ?? null,
+            repsCompleted: s.repsCompleted ?? null,
+            completed: s.completed,
+            isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+          })),
+        },
       },
-    },
-    select: { id: true },
-  })
+      select: { id: true },
+    })
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code
+    if (code === 'P2002') {
+      const dup = await prisma.gymSession.findFirst({ where: { athleteId, assignedWorkoutId: body.assignedWorkoutId, date: today }, select: { id: true } })
+      return NextResponse.json({ sessionId: dup?.id ?? null, newPRs: [], alreadyCompleted: true }, { status: 200 })
+    }
+    throw err
+  }
 
-  const newPRs = sets.filter(s => isPRSet(s.workoutExerciseId ?? '', s.weightKg, s.completed))
-    .map(s => ({ exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null, weightKg: s.weightKg }))
+  const newPRs = collectPRsByWeId(sets, weNameMap, weExIdMap, maxPerExercise)
 
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)

@@ -61,6 +61,28 @@ export async function POST(req: NextRequest) {
   if (!food) return NextResponse.json({ error: 'Alimento no encontrado' }, { status: 404 })
 
   const snapshot = calcMacros(gramsNum, food)
+
+  // Si el mismo alimento ya fue registrado en esta comida hoy, sumar los gramos (PERSIST-01)
+  const existing = await prisma.foodLog.findUnique({
+    where: { userId_foodId_date_mealType: { userId, foodId, date: logDate, mealType } },
+    select: { id: true, grams: true },
+  })
+
+  if (existing) {
+    const totalGrams = existing.grams + gramsNum
+    const totalSnapshot = calcMacros(totalGrams, food)
+    const log = await prisma.foodLog.update({
+      where: { id: existing.id },
+      data: {
+        grams: totalGrams,
+        kcalLogged: totalSnapshot.kcal, proteinLogged: totalSnapshot.proteinG,
+        carbsLogged: totalSnapshot.carbsG, fatLogged: totalSnapshot.fatG,
+      },
+      include: { food: { select: { name: true, category: true, servingG: true, servingLabel: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } } },
+    })
+    return NextResponse.json({ ...log, ...totalSnapshot }, { status: 200 })
+  }
+
   const log = await prisma.foodLog.create({
     data: {
       userId, foodId, grams: gramsNum, mealType, date: logDate,

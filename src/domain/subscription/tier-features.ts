@@ -52,13 +52,13 @@ export function computeAthleteFeatures(tier: AthleteSubscriptionTier): AthleteFe
       }
     case 'FREE':
       return {
-        plan:      false,
+        plan:      true,
         checkin:   false,
-        nutrition: false,
+        nutrition: true,
         progress:  false,
         log:       true,
         coach:     false,
-        gym:       false,
+        gym:       true,
       }
   }
 }

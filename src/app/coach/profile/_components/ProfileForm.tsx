@@ -5,6 +5,7 @@ import { useState } from 'react'
 type CoachProfile = {
   id: string
   slug: string
+  primarySpecialty: string
   bio: string | null
   headline: string | null
   specialties: string[]
@@ -29,6 +30,7 @@ const SPECIALTIES = [
 ]
 
 export default function ProfileForm({ initialProfile }: Props) {
+  const [primarySpecialty, setPrimarySpecialty] = useState(initialProfile?.primarySpecialty ?? 'ALL')
   const [slug, setSlug] = useState(initialProfile?.slug ?? '')
   const [headline, setHeadline] = useState(initialProfile?.headline ?? '')
   const [bio, setBio] = useState(initialProfile?.bio ?? '')
@@ -75,6 +77,7 @@ export default function ProfileForm({ initialProfile }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slug: slug.toLowerCase().replace(/\s+/g, '-'),
+          primarySpecialty,
           headline,
           bio,
           city,
@@ -103,6 +106,26 @@ export default function ProfileForm({ initialProfile }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Especialidad principal */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Especialidad principal
+        </label>
+        <p className="text-xs text-gray-400 mb-2">
+          Define las herramientas que ves en tu panel — no afecta tu perfil público.
+        </p>
+        <select
+          value={primarySpecialty}
+          onChange={e => setPrimarySpecialty(e.target.value)}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 bg-white"
+        >
+          <option value="ALL">Completo — Running + Fuerza + Nutrición</option>
+          <option value="RUNNING">Running — planes de carrera y zonas FC</option>
+          <option value="GYM">Fuerza — rutinas de gimnasio y progresión</option>
+          <option value="NUTRITION">Nutrición — solo planes alimentarios</option>
+        </select>
+      </div>
+
       {/* Slug */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -166,7 +189,7 @@ export default function ProfileForm({ initialProfile }: Props) {
                 type="checkbox"
                 checked={specialties.includes(value)}
                 onChange={() => toggleSpecialty(value)}
-                className="w-4 h-4 accent-[#f97316]"
+                className="w-4 h-4 accent-[#ea580c]"
               />
               <span className="text-sm text-gray-700">{label}</span>
             </label>
@@ -296,7 +319,7 @@ export default function ProfileForm({ initialProfile }: Props) {
             onChange={e => setIsPublic(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#f97316]"></div>
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ea580c]"></div>
         </label>
       </div>
 
@@ -316,7 +339,7 @@ export default function ProfileForm({ initialProfile }: Props) {
         type="submit"
         disabled={loading}
         className="w-full py-2.5 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50"
-        style={{ backgroundColor: '#f97316' }}
+        style={{ backgroundColor: '#ea580c' }}
       >
         {loading ? 'Guardando...' : 'Guardar perfil'}
       </button>

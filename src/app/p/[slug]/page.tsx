@@ -139,7 +139,7 @@ export default async function CoachProfilePage({
             )}
           </div>
           <Link href="/onboarding">
-            <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors">
+            <span className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors">
               Empieza gratis
             </span>
           </Link>
@@ -258,7 +258,7 @@ export default async function CoachProfilePage({
                     <ul className="space-y-1 mb-4">
                       {program.includes.map((item) => (
                         <li key={item} className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="text-[#f97316]">✓</span> {item}
+                          <span className="text-[#ea580c]">✓</span> {item}
                         </li>
                       ))}
                     </ul>
@@ -267,7 +267,7 @@ export default async function CoachProfilePage({
                     <JoinProgramButton profileId={profile.id} programId={program.id} />
                   ) : (
                     <Link href={`/register?coach=${slug}`}>
-                      <span className="inline-block bg-[#f97316] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
+                      <span className="inline-block bg-[#ea580c] hover:bg-[#ea6c0a] text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
                         Unirme a este programa
                       </span>
                     </Link>
@@ -347,7 +347,7 @@ export default async function CoachProfilePage({
               Listo para entrenar con {profile.coach.name}?
             </p>
             <Link href={`/register?coach=${slug}`}>
-              <span className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">
+              <span className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">
                 Crea tu cuenta gratis
               </span>
             </Link>

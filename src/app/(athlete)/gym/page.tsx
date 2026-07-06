@@ -92,21 +92,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       select: { id: true },
     })
 
-    if (coachRelation) {
-      return (
-        <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-sm">
-            <div className="text-5xl mb-4">🏋️</div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Tu coach gestionará tu rutina</h2>
-            <p className="text-gray-500 text-sm max-w-xs mx-auto">
-              Cuando tu coach te asigne una rutina de gym, aparecerá aquí automáticamente.
-            </p>
-          </div>
-        </div>
-      )
-    }
-
-    // Sin coach — mostrar plantillas públicas para auto-asignación
+    // Sin rutina asignada — mostrar plantillas públicas con banner contextual
     const publicTemplates = await prisma.workoutTemplate.findMany({
       where: { isPublic: true, isActive: true },
       include: { days: { select: { isRestDay: true } } },
@@ -114,7 +100,18 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
     })
 
     return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-4">
+        {coachRelation ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🏋️</span>
+            <div>
+              <p className="font-semibold text-blue-800 text-sm">Tu coach aún no te asignó una rutina</p>
+              <p className="text-blue-600 text-xs mt-0.5">
+                Mientras tanto, puedes usar una de estas plantillas para empezar.
+              </p>
+            </div>
+          </div>
+        ) : null}
         <PublicTemplates templates={publicTemplates} />
       </div>
     )
@@ -258,7 +255,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             </div>
             {lastSessionVolume > 0 && (
               <div className="bg-white rounded-xl p-3 text-center border border-green-100">
-                <p className="text-xl font-bold text-[#f97316]">{Math.round(lastSessionVolume).toLocaleString()}</p>
+                <p className="text-xl font-bold text-[#ea580c]">{Math.round(lastSessionVolume).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-0.5">kg levantados</p>
               </div>
             )}
@@ -282,7 +279,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         </div>
         <Link
           href="/gym/history"
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#f97316] transition-colors"
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
         >
           <History size={16} />
           Historial
@@ -305,7 +302,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             <div className="pl-7">
               <Link
                 href="/gym/session"
-                className="inline-flex items-center gap-2 bg-[#f97316] hover:bg-orange-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
               >
                 <Clock size={15} />
                 Iniciar sesión →
@@ -358,7 +355,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-[#f97316]/10 border-b border-[#f97316]/20 px-5 py-4">
+            <div className="bg-[#ea580c]/10 border-b border-[#ea580c]/20 px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-bold text-[#1e3a5f] text-lg leading-tight">{todayWorkoutDay.label}</p>
@@ -453,20 +450,20 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                   href={cellHref}
                   className={`relative flex flex-col items-center py-4 px-1 text-center transition-colors ${cellBg}`}
                 >
-                  {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#f97316]" />}
+                  {isToday && !isSelected && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#ea580c]" />}
                   <span className={`text-[10px] font-semibold mb-1 ${
-                    isSelected ? 'text-white/70' : isToday ? 'text-[#f97316] font-bold' : 'text-gray-400'
+                    isSelected ? 'text-white/70' : isToday ? 'text-[#ea580c] font-bold' : 'text-gray-400'
                   }`}>
                     {DAY_LABELS[dow]}
                   </span>
                   <div className="flex items-center gap-0.5 mb-1.5">
                     <span className={`text-xl font-black leading-none ${
-                      isSelected ? 'text-white' : isToday ? 'text-[#f97316]' : isRest ? 'text-gray-300' : isCompleted ? 'text-green-600' : 'text-gray-800'
+                      isSelected ? 'text-white' : isToday ? 'text-[#ea580c]' : isRest ? 'text-gray-300' : isCompleted ? 'text-green-600' : 'text-gray-800'
                     }`}>
                       {weekDates[dow]}
                     </span>
                     {isToday && !isSelected && (
-                      <span className="text-[8px] font-bold bg-[#f97316] text-white px-1 py-0.5 rounded-full leading-none ml-0.5">
+                      <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1 py-0.5 rounded-full leading-none ml-0.5">
                         HOY
                       </span>
                     )}
@@ -524,7 +521,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                     )}
                     {selectedSession.rpe && (
                       <div>
-                        <p className="text-lg font-black text-[#f97316]">{selectedSession.rpe}<span className="text-sm font-normal text-gray-400">/10</span></p>
+                        <p className="text-lg font-black text-[#ea580c]">{selectedSession.rpe}<span className="text-sm font-normal text-gray-400">/10</span></p>
                         <p className="text-[10px] text-gray-400">RPE</p>
                       </div>
                     )}
@@ -575,7 +572,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                     <Link
                       href="/gym/session"
                       className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#f97316' }}
+                      style={{ backgroundColor: '#ea580c' }}
                     >
                       Iniciar sesión →
                     </Link>
@@ -637,7 +634,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 {isCurrentWeek && isToday && !isCompleted && workoutDay && !workoutDay.isRestDay && (
                   <Link
                     href="/gym/session"
-                    className="text-xs font-semibold text-[#f97316] shrink-0"
+                    className="text-xs font-semibold text-[#ea580c] shrink-0"
                   >
                     Iniciar →
                   </Link>

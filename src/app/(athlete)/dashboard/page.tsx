@@ -5,7 +5,6 @@ import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import QuickLog from '../_components/QuickLog'
 import WeekNavBar from '../_components/WeekNavBar'
 import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
@@ -17,7 +16,8 @@ import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
-import { getCurrentISOWeek, getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -145,7 +145,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       include: {
         weeks: {
           orderBy: { weekNumber: 'asc' },
-          include: { sessions: { orderBy: { dayOfWeek: 'asc' }, include: { log: true } } },
+          // PERF-01: solo metadata de semanas + id/type/log por sesión
+          // Los campos completos de sesión (dayOfWeek, durationMin, etc.) se cargan
+          // por separado para la semana actual únicamente
+          include: {
+            sessions: {
+              select: { id: true, type: true, log: { select: { id: true } } },
+            },
+          },
         },
       },
     }),
@@ -163,7 +170,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       where: { userId },
       orderBy: { completedAt: 'desc' },
       take: 60,
-      select: { completedAt: true },
+      select: { id: true, completedAt: true, freeSessionType: true, durationMin: true },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
   ])
@@ -174,7 +181,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { winner: _activePlanWinner, loserIds: _dashboardLoserIds } = selectActivePlan(activePlansRaw)
   let activePlanRaw = _activePlanWinner
   if (_dashboardLoserIds.length > 0) {
-    await prisma.trainingPlan.updateMany({
+    prisma.trainingPlan.updateMany({
       where: { id: { in: _dashboardLoserIds } },
       data: { status: PlanStatus.COMPLETED },
     }).catch(() => {})
@@ -189,7 +196,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const now = new Date()
     const rawWeek = Math.floor((now.getTime() - new Date(activePlanRaw.startDate).getTime()) / 86400000 / 7) + 1
     if (rawWeek > activePlanRaw.totalWeeks && now > new Date(activePlanRaw.endDate)) {
-      await prisma.trainingPlan.update({
+      prisma.trainingPlan.update({
         where: { id: activePlanRaw.id },
         data: { status: PlanStatus.COMPLETED },
       }).catch(() => {})
@@ -318,7 +325,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     isCurrentWeek = weekOffset === 0
 
     const currentPlanWeek = activePlan.weeks.find(w => w.weekNumber === currentWeek) ?? null
-
     const selectedPlanWeek = activePlan.weeks.find(w => w.weekNumber === selectedWeekNum) ?? null
 
     planData = {
@@ -328,8 +334,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       phase: currentPlanWeek?.phase ?? 'BASE',
     }
 
+    // PERF-01: cargar sesiones completas solo para la semana actual (dayOfWeek, durationMin, etc.)
     if (currentPlanWeek) {
-      const todayPlanned = currentPlanWeek.sessions.find(s => s.dayOfWeek === todayDow) ?? null
+      const currentWeekFullSessions = await prisma.plannedSession.findMany({
+        where: { week: { planId: activePlan.id, weekNumber: currentWeek } },
+        include: { log: true },
+        orderBy: { dayOfWeek: 'asc' },
+      })
+      const todayPlanned = currentWeekFullSessions.find(s => s.dayOfWeek === todayDow) ?? null
       if (todayPlanned && todayPlanned.type !== 'DESCANSO') {
         todaySession = {
           id: todayPlanned.id,
@@ -346,29 +358,110 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     currentWeekVolumeKm = selectedPlanWeek?.volumeKm ?? null
   }
 
-  // ── Métricas reales ────────────────────────────────────────────────────────
-  const weightKg = lastCheckIn?.weightKg ?? profile?.weightKg ?? null
-  const hrResting = lastCheckIn?.hrResting ?? profile?.hrResting ?? null
-  const sleepHours = lastCheckIn?.sleepHours ?? profile?.sleepHoursAvg ?? null
-  const hasMetrics = !!(weightKg || hrResting || sleepHours)
+  // BUG-056: si el plan dice "Descanso" o no hay sesión planificada hoy pero el atleta
+  // registró una sesión libre, mostrarla en DailySessionCard en lugar de "Descanso hoy"
+  if (!todaySession) {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayFreeLog = recentLogs.find(l => new Date(l.completedAt) >= todayStart)
+    if (todayFreeLog) {
+      todaySession = {
+        id: todayFreeLog.id,
+        type: todayFreeLog.freeSessionType ?? 'OTRO',
+        intensity: 'MODERATE',
+        durationMin: todayFreeLog.durationMin ?? 0,
+        zoneTarget: 'LIBRE',
+        detailText: 'Sesión libre registrada',
+        completed: true,
+      }
+    }
+  }
 
-  // ── Nutrición del día ────────────────────────────────────────────────────
-  const dailyNutrition = nutritionPlan
-    ? getDailyNutritionTarget(todaySession?.intensity ?? null, {
-        targetKcalHard: nutritionPlan.targetKcalHard,
-        targetKcalEasy: nutritionPlan.targetKcalEasy,
-        targetKcalRest: nutritionPlan.targetKcalRest,
-        proteinG: nutritionPlan.proteinG,
-        carbsHardG: nutritionPlan.carbsHardG,
-        carbsEasyG: nutritionPlan.carbsEasyG,
-        fatG: nutritionPlan.fatG,
-      })
+  // ── getDashboardSummary — eliminates duplicated computation ─────────────
+  // streakDays, raceDays, isRecomp, formStatus/formMessage, weight progress,
+  // weeklyWeightChange, checkinPending, nutritionTarget, volumeDelta
+  // Note: todaySession + weekSessions from use case are NOT used — web computes
+  // them separately (BUG-056 fallback + week navigation require web-specific logic)
+  const { summary: dashSummary } = getDashboardSummary({
+    user: {
+      name: dbUser.name,
+      profile: profile ? {
+        weightKg: profile.weightKg,
+        hrResting: profile.hrResting,
+        weightGoalKg: profile.weightGoalKg,
+        sleepHoursAvg: profile.sleepHoursAvg,
+        sportDetails: profile.sportDetails,
+        sportGoal: profile.sportGoal,
+      } : null,
+    },
+    activePlanRaw: activePlan ? {
+      id: activePlan.id,
+      name: activePlan.name,
+      startDate: new Date(activePlan.startDate),
+      totalWeeks: activePlan.totalWeeks,
+      weeks: activePlan.weeks.map(w => ({
+        weekNumber: w.weekNumber,
+        phase: w.phase,
+        volumeKm: w.volumeKm ?? null,
+        // dayOfWeek stubs — use case todaySession/weekSessions outputs are unused
+        sessions: w.sessions.map(s => ({
+          id: s.id, type: s.type, dayOfWeek: 0, durationMin: null,
+          zone: null, intensity: null, description: null, log: s.log,
+        })),
+      })),
+    } : null,
+    lastCompletedPlan: lastCompletedPlanInfo
+      ? { name: lastCompletedPlanInfo.name, endDate: lastCompletedPlanInfo.endDate }
+      : null,
+    checkIns: dbUser.checkIns.map(c => ({
+      recordedAt: c.recordedAt,
+      weekNumber: c.weekNumber,
+      weightKg: c.weightKg,
+      hrResting: c.hrResting,
+      sleepHours: c.sleepHours,
+      energyLevel: c.energyLevel,
+      hardestSessionRpe: c.hardestSessionRpe,
+    })),
+    recentLogs: recentLogs.map(l => ({
+      completedAt: l.completedAt,
+      freeSessionType: l.freeSessionType ?? null,
+      durationMin: l.durationMin ?? null,
+    })),
+    nutritionPlan: nutritionPlan ? {
+      targetKcalHard: nutritionPlan.targetKcalHard,
+      targetKcalEasy: nutritionPlan.targetKcalEasy,
+      targetKcalRest: nutritionPlan.targetKcalRest,
+      proteinG: nutritionPlan.proteinG,
+      carbsHardG: nutritionPlan.carbsHardG,
+      carbsEasyG: nutritionPlan.carbsEasyG,
+      fatG: nutritionPlan.fatG,
+    } : null,
+    assignedWorkout: assignedWorkout ? {
+      template: {
+        days: assignedWorkout.template.days.map(d => ({
+          dayOfWeek: d.dayOfWeek,
+          isRestDay: d.isRestDay,
+        })),
+      },
+    } : null,
+  })
+
+  const streakDays = dashSummary.streakDays
+  const raceDays = dashSummary.raceDays
+  const isRecomp = dashSummary.isRecomp
+  const weeklyWeightChange = dashSummary.weeklyWeightChange
+  const weightProgressPct = dashSummary.weightProgressPct
+  const formStatus = dashSummary.formStatus
+  const formMessage = dashSummary.formMessage
+  const checkinPending = dashSummary.checkinPending
+  const currentWeight = dashSummary.metrics.weightKg
+  const targetWeight = dashSummary.metrics.weightGoalKg
+  const formCheckInDate: string | null = lastCheckIn
+    ? (() => {
+        const daysAgo = Math.floor((Date.now() - new Date(lastCheckIn.recordedAt).getTime()) / 86400000)
+        return daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
+      })()
     : null
-
-  // ── KPIs de la semana — solo sesiones de plan (sport adherence) ──────────
-  const selectedPlanWeekSessions = activePlan?.weeks.find(w => w.weekNumber === selectedWeekNum)?.sessions ?? []
-  const completedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== 'DESCANSO').length
-  const totalTraining  = selectedPlanWeekSessions.filter(s => s.type !== 'DESCANSO').length
 
   // ── Rango de fechas de la semana actual ────────────────────────────────────
   // Usamos el lunes calendario real de la semana de hoy (igual que PlanClient.getWeekMonday).
@@ -394,77 +487,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       : `${startStr} – ${endStr}`
     return activePlan ? `Sem. ${selectedWeekNum || planData.currentWeek} · ${rangeStr}` : rangeStr
   })()
-  // ── Check-in semanal pendiente ─────────────────────────────────────────────
-  // Usar la misma lógica que la API: semanas desde inicio del plan (o ISO week si no hay plan)
-  const checkinWeekNumber = activePlan
-    ? planData.currentWeek
-    : getCurrentISOWeek()
-  const thisWeekCheckIn = dbUser.checkIns.find(c => c.weekNumber === checkinWeekNumber) ?? null
-  const checkinPending = !thisWeekCheckIn
+  // ── KPIs de la semana ─────────────────────────────────────────────────────
+  const selectedPlanWeekSessions = activePlan?.weeks.find(w => w.weekNumber === selectedWeekNum)?.sessions ?? []
+  const planCompletedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== 'DESCANSO').length
+  const planTotalTraining  = selectedPlanWeekSessions.filter(s => s.type !== 'DESCANSO').length
+  // BUG-057: sumar sesiones libres del atleta para la semana seleccionada
+  const weekEndDate = new Date(weekStartDate)
+  weekEndDate.setDate(weekStartDate.getDate() + 7)
+  const freeLogsSelectedWeek = recentLogs.filter(l =>
+    l.freeSessionType !== null &&
+    new Date(l.completedAt) >= weekStartDate &&
+    new Date(l.completedAt) < weekEndDate
+  ).length
+  const completedCount = planCompletedCount + freeLogsSelectedWeek
+  const totalTraining  = planTotalTraining  + freeLogsSelectedWeek
 
   const phaseDisplay = phaseLabel(planData.phase)
 
-  // ── Streak (días consecutivos con sesión completada) ─────────────────────
-  let streakDays = 0
-  const todayStr = new Date()
-  todayStr.setHours(0, 0, 0, 0)
-  const logDateSet = new Set(recentLogs.map((l: { completedAt: Date }) => new Date(l.completedAt).toDateString()))
-  for (let i = 0; i <= 59; i++) {
-    const d = new Date(todayStr)
-    d.setDate(d.getDate() - i)
-    if (logDateSet.has(d.toDateString())) streakDays++
-    else break
-  }
-
   // ── Hero card 1: Tu Carrera / Tu Objetivo ─────────────────────────────────
   const raceDate = (profile?.sportDetails as Record<string, unknown> | null)?.raceDate as string | undefined
-  const raceDays = raceDate
-    ? Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000)
-    : null
-  const isRecomp = !!(
-    (dbUser?.profile?.sportGoal ?? '').includes('BODY') ||
-    activePlan?.name?.toLowerCase().includes('recomp') ||
-    activePlan?.name?.toLowerCase().includes('body')
-  )
-
-  // ── Hero card 2: Meta de peso ──────────────────────────────────────────────
-  const currentWeight = weightKg
-  const targetWeight = profile?.weightGoalKg ?? null
-  const prevCheckIn = dbUser.checkIns[1] ?? null
-  let weeklyWeightChange: number | null = null
-  if (lastCheckIn?.weightKg && prevCheckIn?.weightKg) {
-    const daysDiff = Math.max(1,
-      (new Date(lastCheckIn.recordedAt).getTime() - new Date(prevCheckIn.recordedAt).getTime()) / 86400000
-    )
-    weeklyWeightChange = Math.round(((lastCheckIn.weightKg - prevCheckIn.weightKg) / daysDiff) * 7 * 10) / 10
-  }
-  const oldestCheckInWeight = [...dbUser.checkIns].reverse().find((c: { weightKg: number | null }) => c.weightKg != null)?.weightKg ?? null
-  let weightProgressPct: number | null = null
-  if (currentWeight && targetWeight && oldestCheckInWeight && oldestCheckInWeight !== targetWeight) {
-    weightProgressPct = Math.min(100, Math.max(0,
-      Math.round(((oldestCheckInWeight - currentWeight) / (oldestCheckInWeight - targetWeight)) * 100)
-    ))
-  }
-
-  // ── Hero card 3: Cómo llegás hoy ──────────────────────────────────────────
-  type FormStatus = 'good' | 'moderate' | 'rest'
-  let formStatus: FormStatus = 'good'
-  let formMessage = 'Sin datos de check-in'
-  let formCheckInDate: string | null = null
-  if (lastCheckIn) {
-    const energy = lastCheckIn.energyLevel ?? 3
-    const rpe = lastCheckIn.hardestSessionRpe ?? 5
-    const sleep = (lastCheckIn.sleepHours ?? 7) >= 6.5
-    if (energy >= 4 && rpe <= 7 && sleep) {
-      formStatus = 'good'; formMessage = 'Listo para entrenar fuerte'
-    } else if (energy >= 3 && rpe <= 8) {
-      formStatus = 'moderate'; formMessage = 'Carga moderada recomendada'
-    } else {
-      formStatus = 'rest'; formMessage = 'Prioriza la recuperación hoy'
-    }
-    const daysAgo = Math.floor((Date.now() - new Date(lastCheckIn.recordedAt).getTime()) / 86400000)
-    formCheckInDate = daysAgo === 0 ? 'hoy' : daysAgo === 1 ? 'ayer' : `hace ${daysAgo} días`
-  }
 
   // ── Carga semanal (volumen planificado) ─────────────────────────────────────
   const currentVolume = currentWeekVolumeKm
@@ -512,7 +553,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-sm text-gray-500 capitalize">{formatDate()}</p>
           {streakDays >= 2 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#f97316]">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#ea580c]">
               🔥 {streakDays} días · racha activa
             </span>
           )}
@@ -573,7 +614,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           /* Atleta de carrera */
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="flex h-full">
-              <div className="w-1 bg-[#f97316] shrink-0" />
+              <div className="w-1 bg-[#ea580c] shrink-0" />
               <div className="flex-1 px-4 py-4">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">🏁 Tu Carrera</p>
                 {raceDays !== null && raceDays > 0 ? (
@@ -590,12 +631,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     {activePlan && (
                       <>
                         <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
-                          <div className="h-full bg-[#f97316] rounded-full"
+                          <div className="h-full bg-[#ea580c] rounded-full"
                             style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
                         </div>
                         <div className="flex justify-between items-center">
                           <p className="text-[10px] text-gray-400">Semana {planData.currentWeek} de {planData.totalWeeks}</p>
-                          <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
+                          <Link href="/plan" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver plan →</Link>
                         </div>
                       </>
                     )}
@@ -608,7 +649,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     </div>
                     <p className="text-[11px] text-gray-500 mb-3">{activePlan.name}</p>
                     <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-[#f97316] rounded-full"
+                      <div className="h-full bg-[#ea580c] rounded-full"
                         style={{ width: `${Math.round((planData.currentWeek / planData.totalWeeks) * 100)}%` }} />
                     </div>
                     <div className="flex justify-between items-center">
@@ -617,7 +658,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           {phaseDisplay}
                         </span>
                       </p>
-                      <Link href="/plan" className="text-[10px] font-semibold text-[#f97316] py-2 -my-2 inline-block">Ver plan →</Link>
+                      <Link href="/plan" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver plan →</Link>
                     </div>
                   </>
                 ) : (
@@ -827,7 +868,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {checkinPending && (
             <Link href="/checkin" className="block">
               <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden flex hover:shadow-[0_2px_8px_rgba(249,115,22,0.12)] transition-shadow">
-                <div className="w-1 bg-[#f97316] shrink-0" />
+                <div className="w-1 bg-[#ea580c] shrink-0" />
                 <div className="flex-1 flex items-center justify-between px-4 py-3.5 gap-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Check-in semanal pendiente</p>

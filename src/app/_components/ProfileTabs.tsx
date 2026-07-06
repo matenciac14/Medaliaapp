@@ -50,7 +50,7 @@ export default function ProfileTabs({ tabs, ctaLabel, ctaHref = '/onboarding' }:
           <p className="text-sm text-gray-500 font-medium">{current.gets}</p>
         </div>
         <a href={ctaHref}>
-          <button className="bg-[#f97316] hover:bg-[#ea6c0a] text-white font-bold px-6 py-3 rounded-xl text-sm transition-transform hover:scale-105 active:scale-95">
+          <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold px-6 py-3 rounded-xl text-sm transition-transform hover:scale-105 active:scale-95">
             {ctaLabel}
           </button>
         </a>

@@ -299,7 +299,7 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
               <div key={phase} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <button onClick={() => togglePhase(phase)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f97316' }} />
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ea580c' }} />
                     <span className="font-semibold text-gray-900">{phase}</span>
                     <span className="text-xs text-gray-400">{weeks.length} semana{weeks.length !== 1 ? 's' : ''}</span>
                   </div>
@@ -327,7 +327,7 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
                             const isSaved   = savedNote[session.id]
 
                             return (
-                              <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#f97316' }}>
+                              <div key={session.id} className="border-l-2 pl-4" style={{ borderColor: '#ea580c' }}>
 
                                 {/* ── View mode header ── */}
                                 {!isEditing && (

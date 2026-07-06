@@ -44,7 +44,7 @@ export default async function PendingPage() {
       {/* Logo */}
       <div className="mb-10">
         <span className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>
-          Medal<span style={{ color: '#f97316' }}>iq</span>
+          Medal<span style={{ color: '#ea580c' }}>iq</span>
         </span>
       </div>
 
@@ -116,8 +116,8 @@ export default async function PendingPage() {
             href="/nutrition"
             className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-200 hover:border-[#1e3a5f]/30 hover:bg-gray-50 transition-colors"
           >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#f9731610' }}>
-              <Utensils size={18} style={{ color: '#f97316' }} />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#ea580c10' }}>
+              <Utensils size={18} style={{ color: '#ea580c' }} />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">Registrar lo que comiste</p>

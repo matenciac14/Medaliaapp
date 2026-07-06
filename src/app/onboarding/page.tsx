@@ -42,13 +42,13 @@ function SelectCard({
       className={cn(
         'w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 flex items-start gap-4',
         selected
-          ? 'border-[#f97316] bg-[#f97316]/8'
+          ? 'border-[#ea580c] bg-[#ea580c]/8'
           : 'border-gray-200 bg-white hover:border-[#1e3a5f]/40'
       )}
     >
       <span className="text-2xl leading-none mt-0.5">{icon}</span>
       <span className="flex flex-col gap-0.5">
-        <span className={cn('font-semibold text-base', selected ? 'text-[#f97316]' : 'text-[#1e3a5f]')}>
+        <span className={cn('font-semibold text-base', selected ? 'text-[#ea580c]' : 'text-[#1e3a5f]')}>
           {label}
         </span>
         {subtext && <span className="text-sm text-gray-500">{subtext}</span>}
@@ -56,7 +56,7 @@ function SelectCard({
       <span
         className={cn(
           'ml-auto w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 transition-colors',
-          selected ? 'border-[#f97316] bg-[#f97316]' : 'border-gray-300'
+          selected ? 'border-[#ea580c] bg-[#ea580c]' : 'border-gray-300'
         )}
       >
         {selected && (
@@ -89,7 +89,7 @@ function ToggleBtn({
       className={cn(
         'px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-150',
         selected
-          ? 'border-[#f97316] bg-[#f97316] text-white'
+          ? 'border-[#ea580c] bg-[#ea580c] text-white'
           : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
       )}
     >
@@ -116,11 +116,10 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 // ---------------------------------------------------------------------------
 
 function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
+  // UX-01: 2 opciones principales — BOTH y FREE son edge cases manejados post-onboarding
   const activities: { value: ActivityType; icon: string; label: string; subtext: string }[] = [
-    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios',     subtext: 'Rutinas de pesas, recomposición corporal' },
+    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios',     subtext: 'Gym, pesas y recomposición corporal' },
     { value: 'RUNNING', icon: '🏃', label: 'Running',         subtext: 'Correr, mejorar ritmo y resistencia' },
-    { value: 'BOTH',    icon: '🏅', label: 'Ejercicios + Running', subtext: 'Combino entrenamiento de fuerza y cardio' },
-    { value: 'FREE',    icon: '📊', label: 'Solo trackear',   subtext: 'Registro libre — sin plan estructurado' },
   ]
 
   const gymGoals: { value: GymGoal; icon: string; label: string }[] = [
@@ -159,7 +158,7 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
                 className={cn(
                   'px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center gap-2',
                   data.gymGoal === g.value
-                    ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
+                    ? 'border-[#ea580c] bg-[#ea580c]/10 text-[#ea580c]'
                     : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
                 )}
               >
@@ -182,6 +181,10 @@ function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (
     { value: 'ADVANCED',     label: 'Avanzado',     subtext: 'Más de 3 años' },
   ]
 
+  const ageErr = data.age !== null && (data.age < 10 || data.age > 100)
+  const heightErr = data.heightCm !== null && (data.heightCm < 100 || data.heightCm > 250)
+  const weightErr = data.weightKg !== null && (data.weightKg < 30 || data.weightKg > 300)
+
   return (
     <div className="flex flex-col gap-5">
       <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Datos básicos</h2>
@@ -197,32 +200,47 @@ function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Edad (años)</Label>
-          <Input
+          <input
             type="number"
             placeholder="32"
             value={data.age ?? ''}
             onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : null })}
+            className={cn(
+              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+              ageErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+            )}
           />
+          {ageErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 10 y 100 años</p>}
         </div>
         <div>
-          <Label>Talla (cm)</Label>
-          <Input
+          <Label>Altura (cm)</Label>
+          <input
             type="number"
             placeholder="170"
             value={data.heightCm ?? ''}
             onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : null })}
+            className={cn(
+              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+              heightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+            )}
           />
+          {heightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 100 y 250 cm</p>}
         </div>
       </div>
 
       <div>
         <Label>Peso actual (kg)</Label>
-        <Input
+        <input
           type="number"
           placeholder="68"
           value={data.weightKg ?? ''}
           onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : null })}
+          className={cn(
+            'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
+            weightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+          )}
         />
+        {weightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 30 y 300 kg</p>}
       </div>
 
       <div>
@@ -291,7 +309,7 @@ function StepGenerating() {
     <div className="flex flex-col items-center justify-center gap-8 py-12">
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-[#1e3a5f]/10" />
-        <div className="absolute inset-0 rounded-full border-4 border-t-[#f97316] animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-t-[#ea580c] animate-spin" />
         <span className="absolute inset-0 flex items-center justify-center text-2xl">⚡</span>
       </div>
       <div className="text-center">
@@ -391,8 +409,6 @@ export default function OnboardingPage() {
       await refreshSession({ onboardingCompleted: true })
       if (json.isB2B) {
         router.push('/pending')
-      } else if (data.activityType === 'RUNNING' || data.activityType === 'BOTH') {
-        router.push('/new-goal')
       } else {
         router.push('/dashboard')
       }
@@ -431,7 +447,7 @@ export default function OnboardingPage() {
         </div>
         <div className="h-1 bg-gray-100 w-full">
           <div
-            className="h-1 bg-[#f97316] transition-all duration-300"
+            className="h-1 bg-[#ea580c] transition-all duration-300"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -466,7 +482,7 @@ export default function OnboardingPage() {
             <button
               onClick={nextStep}
               disabled={!isStepValid(currentStepId, data) || isGenerating}
-              className="flex-1 bg-[#f97316] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isLastDataStep ? 'Guardar y entrar →' : 'Siguiente →'}
             </button>
