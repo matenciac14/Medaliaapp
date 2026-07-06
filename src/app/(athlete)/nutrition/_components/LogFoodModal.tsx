@@ -206,8 +206,10 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
                 <span className="text-gray-400 text-sm">🔍</span>
                 <input
                   autoFocus
+                  type="search"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
                   placeholder="Buscar alimento..."
                   className="flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
                 />

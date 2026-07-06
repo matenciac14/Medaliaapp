@@ -31,7 +31,7 @@ export default async function ProgressPage() {
         <span className="text-5xl">📊</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Progreso disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Visualiza tu evolución de peso, FC y adherencia semana a semana con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $9.99/mes</a>
       </div>
     )
   }

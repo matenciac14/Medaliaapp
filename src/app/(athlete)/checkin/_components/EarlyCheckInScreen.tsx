@@ -15,7 +15,8 @@ function getNextFriday(): string {
   const daysUntil = day <= 5 ? 5 - day : 6
   const next = new Date(now)
   next.setDate(now.getDate() + (daysUntil === 0 && day === 5 ? 7 : daysUntil))
-  return next.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+  const raw = next.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
 
 export default function EarlyCheckInScreen({ lastWeekSummary, onForce, onBack }: Props) {
@@ -67,10 +68,10 @@ export default function EarlyCheckInScreen({ lastWeekSummary, onForce, onBack }:
         )}
 
         <div className="space-y-2 pb-8">
-          <button onClick={onBack} className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
+          <button type="button" onClick={onBack} className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
             Volver al dashboard
           </button>
-          <button onClick={onForce} className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors">
+          <button type="button" onClick={onForce} className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors">
             Abrir check-in de todas formas
           </button>
         </div>

@@ -6,7 +6,7 @@ import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 
 // Config sin Prisma — compatible con Edge Runtime (middleware)
 export const authConfig: NextAuthConfig = {
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: '/login',
     newUser: '/onboarding',

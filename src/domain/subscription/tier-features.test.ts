@@ -3,22 +3,6 @@ import { computeAthleteFeatures, getCoachLimits } from './tier-features'
 
 // ─── computeAthleteFeatures ───────────────────────────────────────────────────
 
-describe('computeAthleteFeatures — TRIAL', () => {
-  it('tiene acceso completo', () => {
-    const f = computeAthleteFeatures('TRIAL')
-    expect(f.plan).toBe(true)
-    expect(f.checkin).toBe(true)
-    expect(f.nutrition).toBe(true)
-    expect(f.progress).toBe(true)
-    expect(f.log).toBe(true)
-    expect(f.gym).toBe(true)
-  })
-
-  it('nunca tiene acceso al panel de coach', () => {
-    expect(computeAthleteFeatures('TRIAL').coach).toBe(false)
-  })
-})
-
 describe('computeAthleteFeatures — PRO', () => {
   it('tiene acceso completo excepto coach', () => {
     const f = computeAthleteFeatures('PRO')
@@ -33,26 +17,20 @@ describe('computeAthleteFeatures — PRO', () => {
 })
 
 describe('computeAthleteFeatures — FREE', () => {
-  // FREE = capa de registro: plan, log, nutrición, gym — SIN inteligencia (checkin, progress)
-  it('tiene acceso a plan, log, nutrition y gym', () => {
+  // FREE = capa de tracking: log, nutrición, gym — SIN plan adaptativo ni inteligencia
+  it('tiene acceso a log, nutrition y gym', () => {
     const f = computeAthleteFeatures('FREE')
-    expect(f.plan).toBe(true)
     expect(f.log).toBe(true)
     expect(f.nutrition).toBe(true)
     expect(f.gym).toBe(true)
   })
 
-  it('no tiene acceso a checkin ni progress (gate de pago)', () => {
+  it('no tiene acceso a plan, checkin ni progress (gate de pago)', () => {
     const f = computeAthleteFeatures('FREE')
+    expect(f.plan).toBe(false)
     expect(f.checkin).toBe(false)
     expect(f.progress).toBe(false)
     expect(f.coach).toBe(false)
-  })
-})
-
-describe('computeAthleteFeatures — paridad TRIAL vs PRO', () => {
-  it('TRIAL y PRO producen las mismas features', () => {
-    expect(computeAthleteFeatures('TRIAL')).toEqual(computeAthleteFeatures('PRO'))
   })
 })
 
