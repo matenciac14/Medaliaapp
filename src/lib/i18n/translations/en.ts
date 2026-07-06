@@ -12,7 +12,7 @@ export const en: Translations = {
     hero: {
       badge1: 'Real periodization',
       badge2: 'For LatAm',
-      badge3: 'Early access',
+      badge3: '0% platform fee — always',
       title: 'Your athletes see their progress week by week.',
       titleHighlight: 'You grow without losing control.',
       subtitle: 'Periodized plans, nutrition recalculated with every session and weekly tracking for each athlete.',
