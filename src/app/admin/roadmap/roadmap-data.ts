@@ -129,7 +129,8 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'DBI-10 — progress/page.tsx: weightKg/hrResting cast a number sin null check → NaN en gráficas', done: true, priority: 'P2', note: 'Fix: type guard en filter — .filter((c): c is typeof c & { weightKg: number } => c.weightKg !== null) elimina el cast as number. TypeScript narra el narrowing correctamente. Mismo patrón para hrResting. src/app/(athlete)/progress/page.tsx.' },
       { title: 'DBI-11 — Nutrition foods mobile sin micronutrientes: select 8 campos vs 12 en web', done: true, priority: 'P2', note: 'FIXED: mobile/nutrition/foods/route.ts select ahora incluye fiberPer100g, calciumMg, ironMg, potassiumMg, vitaminCMg, magnesiumMg — paridad completa con web.' },
       { title: 'DBI-12 — CoachProfile no se crea en registro: coach sin CoachProfile hasta primer PATCH', done: true, priority: 'P3', note: 'FIXED: register/route.ts ahora crea CoachProfile skeleton (coachId, slug) en $transaction junto a UserSubscription. Slug: {name-slug}-{id[-6:]}. CoachProfile siempre existe al registrar un coach.' },
-      { title: 'DBI-13 — Goal model nunca se popula: TrainingPlan.goalId siempre null', done: false, priority: 'P3', note: 'Modelo Goal existe en schema pero ningún flujo lo crea. Fix (cuando aplique): crear Goal en generate-plan.use-case.ts + cerrar Goal anterior si existe.' },
+      { title: 'DBI-13 — Goal model nunca se popula: TrainingPlan.goalId siempre null', done: true, priority: 'P3', note: 'ELIMINADO. Se decidió quitar el modelo Goal completo del schema — dead code, cero rutas lo usaban. GoalType enum se mantiene como campo directo en TrainingPlan.goalType. Migración pendiente: DROP TABLE Goal + DROP COLUMN goalId en TrainingPlan + DROP TYPE GoalStatus.' },
+      { title: 'SCHEMA-DOC — Eliminar GoalStatus de CLAUDE-SCHEMA.md (Goal model eliminado en DBI-13)', done: true, priority: 'P3', note: 'GoalStatus enum (ACTIVE | COMPLETED | ABANDONED) eliminado de CLAUDE-SCHEMA.md §Enums. Goal no existe en schema.prisma ni en código. Solo quedaba la entrada stale en la documentación.' },
 
       // ── HALLAZGOS AGENTES — auditoría completa julio 2026 ────────────────────
       { title: 'DBI-14 — Mobile JWT stale 30d: coach activa features pero atleta necesita re-login', done: true, priority: 'P1', note: 'FIXED: creado POST /api/mobile/auth/refresh. Verifica JWT existente, lee features frescas de DB, emite nuevo token. Mobile debe llamar este endpoint tras notificación de activación de features.' },
@@ -858,8 +859,8 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Atleta — Tracking Avanzado',
         period: 'Próximo',
         items: [
-          { title: 'Biblioteca de alimentos custom del atleta: agregar alimentos propios (nombre, kcal/100g, macros)', done: false, priority: 'P1', note: 'POST /api/nutrition/foods/custom con userId. Alimento visible solo para ese atleta. Útil para comidas típicas colombianas o productos locales no en la DB global. Aparece en búsqueda con badge "Personalizado".' },
-          { title: 'Escaneo de código de barras — Open Food Facts API desde mobile', done: false, priority: 'P2', note: 'Mobile: expo-barcode-scanner + GET https://world.openfoodfacts.org/api/v0/product/{barcode}. Si existe → precargar kcal/macros en LogFoodModal. No requiere DB propia. Fallback a búsqueda manual si no se encuentra.' },
+          { title: 'Proponer alimento a la librería global — ver NUT-03 a NUT-08 en modulo-nutricion', done: false, priority: 'P1', note: 'La librería es global y compartida — todos los atletas ven todos los alimentos. Cuando un atleta no encuentra un alimento puede proponerlo: se crea con isVerified:false (badge "En revisión"), visible para todos inmediatamente. Admin aprueba → queda verificado. Admin rechaza → isActive:false. No hay alimentos privados por atleta. Implementación completa en implementacion/nutricion.md.' },
+          { title: 'Escaneo de código de barras — ver NUT-10/11/12 en modulo-nutricion', done: false, priority: 'P2', note: 'Implementación detallada en implementacion/nutricion.md §Arquitectura barcode. Arquitectura: DB lookup first → Open Food Facts fallback → confirmación atleta → Food creado con source:"openfoodfacts". NUT-10 (client/port), NUT-11 (endpoints), NUT-12 (mobile UI scanner).' },
           { title: 'Recetas compuestas: grupo de alimentos guardados como una unidad (ej. "Mi desayuno habitual")', done: false, priority: 'P2', note: 'Modelo Recipe { userId, name } → RecipeIngredient[] { foodId, grams }. Kcal y macros calculados en tiempo real. Aparece en búsqueda de alimentos como item compuesto. Simplifica el log diario para comidas repetidas.' },
           { title: 'Historial de adherencia nutricional diario en /progress (gráfica 30 días)', done: false, priority: 'P2', note: 'FoodLog agrupado por fecha → % vs target del día usando getDailyNutritionTarget(). Gráfica de barras similar a adherencia de entrenamiento. Complementa la vista semanal ya existente en /api/mobile/nutrition/log/summary.' },
           { title: 'Contexto de fase en nutrición: texto explicativo según semana del plan (carga vs descarga)', done: false, priority: 'P2', note: 'PlanWeek.isRecoveryWeek y PlannedSession.intensity ya existen. Texto en NutritionContent: "Semana de carga — prioriza carbos" o "Semana de descarga — baja 10% calorías". Sin cambiar targets automáticamente.' },
@@ -880,11 +881,22 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         id: 'nutricion-sistema',
-        label: 'Sistema — Base de Datos y Precisión',
+        label: 'Sistema — Base de Datos, Propuestas & Barcode',
         period: 'Próximo',
         items: [
-          { title: 'Ampliar librería con 200+ alimentos colombianos y latinoamericanos', done: false, priority: 'P1', note: 'Hoy la DB tiene alimentos genéricos. Añadir: arepas, bandeja paisa, sancocho, pandebono, empanadas, calentado, jugos, masato, etc. con macros verificados. Seed con category: "LATAM". Diferenciador vs MyFitnessPal para el mercado colombiano.' },
-          { title: 'Categorías de alimentos en búsqueda: proteínas, carbos, grasas, frutas, lácteos, snacks', done: false, priority: 'P2', note: 'FoodProfile.category ya existe en schema. Chips/filtros en modal de búsqueda de alimentos (web + mobile). Reduce fricción del log cuando el atleta no recuerda el nombre exacto.' },
+          { title: 'NUT-01 — Migración schema Food: campos source, barcode, country + indexes', done: false, priority: 'P1', note: 'source String @default("system") — trazabilidad origen (system/usda/icbf/openfoodfacts/coach/user). barcode String? @unique — EAN-13/UPC para lookup OFF. country String? — ISO 3166-1 alpha-2. Indexes: @@index([barcode]), @@index([country]). Ver implementacion/nutricion.md para schema completo.' },
+          { title: 'NUT-02 — Seed Colombia + Mexico: ~250 alimentos nuevos con macros verificados', done: false, priority: 'P1', note: 'CO: panadería (pandebono, almojabana, buñuelo), platos (bandeja paisa, ajiaco, sancocho, tamal), frutas exóticas (lulo, curuba, uchuva, feijoa). MX: base (tortilla, masa), platos (quesadilla, pozole, enchiladas), frutas (mamey, zapote). source:"system", country:"CO"/"MX". Lista completa en implementacion/nutricion.md.' },
+          { title: 'NUT-03 — Modelo FoodProposal + enum FoodProposalStatus + migración', done: false, priority: 'P1', note: 'FoodProposalStatus { PENDING | APPROVED | REJECTED }. FoodProposal { id, submittedById, name, category, macros, country?, notes?, status, reviewedById?, reviewNote?, foodId? }. @@index([status]), @@index([submittedById]). Food: agregar proposals FoodProposal[] + createdBy String?. Ver implementacion/nutricion.md §Ingreso manual.' },
+          { title: 'NUT-04 — ProposeFoodUseCase + IFoodProposalRepository + PrismaFoodProposalRepository', done: false, priority: 'P1', note: 'Librería global: $transaction: (1) Food.create { source:"community", isVerified:false, createdBy:userId } (2) FoodProposal.create { status:PENDING, foodId }. El alimento queda visible para TODOS los atletas con badge "En revisión" — no es privado. Approve → Food.update { isVerified:true }. Reject → Food.update { isActive:false }. domain/nutrition/food-proposal/ + infrastructure/db/food-proposal.repository.ts.' },
+          { title: 'NUT-05 — POST /api/nutrition/foods/propose + /api/mobile/nutrition/foods/propose', done: false, priority: 'P1', note: 'Validación Zod: nombre requerido, kcal/macros > 0, category válida, country ISO opcional. Rate limit 10 propuestas/hora por usuario. Retorna { proposalId, foodId }. El alimento ya aparece en la búsqueda global con badge "En revisión" inmediatamente tras la propuesta.' },
+          { title: 'NUT-06 — GET /api/nutrition/foods/my-proposals + mobile — atleta ve sus propuestas y estado', done: false, priority: 'P1', note: 'Retorna lista de FoodProposal del userId ordenadas por createdAt desc. Incluye food { name, kcalPer100g } + status + reviewNote si REJECTED. Mobile: badge "N en revisión" en pantalla de nutrición. Al tocar → pantalla de propuestas con estado visual (PENDING/amber · APPROVED/green · REJECTED/red).' },
+          { title: 'NUT-07 — Admin: GET /api/admin/nutrition/proposals + panel /admin/nutrition/proposals', done: false, priority: 'P1', note: 'Query: FoodProposal con status=PENDING (default) + submittedBy { name } + food { name, kcalPer100g, macros, country }. UI: tabla con columnas nombre / macros / país / propuesto por / hace cuánto / notas. Filtro por status. Badge en sidebar admin con count PENDING.' },
+          { title: 'NUT-08 — POST .../approve + .../reject — ReviewFoodUseCase', done: false, priority: 'P1', note: 'Approve: Food.update { isVerified:true, source:"community", createdBy:null } + FoodProposal.update { status:APPROVED, reviewedById }. Reject: Food.update { isActive:false } + FoodProposal.update { status:REJECTED, reviewNote, reviewedById }. Ambos usan $transaction. Admin debe estar autenticado con role=ADMIN.' },
+          { title: 'NUT-09 — Seed Argentina/Peru/Chile/Venezuela (~150 alimentos)', done: false, priority: 'P2', note: 'AR: milanesa, choripán, empanada, dulce de leche, mate. PE: ceviche (componentes), lomo saltado, aji amarillo, maca. VE: arepa venezolana (harina PAN), pabellón criollo, cachapa. CL: pastel de choclo, sopaipilla. Lista completa en implementacion/nutricion.md.' },
+          { title: 'NUT-10 — IFoodLookupClient port + OpenFoodFactsClient (barcode scanning)', done: false, priority: 'P2', note: 'Port: IFoodLookupClient.lookupByBarcode(code) → FoodLookupResult | null. Implementación: fetch world.openfoodfacts.org/api/v2/product/{code}. Flujo: DB lookup first → si no existe → OFF → response con needsConfirmation:true → atleta confirma → POST crea Food { source:"openfoodfacts", isVerified:false, barcode:code }. Ver implementacion/nutricion.md para código completo.' },
+          { title: 'NUT-11 — GET /api/nutrition/foods/barcode + /api/mobile/nutrition/foods/barcode', done: false, priority: 'P2', note: 'GET ?code={EAN13}. Phase 1: DB.findFirst({ where: { barcode: code } }) → hit directo. Phase 2: OpenFoodFactsClient.lookupByBarcode(code) → 404 si no existe. Rate limit: 300/min (GET). El código EAN escaneado en mobile se envía a este endpoint.' },
+          { title: 'NUT-12 — Mobile: UI scanner código de barras + flujo de confirmación', done: false, priority: 'P3', note: 'expo-barcode-scanner (o expo-camera con barcode detection). Flujo: botón "Escanear" en LogFoodModal → cámara → código detectado → GET /api/mobile/nutrition/foods/barcode?code=XXX → si hit: abre LogFoodModal con alimento pre-cargado. Si miss: pantalla "No encontramos este producto" + CTA "Proponer alimento" pre-llenado con barcode.' },
+          { title: 'NUT-13 — Categorías de alimentos como filtro en búsqueda (chips web + mobile)', done: false, priority: 'P2', note: 'Food.category ya existe. Chips/filtros en SearchStep del LogFoodModal: PROTEIN / CARB / FAT / VEGETABLE / FRUIT / DAIRY / LEGUME / PREPARED / OTHER. Filtro client-side sobre resultados ya cargados — sin query adicional.' },
           { title: 'MealPlan versionado: historial de cambios del plan nutricional asignado por el coach', done: false, priority: 'P3', note: 'MealPlan.version ya existe en schema. Agregar MealPlanVersion { userId, version, data, assignedAt, assignedBy }. Coach puede ver cuándo cambió el plan y comparar versiones. Trazabilidad completa.' },
         ],
       },
@@ -1447,6 +1459,214 @@ export const GROUPS: RoadmapGroup[] = [
             done: false,
             priority: 'P2',
             note: 'Cambio de 1 línea en /api/exercises response: gif: exercise.gifStoredUrl ?? exercise.gifUrl. Todos los clientes (web + mobile) lo reciben automáticamente sin cambios adicionales. Depende de EX-13.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'db-schema-v2',
+    label: 'DB Schema v2 — Correcciones estructurales',
+    description: 'Cambios en schema.prisma identificados en auditoría arquitectural. Orden: P0 primero (migración limpia), luego P1, luego P2.',
+    groups: [
+      {
+        id: 'db-p0',
+        label: 'Fase 1 — Correcciones críticas (P0)',
+        period: 'P0 — Hacer antes de conectar Wompi o billing',
+        items: [
+          {
+            title: 'DB-01 — Agregar UserStatus enum + campo status a User',
+            done: false,
+            priority: 'P0',
+            note: 'Enum: ACTIVE | SUSPENDED | BLOCKED | DELETED. Campo: status UserStatus @default(ACTIVE). Middleware actual no bloquea usuarios suspendidos/bloqueados — solo existe control vía feature flags. Sin este campo no hay separación entre cuenta activa, suspendida por pago y bloqueada por admin. Migración: ALTER TABLE "User" ADD COLUMN "status" "UserStatus" DEFAULT \'ACTIVE\'. Impacto middleware: agregar check status !== ACTIVE → 401.',
+          },
+          {
+            title: 'DB-02 — Agregar identification, phoneWa, showPhoneWa a User (coach identity)',
+            done: false,
+            priority: 'P0',
+            note: 'identification String? @unique (cédula/pasaporte, 5-30 chars). phoneWa String? @unique (WhatsApp E.164: +57XXXXXXXXXX). showPhoneWa Boolean @default(false). Previene multi-cuenta para obtener Starter gratis N veces. Bloqueo en POST /api/coach/clients/create si identification o phoneWa no están completos. Recopilar en onboarding coach. Ver domains/coach-identidad.md.',
+          },
+          {
+            title: 'DB-03 — Agregar campo discipline a SessionLog (unificación de sesiones multi-disciplina)',
+            done: false,
+            priority: 'P0',
+            note: 'Enum SessionDiscipline: RUNNING | STRENGTH | CYCLING | SWIMMING | OTHER. Campo: discipline SessionDiscipline? en SessionLog. Mantiene GymSession/SetLog tal cual en código — solo agrega un discriminador en el log padre. Permite filtros por disciplina en historial y métricas. Migración no destructiva: ALTER TABLE "SessionLog" ADD COLUMN "discipline" "SessionDiscipline". Actualizar POST /api/log/session y POST /api/mobile/log/session para recibir y persistir discipline.',
+          },
+          {
+            title: 'DB-04 — Reemplazar modelo Exercise con schema WorkoutX-compatible',
+            done: false,
+            priority: 'P0',
+            note: 'Drop campos obsoletos: difficulty String?, instructions String?, videoUrl String?. Agregar: workoutXId String @unique (ID original WorkoutX para deduplicación en re-seed), category String, bodyParts String[] (muscle groups), equipment String, secondaryMuscles String[], difficulty String (WorkoutX scale: beginner|intermediate|advanced), sport String @default("general"), isCustom Boolean @default(false), instructions String[] (pasos como array). gifUrl ya existe. gifStoredUrl ya existe. Migración: crear nueva migración con renaming de campos incompatibles. Ver implementacion/ejercicios.md para schema completo.',
+          },
+        ],
+      },
+      {
+        id: 'db-p1',
+        label: 'Fase 2 — Mejoras de modelo (P1)',
+        period: 'P1 — Después de P0 estabilizado',
+        items: [
+          {
+            title: 'DB-05 — Unificar NutritionPlan: agregar campo source (SYSTEM|COACH|ATHLETE)',
+            done: false,
+            priority: 'P1',
+            note: 'Enum NutritionSource: SYSTEM | COACH | ATHLETE. Campo: source NutritionSource @default(SYSTEM). NutritionPlan es la fuente de verdad única del plan nutricional activo. source discrimina si fue generado por el sistema (onboarding/check-in), asignado por el coach (NutritionTemplate → NutritionPlan), o creado por el atleta (self-coach). Migración: ALTER TABLE "NutritionPlan" ADD COLUMN "source" "NutritionSource" DEFAULT \'SYSTEM\'. Actualizar lógica de asignación de templates del coach.',
+          },
+          {
+            title: 'DB-06 — NutritionTemplate: hacer coachId nullable + agregar athleteId FK opcional',
+            done: false,
+            priority: 'P1',
+            note: 'coachId String? (nullable — antes era String obligatorio). athleteId String? FK → User (atleta B2C sin coach puede crear su propia plantilla nutricional). CHECK constraint: coachId IS NOT NULL OR athleteId IS NOT NULL (al menos uno). Espeja el patrón de WorkoutTemplate donde el coach define rutinas — acá tanto coach como atleta pueden definir plantillas. Migración: ALTER COLUMN coachId DROP NOT NULL, ADD COLUMN athleteId FK. Actualizar endpoints de coach y agregar endpoint atleta.',
+          },
+          {
+            title: 'DB-07 — Agregar modelo FoodProposal (alimentos propuestos por la comunidad)',
+            done: false,
+            priority: 'P1',
+            note: 'Campos: id, userId FK (quién propone), name, brand?, kcal, protein, carbs, fat, servingSize, servingUnit, barcode?, source String @default("USER"), status FoodProposalStatus @default(PENDING) (PENDING|APPROVED|REJECTED), adminNote?, createdAt, reviewedAt?, reviewedBy? FK Admin. Admin aprueba → el alimento pasa a Food con isActive=true. Endpoint: POST /api/nutrition/foods/propose (NUT-05), GET /api/nutrition/foods/my-proposals (NUT-06). Ver domains/nutricion.md.',
+          },
+        ],
+      },
+      {
+        id: 'db-p2',
+        label: 'Fase 3 — Infraestructura de notificaciones (P2)',
+        period: 'P2 — Trigger: 10+ coaches activos',
+        items: [
+          {
+            title: 'DB-08 — Agregar modelo Notification (centro de notificaciones in-app)',
+            done: false,
+            priority: 'P2',
+            note: 'Campos básicos: id, userId FK, type String (SESSION_REMINDER|CHECKIN_AVAILABLE|PLAN_UPDATED|COACH_MESSAGE|ACHIEVEMENT|PAYMENT_DUE|etc.), title, body, read Boolean @default(false), actionUrl String?, createdAt, readAt?. Sin over-engineering: type es String libre para flexibilidad, no enum (evita migración por cada tipo nuevo). API: GET /api/notifications (listado), PATCH /api/notifications/[id]/read, DELETE /api/notifications/[id]. Centro in-app es canal 1 — todo evento importante genera un registro aquí antes de considerar push o email. Ver domains/plataforma.md §Sistema de notificaciones.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'back-db-v2',
+    label: 'Backend: código post-migración DB v2',
+    description: 'Cambios en código backend después de aplicar las migraciones de db-schema-v2. Cada tarea BACK-XX corresponde a su DB-XX equivalente. No aplicar migraciones sin tener el código listo para acompañarlas.',
+    groups: [
+      {
+        id: 'back-safe',
+        label: 'Fase 1 — Código para migraciones aditivas (DB-01/02/03/05)',
+        period: 'Después de aplicar la migración conjunta DB-01+02+03+05',
+        items: [
+          {
+            title: 'BACK-01 — Middleware: bloquear usuarios SUSPENDED y BLOCKED',
+            done: false,
+            priority: 'P0',
+            note: 'Agregar check en src/middleware.ts: si session.user existe pero User.status !== ACTIVE → 401 (SUSPENDED: "Tu cuenta está suspendida") o 403 (BLOCKED: "Tu cuenta ha sido bloqueada"). Requiere incluir status en el JWT (actualizar auth.ts callback). Mobile: getMobileUser() también debe verificar User.status desde DB en cada request o incluirlo en el JWT mobile.',
+          },
+          {
+            title: 'BACK-02 — /api/coach/clients/create: bloquear si identification o phoneWa no están completos',
+            done: false,
+            priority: 'P0',
+            note: 'En POST /api/coach/clients/create, antes de crear el atleta: verificar que session.user.identification && session.user.phoneWa no sean null. Si falta alguno → 403 con mensaje "Debes completar tu cédula y WhatsApp antes de agregar asesorados". Crear o extender /api/coach/profile PATCH para recibir identification + phoneWa con validación de unicidad y formato E.164 para phoneWa.',
+          },
+          {
+            title: 'BACK-03 — Rutas de session log: recibir y persistir campo discipline',
+            done: false,
+            priority: 'P1',
+            note: 'Actualizar POST /api/log/session y POST /api/mobile/log/session para aceptar discipline (SessionDiscipline enum: RUNNING|STRENGTH|CYCLING|SWIMMING|OTHER) en el body. Persistir en SessionLog.discipline. GET /api/log/sessions y GET /api/mobile/log/sessions: incluir discipline en la respuesta. Actualizar también GET /api/gym/session/complete si debe crear SessionLog paralelo con discipline=STRENGTH.',
+          },
+          {
+            title: 'BACK-05 — Rutas de NutritionPlan: incluir source en creación y respuesta',
+            done: false,
+            priority: 'P1',
+            note: 'completeOnboardingUseCase y generate-plan.use-case.ts: al crear NutritionPlan → source: "SYSTEM". /api/coach/athlete/[id]/nutrition (cuando el coach asigna): source: "COACH". Si el atleta genera su propio plan (futuro): source: "ATHLETE". GET /api/nutrition y GET /api/mobile/nutrition: incluir source en la respuesta para que el cliente sepa el origen del plan.',
+          },
+        ],
+      },
+      {
+        id: 'back-exercise',
+        label: 'Fase 2 — Sprint Ejercicios: reescritura completa del módulo (DB-04)',
+        period: 'Sprint dedicado — no aplicar DB-04 sin tener este código listo',
+        items: [
+          {
+            title: 'BACK-04a — Admin ejercicios: reescribir /api/admin/exercises con nuevo schema WorkoutX',
+            done: false,
+            priority: 'P0',
+            note: 'Actualizar /api/admin/exercises/route.ts y /api/admin/exercises/[id]/route.ts. Reemplazar campos obsoletos (muscleGroups→bodyParts, equipment EquipmentType→String, category ExerciseCategory→String, isGlobal→isCustom, imageUrl→gifUrl). Actualizar select/create/update queries. Actualizar tests en route.test.ts. Actualizar ExercisesClient.tsx y ExerciseForm.tsx en /admin/exercises/.',
+          },
+          {
+            title: 'BACK-04b — Coach gym: reescribir rutas de ejercicios y rutinas',
+            done: false,
+            priority: 'P0',
+            note: 'Afecta: /api/coach/gym/exercises/route.ts, /api/coach/gym/routines/route.ts, /api/coach/gym/routines/[id]/route.ts, /api/coach/gym/routines/[id]/copy/route.ts, /api/coach/gym/athlete/[id]/logs/route.ts, /api/coach/gym/athlete/[id]/assigned/route.ts. Reemplazar referencias a muscleGroups, equipment como enum, category como enum, isGlobal. Actualizar páginas coach: /coach/gym/*, /coach/gym/exercises/, /coach/gym/routines/.',
+          },
+          {
+            title: 'BACK-04c — Atleta gym: reescribir rutas de sesiones y historial',
+            done: false,
+            priority: 'P0',
+            note: 'Afecta: /api/gym/session/today/route.ts, /api/gym/session/[id]/route.ts, /api/athlete/gym/routines/route.ts, /api/athlete/gym/routines/[id]/route.ts, /api/mobile/gym/week/route.ts, /api/mobile/gym/history/route.ts, /api/mobile/gym/templates/route.ts. Actualizar domain: src/domain/gym/build-gym-week.ts. Actualizar páginas atleta: /gym/*, /gym/session/, /gym/history/. Verificar que SetLog.exerciseName sigue funcionando como fallback PR.',
+          },
+          {
+            title: 'BACK-04d — Seed de ejercicios WorkoutX: script de carga inicial',
+            done: false,
+            priority: 'P0',
+            note: 'Implementar script de seed que descarga ejercicios de WorkoutX API y los persiste con el nuevo schema. Ver implementacion/ejercicios.md para el diseño completo. Campos clave: workoutXId (UK para deduplicación), bodyParts[], secondaryMuscles[], instructions[], gifUrl. El seed corre una vez en dev y una vez en producción vía pnpm prisma db seed. Sin seed el módulo gym queda sin ejercicios.',
+          },
+        ],
+      },
+      {
+        id: 'back-nutrition-platform',
+        label: 'Fase 3 — Nutrición y plataforma (DB-06/07/08)',
+        period: 'Después de DB-06, DB-07, DB-08',
+        items: [
+          {
+            title: 'BACK-06 — NutritionTemplate: fix null checks en coach nutrition routes',
+            done: false,
+            priority: 'P1',
+            note: 'Después de DB-06 (coachId nullable), actualizar: /api/coach/nutrition/templates/route.ts → filtrar WHERE coachId = coachId OR athleteId = athleteId según el actor. /api/coach/nutrition/templates/[templateId]/route.ts → verificar ownership: template.coachId === coachId || template.athleteId === athleteId. NutritionTemplatesClient.tsx y coach/nutrition/page.tsx → manejar coachId null. AssignedNutritionPlan.coachId: considerar si debe ser nullable también.',
+          },
+          {
+            title: 'BACK-07 — FoodProposal: crear endpoints NUT-05 y NUT-06',
+            done: false,
+            priority: 'P1',
+            note: 'POST /api/nutrition/foods/propose (NUT-05): auth atleta → validar body (name, kcal, proteinG, carbsG, fatG obligatorios; brand?, barcode? opcionales) → crear FoodProposal { status: PENDING }. GET /api/nutrition/foods/my-proposals (NUT-06): listar propuestas del atleta con status. Admin: agregar a /admin/foods panel la lista de PENDING proposals con botón aprobar (→ crea Food con isActive=true, isVerified=false) o rechazar (→ status REJECTED + adminNote).',
+          },
+          {
+            title: 'BACK-08 — Notification: crear endpoints GET /api/notifications y PATCH /api/notifications/[id]/read',
+            done: false,
+            priority: 'P2',
+            note: 'GET /api/notifications: listar notificaciones del usuario autenticado (ordenadas por createdAt desc, take 50). PATCH /api/notifications/[id]/read: marcar como leída (readAt = now()). DELETE /api/notifications/[id]: eliminar. GET /api/mobile/notifications + PATCH /api/mobile/notifications/[id]/read: equivalentes mobile. Primer uso: crear Notification al publicar un plan (coach→atleta), al asignar una rutina, al completar check-in. El "punto de creación" de notificaciones se activa módulo por módulo.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'goal-dailylog',
+    label: 'Goal + DailyLog — conectar al flujo real',
+    description: 'Dos modelos que existen en DB pero están desconectados del producto. Goal es dead code. DailyLog tiene implementación mínima pero no alimenta el dashboard ni el coach panel.',
+    groups: [
+      {
+        id: 'dailylog-impl',
+        label: 'DailyLog — expandir a canal de datos diario real',
+        period: 'P1 — Mobile endpoint primero',
+        items: [
+          {
+            title: 'DAILY-01 — Mobile endpoint: POST /api/mobile/metrics/log',
+            done: false,
+            priority: 'P1',
+            note: 'Crear /api/mobile/metrics/log (GET + POST) — espejo de /api/metrics/log pero con getMobileUser() en lugar de auth(). El atleta registra peso/sueño/energía desde la app sin pasar por el perfil web. Mismo upsert por userId_date. Incluir en GET /api/mobile/dashboard la métrica de hoy (peso, energía) si existe DailyLog del día.',
+          },
+          {
+            title: 'DAILY-02 — Dashboard: mostrar peso y energía de hoy desde DailyLog',
+            done: false,
+            priority: 'P1',
+            note: 'En getDashboardSummary (web y mobile): incluir DailyLog del día en la respuesta si existe. El dashboard muestra: peso de hoy (si lo registró) + nivel de energía (1-5 iconos). Si no hay registro del día → CTA "Registra tus métricas de hoy". Esto hace al DailyLog parte del hábito diario del atleta, no un formulario enterrado en el perfil.',
+          },
+          {
+            title: 'DAILY-03 — /progress: usar DailyLog como fuente de curva de peso histórica',
+            done: false,
+            priority: 'P2',
+            note: 'GET /api/progress y GET /api/mobile/progress: incluir DailyLog de los últimos 90 días como serie temporal de peso (fecha, weightKg). Graficable como curva de evolución. Hoy el progress solo tiene datos de SessionLog y WeeklyCheckIn. DailyLog tiene la granularidad diaria necesaria para una curva de peso precisa.',
+          },
+          {
+            title: 'DAILY-04 — Panel coach: mostrar últimos 7 días de DailyLog del atleta',
+            done: false,
+            priority: 'P2',
+            note: 'En GET /api/coach/athlete/[id] (o un endpoint separado /api/coach/athlete/[id]/dailylogs): devolver DailyLog de los últimos 7 días del atleta. El coach ve: peso diario, sueño, energía. Esta info + el check-in semanal le da al coach contexto real de cómo está el atleta entre check-ins.',
           },
         ],
       },

@@ -48,7 +48,6 @@ model User {
   accounts          Account[]
   sessions          Session[]
   profile           HealthProfile?
-  goals             Goal[]
   trainingPlans     TrainingPlan[]
   sessionLogs          SessionLog[]
   checkIns             WeeklyCheckIn[]
@@ -225,23 +224,8 @@ model HealthProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── OBJETIVO ───────────────────────────────────────────────────────────────
-
-model Goal {
-  id             String     @id @default(cuid())
-  userId         String
-  type           GoalType
-  raceDate       DateTime?
-  targetTimeSecs Int?
-  targetWeightKg Float?
-  description    String?
-  status         GoalStatus @default(ACTIVE)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trainingPlans TrainingPlan[]
-}
+// ─── TIPOS DE OBJETIVO ──────────────────────────────────────────────────────
+// GoalType se usa como campo directo en TrainingPlan.goalType (no como FK a una tabla Goal)
 
 enum GoalType {
   RACE_5K
@@ -258,18 +242,11 @@ enum GoalType {
   GENERAL_FITNESS
 }
 
-enum GoalStatus {
-  ACTIVE
-  COMPLETED
-  ABANDONED
-}
-
 // ─── PLAN DE ENTRENAMIENTO ──────────────────────────────────────────────────
 
 model TrainingPlan {
   id          String     @id @default(cuid())
   userId      String
-  goalId      String?
   name        String
   goalType    GoalType?  // enum constraint — antes era String?
   totalWeeks  Int
@@ -282,7 +259,6 @@ model TrainingPlan {
   updatedAt   DateTime   @updatedAt
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal  Goal?      @relation(fields: [goalId], references: [id])
   weeks PlanWeek[]
 
   @@index([userId, status])
