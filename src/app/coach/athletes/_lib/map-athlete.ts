@@ -47,6 +47,7 @@ type InputRow = {
       status: string
       startDate: Date
       totalWeeks: number
+      goalType: string | null
       weeks: Array<{
         weekNumber: number
         phase: string
@@ -61,7 +62,6 @@ type InputRow = {
       adjustmentsTriggered: string[]
       weekNumber: number
     }>
-    goals: Array<{ type: string }>
   }
 }
 
@@ -104,7 +104,7 @@ export function mapRelation(rel: InputRow, now: Date): MappedAthlete {
     name: athlete.name ?? 'Atleta',
     email: athlete.email ?? '',
     sport: athlete.profile?.sport ?? '',
-    goal: athlete.goals[0]?.type ?? null,
+    goal: plan?.goalType ?? null,
     currentWeek,
     totalWeeks: plan?.totalWeeks ?? 0,
     phase: (currentPlanWeek?.phase as string) ?? null,

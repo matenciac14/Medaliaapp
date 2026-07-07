@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const [user, dbFoods] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      include: { profile: true, goals: { where: { status: 'ACTIVE' }, take: 1 } },
+      include: { profile: true },
     }),
     availableFoodIds && availableFoodIds.length > 0
       ? prisma.food.findMany({ where: { isActive: true, id: { in: availableFoodIds } }, select: foodSelect })

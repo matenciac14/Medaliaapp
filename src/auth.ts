@@ -25,6 +25,8 @@ const USER_SELECT = {
   featureGym: true,
   onboardingCompleted: true,
   needsRoleSelection: true,
+  identification: true,
+  phoneWa: true,
 } as const
 
 function buildFeaturesFromUser(u: {
@@ -100,6 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           userPlan: 'PRO' as const,
           features,
           needsRoleSelection: user.needsRoleSelection,
+          profileComplete: !!(user.identification && user.phoneWa),
         }
       },
     }),
@@ -115,6 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.userPlan = user.userPlan ?? 'FREE'
         token.features = user.features ?? DEFAULT_USER_CONFIG.features
         token.needsRoleSelection = user.needsRoleSelection ?? false
+        token.profileComplete = user.profileComplete ?? false
       }
 
       // Google OAuth — siempre leer desde DB (PrismaAdapter no llama authorize())
@@ -133,6 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               token.isB2B = false
               token.userPlan = 'FREE'
               token.features = DEFAULT_USER_CONFIG.features
+              token.profileComplete = false
             } else {
               const features = buildFeaturesFromUser(dbUser)
               token.role = dbUser.role
@@ -142,6 +147,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               token.isB2B = !!coachRelation
               token.userPlan = 'PRO'
               token.features = features
+              token.profileComplete = !!(dbUser.identification && dbUser.phoneWa)
             }
           }
         } catch {
@@ -165,6 +171,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.userPlan = 'PRO'
             token.features = features
             token.needsRoleSelection = false
+            token.profileComplete = !!(dbUser.identification && dbUser.phoneWa)
           }
         } catch {
           // silently fail — token retains last known value
@@ -184,6 +191,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.userPlan = t.userPlan ?? 'FREE'
         session.user.needsRoleSelection = t.needsRoleSelection ?? false
         session.user.features = t.features ?? DEFAULT_USER_CONFIG.features
+        session.user.profileComplete = t.profileComplete ?? false
       }
       return session
     },

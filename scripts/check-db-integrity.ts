@@ -87,9 +87,9 @@ async function main() {
     })
   )
 
-  await check('TrainingPlan sin goalType pero con goalId', 'WARNING', () =>
+  await check('TrainingPlan sin goalType', 'WARNING', () =>
     prisma.trainingPlan.findMany({
-      where: { goalId: { not: null }, goalType: null },
+      where: { goalType: null },
       select: { id: true, userId: true, name: true },
     })
   )

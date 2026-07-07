@@ -47,6 +47,20 @@ export async function POST(req: NextRequest) {
 
   const coachId = session.user.id
 
+  // Block if coach identity is incomplete (identification + phoneWa required before inviting athletes)
+  if (!session.user.profileComplete) {
+    const coachUser = await prisma.user.findUnique({
+      where: { id: coachId },
+      select: { identification: true, phoneWa: true },
+    })
+    if (!coachUser?.identification || !coachUser?.phoneWa) {
+      return NextResponse.json(
+        { error: 'Completa tu cédula y número de WhatsApp en tu perfil antes de invitar asesorados.', code: 'PROFILE_INCOMPLETE' },
+        { status: 403 }
+      )
+    }
+  }
+
   try {
     const raw = await req.json().catch(() => null)
     const parsed = parseBody(CreateAthleteSchema, raw)

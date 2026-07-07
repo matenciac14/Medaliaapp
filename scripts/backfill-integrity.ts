@@ -92,23 +92,7 @@ async function main() {
     }
   }
 
-
-// ── 4. Backfill TrainingPlan.goalType desde Goal.type ─────────────────────
-const plansWithoutGoalType = await prisma.trainingPlan.findMany({
-  where: { goalId: { not: null }, goalType: null },
-  select: { id: true, goalId: true },
-})
-console.log(`\nFound ${plansWithoutGoalType.length} TrainingPlans with goalId but no goalType`)
-for (const plan of plansWithoutGoalType) {
-  const goal = await prisma.goal.findUnique({ where: { id: plan.goalId! }, select: { type: true } })
-  if (!goal) continue
-  await prisma.trainingPlan.update({
-    where: { id: plan.id },
-    data: { goalType: goal.type },
-  })
-  console.log(`  ✅ Set goalType=${goal.type} for plan ${plan.id}`)
-}
-  // ── 5. Crear NutritionPlan para atletas sin uno ───────────────────────────
+  // ── 4. Crear NutritionPlan para atletas sin uno ──────────────────────────
   const athletesWithoutNutrition = await prisma.user.findMany({
     where: {
       role: 'ATHLETE',
