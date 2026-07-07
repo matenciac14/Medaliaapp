@@ -529,7 +529,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'INT-02 — Strava OAuth: importar actividades completadas → auto-completa SessionLog', done: false, priority: 'P1', note: 'API pública, OAuth 2.0, no requiere aprobación especial. Webhook para recibir actividades nuevas en tiempo real. Rate limit: 100 req/15min OK. Datos: tipo, distancia, duración, pace, HR media/máxima, splits por km. Muchos corredores ya tienen Strava — reduce fricción de registro a 0 para running. Ver integraciones.md.' },
           { title: 'INT-03 — Garmin Connect API: VO2max, HRV, Training Status, sueño, Body Battery', done: false, priority: 'P2', note: 'Más popular entre corredores serios en LatAm. Los datos más ricos del mercado: VO2max, HRV, Training Status (productivo/sobrecarga), Body Battery. REQUIERE INVESTIGACIÓN: partnership con Garmin Health API — proceso de aprobación y tiempo estimado desconocidos. Alternativa MVP: importar .fit files manualmente. Ver integraciones.md.' },
           { title: 'INT-04 — BLE HRM: conectar monitor de FC por Bluetooth durante sesión (Polar H10, Wahoo TICKR)', done: false, priority: 'P2', note: 'FC en tiempo real durante entrenamiento — visual de zona actual en gym tracker mobile. react-native-ble-plx, UUID 0x180D (Heart Rate Service). Atletas sin smartwatch pero con banda de FC (~$50-80 USD). Requiere bare workflow o config plugin. FC media/máxima → auto-guardada en SessionLog.' },
-          { title: 'INT-05 — Schema DB: campos nuevos para datos de wearables en SessionLog y HealthProfile', done: false, priority: 'P1', note: 'Prerequisito para cualquier integración. Campos: SessionLog.hrAvg Int?, SessionLog.hrMax Int?, SessionLog.caloriesBurned Int?, SessionLog.avgPaceSecPerKm Int?, SessionLog.dataSource String? (MANUAL/STRAVA/GARMIN/HEALTHKIT), SessionLog.externalId String?. HealthProfile.vo2maxEstimate Float?. WeeklyCheckIn.hrvMs Float?. Una migración limpia antes de la primera integración.' },
+          { title: 'INT-05 — Schema DB: campos nuevos para datos de wearables en SessionLog y HealthProfile', done: true, priority: 'P1', note: 'Migración 20260708000002_gym_wearables aplicada en Neon prod. SessionLog: caloriesBurned Int?, avgPaceSecPerKm Int?, dataSource String?, externalId String? (hrAvg/hrMax ya existían de DBA-P1). HealthProfile: vo2maxEstimate Float?. WeeklyCheckIn: hrvMs Float?. SetLog: setLogType SetLogType @default(WORK) (enum WORK/WARMUP/DROPSET).' },
         ],
       },
     ],
@@ -700,9 +700,9 @@ export const GROUPS: RoadmapGroup[] = [
     items: [
       {
         title: 'DB migration: User.identification + User.phoneWa únicos para coaches',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Agregar columnas: identification String? @unique (cédula/pasaporte, formato libre, 5-30 chars) y phoneWa String? @unique (E.164: +57XXXXXXXXXX). Unicidad validada solo entre role=COACH. Sin estas columnas no se puede implementar prevención de fraude de múltiples cuentas. Ver domains/coach-identidad.md para reglas completas.',
+        note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. identification String? @unique, phoneWa String? @unique, showPhoneWa Boolean @default(false) agregados al modelo User. Indexes únicos creados en DB.',
       },
       {
         title: 'Onboarding coach: recopilar identification + phoneWa antes de invitar atletas',
@@ -833,7 +833,7 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Notificaciones — Centro in-app y crons',
         period: 'P1-P2',
         items: [
-          { title: 'PLT-07 — Centro de notificaciones in-app (campana + feed de eventos)', done: false, priority: 'P1', note: 'Modelo Notification { userId, type, title, body, read, createdAt, metadata }. Feed en sidebar con badge de no leídas. Tipos: SESION_HOY, CHECKIN_DISPONIBLE, PLAN_ACTUALIZADO, MENSAJE_COACH, AJUSTE_NUTRICIONAL, LOGRO, PROPUESTA_COACH. El centro in-app es el canal primario — push y email son fallback cuando el atleta no está en la app.' },
+          { title: 'PLT-07 — Centro de notificaciones in-app (campana + feed de eventos)', done: false, priority: 'P1', note: 'Schema aplicado (migración 20260708000001): modelo Notification { userId, type, title, body, read, createdAt, metadata } en Neon prod. Pendiente: UI campana + feed, API GET/POST /api/notifications, badge de no leídas. Tipos: SESION_HOY, CHECKIN_DISPONIBLE, PLAN_ACTUALIZADO, MENSAJE_COACH, AJUSTE_NUTRICIONAL, LOGRO, PROPUESTA_COACH.' },
           { title: 'PLT-08 — Cron: atleta sin actividad 3+ días → push + email re-engagement', done: false, priority: 'P2', note: 'Query: User[ATHLETE] WHERE max(SessionLog.completedAt) < now()-3d AND onboardingCompleted=true. Push: "Te extrañamos — tu plan te espera". Email: re-engagement con resumen de última sesión y CTA. Frecuencia máxima: 1/semana por usuario. No enviar si ya recibió otro email ese día.' },
           { title: 'PLT-09 — Cron: racha en riesgo → push al atleta (1 día sin actividad)', done: false, priority: 'P2', note: 'Atleta que registró actividad ayer pero no hoy → push "¿Hoy no entrenas? Tu racha de N días sigue activa." Solo si el atleta tiene racha activa ≥ 3 días. Query: users con SessionLog ayer pero no hoy. Hora: 20:00 timezone del atleta.' },
           { title: 'PLT-10 — Cron: atleta en /pending 48h → push + email al coach', done: false, priority: 'P1', note: 'Ya documentado en atleta.md. Query: CoachAthlete[ACTIVE] WHERE User.onboardingCompleted=true AND User.featurePlan=false AND coachAthlete.createdAt < now()-48h. Notificación al coach: "Miguel Atencia completó su perfil hace 2 días. Actívalo para que pueda empezar." Push + email al coach.' },
@@ -884,9 +884,9 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Sistema — Base de Datos, Propuestas & Barcode',
         period: 'Próximo',
         items: [
-          { title: 'NUT-01 — Migración schema Food: campos source, barcode, country + indexes', done: false, priority: 'P1', note: 'source String @default("system") — trazabilidad origen (system/usda/icbf/openfoodfacts/coach/user). barcode String? @unique — EAN-13/UPC para lookup OFF. country String? — ISO 3166-1 alpha-2. Indexes: @@index([barcode]), @@index([country]). Ver implementacion/nutricion.md para schema completo.' },
+          { title: 'NUT-01 — Migración schema Food: campos source, barcode, country + indexes', done: true, priority: 'P1', note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. Food: source String @default("system"), barcode String? @unique, country String?. Indexes: Food_barcode_idx, Food_country_idx. Único en barcode garantizado a nivel DB.' },
           { title: 'NUT-02 — Seed Colombia + Mexico: ~250 alimentos nuevos con macros verificados', done: false, priority: 'P1', note: 'CO: panadería (pandebono, almojabana, buñuelo), platos (bandeja paisa, ajiaco, sancocho, tamal), frutas exóticas (lulo, curuba, uchuva, feijoa). MX: base (tortilla, masa), platos (quesadilla, pozole, enchiladas), frutas (mamey, zapote). source:"system", country:"CO"/"MX". Lista completa en implementacion/nutricion.md.' },
-          { title: 'NUT-03 — Modelo FoodProposal + enum FoodProposalStatus + migración', done: false, priority: 'P1', note: 'FoodProposalStatus { PENDING | APPROVED | REJECTED }. FoodProposal { id, submittedById, name, category, macros, country?, notes?, status, reviewedById?, reviewNote?, foodId? }. @@index([status]), @@index([submittedById]). Food: agregar proposals FoodProposal[] + createdBy String?. Ver implementacion/nutricion.md §Ingreso manual.' },
+          { title: 'NUT-03 — Modelo FoodProposal + enum FoodProposalStatus + migración', done: true, priority: 'P1', note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. enum FoodProposalStatus { PENDING | APPROVED | REJECTED }. Tabla FoodProposal con FK a User (submittedBy/reviewedBy) y Food. Indexes: status, submittedById. Relations en User y Food actualizadas en schema.prisma.' },
           { title: 'NUT-04 — ProposeFoodUseCase + IFoodProposalRepository + PrismaFoodProposalRepository', done: false, priority: 'P1', note: 'Librería global: $transaction: (1) Food.create { source:"community", isVerified:false, createdBy:userId } (2) FoodProposal.create { status:PENDING, foodId }. El alimento queda visible para TODOS los atletas con badge "En revisión" — no es privado. Approve → Food.update { isVerified:true }. Reject → Food.update { isActive:false }. domain/nutrition/food-proposal/ + infrastructure/db/food-proposal.repository.ts.' },
           { title: 'NUT-05 — POST /api/nutrition/foods/propose + /api/mobile/nutrition/foods/propose', done: false, priority: 'P1', note: 'Validación Zod: nombre requerido, kcal/macros > 0, category válida, country ISO opcional. Rate limit 10 propuestas/hora por usuario. Retorna { proposalId, foodId }. El alimento ya aparece en la búsqueda global con badge "En revisión" inmediatamente tras la propuesta.' },
           { title: 'NUT-06 — GET /api/nutrition/foods/my-proposals + mobile — atleta ve sus propuestas y estado', done: false, priority: 'P1', note: 'Retorna lista de FoodProposal del userId ordenadas por createdAt desc. Incluye food { name, kcalPer100g } + status + reviewNote si REJECTED. Mobile: badge "N en revisión" en pantalla de nutrición. Al tocar → pantalla de propuestas con estado visual (PENDING/amber · APPROVED/green · REJECTED/red).' },
@@ -1482,9 +1482,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'DB-02 — Agregar identification, phoneWa, showPhoneWa a User (coach identity)',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'identification String? @unique (cédula/pasaporte, 5-30 chars). phoneWa String? @unique (WhatsApp E.164: +57XXXXXXXXXX). showPhoneWa Boolean @default(false). Previene multi-cuenta para obtener Starter gratis N veces. Bloqueo en POST /api/coach/clients/create si identification o phoneWa no están completos. Recopilar en onboarding coach. Ver domains/coach-identidad.md.',
+            note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. identification String? @unique, phoneWa String? @unique, showPhoneWa Boolean @default(false) en User. Indexes únicos en DB. Implementar bloqueo en /api/coach/clients/create y endpoint PATCH /api/coach/profile en worktree feature/coach-identidad.',
           },
           {
             title: 'DB-03 — Agregar campo discipline a SessionLog (unificación de sesiones multi-disciplina)',
