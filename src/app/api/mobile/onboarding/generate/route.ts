@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
       email: mobile.email,
       name: mobile.name,
       role: mobile.role,
+      status: mobile.status ?? 'ACTIVE',
       onboardingCompleted: true,
       userPlan: 'PRO',
       features,

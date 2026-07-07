@@ -8,6 +8,8 @@ import { rateLimitAsync } from '@/lib/rate-limit'
 
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 
+const DISCIPLINES = ['RUNNING', 'STRENGTH', 'CYCLING', 'SWIMMING', 'OTHER'] as const
+
 const LogSessionSchema = z.object({
   plannedSessionId: z.string().min(1).optional(),
   completed: z.boolean().optional(),
@@ -18,6 +20,7 @@ const LogSessionSchema = z.object({
   hrMax: z.number().int().min(30).max(250).optional(),
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
+  discipline: z.enum(DISCIPLINES).optional(),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
 })
 
@@ -34,6 +37,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
   const body = parsed.data
   const sessionDate = body.sessionDate ? new Date(`${body.sessionDate}T00:00:00.000Z`) : null
+  const discipline = body.discipline ?? null
 
   // Si completed === false, no registrar (la sesión queda pendiente)
   if (body.completed === false) {
@@ -76,6 +80,7 @@ export async function POST(req: NextRequest) {
         durationMin: body.durationMin,
         notes: body.notes,
         actualIntensity: body.actualIntensity ?? null,
+        discipline,
       },
     })
   } catch (err) {

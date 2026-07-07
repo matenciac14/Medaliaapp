@@ -8,6 +8,7 @@ import type { SessionType } from '@/generated/prisma/enums'
 import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-adjustment'
 
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
+const DISCIPLINES = ['RUNNING', 'STRENGTH', 'CYCLING', 'SWIMMING', 'OTHER'] as const
 
 const LogSessionSchema = z.object({
   sessionId: z.string().min(1).optional(),
@@ -20,6 +21,7 @@ const LogSessionSchema = z.object({
   distanceKm: z.number().min(0).max(1000).optional(),
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
+  discipline: z.enum(DISCIPLINES).optional(),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
 }).refine(d => d.sessionId || d.sessionType, { message: 'sessionId o sessionType requerido' })
 
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
   const userId = mobile.id
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
-  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity, sessionDate: sessionDateStr } = parsed.data
+  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity, discipline, sessionDate: sessionDateStr } = parsed.data
   const sessionDate = sessionDateStr ? new Date(`${sessionDateStr}T00:00:00.000Z`) : null
 
   // ── Log libre (sin plan) ──────────────────────────────────────────────────
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
         durationMin: actualDurationMin ?? null,
         distanceKm: distanceKm ?? null,
         notes: notes ?? null,
+        discipline: discipline ?? null,
       },
     })
     return NextResponse.json({ ok: true, id: log.id })
@@ -89,6 +92,7 @@ export async function POST(req: NextRequest) {
       distanceKm: distanceKm ?? null,
       notes: notes ?? null,
       actualIntensity: actualIntensity ?? null,
+      discipline: discipline ?? null,
     },
   })
 

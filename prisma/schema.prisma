@@ -45,6 +45,9 @@ model User {
   phoneWa         String?  @unique  // WhatsApp E.164: +57XXXXXXXXXX — único por coach
   showPhoneWa     Boolean  @default(false) // opt-in: mostrar phoneWa en perfil público /p/[slug]
 
+  // Estado de la cuenta — control de acceso administrativo
+  status  UserStatus  @default(ACTIVE)
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -123,6 +126,13 @@ enum UserRole {
   ATHLETE
   COACH
   ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  DELETED
 }
 
 model Account {
@@ -360,6 +370,14 @@ enum SessionType {
   OTRO
 }
 
+enum SessionDiscipline {
+  RUNNING
+  STRENGTH
+  CYCLING
+  SWIMMING
+  OTHER
+}
+
 // ─── REGISTRO DE SESIÓN ─────────────────────────────────────────────────────
 
 model SessionLog {
@@ -377,6 +395,7 @@ model SessionLog {
   garminActivityId String?
   freeSessionType  SessionType?      // solo para logs libres (plannedSessionId = null)
   actualIntensity  SessionIntensity? // intensidad real registrada por el atleta
+  discipline       SessionDiscipline? // discriminador de deporte — RUNNING|STRENGTH|CYCLING|SWIMMING|OTHER
   // Wearables — INT-05
   caloriesBurned   Int?    // kcal totales quemadas (fuente: wearable)
   avgPaceSecPerKm  Int?    // ritmo promedio en segundos/km (running)
@@ -724,6 +743,12 @@ enum PostType {
 
 // ─── PLAN NUTRICIONAL ───────────────────────────────────────────────────────
 
+enum NutritionSource {
+  SYSTEM  // generado por onboarding o check-in automático
+  COACH   // asignado por el coach vía NutritionTemplate
+  ATHLETE // creado por el atleta B2C (self-coach)
+}
+
 /// Singleton — siempre un solo registro con id = "singleton"
 model SystemConfig {
   id        String   @id @default("singleton")
@@ -732,8 +757,9 @@ model SystemConfig {
 }
 
 model NutritionPlan {
-  id             String   @id @default(cuid())
-  userId         String   @unique
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  source         NutritionSource @default(SYSTEM) // origen del plan: SYSTEM | COACH | ATHLETE
   tdee           Int
   targetKcalHard Int
   targetKcalEasy Int
