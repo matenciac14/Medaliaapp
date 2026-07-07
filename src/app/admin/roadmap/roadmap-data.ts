@@ -1467,8 +1467,10 @@ export const GROUPS: RoadmapGroup[] = [
   {
     id: 'db-schema-v2',
     label: 'DB Schema v2 — Correcciones estructurales',
-    description: 'Cambios en schema.prisma identificados en auditoría arquitectural. Orden: P0 primero (migración limpia), luego P1, luego P2.',
-    groups: [
+    color: '#6b7280',
+    bgColor: '#f9fafb',
+    borderColor: '#d1d5db',
+    phases: [
       {
         id: 'db-p0',
         label: 'Fase 1 — Correcciones críticas (P0)',
@@ -1543,8 +1545,10 @@ export const GROUPS: RoadmapGroup[] = [
   {
     id: 'back-db-v2',
     label: 'Backend: código post-migración DB v2',
-    description: 'Cambios en código backend después de aplicar las migraciones de db-schema-v2. Cada tarea BACK-XX corresponde a su DB-XX equivalente. No aplicar migraciones sin tener el código listo para acompañarlas.',
-    groups: [
+    color: '#6b7280',
+    bgColor: '#f9fafb',
+    borderColor: '#d1d5db',
+    phases: [
       {
         id: 'back-safe',
         label: 'Fase 1 — Código para migraciones aditivas (DB-01/02/03/05)',
@@ -1637,8 +1641,10 @@ export const GROUPS: RoadmapGroup[] = [
   {
     id: 'goal-dailylog',
     label: 'Goal + DailyLog — conectar al flujo real',
-    description: 'Dos modelos que existen en DB pero están desconectados del producto. Goal es dead code. DailyLog tiene implementación mínima pero no alimenta el dashboard ni el coach panel.',
-    groups: [
+    color: '#6b7280',
+    bgColor: '#f9fafb',
+    borderColor: '#d1d5db',
+    phases: [
       {
         id: 'dailylog-impl',
         label: 'DailyLog — expandir a canal de datos diario real',

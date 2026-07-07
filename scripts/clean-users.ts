@@ -30,7 +30,6 @@ async function main() {
   await prisma.plannedSession.deleteMany({ where: { week: { plan: { userId: { in: ids } } } } })
   await prisma.planWeek.deleteMany({ where: { plan: { userId: { in: ids } } } })
   await prisma.trainingPlan.deleteMany({ where: { userId: { in: ids } } })
-  await prisma.goal.deleteMany({ where: { userId: { in: ids } } })
   await prisma.healthProfile.deleteMany({ where: { userId: { in: ids } } })
 
   // CoachProfile para coaches eliminados

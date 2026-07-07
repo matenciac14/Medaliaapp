@@ -16,7 +16,6 @@ export async function POST(_req: Request) {
     where: { id: userId },
     include: {
       profile: true,
-      goals: { where: { status: 'ACTIVE' }, take: 1 },
       trainingPlans: { where: { status: 'ACTIVE' }, take: 1 },
     },
   })
@@ -24,7 +23,6 @@ export async function POST(_req: Request) {
   if (!user?.profile) return Response.json({ error: 'Perfil de salud requerido' }, { status: 400 })
 
   const profile = user.profile
-  const goal = user.goals[0]
 
   // Calcular TDEE con fórmulas
   const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)

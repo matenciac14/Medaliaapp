@@ -50,10 +50,6 @@ export async function GET(req: NextRequest) {
               weekNumber: true,
             },
           },
-          goals: {
-            where: { status: 'ACTIVE' },
-            take: 1,
-          },
         },
       },
     },

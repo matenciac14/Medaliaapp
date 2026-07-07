@@ -66,7 +66,6 @@ export default async function CoachDashboardPage() {
                 weekNumber: true,
               },
             },
-            goals: { where: { status: 'ACTIVE' }, take: 1 },
           },
         },
       },
