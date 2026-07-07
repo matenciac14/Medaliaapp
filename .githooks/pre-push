@@ -29,4 +29,15 @@ if ! echo "$BRANCH" | grep -Eq "$PATTERN"; then
   exit 1
 fi
 
+# ── TypeScript check ─────────────────────────────────────────────────────────
+echo "  → Verificando tipos TypeScript..."
+if ! pnpm tsc --noEmit 2>/dev/null; then
+  echo ""
+  echo "  ✗ TypeScript: errores de tipo detectados — push bloqueado."
+  echo "    Corre 'pnpm tsc --noEmit' para ver el detalle."
+  echo ""
+  exit 1
+fi
+echo "  ✓ TypeScript OK"
+
 exit 0
