@@ -165,7 +165,7 @@ export class PrismaPlanRepository implements IPlanRepository {
   async upsertNutrition(userId: string, targets: NutritionTargets): Promise<void> {
     await this.db.nutritionPlan.upsert({
       where: { userId },
-      create: { userId, ...targets },
+      create: { userId, source: 'SYSTEM', ...targets },
       update: targets,
     })
   }

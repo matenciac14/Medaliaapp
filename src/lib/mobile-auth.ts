@@ -7,6 +7,7 @@ export type MobileTokenPayload = {
   email: string
   name: string
   role: string
+  status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
   onboardingCompleted: boolean
   userPlan: 'FREE' | 'PRO'
   features: UserConfig['features']

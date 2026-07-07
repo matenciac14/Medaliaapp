@@ -9,7 +9,7 @@ import { emailSchema, passwordSchema, parseBody } from '@/lib/validation'
 const LoginSchema = z.object({ email: emailSchema, password: passwordSchema })
 
 const USER_SELECT = {
-  id: true, email: true, name: true, password: true, role: true,
+  id: true, email: true, name: true, password: true, role: true, status: true,
   featurePlan: true, featureCheckin: true, featureNutrition: true,
   featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
   onboardingCompleted: true,
@@ -42,6 +42,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Credenciales incorrectas.' }, { status: 401 })
     }
 
+    if (user.status !== 'ACTIVE') {
+      const message = user.status === 'BLOCKED' ? 'Tu cuenta ha sido bloqueada.' : 'Tu cuenta está suspendida.'
+      return NextResponse.json({ error: message }, { status: 403 })
+    }
+
     const features = {
       plan:      user.featurePlan,
       checkin:   user.featureCheckin,
@@ -57,6 +62,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name ?? '',
       role: user.role,
+      status: user.status,
       onboardingCompleted: user.onboardingCompleted,
       userPlan: 'PRO',
       features,

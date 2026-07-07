@@ -15,6 +15,7 @@ const USER_SELECT = {
   name: true,
   image: true,
   role: true,
+  status: true,
   password: true,
   featurePlan: true,
   featureCheckin: true,
@@ -96,6 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
+          status: user.status,
           onboardingCompleted: user.onboardingCompleted,
           activated: user.featurePlan,
           isB2B: !!coachRelation,
@@ -112,6 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id
         token.role = user.role
+        token.status = user.status ?? 'ACTIVE'
         token.onboardingCompleted = user.onboardingCompleted ?? false
         token.activated = user.activated ?? false
         token.isB2B = user.isB2B ?? false
@@ -132,6 +135,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             if (dbUser.needsRoleSelection) {
               token.needsRoleSelection = true
+              token.status = 'ACTIVE'
               token.onboardingCompleted = false
               token.activated = false
               token.isB2B = false
@@ -141,6 +145,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             } else {
               const features = buildFeaturesFromUser(dbUser)
               token.role = dbUser.role
+              token.status = dbUser.status
               token.needsRoleSelection = false
               token.onboardingCompleted = dbUser.onboardingCompleted
               token.activated = dbUser.featurePlan
@@ -165,6 +170,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             const features = buildFeaturesFromUser(dbUser)
             token.role = dbUser.role
+            token.status = dbUser.status
             token.activated = dbUser.featurePlan
             token.isB2B = !!coachRelation
             token.onboardingCompleted = dbUser.onboardingCompleted
@@ -185,6 +191,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (t) {
         session.user.id = t.id ?? ''
         session.user.role = t.role ?? 'ATHLETE'
+        session.user.status = t.status ?? 'ACTIVE'
         session.user.onboardingCompleted = t.onboardingCompleted ?? false
         session.user.activated = t.activated ?? false
         session.user.isB2B = t.isB2B ?? false

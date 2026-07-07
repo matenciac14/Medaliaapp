@@ -1102,7 +1102,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'NEW-P1-04 — Precio inconsistente $15/mes en paywalls de /plan, /progress, /gym/session, /gym/history', done: true, priority: 'P1', note: 'Fix: 4 CTAs "Pro $15/mes" → "Pro $9.99/mes" en plan/page.tsx, progress/page.tsx, gym/session/page.tsx, gym/history/page.tsx. Precio canónico $9.99/mes. Branch: bugfix/athlete-e2e.' },
           { title: 'NEW-P2-05 — mapWebCheckinBody defaultea rpe=5, sleepHours=7, stressLevel=0 para campos no enviados → datos fake en DB', done: true, priority: 'P2', note: 'Fix completo web + mobile: CheckInInput hace rpe/sleepHours/energyLevel/stressLevel opcionales; evaluate-rules añade !== undefined guards; mapper web elimina defaults; mapper mobile elimina sleepHours??7 y stressLevel??3; repositorio usa ??undefined para omitir del write. Cubierto en detalle por NEW-P2-10. Branch: bugfix/athlete-e2e.' },
           { title: 'NEW-P2-06 — gym sessions (GymSession, no SessionLog) no cuentan en streakDays — getDashboardSummary calcula streak solo desde SessionLog', done: true, priority: 'P2', note: 'Fix aplicado — ver NEW-P2-11. DashboardInput recibe gymCompletionDates?: Date[]; streak mergea SessionLog y GymSession. Branch: bugfix/athlete-e2e.' },
-          { title: 'NEW-P2-07 — nutrition/generate fetcha user.goals pero la variable goal nunca se usa (dead code)', done: false, priority: 'P2', note: 'La query include: { goals: {...} } en api/nutrition/generate/route.ts trae datos que se asignan a const goal = user.goals[0] pero goal nunca se referencia. calculateMacros usa profile.weightGoalKg directamente. Fix: eliminar goals del include.' },
+          { title: 'NEW-P2-07 — nutrition/generate fetcha user.goals pero la variable goal nunca se usa (dead code)', done: true, priority: 'P2', note: 'Fix: goals eliminado del include en api/nutrition/generate/route.ts, api/nutrition/generate-meals/route.ts y api/mobile/nutrition/generate-meals/route.ts. También limpiados coach/dashboard/athletes, coach/athletes/page.tsx y coach/dashboard/page.tsx que incluían goals innecesariamente. Branch: feature/landing-conversion.' },
           { title: 'NEW-P1-08 — CalendarStrip mostraba semana diferente al dashboard/plan cuando el plan no empezaba en lunes', done: true, priority: 'P1', note: 'buildCalendarWeek() usaba el lunes del calendario como referencia (monday - startDate). getPlanWeekNumber() usa Date.now(). Divergían si el plan empezaba en día no-lunes. Fix: calendar.ts usa currentPlanWeek = getPlanWeekNumber(startDate) + weekOffset — misma fuente de verdad que dashboard, /plan y checkin. weekOffset=0 siempre es la semana actual; -1/+N es navegación relativa coherente. Branch: bugfix/athlete-e2e.' },
           { title: 'NEW-P1-09 — /gym: banner "Sesión de fuerza programada" nunca aparecía (PlannedSession.date no existe)', done: true, priority: 'P1', note: 'gym/page.tsx buscaba PlannedSession con where: { date: { gte: todayStart } } pero PlannedSession usa dayOfWeek (1-7), no un campo date. La query siempre retornaba null → banner nunca visible. Fix: query usa dayOfWeek: todayDow + week: { planId, weekNumber: currentWeekForBanner } calculado con getPlanWeekNumber. Branch: bugfix/athlete-e2e.' },
           { title: 'NEW-P2-10 — Check-in mapper persistía valores fake (rpe=5, sleepHours=7, energyLevel=5, stressLevel=0) para campos no enviados por el atleta', done: true, priority: 'P2', note: 'Fix web + mobile: (1) CheckInInput hace rpe/sleepHours/energyLevel/stressLevel opcionales; (2) evaluate-rules añade !== undefined checks antes de disparar trigger; (3) mapper web elimina defaults; (4) mapper mobile elimina sleepHours??7 y stressLevel??3 (opcionales en MobileCheckinBody); (5) repositorio usa ?? undefined para omitir campos del write. muscleSoreness y energyLevel siguen requeridos en mobile. Branch: bugfix/athlete-e2e.' },
@@ -1280,7 +1280,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-NEW-05 — Nutrición: macros en gramos no suman las calorías totales mostradas (diferencia de 295 kcal)', done: true, priority: 'P1', note: 'Fix: daily-target.ts — getDailyNutritionTarget() ahora calcula kcal como Math.round(proteinG*4 + carbsG*4 + fatG*9) en lugar de leer el valor almacenado (TDEE base). Esto garantiza que calorías mostradas siempre corresponden exactamente a la suma de macros. Los 4 casos (HIGH/MODERATE/LOW/REST) actualizados. Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-06 — Módulo Ejercicios (/gym) muestra solo rutinas de fuerza a atleta runner sin contenido relevante', done: false, priority: 'P2', note: 'E2E-2026-07-05: Atleta Running ve 5 rutinas de fuerza/hipertrofia (Push Pull Legs, Full Body, Upper/Lower, Fuerza 5×5, PPL 6 días). Ningún contenido de running. El módulo no filtra por activityType ni comunica por qué un corredor ve rutinas de pesas. Fix: leer HealthProfile.sport del atleta y priorizar o filtrar las rutinas según el deporte. O agregar sección de "Fuerza complementaria para runners".' },
           { title: 'BUG-NEW-07 — Naming inconsistency: nav lateral dice "Ejercicios" pero la ruta es /gym y el contenido es de gym', done: false, priority: 'P3', note: 'E2E-2026-07-05: El item del nav lateral se llama "Ejercicios" pero la URL es /gym y el contenido son plantillas de entrenamiento de fuerza en gym. Para un atleta runner, "Ejercicios" sugiere sus rutinas de running. La etiqueta no refleja el contenido del módulo. Fix: renombrar el nav item a "Gym" o "Fuerza", o ampliar el contenido del módulo para incluir también ejercicios de running.' },
-          { title: 'BUG-NEW-08 — Registro diario en /profile pre-carga peso y FC reposo con valores que no pertenecen al usuario', done: false, priority: 'P1', note: 'E2E-2026-07-05: CRÍTICO. El formulario REGISTRO DIARIO en /profile muestra Peso: 75.0 kg cuando el perfil del usuario tiene 70 kg (HealthProfile.weightKg). FC reposo: 55 bpm cuando el perfil muestra "— bpm" (nunca ingresada). Si el atleta guarda sin revisar, persiste datos incorrectos (5 kg más del peso real, FC inventada) que afectan TDEE, macros y ajustes del check-in. Causa: el componente usa valores default hardcodeados en lugar de cargar desde HealthProfile. Fix: en el server component que renderiza /profile, hacer query de HealthProfile y pasar weightKg y hrResting como initialValues al formulario.' },
+          { title: 'BUG-NEW-08 — Registro diario en /profile pre-carga peso y FC reposo con valores que no pertenecen al usuario', done: true, priority: 'P1', note: 'Fix: ProfileClient.tsx — placeholders de los inputs de peso y FC reposo ahora usan p?.weightKg y p?.hrResting del HealthProfile en lugar de valores hardcodeados (75.0 kg, 55 bpm). Branch: bugfix/profile-preload.' },
         ],
       },
 
@@ -1478,9 +1478,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'DB-01 — Agregar UserStatus enum + campo status a User',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Enum: ACTIVE | SUSPENDED | BLOCKED | DELETED. Campo: status UserStatus @default(ACTIVE). Middleware actual no bloquea usuarios suspendidos/bloqueados — solo existe control vía feature flags. Sin este campo no hay separación entre cuenta activa, suspendida por pago y bloqueada por admin. Migración: ALTER TABLE "User" ADD COLUMN "status" "UserStatus" DEFAULT \'ACTIVE\'. Impacto middleware: agregar check status !== ACTIVE → 401.',
+            note: 'Migración 20260709000001 aplicada. UserStatus enum: ACTIVE|SUSPENDED|BLOCKED|DELETED. User.status @default(ACTIVE). Ver BACK-01 para el código de middleware correspondiente (también completado en esta sesión).',
           },
           {
             title: 'DB-02 — Agregar identification, phoneWa, showPhoneWa a User (coach identity)',
@@ -1490,9 +1490,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'DB-03 — Agregar campo discipline a SessionLog (unificación de sesiones multi-disciplina)',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Enum SessionDiscipline: RUNNING | STRENGTH | CYCLING | SWIMMING | OTHER. Campo: discipline SessionDiscipline? en SessionLog. Mantiene GymSession/SetLog tal cual en código — solo agrega un discriminador en el log padre. Permite filtros por disciplina en historial y métricas. Migración no destructiva: ALTER TABLE "SessionLog" ADD COLUMN "discipline" "SessionDiscipline". Actualizar POST /api/log/session y POST /api/mobile/log/session para recibir y persistir discipline.',
+            note: 'Migración 20260709000001 aplicada. SessionDiscipline enum: RUNNING|STRENGTH|CYCLING|SWIMMING|OTHER. SessionLog.discipline nullable. POST /api/log/session y POST /api/mobile/log/session actualizados para recibir y persistir discipline.',
           },
           {
             title: 'DB-04 — Reemplazar modelo Exercise con schema WorkoutX-compatible',
@@ -1509,9 +1509,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'DB-05 — Unificar NutritionPlan: agregar campo source (SYSTEM|COACH|ATHLETE)',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Enum NutritionSource: SYSTEM | COACH | ATHLETE. Campo: source NutritionSource @default(SYSTEM). NutritionPlan es la fuente de verdad única del plan nutricional activo. source discrimina si fue generado por el sistema (onboarding/check-in), asignado por el coach (NutritionTemplate → NutritionPlan), o creado por el atleta (self-coach). Migración: ALTER TABLE "NutritionPlan" ADD COLUMN "source" "NutritionSource" DEFAULT \'SYSTEM\'. Actualizar lógica de asignación de templates del coach.',
+            note: 'Migración 20260709000001 aplicada. NutritionSource enum: SYSTEM|COACH|ATHLETE. NutritionPlan.source @default(SYSTEM). upsertNutrition en plan.repository.ts usa source: SYSTEM en create. Pendiente: cuando coach asigna template → source: COACH (ver /api/coach/athlete/[id]/nutrition cuando exista).',
           },
           {
             title: 'DB-06 — NutritionTemplate: hacer coachId nullable + agregar athleteId FK opcional',
@@ -1521,9 +1521,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'DB-07 — Agregar modelo FoodProposal (alimentos propuestos por la comunidad)',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Campos: id, userId FK (quién propone), name, brand?, kcal, protein, carbs, fat, servingSize, servingUnit, barcode?, source String @default("USER"), status FoodProposalStatus @default(PENDING) (PENDING|APPROVED|REJECTED), adminNote?, createdAt, reviewedAt?, reviewedBy? FK Admin. Admin aprueba → el alimento pasa a Food con isActive=true. Endpoint: POST /api/nutrition/foods/propose (NUT-05), GET /api/nutrition/foods/my-proposals (NUT-06). Ver domains/nutricion.md.',
+            note: 'Schema + migración aplicados en 20260708000001. FoodProposal model con FoodProposalStatus enum (PENDING|APPROVED|REJECTED) ya en DB. Pendiente: endpoints BACK-07 (NUT-05 y NUT-06).',
           },
         ],
       },
@@ -1534,9 +1534,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'DB-08 — Agregar modelo Notification (centro de notificaciones in-app)',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'Campos básicos: id, userId FK, type String (SESSION_REMINDER|CHECKIN_AVAILABLE|PLAN_UPDATED|COACH_MESSAGE|ACHIEVEMENT|PAYMENT_DUE|etc.), title, body, read Boolean @default(false), actionUrl String?, createdAt, readAt?. Sin over-engineering: type es String libre para flexibilidad, no enum (evita migración por cada tipo nuevo). API: GET /api/notifications (listado), PATCH /api/notifications/[id]/read, DELETE /api/notifications/[id]. Centro in-app es canal 1 — todo evento importante genera un registro aquí antes de considerar push o email. Ver domains/plataforma.md §Sistema de notificaciones.',
+            note: 'Schema + migración aplicados en 20260708000001. Notification model ya en DB con indexes (userId, read) y (userId, createdAt desc). Pendiente: endpoints BACK-08 (GET /api/notifications, PATCH /api/notifications/[id]/read).',
           },
         ],
       },
@@ -1556,27 +1556,27 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'BACK-01 — Middleware: bloquear usuarios SUSPENDED y BLOCKED',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Agregar check en src/middleware.ts: si session.user existe pero User.status !== ACTIVE → 401 (SUSPENDED: "Tu cuenta está suspendida") o 403 (BLOCKED: "Tu cuenta ha sido bloqueada"). Requiere incluir status en el JWT (actualizar auth.ts callback). Mobile: getMobileUser() también debe verificar User.status desde DB en cada request o incluirlo en el JWT mobile.',
+            note: 'User.status incluido en JWT (auth.ts + auth.config.ts). Middleware redirige a /login con mensaje de error si status !== ACTIVE. Mobile login retorna 403 si status !== ACTIVE. MobileTokenPayload incluye status. Todos los signMobileToken actualizados.',
           },
           {
             title: 'BACK-02 — /api/coach/clients/create: bloquear si identification o phoneWa no están completos',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'En POST /api/coach/clients/create, antes de crear el atleta: verificar que session.user.identification && session.user.phoneWa no sean null. Si falta alguno → 403 con mensaje "Debes completar tu cédula y WhatsApp antes de agregar asesorados". Crear o extender /api/coach/profile PATCH para recibir identification + phoneWa con validación de unicidad y formato E.164 para phoneWa.',
+            note: 'Ya implementado en feature/coach-identidad (PR #67). Verifica session.user.profileComplete y luego doble-check DB. Retorna 403 con código PROFILE_INCOMPLETE si falta identification o phoneWa.',
           },
           {
             title: 'BACK-03 — Rutas de session log: recibir y persistir campo discipline',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Actualizar POST /api/log/session y POST /api/mobile/log/session para aceptar discipline (SessionDiscipline enum: RUNNING|STRENGTH|CYCLING|SWIMMING|OTHER) en el body. Persistir en SessionLog.discipline. GET /api/log/sessions y GET /api/mobile/log/sessions: incluir discipline en la respuesta. Actualizar también GET /api/gym/session/complete si debe crear SessionLog paralelo con discipline=STRENGTH.',
+            note: 'POST /api/log/session y POST /api/mobile/log/session actualizados: aceptan discipline (SessionDiscipline enum) y lo persisten en SessionLog.discipline. Pendiente: incluir discipline en GET responses (historial) cuando se implemente ese endpoint.',
           },
           {
             title: 'BACK-05 — Rutas de NutritionPlan: incluir source en creación y respuesta',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'completeOnboardingUseCase y generate-plan.use-case.ts: al crear NutritionPlan → source: "SYSTEM". /api/coach/athlete/[id]/nutrition (cuando el coach asigna): source: "COACH". Si el atleta genera su propio plan (futuro): source: "ATHLETE". GET /api/nutrition y GET /api/mobile/nutrition: incluir source en la respuesta para que el cliente sepa el origen del plan.',
+            note: 'plan.repository.ts → upsertNutrition: create incluye source: SYSTEM. NutritionPlan existentes en DB ya tienen DEFAULT SYSTEM por la migración. Pendiente: cuando coach asigna template → source: COACH; incluir source en GET /api/nutrition y GET /api/mobile/nutrition responses.',
           },
         ],
       },

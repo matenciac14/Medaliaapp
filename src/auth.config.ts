@@ -24,6 +24,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id
         token.role = user.role
+        token.status = user.status ?? 'ACTIVE'
         token.onboardingCompleted = user.onboardingCompleted ?? false
         token.activated = user.activated ?? false
         token.userPlan = user.userPlan ?? 'FREE'
@@ -38,6 +39,7 @@ export const authConfig: NextAuthConfig = {
       if (t) {
         session.user.id = t.id ?? ''
         session.user.role = t.role ?? 'ATHLETE'
+        session.user.status = t.status ?? 'ACTIVE'
         session.user.onboardingCompleted = t.onboardingCompleted ?? false
         session.user.activated = t.activated ?? false
         session.user.userPlan = t.userPlan ?? 'FREE'

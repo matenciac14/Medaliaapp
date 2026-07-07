@@ -5,7 +5,7 @@ import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
 import { rateLimitAsync } from '@/lib/rate-limit'
 
 const USER_SELECT = {
-  id: true, email: true, name: true, role: true, image: true,
+  id: true, email: true, name: true, role: true, status: true, image: true,
   featurePlan: true, featureCheckin: true, featureNutrition: true,
   featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
   onboardingCompleted: true, needsRoleSelection: true,
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
       email: dbUser.email,
       name: dbUser.name ?? '',
       role: dbUser.role,
+      status: dbUser.status ?? 'ACTIVE',
       onboardingCompleted: dbUser.onboardingCompleted,
       userPlan: 'PRO',
       features,

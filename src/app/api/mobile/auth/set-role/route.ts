@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       }),
     },
     select: {
-      id: true, email: true, name: true, role: true,
+      id: true, email: true, name: true, role: true, status: true,
       featurePlan: true, featureCheckin: true, featureNutrition: true,
       featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
       onboardingCompleted: true,
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
     email: updatedUser.email,
     name: updatedUser.name ?? '',
     role: updatedUser.role,
+    status: updatedUser.status,
     onboardingCompleted: updatedUser.onboardingCompleted,
     userPlan: 'PRO',
     features,
