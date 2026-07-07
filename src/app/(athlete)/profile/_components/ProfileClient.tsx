@@ -414,7 +414,7 @@ export default function ProfileClient({ user }: Props) {
             <input
               type="number"
               step="0.1"
-              placeholder="75.0"
+              placeholder={p?.weightKg?.toString() ?? '—'}
               value={form.weightKg}
               onChange={e => setForm(f => ({ ...f, weightKg: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
@@ -426,7 +426,7 @@ export default function ProfileClient({ user }: Props) {
             </label>
             <input
               type="number"
-              placeholder="55"
+              placeholder={p?.hrResting?.toString() ?? '—'}
               value={form.hrResting}
               onChange={e => setForm(f => ({ ...f, hrResting: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]"
