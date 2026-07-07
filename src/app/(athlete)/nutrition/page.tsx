@@ -6,13 +6,13 @@ import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
 import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
 import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
+import NutritionInitClient from './_components/NutritionInitClient'
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -99,33 +99,10 @@ export default async function NutritionPage() {
     }),
   ])
 
-  // Lazy init: si no hay NutritionPlan pero sí HealthProfile, calcularlo y persistirlo
-  let nutritionPlan = nutritionPlanRaw
-  if (!nutritionPlan && healthProfile?.weightKg && healthProfile?.heightCm && healthProfile?.age) {
-    const tdee = calculateTDEE(
-      healthProfile.weightKg,
-      healthProfile.heightCm,
-      healthProfile.age,
-      (healthProfile.gender ?? 'male') as 'male' | 'female',
-      5 // factor consistente con syncWeight (check-in) y nutrition/generate
-    )
-    const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)
-    nutritionPlan = await prisma.nutritionPlan.upsert({
-      where: { userId },
-      update: {},
-      create: {
-        userId,
-        tdee,
-        targetKcalHard: macros.hard.kcal,
-        targetKcalEasy: macros.easy.kcal,
-        targetKcalRest: macros.rest.kcal,
-        proteinG: macros.hard.protein,
-        carbsHardG: macros.hard.carbs,
-        carbsEasyG: macros.easy.carbs,
-        fatG: macros.hard.fat,
-      },
-    })
-  }
+  // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
+  // Si falta NutritionPlan, NutritionInitClient lo crea vía POST /api/nutrition/init y refresca.
+  const nutritionPlan = nutritionPlanRaw
+  const needsNutritionInit = !nutritionPlan && !!healthProfile?.weightKg && !!healthProfile?.heightCm && !!healthProfile?.age
 
   const gymDayToday = gymToday?.template.days[0]
   const hasGymSessionToday = !!gymDayToday && !gymDayToday.isRestDay
@@ -257,6 +234,8 @@ export default async function NutritionPage() {
           Completa el onboarding para activar tu plan nutricional base.
         </div>
       )}
+      {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
+      {needsNutritionInit && <NutritionInitClient />}
 
       {/* Guía de alimentos — siempre visible si hay alimentos en la librería */}
       {allFoods.length > 0 && (

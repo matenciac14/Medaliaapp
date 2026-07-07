@@ -28,11 +28,11 @@ export class PrismaCheckInRepository implements ICheckInRepository {
     const record = {
       weightKg: data.weight ?? undefined,
       hrResting: data.heartRate ?? undefined,
-      sleepHours: data.sleepHours,
+      sleepHours: data.sleepHours ?? undefined,
       sleepScore: data.sleepScore ?? undefined,
-      hardestSessionRpe: data.rpe,
-      energyLevel: data.energyLevel,
-      stressLevel: data.stressLevel,
+      hardestSessionRpe: data.rpe ?? undefined,
+      energyLevel: data.energyLevel ?? undefined,
+      stressLevel: data.stressLevel ?? undefined,
       motivationLevel: data.motivation ?? null,
       nutritionAdherencePct: data.nutritionAdherence
         ? Math.round(data.nutritionAdherence * 10)  // 1-10 scale → 0-100

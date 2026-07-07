@@ -31,8 +31,8 @@ export default async function GymHistoryPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
         <span className="text-5xl">🏋️</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">Historial de gym no disponible</h2>
-        <p className="text-gray-500 text-sm max-w-xs">Tu coach aún no ha activado el módulo de ejercicios en tu cuenta.</p>
+        <h2 className="text-xl font-bold text-[#1e3a5f]">Historial de gym disponible en Pro</h2>
+        <p className="text-gray-500 text-sm max-w-xs">Accede a tu historial completo de sesiones con el plan Pro.</p>
         <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $9.99/mes</a>
       </div>
     )

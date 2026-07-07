@@ -11,13 +11,14 @@ import ProgressClient, {
   type MeasurementPoint,
 } from './_components/ProgressClient'
 
-// Adherencia real: sesiones con log / sesiones planificadas
+// Adherencia real: sesiones con log / sesiones planificadas (excluye DESCANSO)
 function calcAdherencePct(
-  sessions: { log: { id: string } | null }[]
+  sessions: { log: { id: string } | null; type: string }[]
 ): number {
-  if (sessions.length === 0) return 0
-  const completed = sessions.filter((s) => s.log !== null).length
-  return Math.round((completed / sessions.length) * 100)
+  const training = sessions.filter((s) => s.type !== 'DESCANSO')
+  if (training.length === 0) return 0
+  const completed = training.filter((s) => s.log !== null).length
+  return Math.round((completed / training.length) * 100)
 }
 
 export default async function ProgressPage() {

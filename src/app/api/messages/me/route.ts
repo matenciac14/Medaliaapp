@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest) {
   const userId = session.user.id
 
   const coachRelation = await prisma.coachAthlete.findFirst({
-    where: { athleteId: userId },
+    where: { athleteId: userId, status: 'ACTIVE' },
     select: { coach: { select: { id: true, name: true } } },
   })
 

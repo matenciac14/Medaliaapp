@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { DAY_LABELS } from '@/lib/constants/sessions'
 import { translateMuscleGroup } from '@/lib/gym-labels'
 import { prisma } from '@/lib/db/prisma'
@@ -45,24 +46,26 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       })
     : null
 
-  // Check today's planned session type
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-  const tomorrowStart = new Date(todayStart)
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
-
-  const plannedToday = await prisma.plannedSession.findFirst({
-    where: {
-      date: { gte: todayStart, lt: tomorrowStart },
-      week: {
-        plan: {
-          userId: athleteId,
-          status: 'ACTIVE',
-        },
-      },
-    },
-    select: { type: true, durationMin: true, detailText: true },
+  // Check today's planned session usando dayOfWeek + semana actual del plan
+  // (PlannedSession no tiene campo date — usa dayOfWeek 1=Lun…7=Dom)
+  const todayDowForBanner = jsToOurDow(new Date().getDay())
+  const activePlanForBanner = await prisma.trainingPlan.findFirst({
+    where: { userId: athleteId, status: 'ACTIVE' },
+    select: { id: true, startDate: true, totalWeeks: true },
   })
+  const currentWeekForBanner = activePlanForBanner
+    ? getPlanWeekNumber(new Date(activePlanForBanner.startDate), activePlanForBanner.totalWeeks)
+    : null
+
+  const plannedToday = activePlanForBanner && currentWeekForBanner
+    ? await prisma.plannedSession.findFirst({
+        where: {
+          dayOfWeek: todayDowForBanner,
+          week: { planId: activePlanForBanner.id, weekNumber: currentWeekForBanner },
+        },
+        select: { type: true, durationMin: true, detailText: true },
+      })
+    : null
 
   const assigned = await prisma.assignedWorkout.findFirst({
     where: { athleteId, isActive: true },
