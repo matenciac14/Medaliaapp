@@ -706,21 +706,21 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Onboarding coach: recopilar identification + phoneWa antes de invitar atletas',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'Flujo: registro coach → primer login → banner "Completa tu perfil profesional" → paso con identification (obligatorio) + phoneWa en E.164 (obligatorio). No bloquea acceso al panel — bloquea POST /api/coach/clients/create hasta completar. Endpoint: PATCH /api/coach/profile con validación de unicidad (409 si ya existe esa cédula o ese WhatsApp en otro coach).',
+        note: 'PATCH /api/coach/profile acepta identification (5-30 chars) + phoneWa (E.164). Validación + persistencia en User. Banner ⚠️ en coach dashboard si profileComplete=false. JWT incluye profileComplete para no requerir query extra por request.',
       },
       {
         title: 'Validación unicidad: identification y phoneWa al completar perfil coach',
-        done: false,
+        done: true,
         priority: 'P0',
-        note: 'POST /api/coach/profile → buscar User con mismo identification o phoneWa donde role=COACH → 409 con mensaje claro: "Ya existe un coach registrado con esa identificación" / "Ya existe un coach registrado con ese número de WhatsApp". Previene creación de múltiples cuentas para obtener Starter gratis N veces.',
+        note: 'Checks en paralelo: slug + identification + phoneWa. findFirst({ role: COACH, NOT: { id: coachId } }) → 409 con mensaje específico por campo. Aplicado en PATCH /api/coach/profile.',
       },
       {
         title: 'Bloqueo POST /api/coach/clients/create si perfil coach incompleto',
-        done: false,
+        done: true,
         priority: 'P1',
-        note: 'Si el coach no tiene identification y phoneWa → devolver 403 con code: PROFILE_INCOMPLETE y mensaje: "Completa tu perfil antes de invitar atletas". Esto garantiza que todo coach que invita atletas ya pasó por la validación de identidad.',
+        note: '403 PROFILE_INCOMPLETE si !identification || !phoneWa. Doble check: JWT profileComplete (rápido) + query DB (si token stale). Mensaje: "Completa tu cédula y número de WhatsApp en tu perfil antes de invitar asesorados."',
       },
       {
         title: 'Definición canónica de atleta activo para billing',
@@ -730,9 +730,9 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         title: 'Admin: ver identification y phoneWa del coach — panel de verificación',
-        done: false,
+        done: true,
         priority: 'P1',
-        note: 'En /admin/coaches: columnas identification y phoneWa visibles solo para admin. Permite verificación manual ante sospecha de fraude. Nunca exponer identification en APIs públicas ni en el perfil del coach.',
+        note: 'En /admin/coaches: identification y phoneWa visibles bajo el email de cada coach. Badge rojo "Sin cédula" / "Sin WhatsApp" si faltan. Solo visible para admin — nunca expuesto en APIs públicas.',
       },
       {
         title: 'PhoneWa en perfil público del coach (/p/[slug]) — opt-in',
