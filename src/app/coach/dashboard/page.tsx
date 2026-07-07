@@ -129,6 +129,19 @@ export default async function CoachDashboardPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      {/* Banner: perfil incompleto */}
+      {!session.user.profileComplete && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="mt-0.5 text-base">⚠️</span>
+          <div>
+            <span className="font-semibold">Completa tu perfil profesional</span>
+            {' '}— necesitas registrar tu número de cédula y tu WhatsApp para poder invitar asesorados.{' '}
+            <Link href="/coach/profile" className="underline font-medium hover:text-amber-900">
+              Completar ahora →
+            </Link>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
         <div>

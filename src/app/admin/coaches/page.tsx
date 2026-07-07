@@ -12,6 +12,7 @@ export default async function AdminCoachesPage() {
       where: { role: 'COACH' },
       select: {
         id: true, name: true, email: true, createdAt: true,
+        identification: true, phoneWa: true,
         subscription: { select: { coachTier: true } },
         coachOf: {
           select: {
@@ -99,6 +100,14 @@ export default async function AdminCoachesPage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-500">{coach.email}</p>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                      <span title="Identificación (solo admin)">
+                        🪪 {coach.identification ?? <span className="text-red-400 font-medium">Sin cédula</span>}
+                      </span>
+                      <span title="WhatsApp (solo admin)">
+                        📱 {coach.phoneWa ?? <span className="text-red-400 font-medium">Sin WhatsApp</span>}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-6 text-sm text-gray-500 shrink-0">
