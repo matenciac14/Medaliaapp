@@ -140,6 +140,11 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'DBI-18 — Payment delete: ownership check fuera de $transaction puede crear AuditLog orphan', done: true, priority: 'P2', note: 'FIXED: payments/[paymentId]/route.ts DELETE ahora usa $transaction interactiva — findFirst ownership check dentro del tx antes de auditLog.create + payment.delete.' },
       { title: 'DBI-19 — gym/session/[id]/route.ts mezcla auth web y mobile: getMobileUser ?? auth() en mismo endpoint', done: true, priority: 'P3', note: 'FIXED: mobile no usa este endpoint (usa /api/mobile/gym/*). Eliminado getMobileUser() — route usa solo auth(). src/app/api/gym/session/[id]/route.ts.' },
       { title: 'DBI-20 — Payment.paidAt sin CHECK en DB: status=PAID puede persistir sin paidAt', done: true, priority: 'P3', note: 'FIXED: migración 20260702070000_payment_paidat_check — CHECK constraint payment_paid_status_requires_paid_at: status != PAID OR paidAt IS NOT NULL. La validación en app layer (PATCH route L35) ya asigna paidAt si status=PAID.' },
+
+      // ── STANDBY — activar con primeros usuarios reales ───────────────────────
+      { title: 'Google OAuth: activar con dominio real en producción', done: false, note: '[STANDBY] Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET en Vercel. Código implementado.' },
+      { title: 'Sentry: monitoreo de errores en producción', done: false, note: '[STANDBY] Pospuesto hasta tener usuarios reales activos. @sentry/nextjs. Gratis hasta 5k errores/mes.' },
+      { title: 'Uptime Robot: alertas de disponibilidad (ping cada 5 min)', done: false, note: 'Email/SMS si la app cae. Gratis hasta 50 monitores.' },
     ],
   },
 
@@ -192,7 +197,6 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Páginas de ayuda por perfil (/help, /coach/help, /admin/help)', done: true, note: 'FAQ por sección, flujos de uso.' },
           { title: 'Resumen de semana determinista en dashboard (sin IA)', done: true, note: 'TRAINING: buildWeeklySummary() → "Llevas X de Y sesiones. Volumen: Z km." FREE/RECOVERY: buildFreeModeSummary() → "X de Y sesiones esta semana. Hoy: Gym/Salida a correr." Ambos usando datos ya cargados en dashboard/page.tsx.' },
           { title: 'Récords personales visibles en /progress', done: true, note: 'Fix: progress/page.tsx consulta setLog.findMany({ where: { isPR:true, session:{athleteId} }, take:20 }). GymPR type exportado a ProgressClient. Sección "Récords Personales Gym" con ejercicio, weightKg, reps, fecha + badge PR. Tests TS pasan.' },
-          { title: 'Offline support para gym session tracker (IndexedDB)', done: false, note: 'Guardar sets localmente y sincronizar al reconectar. Feature más crítica para mobile.' },
           { title: 'Responsive audit completo en móvil real (iPhone SE, iPhone 14, Samsung Galaxy)', done: false, note: 'Fix de padding/overflow por pantalla.' },
           { title: 'Dashboard FREE — pantalla de bienvenida dedicada para atleta sin plan', done: true, priority: 'P1', note: 'buildFreeModeSummary() ya existía. Implementado: banner FREE con "Busca un entrenador" (→ /coaches) + "Entrena libre" (→ /log). Elimina CTA /new-goal. worktree at-01-athlete-ux item 1.' },
           { title: 'Pantalla de celebración al completar plan + elección de siguiente paso', done: true, priority: 'P1', note: 'PlanCompletionCard.tsx — componente server con stats (nombre plan, semanas, sesiones, adherencia %). B2B → info box "Tu coach preparará tu siguiente plan". B2C → CTAs "Busca un entrenador" + "Seguir entrenando". Aparece en dashboard cuando dashboardMode=RECOVERY. worktree at-01-athlete-ux item 8.' },
@@ -241,10 +245,40 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Editar perfil de salud desde mobile (peso, talla, FC reposo, lesiones)', done: true, priority: 'P1', note: 'Nuevo endpoint GET/PATCH /api/mobile/profile/route.ts con getMobileUser + estimateHRMax automático. Pantalla edit-health-profile.tsx con KeyboardAvoidingView + ScrollView: 6 campos editables (peso actual/meta/altura/FC reposo/FC máx/sueño). Acceso desde Profile tab → "Datos físicos" → "Perfil de salud" (solo ATHLETE). worktree at-01-athlete-ux item 5.' },
           { title: '/pending mejorado: progreso visual + CTA log libre + notificación al coach a 48h', done: true, priority: 'P1', note: 'pending/page.tsx rediseñado: stepper 3 pasos (CheckCircle2/Clock, línea conectora), badge "Llevas N días esperando", CTAs "Mientras tanto" — log libre + nutrición + mensaje al coach (condicional si coachId). Middleware actualizado: /log y /nutrition bypasean redirect a /pending para B2B no activados. worktree at-01-athlete-ux item 3.' },
           { title: 'Check-in: pantalla de resultado post-envío con ajustes aplicados', done: true, priority: 'P1', note: 'Web: triggers[] en respuesta API + CheckInResultScreen.tsx (componente inline en CheckInClient.tsx) muestra triggers detectados + ajustes aplicados + recomendación. Mobile: triggers[] en /api/mobile/checkin + CheckinResult type + resultado inline en checkin.tsx ("Lo que detectamos" / "Lo que ajustamos"). Cierra el loop atleta→sistema. worktree at-01-athlete-ux item 2.' },
-          { title: 'Centro de notificaciones in-app (campana en navbar)', done: false, priority: 'P2', note: 'Canal principal de notificaciones dentro de la app. Items: sesión del día, check-in disponible, mensaje del coach, plan ajustado, logro desbloqueado, plan asignado. Badge con count no leídas. Modelo Notification { userId, type, title, body, read, createdAt }. Push notifications para cuando la app no está abierta. Email solo para re-engagement (+3 días sin abrir la app).' },
           { title: 'Recompensas Capa 1 — Racha de entrenamiento en dashboard', done: false, priority: 'P2', note: 'Días consecutivos con actividad registrada (SessionLog o GymSession). Visible siempre en el dashboard del atleta. Se rompe si no hay actividad en 48h. Al romper → push notification "¿Volvemos?" al día siguiente. Query: COUNT días distintos con actividad en ventana consecutiva hacia atrás desde hoy.' },
           { title: 'Recompensas Capa 2 — Hitos de consistencia compartibles', done: false, priority: 'P2', note: 'Milestones: 10 check-ins, 50 sesiones, 3 meses activo, plan completado. Al alcanzar un hito → pantalla de celebración con imagen compartible (WhatsApp/Instagram). Imagen generada server-side con OG image o canvas. DB: tabla Achievement { userId, type, unlockedAt }.' },
           { title: 'Recompensas Capa 3 — PR gym con celebración prominente (web + mobile)', done: false, priority: 'P2', note: 'SetLog.isPR ya se detecta en gym/session/complete. Hoy hay banner básico. Mejorar: animación de celebración en mobile (confetti o similar), datos del PR (ejercicio, peso, reps, fecha anterior), opción de compartir. Mobile es el canal principal — priorizar ahí.' },
+        ],
+      },
+      {
+        id: 'atleta-dailylog',
+        label: 'DailyLog — Canal de datos diario (peso, sueño, energía)',
+        period: 'P1 — Mobile endpoint primero',
+        items: [
+          {
+            title: 'DAILY-01 — Mobile endpoint: POST /api/mobile/metrics/log',
+            done: false,
+            priority: 'P1',
+            note: 'Crear /api/mobile/metrics/log (GET + POST) — espejo de /api/metrics/log pero con getMobileUser() en lugar de auth(). El atleta registra peso/sueño/energía desde la app sin pasar por el perfil web. Mismo upsert por userId_date. Incluir en GET /api/mobile/dashboard la métrica de hoy (peso, energía) si existe DailyLog del día.',
+          },
+          {
+            title: 'DAILY-02 — Dashboard: mostrar peso y energía de hoy desde DailyLog',
+            done: false,
+            priority: 'P1',
+            note: 'En getDashboardSummary (web y mobile): incluir DailyLog del día en la respuesta si existe. El dashboard muestra: peso de hoy (si lo registró) + nivel de energía (1-5 iconos). Si no hay registro del día → CTA "Registra tus métricas de hoy". Esto hace al DailyLog parte del hábito diario del atleta, no un formulario enterrado en el perfil.',
+          },
+          {
+            title: 'DAILY-03 — /progress: usar DailyLog como fuente de curva de peso histórica',
+            done: false,
+            priority: 'P2',
+            note: 'GET /api/progress y GET /api/mobile/progress: incluir DailyLog de los últimos 90 días como serie temporal de peso (fecha, weightKg). Graficable como curva de evolución. Hoy el progress solo tiene datos de SessionLog y WeeklyCheckIn. DailyLog tiene la granularidad diaria necesaria para una curva de peso precisa.',
+          },
+          {
+            title: 'DAILY-04 — Panel coach: mostrar últimos 7 días de DailyLog del atleta',
+            done: false,
+            priority: 'P2',
+            note: 'En GET /api/coach/athlete/[id] (o un endpoint separado /api/coach/athlete/[id]/dailylogs): devolver DailyLog de los últimos 7 días del atleta. El coach ve: peso diario, sueño, energía. Esta info + el check-in semanal le da al coach contexto real de cómo está el atleta entre check-ins.',
+          },
         ],
       },
     ],
@@ -369,6 +403,55 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Link en sidebar del coach: "Nutrición" → /coach/nutrition/templates', done: true, priority: 'P1', note: 'Fix: CoachSidebarClient.tsx — icono Salad + href /coach/nutrition. isActive añadido a exactMatch.' },
         ],
       },
+      {
+        id: 'coach-identidad',
+        label: 'Identidad & Verificación Anti-fraude',
+        period: 'Pre-lanzamiento',
+        items: [
+          {
+            title: 'DB migration: User.identification + User.phoneWa únicos para coaches',
+            done: true,
+            priority: 'P0',
+            note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. identification String? @unique, phoneWa String? @unique, showPhoneWa Boolean @default(false) en User. Indexes únicos creados en DB.',
+          },
+          {
+            title: 'Onboarding coach: recopilar identification + phoneWa antes de invitar atletas',
+            done: true,
+            priority: 'P0',
+            note: 'PATCH /api/coach/profile acepta identification (5-30 chars) + phoneWa (E.164). Validación + persistencia en User. Banner ⚠️ en coach dashboard si profileComplete=false. JWT incluye profileComplete para no requerir query extra por request.',
+          },
+          {
+            title: 'Validación unicidad: identification y phoneWa al completar perfil coach',
+            done: true,
+            priority: 'P0',
+            note: 'Checks en paralelo: slug + identification + phoneWa. findFirst({ role: COACH, NOT: { id: coachId } }) → 409 con mensaje específico por campo. Aplicado en PATCH /api/coach/profile.',
+          },
+          {
+            title: 'Bloqueo POST /api/coach/clients/create si perfil coach incompleto',
+            done: true,
+            priority: 'P1',
+            note: '403 PROFILE_INCOMPLETE si !identification || !phoneWa. Doble check: JWT profileComplete (rápido) + query DB (si token stale). Mensaje: "Completa tu cédula y número de WhatsApp en tu perfil antes de invitar asesorados."',
+          },
+          {
+            title: 'Definición canónica de atleta activo para billing',
+            done: false,
+            priority: 'P1',
+            note: 'Atleta cuenta como activo si: (1) CoachAthlete.status = ACTIVE + (2) onboardingCompleted = true + (3) al menos 1 SessionLog registrado. Atletas sin sesión no cuentan → previene cuentas fantasma para inflar/desinflar conteo. Usar esta definición en el endpoint de billing snapshot y en el panel admin.',
+          },
+          {
+            title: 'Admin: ver identification y phoneWa del coach — panel de verificación',
+            done: true,
+            priority: 'P1',
+            note: 'En /admin/coaches: identification y phoneWa visibles bajo el email de cada coach. Badge rojo "Sin cédula" / "Sin WhatsApp" si faltan. Solo visible para admin — nunca expuesto en APIs públicas.',
+          },
+          {
+            title: 'PhoneWa en perfil público del coach (/p/[slug]) — opt-in',
+            done: false,
+            priority: 'P2',
+            note: 'El coach puede autorizar que su número WhatsApp aparezca en su perfil público como link wa.me/. Campo booleano showPhoneWa en CoachProfile o User. Por defecto: false. Si true → link de contacto directo en /p/[slug] y en /coaches marketplace.',
+          },
+        ],
+      },
     ],
   },
 
@@ -376,40 +459,82 @@ export const GROUPS: RoadmapGroup[] = [
 
   {
     id: 'plataforma',
-    label: 'Plataforma — Marketplace & Admin',
-    period: 'En construcción',
+    label: 'Plataforma — Admin, Marketplace & Notificaciones',
     color: '#ea580c',
     bgColor: '#fff7ed',
     borderColor: '#fed7aa',
-    items: [
-      { title: 'Schema DB: CoachProfile, CoachProgram, CoachPost', done: true, note: 'Migración marketplace aplicada.' },
-      { title: 'Directorio público /coaches (grid + filtros por deporte)', done: true, note: 'Infraestructura lista.' },
-      { title: 'Perfil público /p/[slug] (bio, programas, posts, CTA)', done: true, note: 'Coach edita su perfil, slug, especialidades, publica contenido.' },
-      { title: '/join/[code] con branding completo del coach (avatar, headline, bio)', done: true, note: 'Convierte el onboarding B2B en funnel branded del coach.' },
-      { title: 'Landing page con hero, pricing y animaciones', done: true, note: 'RevealOnScroll, fadeUp hero, hover lift cards.' },
-      { title: 'Panel admin: KPIs, usuarios, coaches, suscripciones, activaciones, configuración, roadmap', done: true, note: 'Control de activaciones manual. Cambio de rol en tiempo real.' },
-      { title: 'Middleware: protección completa de rutas por rol', done: true, note: 'Orden: login→roleSelection→onboarding→pending→coach→admin. COACH+/dashboard→/coach/dashboard.' },
-      { title: 'Emails transaccionales (Resend): welcome coach, welcome atleta B2B, asignación, forgot password', done: true, note: 'Dominio verificado. DNS en Route53. RESEND_API_KEY en Vercel.' },
-      { title: 'Crons: check-in reminder (dom 23:00 UTC), sesión del día (lun 12:00 UTC), pago vencido (diario 14:00 UTC)', done: true, note: 'vercel.json configura los 3 crons. Route handlers en /api/cron/* con CRON_SECRET auth. Panel admin /admin/crons con trigger manual. Activos en Vercel en producción.' },
-      { title: 'SEO: meta tags + sitemap dinámico para /coaches y /p/[slug]', done: true, note: 'og:image, og:description. Indexables para "coach running Colombia".' },
-      { title: 'Ocultar Marketplace hasta tener 20+ coaches activos', done: false, note: 'Directorio vacío genera fricción. Mantener infraestructura sin promocionar.' },
-      { title: 'Admin: métricas de negocio reales en /admin/metrics (5 KPIs + delta semanal)', done: true, note: 'check-ins, sesiones, planes activos, coaches con atletas, tasa onboarding. Implementado en bugfix/18.' },
-      { title: 'Admin: búsqueda y filtros en /admin/users + paginación 50/página', done: true, note: 'UsersTable client component con búsqueda por nombre/email/rol. Implementado en bugfix/18.' },
-      { title: 'Admin: perfil individual /admin/users/[id] (HealthProfile, plan activo, último check-in)', done: true, note: 'Página creada en bugfix/18. Incluye feature flags, coach asignado y datos de salud.' },
-      { title: 'Admin: sincronizar features al cambiar rol', done: true, note: 'role/route.ts actualizado con featuresByRole map. Implementado en bugfix/18.' },
-      // ── Admin — features P0 faltantes (fundador) ────────────────────────────────
-      { title: 'Admin P0: dashboard financiero — MRR estimado, fee por coach, cobros pendientes', done: true, priority: 'P0', note: 'Fix: /admin/finanzas con MRR atletas Pro ($9.99×count), fee por coach (tramos $6/$5/$3), pagos PAID/PENDING/OVERDUE. Link en sidebar desktop.' },
-      { title: 'Admin P0: funnel de activación — registro → onboarding → plan activo → check-in esta semana', done: true, priority: 'P0', note: 'Implementado en /admin (overview). 4 pasos con barra de progreso, % del total y % conversión del paso anterior. Color verde/naranja/rojo según tasa.' },
-      { title: 'Admin P1: feed de alertas operativas — atletas en /pending > 48h, coaches sin atletas > 7d', done: true, priority: 'P1', note: '/admin/alerts: lógica pura en domain/admin/alerts.ts (testada), link en sidebar. Severidad medium/high con semáforo. Incluye 21 tests de domain + domain/admin/finanzas.ts también extraído y testeado.' },
-      { title: 'Admin P1: log de actividad — audit trail de acciones admin (quién, qué, cuándo)', done: true, priority: 'P1', note: 'AdminAuditLog en schema (db push). domain/admin/audit-log.ts con labelForAction, describeAuditEntry, colorForAction (14 tests). logAdminAction() fire-and-forget en 3 rutas API (CHANGE_ROLE, CHANGE_PLAN, UPDATE_AI_PROFILE). /admin/audit con últimas 200 acciones.' },
-      { title: 'Admin P1: eliminar usuario — acción destructiva con confirmación doble', done: true, priority: 'P1', note: 'DELETE /api/admin/users/[id]: audit log ANTES del delete (meta preserva email+name+role), luego prisma.user.delete cascade. DeleteUserButton: 2 pasos inline (confirm1 → confirm2 → delete). Impide auto-eliminación. 250 tests pasando (5 nuevos DELETE_USER en audit-log.test.ts).' },
-      { title: 'Admin P2: revenue por coach — ranking de coaches por atletas activos y fee generado', done: true, priority: 'P2', note: 'Cubierto por /admin/finanzas: tabla de coaches ordenada por fee desc con tramo, nº atletas activos y total.' },
-      { title: 'Admin P2: gestión de invite codes — ver, revocar y generar códigos manualmente', done: true, priority: 'P2', note: '/admin/invite-codes: GET/POST /api/admin/invite-codes + DELETE /api/admin/invite-codes/[id]. Tabla con estado activo/usado/vencido, coach y atleta que lo usó. Generador con selector de coach.' },
-      { title: 'Admin P2: reset contraseña manual — admin puede disparar link de reset para cualquier usuario', done: true, priority: 'P2', note: 'ResetPasswordButton en /admin/users/[id]: llama POST /api/auth/forgot-password con el email del usuario. Feedback inline.' },
-      { title: 'Admin P2: estado de crons — última ejecución y trigger manual desde el panel', done: true, priority: 'P2', note: '/admin/crons: tabla de los 3 crons con schedule human-readable + botón "Ejecutar ahora" → POST /api/admin/crons/trigger (llama internamente con CRON_SECRET). Última ejecución pendiente (Vercel no expone API pública de historial).' },
-      { title: 'Admin P2: banner "AI desactivada" en /admin/ai — evitar confusión al editar prompt sin efecto', done: true, priority: 'P2', note: 'Banner amber en /admin/ai indicando AI_ONBOARDING_ENABLED = false, qué sí funciona (chat) y cómo reactivar.' },
-      { title: 'Admin P3: búsqueda global (⌘K) — encontrar cualquier usuario/coach desde cualquier página admin', done: true, priority: 'P3', note: 'AdminSearchPalette en layout: ⌘K/Ctrl+K abre overlay, debounce 200ms, rankResults domain puro (17 tests), flechas+Enter para navegar, ESC cierra. GET /api/admin/search?q= con Prisma contains insensitive.' },
-      { title: 'Admin P3: editor de ejercicios globales desde /admin', done: true, priority: 'P3', note: '/admin/exercises: CRUD completo (GET+POST /api/admin/exercises, PATCH+DELETE /[id]). validateExercise domain puro (23 tests). Formulario inline con selects de categoría y equipamiento. Filtro client-side por nombre/categoría.' },
+    phases: [
+      {
+        id: 'plataforma-core',
+        label: 'Core — Infraestructura base completada',
+        period: 'Completado',
+        items: [
+          { title: 'Schema DB: CoachProfile, CoachProgram, CoachPost', done: true, note: 'Migración marketplace aplicada.' },
+          { title: 'Directorio público /coaches (grid + filtros por deporte)', done: true, note: 'Infraestructura lista.' },
+          { title: 'Perfil público /p/[slug] (bio, programas, posts, CTA)', done: true, note: 'Coach edita su perfil, slug, especialidades, publica contenido.' },
+          { title: '/join/[code] con branding completo del coach (avatar, headline, bio)', done: true, note: 'Convierte el onboarding B2B en funnel branded del coach.' },
+          { title: 'Landing page con hero, pricing y animaciones', done: true, note: 'RevealOnScroll, fadeUp hero, hover lift cards.' },
+          { title: 'Panel admin: KPIs, usuarios, coaches, suscripciones, activaciones, configuración, roadmap', done: true, note: 'Control de activaciones manual. Cambio de rol en tiempo real.' },
+          { title: 'Middleware: protección completa de rutas por rol', done: true, note: 'Orden: login→roleSelection→onboarding→pending→coach→admin. COACH+/dashboard→/coach/dashboard.' },
+          { title: 'Emails transaccionales (Resend): welcome coach, welcome atleta B2B, asignación, forgot password', done: true, note: 'Dominio verificado. DNS en Route53. RESEND_API_KEY en Vercel.' },
+          { title: 'Crons: check-in reminder (dom 23:00 UTC), sesión del día (lun 12:00 UTC), pago vencido (diario 14:00 UTC)', done: true, note: 'vercel.json configura los 3 crons. Route handlers en /api/cron/* con CRON_SECRET auth. Panel admin /admin/crons con trigger manual. Activos en Vercel en producción.' },
+          { title: 'SEO: meta tags + sitemap dinámico para /coaches y /p/[slug]', done: true, note: 'og:image, og:description. Indexables para "coach running Colombia".' },
+          { title: 'Ocultar Marketplace hasta tener 20+ coaches activos', done: false, note: 'Directorio vacío genera fricción. Mantener infraestructura sin promocionar.' },
+          { title: 'Admin: métricas de negocio reales en /admin/metrics (5 KPIs + delta semanal)', done: true, note: 'check-ins, sesiones, planes activos, coaches con atletas, tasa onboarding. Implementado en bugfix/18.' },
+          { title: 'Admin: búsqueda y filtros en /admin/users + paginación 50/página', done: true, note: 'UsersTable client component con búsqueda por nombre/email/rol. Implementado en bugfix/18.' },
+          { title: 'Admin: perfil individual /admin/users/[id] (HealthProfile, plan activo, último check-in)', done: true, note: 'Página creada en bugfix/18. Incluye feature flags, coach asignado y datos de salud.' },
+          { title: 'Admin: sincronizar features al cambiar rol', done: true, note: 'role/route.ts actualizado con featuresByRole map. Implementado en bugfix/18.' },
+          { title: 'Admin P0: dashboard financiero — MRR estimado, fee por coach, cobros pendientes', done: true, priority: 'P0', note: 'Fix: /admin/finanzas con MRR atletas Pro ($9.99×count), fee por coach (tramos $6/$5/$3), pagos PAID/PENDING/OVERDUE. Link en sidebar desktop.' },
+          { title: 'Admin P0: funnel de activación — registro → onboarding → plan activo → check-in esta semana', done: true, priority: 'P0', note: 'Implementado en /admin (overview). 4 pasos con barra de progreso, % del total y % conversión del paso anterior. Color verde/naranja/rojo según tasa.' },
+          { title: 'Admin P1: feed de alertas operativas — atletas en /pending > 48h, coaches sin atletas > 7d', done: true, priority: 'P1', note: '/admin/alerts: lógica pura en domain/admin/alerts.ts (testada), link en sidebar. Severidad medium/high con semáforo. Incluye 21 tests de domain + domain/admin/finanzas.ts también extraído y testeado.' },
+          { title: 'Admin P1: log de actividad — audit trail de acciones admin (quién, qué, cuándo)', done: true, priority: 'P1', note: 'AdminAuditLog en schema (db push). domain/admin/audit-log.ts con labelForAction, describeAuditEntry, colorForAction (14 tests). logAdminAction() fire-and-forget en 3 rutas API (CHANGE_ROLE, CHANGE_PLAN, UPDATE_AI_PROFILE). /admin/audit con últimas 200 acciones.' },
+          { title: 'Admin P1: eliminar usuario — acción destructiva con confirmación doble', done: true, priority: 'P1', note: 'DELETE /api/admin/users/[id]: audit log ANTES del delete (meta preserva email+name+role), luego prisma.user.delete cascade. DeleteUserButton: 2 pasos inline (confirm1 → confirm2 → delete). Impide auto-eliminación. 250 tests pasando (5 nuevos DELETE_USER en audit-log.test.ts).' },
+          { title: 'Admin P2: revenue por coach — ranking de coaches por atletas activos y fee generado', done: true, priority: 'P2', note: 'Cubierto por /admin/finanzas: tabla de coaches ordenada por fee desc con tramo, nº atletas activos y total.' },
+          { title: 'Admin P2: gestión de invite codes — ver, revocar y generar códigos manualmente', done: true, priority: 'P2', note: '/admin/invite-codes: GET/POST /api/admin/invite-codes + DELETE /api/admin/invite-codes/[id]. Tabla con estado activo/usado/vencido, coach y atleta que lo usó. Generador con selector de coach.' },
+          { title: 'Admin P2: reset contraseña manual — admin puede disparar link de reset para cualquier usuario', done: true, priority: 'P2', note: 'ResetPasswordButton en /admin/users/[id]: llama POST /api/auth/forgot-password con el email del usuario. Feedback inline.' },
+          { title: 'Admin P2: estado de crons — última ejecución y trigger manual desde el panel', done: true, priority: 'P2', note: '/admin/crons: tabla de los 3 crons con schedule human-readable + botón "Ejecutar ahora" → POST /api/admin/crons/trigger (llama internamente con CRON_SECRET). Última ejecución pendiente (Vercel no expone API pública de historial).' },
+          { title: 'Admin P2: banner "AI desactivada" en /admin/ai — evitar confusión al editar prompt sin efecto', done: true, priority: 'P2', note: 'Banner amber en /admin/ai indicando AI_ONBOARDING_ENABLED = false, qué sí funciona (chat) y cómo reactivar.' },
+          { title: 'Admin P3: búsqueda global (⌘K) — encontrar cualquier usuario/coach desde cualquier página admin', done: true, priority: 'P3', note: 'AdminSearchPalette en layout: ⌘K/Ctrl+K abre overlay, debounce 200ms, rankResults domain puro (17 tests), flechas+Enter para navegar, ESC cierra. GET /api/admin/search?q= con Prisma contains insensitive.' },
+          { title: 'Admin P3: editor de ejercicios globales desde /admin', done: true, priority: 'P3', note: '/admin/exercises: CRUD completo (GET+POST /api/admin/exercises, PATCH+DELETE /[id]). validateExercise domain puro (23 tests). Formulario inline con selects de categoría y equipamiento. Filtro client-side por nombre/categoría.' },
+        ],
+      },
+      {
+        id: 'plataforma-bi',
+        label: 'Admin — Business Intelligence',
+        period: 'Próximo',
+        items: [
+          { title: 'MRR estimado: coaches activos × fee por tier (tabla + total mensual en /admin)', done: true, priority: 'P0', note: 'Implementado en /admin/finanzas. Domain: src/domain/admin/finanzas.ts (coachFeeRate, mrrAthletes, mrrCoaches). Cards: MRR atletas Pro + fee coaches + total. Tabla breakdown por coach con tramo y fee.' },
+          { title: 'WAU (Weekly Active Users) con tendencia 8 semanas — gráfica en /admin/metrics', done: true, priority: 'P1', note: 'Implementado en /admin/metrics. Domain: src/domain/admin/wau.ts (isoWeekKey, computeWAU, lastNWeekKeys). Bar chart nativo sin deps. "Activo" = SessionLog o WeeklyCheckIn en esa semana. 11 tests.' },
+          { title: 'Retención 14 días: % atletas con al menos 1 check-in o log en los últimos 14 días', done: true, priority: 'P1', note: 'Implementado en /admin/metrics junto al WAU (grid 2/3 + 1/3). Domain: retention.ts (activeUserIdsInWindow, computeRetention, retentionColor). Base = featurePlan:true. Reutiliza eventos ya cargados para WAU. 13 tests.' },
+          { title: 'Coaches activos esta semana (al menos 1 acción en los últimos 7 días)', done: true, priority: 'P1', note: 'Implementado via coach-activity.ts: detecta actividad de coaches en los últimos 7 días combinando mensajes enviados (Message.fromId) y pagos creados/actualizados (Payment). Visible en /admin/coaches.' },
+          { title: 'Conversión de invite codes: códigos generados vs usados (tasa y tiempo promedio)', done: true, priority: 'P2', note: 'InviteCode ya tiene usedAt. Query: count(usedAt IS NOT NULL) / count(*) por coach. Tiempo promedio: avg(usedAt - createdAt). Visible en /admin/invite-codes o en ficha de coach.' },
+          { title: 'Admin MRR real, churn mensual y ranking coaches por revenue', done: false, priority: 'P2', note: 'Reemplazar proyecciones estimadas por datos reales de UserSubscription. MRR = suma de suscripciones activas (coaches + atletas Pro). Churn = cancelaciones del mes / total activos. Gráfica histórica mensual.' },
+          { title: 'PLT-02 — Distribución geográfica de usuarios en /admin/metrics', done: false, priority: 'P2', note: 'User.timezone ya existe (ej. "America/Bogota"). Derivar país/ciudad desde timezone. Mostrar mapa de calor o tabla: país → coaches activos / atletas.' },
+          { title: 'PLT-03 — Atletas sin coach (B2C tracker puro) como segmento visible en /admin/metrics', done: false, priority: 'P2', note: 'Agregar: atletas con coach activo vs atletas B2C sin coach. Query: User[ATHLETE] WHERE NOT EXISTS CoachAthlete[ACTIVE].' },
+          { title: 'Uso del AI chat: mensajes enviados esta semana y % de cuota mensual utilizada', done: false, priority: 'P3', note: 'STANDBY — AI deshabilitado intencionalmente (AI_ONBOARDING_ENABLED = false). Activar solo cuando AI esté habilitado en producción.' },
+          { title: 'PLT-04 — Configuración de AI en /admin: modelo, guardrails, kill switch', done: false, priority: 'P3', note: 'Cuando AI-Coach se integre: selección de modelo Anthropic, edición de system prompt, toggle por tier, métricas de uso y kill switch. Requiere SystemConfig en DB.' },
+        ],
+      },
+      {
+        id: 'plataforma-marketplace',
+        label: 'Marketplace — Directorio de coaches',
+        period: 'P2 — cuando 20+ coaches activos',
+        items: [
+          { title: 'PLT-05 — Abrir /coaches con filtros: especialidad, ciudad, nivel, precio referencial', done: false, priority: 'P2', note: 'Hoy /coaches existe en código pero está oculto de la navegación. Condición de apertura: 20+ coaches activos con perfil completo. Filtros: CoachSpecialty (RUNNING/GYM/NUTRITION/ALL), ciudad derivada de timezone, precio referencial (rango). Ordenamiento: atletas activos DESC. Requiere CoachSpecialty en DB (ARCH-02).' },
+          { title: 'PLT-06 — Botón "Contactar coach" en /p/[slug] con WhatsApp como canal primario', done: false, priority: 'P2', note: 'Flujo marketplace: atleta descubre coach → click "Contactar" → abre WhatsApp del coach con mensaje pre-redactado. Coach activa atleta desde su panel. Medaliq NO intermedia el pago — 0% fee es permanente.' },
+        ],
+      },
+      {
+        id: 'plataforma-notificaciones',
+        label: 'Notificaciones — Centro in-app y crons',
+        period: 'P1-P2',
+        items: [
+          { title: 'PLT-07 — Centro de notificaciones in-app (campana + feed de eventos)', done: false, priority: 'P1', note: 'Schema aplicado (migración 20260708000001): modelo Notification { userId, type, title, body, read, createdAt, metadata } en Neon prod. Pendiente: UI campana + feed, API GET/POST /api/notifications, badge de no leídas. Tipos: SESION_HOY, CHECKIN_DISPONIBLE, PLAN_ACTUALIZADO, MENSAJE_COACH, AJUSTE_NUTRICIONAL, LOGRO, PROPUESTA_COACH.' },
+          { title: 'PLT-08 — Cron: atleta sin actividad 3+ días → push + email re-engagement', done: false, priority: 'P2', note: 'Query: User[ATHLETE] WHERE max(SessionLog.completedAt) < now()-3d AND onboardingCompleted=true. Push: "Te extrañamos — tu plan te espera". Frecuencia máxima: 1/semana por usuario.' },
+          { title: 'PLT-09 — Cron: racha en riesgo → push al atleta (1 día sin actividad)', done: false, priority: 'P2', note: 'Atleta que registró actividad ayer pero no hoy → push "¿Hoy no entrenas? Tu racha de N días sigue activa." Solo si el atleta tiene racha activa ≥ 3 días. Hora: 20:00 timezone del atleta.' },
+          { title: 'PLT-10 — Cron: atleta en /pending 48h → push + email al coach', done: false, priority: 'P1', note: 'Query: CoachAthlete[ACTIVE] WHERE User.onboardingCompleted=true AND User.featurePlan=false AND coachAthlete.createdAt < now()-48h. Notificación al coach para activar al atleta.' },
+        ],
+      },
     ],
   },
 
@@ -514,6 +639,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Fix /upgrade/page.tsx — eliminar referencias a trial, corregir precio $15 → $9.99, actualizar features Free', done: true, priority: 'P0', note: 'Trial eliminado del modelo de negocio (2026-07-03). Corregido: título "Tu trial de 30 días terminó" → "Elige tu plan", Free features actualizadas (nutrición + gym), Pro $15 → $9.99, CTA mailto actualizado. Gap detectado al auditar Figma vs código.' },
           { title: 'AI Coach chat mobile — UI implementada, /api/mobile/ai/chat NO existe aún', done: true, note: 'app/(app)/(tabs)/ai-coach.tsx con FlatList + UpgradeWall. AI removida intencionalmente.' },
           { title: 'Push notifications: recordatorio sesión del día', done: false, note: 'Backend /api/mobile/push-token YA implementado. Falta: expo-notifications + FCM/APNs + permisos + EAS.' },
+          { title: 'FEAT-MOBILE-01 — week-sessions: mostrar SessionLogs libres cuando no hay plan activo o semana sin PlanWeek', done: false, priority: 'P2', note: 'QA-2026-07-08: GET /api/mobile/dashboard/week-sessions retorna 7 días vacíos cuando: (1) planMeta existe pero PlanWeek del currentWeek no existe (plan incompleto), o (2) planMeta null y sin assignedWorkout (atleta runner B2C sin plan). Los SessionLog libres (plannedSessionId=null) de la semana actual nunca se incluyen. Fix: tercer path en la ruta — cuando !selectedWeek O cuando !planMeta+!assignedWorkout → query SessionLog WHERE userId + completedAt en [lunes-domingo semana actual] + plannedSessionId=null → agrupar por dayOfWeek → construir weekSessions con tipo real (freeSessionType) + done:true + durationMin real. Hace el sistema sentirse vivo: el atleta B2C sin plan ve su actividad real de la semana. Archivo: src/app/api/mobile/dashboard/week-sessions/route.ts.' },
         ],
       },
       {
@@ -536,26 +662,6 @@ export const GROUPS: RoadmapGroup[] = [
   },
 
   // ─── PRE-LANZAMIENTO ─────────────────────────────────────────────────────────
-
-  {
-    id: 'pre-launch',
-    label: 'Pre-lanzamiento — QA & Tests E2E',
-    period: 'En construcción',
-    color: '#ea580c',
-    bgColor: '#fff7ed',
-    borderColor: '#fed7aa',
-    items: [
-      { title: 'Limpiar usuarios de prueba de producción antes del lanzamiento', done: true, priority: 'P0', note: 'EJECUTADO 2026-07-04. Script cleanup-users.ts eliminó 22 usuarios no-admin de Neon prod (incluyendo FKs sin CASCADE: Exercise, WorkoutTemplate, AssignedNutritionPlan). Solo queda admin@medaliq.com.' },
-      { title: 'Google OAuth activar con dominio real en producción', done: false, note: '[STANDBY] Google Cloud Console → Client ID + Secret → GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET en Vercel. Código implementado.' },
-      { title: 'Sentry para monitoreo de errores en producción', done: false, note: '[STANDBY] Pospuesto hasta tener usuarios reales activos. @sentry/nextjs. Gratis hasta 5k errores/mes.' },
-      { title: 'Zod validation en endpoints POST/PATCH restantes', done: true, note: 'Zod v4 schemas agregados a: /api/gym/session/complete (GymCompleteSchema + nested SetPayload/ExerciseOverride), /api/log/session, /api/mobile/log/session, /api/coach/gym/routines (CreateRoutineSchema + DaySchema + DayExerciseSchema). Redundant manual checks eliminados.' },
-      { title: 'Test E2E: flujo B2B completo (coach crea → onboarding → /pending → activa → dashboard)', done: false, note: 'Verificar todos los pasos del flujo email-first unificado sin fricción.' },
-      { title: 'Test E2E: flujo invite code (genera → /join/[code] → registro → vinculación → /pending)', done: false, note: 'POST /api/coach/invite → código → atleta visita /join → coach activa.' },
-      { title: 'Test E2E: onboarding STRENGTH → plan BODY_RECOMPOSITION_16W → gym tracker', done: false, note: 'Verificar plan con semanas + sesiones en DB. Gym tracker carga ejercicios.' },
-      { title: 'Test E2E: atleta sin plan → log libre → historial → dashboard con actividad', done: false, note: 'POST /api/mobile/log/session con sessionId null → aparece en historial.' },
-      { title: 'Uptime Robot: alertas de disponibilidad (ping cada 5 min)', done: false, note: 'Email/SMS si la app cae. Gratis hasta 50 monitores.' },
-    ],
-  },
 
   // ─── NEGOCIO ─────────────────────────────────────────────────────────────────
 
@@ -688,159 +794,6 @@ export const GROUPS: RoadmapGroup[] = [
     ],
   },
 
-  // ─── SEGURIDAD & IDENTIDAD DEL COACH ────────────────────────────────────────
-
-  {
-    id: 'coach-identidad',
-    label: 'Coach — Identidad & Verificación',
-    period: 'Pre-lanzamiento',
-    color: '#7c3aed',
-    bgColor: '#faf5ff',
-    borderColor: '#c4b5fd',
-    items: [
-      {
-        title: 'DB migration: User.identification + User.phoneWa únicos para coaches',
-        done: true,
-        priority: 'P0',
-        note: 'Migración 20260708000001_identity_notification_food aplicada en Neon prod. identification String? @unique, phoneWa String? @unique, showPhoneWa Boolean @default(false) agregados al modelo User. Indexes únicos creados en DB.',
-      },
-      {
-        title: 'Onboarding coach: recopilar identification + phoneWa antes de invitar atletas',
-        done: true,
-        priority: 'P0',
-        note: 'PATCH /api/coach/profile acepta identification (5-30 chars) + phoneWa (E.164). Validación + persistencia en User. Banner ⚠️ en coach dashboard si profileComplete=false. JWT incluye profileComplete para no requerir query extra por request.',
-      },
-      {
-        title: 'Validación unicidad: identification y phoneWa al completar perfil coach',
-        done: true,
-        priority: 'P0',
-        note: 'Checks en paralelo: slug + identification + phoneWa. findFirst({ role: COACH, NOT: { id: coachId } }) → 409 con mensaje específico por campo. Aplicado en PATCH /api/coach/profile.',
-      },
-      {
-        title: 'Bloqueo POST /api/coach/clients/create si perfil coach incompleto',
-        done: true,
-        priority: 'P1',
-        note: '403 PROFILE_INCOMPLETE si !identification || !phoneWa. Doble check: JWT profileComplete (rápido) + query DB (si token stale). Mensaje: "Completa tu cédula y número de WhatsApp en tu perfil antes de invitar asesorados."',
-      },
-      {
-        title: 'Definición canónica de atleta activo para billing',
-        done: false,
-        priority: 'P1',
-        note: 'Atleta cuenta como activo si: (1) CoachAthlete.status = ACTIVE + (2) onboardingCompleted = true + (3) al menos 1 SessionLog registrado. Atletas sin sesión no cuentan → previene cuentas fantasma para inflar/desinflar conteo. Usar esta definición en el endpoint de billing snapshot y en el panel admin.',
-      },
-      {
-        title: 'Admin: ver identification y phoneWa del coach — panel de verificación',
-        done: true,
-        priority: 'P1',
-        note: 'En /admin/coaches: identification y phoneWa visibles bajo el email de cada coach. Badge rojo "Sin cédula" / "Sin WhatsApp" si faltan. Solo visible para admin — nunca expuesto en APIs públicas.',
-      },
-      {
-        title: 'PhoneWa en perfil público del coach (/p/[slug]) — opt-in',
-        done: false,
-        priority: 'P2',
-        note: 'El coach puede autorizar que su número WhatsApp aparezca en su perfil público como link wa.me/. Campo booleano showPhoneWa en CoachProfile o User. Por defecto: false. Si true → link de contacto directo en /p/[slug] y en /coaches marketplace.',
-      },
-      {
-        title: 'Scale+ tier: $129 base + $1.50/atleta activo sobre 100',
-        done: false,
-        priority: 'P2',
-        note: 'Para coaches con más de 100 atletas activos: $129/mes cubre hasta 100. Cada atleta adicional sobre 100 = $1.50/mes. Ejemplo: 150 atletas = $129 + (50 × $1.50) = $204/mes. Implementar en el cálculo de factura mensual del coach. Requiere que la definición de atleta activo esté implementada primero.',
-      },
-    ],
-  },
-
-  // ─── ADMIN — BUSINESS INTELLIGENCE ──────────────────────────────────────────
-  // Métricas identificadas en revisión CO (2026-06-30) — no cubiertas por el admin actual
-
-  {
-    id: 'admin-bi',
-    label: 'Admin — Business Intelligence',
-    period: 'Próximo',
-    color: '#0891b2',
-    bgColor: '#f0f9ff',
-    borderColor: '#7dd3fc',
-    items: [
-      {
-        title: 'MRR estimado: coaches activos × fee por tier (tabla + total mensual en /admin)',
-        done: true,
-        priority: 'P0',
-        note: 'Implementado en /admin/finanzas. Domain: src/domain/admin/finanzas.ts (coachFeeRate, mrrAthletes, mrrCoaches). Cards: MRR atletas Pro + fee coaches + total. Tabla breakdown por coach con tramo y fee.',
-      },
-      {
-        title: 'WAU (Weekly Active Users) con tendencia 8 semanas — gráfica en /admin/metrics',
-        done: true,
-        priority: 'P1',
-        note: 'Implementado en /admin/metrics. Domain: src/domain/admin/wau.ts (isoWeekKey, computeWAU, lastNWeekKeys). Bar chart nativo sin deps. "Activo" = SessionLog o WeeklyCheckIn en esa semana. 11 tests.',
-      },
-      {
-        title: 'Retención 14 días: % atletas con al menos 1 check-in o log en los últimos 14 días',
-        done: true,
-        priority: 'P1',
-        note: 'Implementado en /admin/metrics junto al WAU (grid 2/3 + 1/3). Domain: retention.ts (activeUserIdsInWindow, computeRetention, retentionColor). Base = featurePlan:true. Reutiliza eventos ya cargados para WAU. 13 tests.',
-      },
-      {
-        title: 'Coaches activos esta semana (al menos 1 acción en los últimos 7 días)',
-        done: true,
-        priority: 'P1',
-        note: 'Implementado via coach-activity.ts: detecta actividad de coaches en los últimos 7 días combinando mensajes enviados (Message.fromId) y pagos creados/actualizados (Payment). Visible en /admin/coaches. User.lastActiveAt descartado — el approach actual es suficiente.',
-      },
-      {
-        title: 'Conversión de invite codes: códigos generados vs usados (tasa y tiempo promedio)',
-        done: true,
-        priority: 'P2',
-        note: 'InviteCode ya tiene usedAt. Query: count(usedAt IS NOT NULL) / count(*) por coach. Tiempo promedio: avg(usedAt - createdAt). Visible en /admin/invite-codes o en ficha de coach.',
-      },
-      {
-        title: 'Uso del AI chat: mensajes enviados esta semana y % de cuota mensual utilizada',
-        done: false,
-        priority: 'P3',
-        note: 'STANDBY — AI deshabilitado intencionalmente (AI_ONBOARDING_ENABLED = false). Activar solo cuando AI esté habilitado en producción.',
-      },
-    ],
-  },
-
-  // ─── PLATAFORMA — ADMIN + MARKETPLACE + NOTIFICACIONES ──────────────────────
-
-  {
-    id: 'plataforma',
-    label: 'Plataforma — Admin, Marketplace & Notificaciones',
-    color: '#7c3aed',
-    bgColor: '#faf5ff',
-    borderColor: '#c4b5fd',
-    phases: [
-      {
-        id: 'plataforma-admin',
-        label: 'Admin — Gestión y BI',
-        period: 'P1-P2',
-        items: [
-          { title: 'PLT-01 — Estados de usuario: ACTIVE / SUSPENDED / BLOCKED / DELETED en DB y admin panel', done: false, priority: 'P1', note: 'Hoy solo existe activación vía feature flags. Agregar enum UserStatus { ACTIVE, SUSPENDED, BLOCKED, DELETED } en User model. SUSPENDED: temporal (pago), BLOCKED: por admin (términos), DELETED: soft-delete con anonimización de datos. Admin puede cambiar estado desde /admin/users/[id]. Middleware chequea status !== ACTIVE → 401. Migración + endpoints + UI en admin.' },
-          { title: 'PLT-02 — Distribución geográfica de usuarios en /admin/metrics', done: false, priority: 'P2', note: 'User.timezone ya existe (ej. "America/Bogota"). Derivar país/ciudad desde timezone. Mostrar mapa de calor o tabla: país → coaches activos / atletas. Identifica dónde está la tracción para priorizar marketing y soporte. Sin necesidad de campo country explícito — timezone es suficiente para LatAm.' },
-          { title: 'PLT-03 — Atletas sin coach (B2C tracker puro) como segmento visible en /admin/metrics', done: false, priority: 'P2', note: 'Hoy solo se ven coaches y atletas totales. Agregar: atletas con coach activo vs atletas B2C sin coach. Este segmento B2C puro es importante — son usuarios del producto que podrían ser futuros B2B. Query: User[ATHLETE] WHERE NOT EXISTS CoachAthlete[ACTIVE].' },
-          { title: 'PLT-04 — Configuración de AI en /admin: modelo, guardrails, kill switch', done: false, priority: 'P3', note: 'Cuando AI-Coach se integre, el admin necesita: (1) selección de modelo Anthropic, (2) edición de system prompt y guardrails desde UI, (3) toggle por tier (¿qué atletas tienen acceso?), (4) métricas de uso: tokens/semana y costo estimado, (5) kill switch para deshabilitar sin deploy. Implementar solo cuando AI esté activa. Requiere SystemConfig en DB para persistir config.' },
-        ],
-      },
-      {
-        id: 'plataforma-marketplace',
-        label: 'Marketplace — Directorio de coaches',
-        period: 'P2 — cuando 20+ coaches activos',
-        items: [
-          { title: 'PLT-05 — Abrir /coaches con filtros: especialidad, ciudad, nivel, precio referencial', done: false, priority: 'P2', note: 'Hoy /coaches existe en código pero está oculto de la navegación. Condición de apertura: 20+ coaches activos con perfil completo. Filtros: CoachSpecialty (RUNNING/GYM/NUTRITION/ALL), ciudad derivada de timezone, precio referencial (rango). Ordenamiento: atletas activos DESC. Requiere CoachSpecialty en DB (ARCH-02).' },
-          { title: 'PLT-06 — Botón "Contactar coach" en /p/[slug] con WhatsApp como canal primario', done: false, priority: 'P2', note: 'Flujo marketplace: atleta descubre coach → click "Contactar" → abre WhatsApp del coach (CoachProfile.whatsapp) con mensaje pre-redactado. Acuerdan términos fuera de la plataforma. Coach activa atleta desde su panel. Medaliq NO intermedia el pago — 0% fee es permanente. El botón es de contacto, no de pago.' },
-        ],
-      },
-      {
-        id: 'plataforma-notificaciones',
-        label: 'Notificaciones — Centro in-app y crons',
-        period: 'P1-P2',
-        items: [
-          { title: 'PLT-07 — Centro de notificaciones in-app (campana + feed de eventos)', done: false, priority: 'P1', note: 'Schema aplicado (migración 20260708000001): modelo Notification { userId, type, title, body, read, createdAt, metadata } en Neon prod. Pendiente: UI campana + feed, API GET/POST /api/notifications, badge de no leídas. Tipos: SESION_HOY, CHECKIN_DISPONIBLE, PLAN_ACTUALIZADO, MENSAJE_COACH, AJUSTE_NUTRICIONAL, LOGRO, PROPUESTA_COACH.' },
-          { title: 'PLT-08 — Cron: atleta sin actividad 3+ días → push + email re-engagement', done: false, priority: 'P2', note: 'Query: User[ATHLETE] WHERE max(SessionLog.completedAt) < now()-3d AND onboardingCompleted=true. Push: "Te extrañamos — tu plan te espera". Email: re-engagement con resumen de última sesión y CTA. Frecuencia máxima: 1/semana por usuario. No enviar si ya recibió otro email ese día.' },
-          { title: 'PLT-09 — Cron: racha en riesgo → push al atleta (1 día sin actividad)', done: false, priority: 'P2', note: 'Atleta que registró actividad ayer pero no hoy → push "¿Hoy no entrenas? Tu racha de N días sigue activa." Solo si el atleta tiene racha activa ≥ 3 días. Query: users con SessionLog ayer pero no hoy. Hora: 20:00 timezone del atleta.' },
-          { title: 'PLT-10 — Cron: atleta en /pending 48h → push + email al coach', done: false, priority: 'P1', note: 'Ya documentado en atleta.md. Query: CoachAthlete[ACTIVE] WHERE User.onboardingCompleted=true AND User.featurePlan=false AND coachAthlete.createdAt < now()-48h. Notificación al coach: "Miguel Atencia completó su perfil hace 2 días. Actívalo para que pueda empezar." Push + email al coach.' },
-        ],
-      },
-    ],
-  },
 
   // ─── MÓDULO NUTRICIÓN ────────────────────────────────────────────────────────
   // Scope independiente para trabajo a profundidad en nutrición (atleta + coach + sistema)
@@ -910,7 +863,7 @@ export const GROUPS: RoadmapGroup[] = [
 
   {
     id: 'modulo-fuerza',
-    label: 'Módulo Fuerza — Profundización',
+    label: 'Módulo Fuerza & Ejercicios',
     color: '#1e3a5f',
     bgColor: '#eff6ff',
     borderColor: '#bfdbfe',
@@ -965,6 +918,210 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'EJ-05 — Métricas multi-período en /progress: mensual, trimestral, semestral, anual', done: false, priority: 'P2', note: 'Hoy solo existe vista semanal en dashboard y /progress. Agregar: (1) mensual: volumen total, sesiones, PRs del mes. (2) trimestral: curva de fuerza y tendencia de adherencia en 12 semanas. (3) semestral: progresión de composición corporal (peso + medidas del check-in). (4) anual: hitos y logros del año. Aplica web y mobile /progress.' },
           { title: 'EJ-06 — Benchmarks UI para el atleta: registrar y ver sus propios tests de rendimiento', done: false, priority: 'P3', note: 'PerformanceBenchmark ya existe en DB (1RM_SQUAT, 1RM_BENCH, 5K_TIME, etc.) con CHECK constraints en DB + validación VALID_SPORTS/VALID_METRICS. Pendiente: (1) endpoints /api/mobile/progress/benchmarks (GET+POST) — NO existen todavía, (2) endpoints web /api/progress/benchmarks, (3) UI atleta en web (/progress o /gym), (4) Tab Rendimiento en perfil atleta del coach.' },
           { title: 'EJ-07 — Panel de adherencia del plan por atleta en coach dashboard', done: false, priority: 'P1', note: 'Coach entra al perfil del atleta y ve: % de sesiones completadas vs asignadas esta semana y últimas 4 semanas. Badge semafórico (verde >80%, amarillo 60-80%, rojo <60%). Esta es la señal de gestión principal del coach — no alertas realtime. Tab Adherencia en AthleteDetailClient. Query: PlannedSession.log vs total por período.' },
+        ],
+      },
+      {
+        id: 'ejercicios-seed',
+        label: 'Biblioteca — Fase 0: Ingesta del dataset WorkoutX',
+        period: 'P1 — Base del módulo',
+        items: [
+          {
+            title: 'EX-01 — Modelo Prisma Exercise: id, name, bodyPart, target, equipment, difficulty, mechanic, force, caloriesPerMinute, met, popularityRank, isUnilateral, recommendedSets, recommendedReps, description, secondaryMuscles[], instructions[], gifUrl, gifStoredUrl?, source, syncedAt + índices bodyPart/target/equipment',
+            done: true,
+            priority: 'P0',
+            note: 'DONE (feature/exercise-rewrite): schema.prisma reescrito — enums EquipmentType/ExerciseCategory eliminados, muscleGroups[] → bodyPart+target strings, isGlobal → coachId: null. Migración 20260710000001_exercise_rewrite aplicada en Neon prod. @@index([bodyPart/target/equipment]) creados.',
+          },
+          {
+            title: 'EX-02 — WorkoutXClient: adapter HTTP que consume WorkoutX API — solo usado en sync, nunca en producción runtime',
+            done: true,
+            priority: 'P0',
+            note: 'DONE (feature/exercise-rewrite): src/infrastructure/exercise-sync/workoutx.client.ts — fetchAll() pagina 100/request, mapea WorkoutX JSON → Exercise domain. IExerciseSourceClient port en src/domain/exercise/ports/exercise-source.client.ts.',
+          },
+          {
+            title: 'EX-03 — ExerciseSyncUseCase: orquesta fetch → map → upsertMany. Endpoint admin POST /api/admin/exercises/sync',
+            done: true,
+            priority: 'P0',
+            note: 'DONE (feature/exercise-rewrite): src/infrastructure/exercise-sync/exercise-sync.use-case.ts + POST /api/admin/exercises/sync. Pendiente: configurar WORKOUTX_API_KEY en Vercel y ejecutar el endpoint para seed inicial de 1,400+ ejercicios.',
+          },
+          {
+            title: 'EX-04 — IExerciseRepository port + PrismaExerciseRepository: toda la app consume ejercicios desde nuestro DB, nunca desde WorkoutX',
+            done: true,
+            priority: 'P0',
+            note: 'DONE (feature/exercise-rewrite): src/domain/exercise/ports/exercise.repository.ts (IExerciseRepository) + src/infrastructure/db/exercise.repository.ts (PrismaExerciseRepository). findAll(filters), findById, findSimilar, upsertMany.',
+          },
+          {
+            title: 'EX-05 — Seed inicial: correr ExerciseSyncUseCase una vez — carga 1,400+ ejercicios con metadata completa en DB local',
+            done: false,
+            priority: 'P0',
+            note: 'Pendiente: (1) configurar WORKOUTX_API_KEY en Vercel env vars, (2) llamar POST /api/admin/exercises/sync desde el panel admin. El código está listo. Sin este seed la biblioteca de ejercicios tiene solo los 39 ejercicios custom del seed manual. EJECUTAR DESPUÉS de EX-05b (migración nameEs/instructionsEs).',
+          },
+          {
+            title: 'EX-05b — Migración Prisma: agregar nameEs String? + instructionsEs String[] al modelo Exercise + actualizar WorkoutXClient con lang=es',
+            done: false,
+            priority: 'P0',
+            note: 'Dos pasos: (1) Migración: pnpm prisma migrate dev --name exercise-add-spanish-fields — agrega nameEs String? e instructionsEs String[] al modelo Exercise. (2) WorkoutXClient: al hacer fetch de cada página pasar ?lang=es → mapear name→nameEs, instructions→instructionsEs. Mantener name e instructions en inglés como fallback. UI usa: nameEs ?? name e instructionsEs.length ? instructionsEs : instructions. Ejecutar ANTES de EX-05 para que el seed cargue español desde el primer sync. Cero costo adicional — mismo plan FREE, mismos 14 requests.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-hardening',
+        label: 'Biblioteca — Fase 0b: Hardening pre-seed',
+        period: 'P0/P1 — Hacer antes de EX-05 y antes de construir UI',
+        items: [
+          {
+            title: 'EX-19 — upsertMany: reemplazar 1,400 queries secuenciales por $transaction por batches de 100',
+            done: false,
+            priority: 'P0',
+            note: 'exercise.repository.ts:69 — el loop actual hace 1 query por ejercicio = ~28s con latencia Neon. Fix: dividir en chunks de 100 y envolver cada chunk en prisma.$transaction(batch.map(ex => prisma.exercise.upsert({...}))). 14 transacciones de 100 en lugar de 1,400 queries sueltas. Cada batch es atómico. BLOQUEANTE para EX-05 — si se corre el seed con la implementación actual, Vercel corta la request por timeout.',
+          },
+          {
+            title: 'EX-20 — Mover ExerciseSyncUseCase de infrastructure/ a domain/exercise/',
+            done: false,
+            priority: 'P1',
+            note: 'src/infrastructure/exercise-sync/exercise-sync.use-case.ts → mover a src/domain/exercise/exercise-sync.use-case.ts. Violación de capa: un use case pertenece al dominio, no a la infraestructura. La infra implementa ports, no orquesta casos de uso. Actualizar import en sync/route.ts.',
+          },
+          {
+            title: 'EX-21 — /api/coach/gym/exercises GET: reemplazar prisma directo por PrismaExerciseRepository + agregar paginación',
+            done: false,
+            priority: 'P1',
+            note: 'coach/gym/exercises/route.ts:14 — hace prisma.exercise.findMany() sin limit ni skip → con 1,400 ejercicios carga todo en memoria. Además bypassea el repository: no resuelve gif: gifStoredUrl ?? gifUrl → en Fase 4 (S3) este endpoint servirá URLs de WorkoutX CDN aunque todos los demás ya no. Fix: usar repo.findAll({ coachId, ...filters }) con paginación. Depende de EX-25 (coachId en ExerciseFilters).',
+          },
+          {
+            title: 'EX-22 — requireAdmin en sync/route.ts: leer role del JWT en lugar de hacer query extra a DB',
+            done: false,
+            priority: 'P1',
+            note: 'sync/route.ts:8 — llama auth() + prisma.user.findUnique para verificar rol. El role ya está en session.user.role (JWT). Fix: return session?.user?.role === "ADMIN" ? session : null. Elimina 1 query a Neon en cada llamada al sync.',
+          },
+          {
+            title: 'EX-23 — Unificar UpsertExerciseData con Exercise eliminando duplicación de campos',
+            done: false,
+            priority: 'P2',
+            note: 'exercise.types.ts:39 — UpsertExerciseData duplica casi todos los campos de Exercise. Si se agrega nameEs/instructionsEs (EX-05b) hay que actualizarlo en dos interfaces y en el mapper. Fix: type UpsertExerciseData = Omit<Exercise, "gif" | "syncedAt"> & { gifUrl: string; syncedAt: Date }. Reduce superficie de mantenimiento.',
+          },
+          {
+            title: 'EX-24 — Usar validateExercise() del dominio en /api/coach/gym/exercises POST en lugar de validación inline duplicada',
+            done: false,
+            priority: 'P2',
+            note: 'coach/gym/exercises/route.ts:36 — valida campos con if-checks manuales. domain/admin/exercise.ts ya tiene validateExercise() con las mismas reglas + límite de 120 chars en nombre (que el endpoint inline no tiene). Fix: importar validateExercise, ejecutar, si errors.length > 0 → return 400 con errors array.',
+          },
+          {
+            title: 'EX-25 — Agregar coachId como filtro opcional en ExerciseFilters e IExerciseRepository',
+            done: false,
+            priority: 'P2',
+            note: 'ExerciseFilters no tiene coachId. El endpoint del coach filtra con OR:[{coachId},{coachId:null}] en raw, bypasseando el repo. Fix: agregar coachId?: string | null a ExerciseFilters. En PrismaExerciseRepository.findAll: if coachId → where.OR = [{coachId},{coachId:null}], else → solo ejercicios globales. Permite que EX-21 use repo.findAll() correctamente.',
+          },
+          {
+            title: 'EX-26 — NaN guard en query params page y limit en /api/exercises y /api/mobile/exercises',
+            done: false,
+            priority: 'P3',
+            note: 'exercises/route.ts:17 — Number(searchParams.get("page")) produce NaN si el valor no es numérico → skip = NaN → Prisma lanza 500. Fix: usar parseInt(val ?? "1", 10) || 1 y parseInt(val ?? "20", 10) || 20. Aplicar igual en mobile/exercises/route.ts.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-api',
+        label: 'Biblioteca — Fase 1: API propia',
+        period: 'P1 — Sin dependencia runtime',
+        items: [
+          {
+            title: 'EX-06 — GET /api/exercises: filtros bodyPart, target, equipment, q= con paginado. GET /api/exercises/:id: detalle completo',
+            done: true,
+            priority: 'P0',
+            note: 'DONE (feature/exercise-rewrite): /api/exercises/route.ts + /api/exercises/[id]/route.ts + /api/mobile/exercises/route.ts + /api/mobile/exercises/[id]/route.ts. gifUrl: gifStoredUrl ?? gifUrl. Filtros: bodyPart, target, equipment, source, q con contains insensitive.',
+          },
+          {
+            title: 'EX-07 — GET /api/exercises/:id/similar: ejercicios similares calculados desde DB (mismo bodyPart + target)',
+            done: true,
+            priority: 'P1',
+            note: 'DONE (feature/exercise-rewrite): /api/exercises/[id]/similar/route.ts — WHERE bodyPart = X AND target = Y AND id != currentId LIMIT 6. Sin dependencia de WorkoutX en runtime.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-ui',
+        label: 'Biblioteca — Fase 2: UI visual rediseñada',
+        period: 'P1 — Cerrar brecha visual vs Pulse',
+        items: [
+          {
+            title: 'EX-08 — Rediseño /coach/gym/exercises: tabla de texto → hero con contadores + selector visual de bodyPart + chips de equipment + search bar + grid 3 col de cards con GIF',
+            done: false,
+            priority: 'P1',
+            note: 'Referencia: workoutxapp.com/exercises.html. (1) Hero: N ejercicios · 19 músculos · 9 body parts. (2) Selector bodyPart: imágenes anatómicas como chips visuales (no dropdown). (3) Filtros equipment como pills clickeables (Body Weight / Barbell / Dumbbell / Cable / Machine…). (4) Search bar global con filtros de dificultad + categoría + sort. (5) Grid 3 col: card con gifUrl <img lazy /> + nombre + bodyPart chip + target chip + difficulty badge + kcal/min. Lazy load con IntersectionObserver. Depende de EX-05 (seed 1,400+ ejercicios).',
+          },
+          {
+            title: 'EX-09 — Modal detalle de ejercicio: GIF grande + músculos primarios y secundarios + instrucciones paso a paso + badges completos',
+            done: false,
+            priority: 'P1',
+            note: 'Click en card → modal/sheet. GIF full width. Sección músculos: primary (target) + secondary (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a rutina" si está en el constructor. Depende de EX-08.',
+          },
+          {
+            title: 'EX-10 — Ejercicios con GIF inline en el constructor de rutinas del coach al asignar ejercicio',
+            done: false,
+            priority: 'P2',
+            note: 'En WorkoutTemplate builder: al buscar/seleccionar un ejercicio, mostrar el GIF en miniatura como preview. Reduce errores de asignación (el coach ve qué está poniendo). Depende de EX-08.',
+          },
+          {
+            title: 'EX-15 — Biblioteca de ejercicios para atleta en web: /exercises con filtros bodyPart + equipment + search + grid de cards con GIF',
+            done: false,
+            priority: 'P2',
+            note: 'Ruta /exercises (atleta B2C Free/Pro) o /gym/exercises. Misma librería de ejercicios globales que ve el coach pero sin herramientas de edición. Filtros: bodyPart (chips visuales), equipment (pills), search. Grid 3 col con cards GIF + nombre + target. Útil para atletas que entrenan solos y buscan referencia visual de un movimiento. Depende de EX-05 (1,400+ ejercicios en DB) y EX-08 (componentes UI reutilizables).',
+          },
+          {
+            title: 'EX-16 — Modal detalle de ejercicio para atleta: GIF + músculos + instrucciones + botón "Agregar a rutina libre"',
+            done: false,
+            priority: 'P2',
+            note: 'Click en card desde EX-15 → modal. GIF full width. Músculos primarios (target) + secundarios (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a mi rutina" → agrega exercise a la sesión libre activa del atleta (featureGym). Depende de EX-15.',
+          },
+          {
+            title: 'EX-17 — Swap de ejercicio en sesión activa: sugerencia de alternativas calculada desde DB local (mismo bodyPart + equipment compatible)',
+            done: false,
+            priority: 'P2',
+            note: 'En sesión activa (coach plan o rutina libre): botón "Swap" por ejercicio → llama GET /api/exercises/:id/alternatives (implementado 100% desde DB local — sin llamada a WorkoutX en runtime). Query: WHERE bodyPart = $bodyPart AND (equipment = $equipment OR equipment = "body weight") AND id != $exerciseId ORDER BY popularityRank ASC LIMIT 5. Si no hay resultados con mismo equipment → fallback: WHERE bodyPart = $bodyPart AND id != $exerciseId LIMIT 5. Atleta elige el reemplazo → SessionLog registra exerciseId real ejecutado. Util para: no tienes barbell → reemplaza por mancuernas. Cero costo adicional, sin upgrade de tier. Depende de EX-05 (1,400 ejercicios en DB con popularityRank) y EX-08.',
+          },
+          {
+            title: 'EX-18 — Calorías quemadas en sesión gym: caloriesPerMinute × duración → kcalBurned en SessionLog → descuento en balance nutricional del día',
+            done: false,
+            priority: 'P2',
+            note: 'El campo caloriesPerMinute ya está en Exercise (seed WorkoutX). Al guardar sets en SetLog: calcular kcalBurned = SUM(sets × reps × caloriesPerMinute × avgRepDuration). Al cerrar la sesión: persistir en SessionLog.kcalBurned (campo ya existe). En el módulo de nutrición del día: balance = targetKcal - kcalLogged + SessionLog.kcalBurned. Es el eslabón que une el módulo gym con nutrición — actualmente están desconectados. Cero llamadas externas — todo calculado desde datos en DB. Depende de EX-05 (caloriesPerMinute cargado desde WorkoutX seed).',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-mobile',
+        label: 'Biblioteca — Fase 3: Mobile',
+        period: 'P2 — Atleta ve el ejercicio del día',
+        items: [
+          {
+            title: 'EX-11 — Ejercicio del día en mobile: GIF demo al ejecutar la sesión asignada por el coach',
+            done: false,
+            priority: 'P1',
+            note: 'En la pantalla de sesión activa mobile: cada ejercicio asignado muestra su GIF como guía visual antes de registrar sets. Consume /api/mobile/exercises/:id. Sin nueva infraestructura — el gifUrl ya está en DB.',
+          },
+          {
+            title: 'EX-12 — Búsqueda de ejercicios en mobile: atleta puede explorar la biblioteca desde la app',
+            done: false,
+            priority: 'P2',
+            note: 'Lista con filtros básicos (bodyPart, search). Detalle con GIF. Útil para atletas B2C que entrenan solos y quieren referencia visual. Depende de EX-11.',
+          },
+        ],
+      },
+      {
+        id: 'ejercicios-storage',
+        label: 'Biblioteca — Fase 4: Independencia total (GIFs en AWS S3)',
+        period: 'P2 — Trigger: 5 coaches pagando activos',
+        items: [
+          {
+            title: 'EX-13 — Script admin: descarga todos los GIFs desde gifUrl → sube a AWS S3 → actualiza gifStoredUrl en DB',
+            done: false,
+            priority: 'P2',
+            note: 'Endpoint POST /api/admin/exercises/upload-gifs — ADMIN only. Itera exercises WHERE gifStoredUrl IS NULL, fetch(gifUrl), upload S3 bucket medaliq-exercises/, update gifStoredUrl. Costo: ~70MB storage ($0.0016/mes) + egress S3 ($0.09/GB). A 500 coaches: ~$1.35/mes. Trigger: cuando haya 5 coaches pagando activos — el riesgo de dependencia WorkoutX CDN justifica el setup.',
+          },
+          {
+            title: 'EX-14 — UI transparente: gifStoredUrl ?? gifUrl en todos los componentes que muestran GIFs de ejercicios',
+            done: false,
+            priority: 'P2',
+            note: 'Cambio de 1 línea en /api/exercises response: gif: exercise.gifStoredUrl ?? exercise.gifUrl. Todos los clientes (web + mobile) lo reciben automáticamente sin cambios adicionales. Depende de EX-13.',
+          },
         ],
       },
     ],
@@ -1064,7 +1221,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'A11Y-02 — lang="pt" en HTML root (debería ser "es")', done: true, priority: 'P3', note: 'Working as designed: layout.tsx usa lang={locale} dinámico via getServerLocale(). DEFAULT_LOCALE="es" — cookieless users reciben "es". User con cookie pt="pt" recibe "pt" correctamente (producto multilingüe es/en/pt).' },
           { title: 'BUG-045 — Landing pública muestra CTAs en inglés cuando browser language=en', done: true, priority: 'P1', note: 'QA-2026-07-03: CTAs en landing (/) aparecen en inglés ("Reserve free access", "I\'m a coach", "I\'m an athlete", "Start free") cuando el Accept-Language del browser es "en". DEFAULT_LOCALE debería forzar español para la landing pública independientemente del browser, ya que el mercado objetivo es LatAm. Investigar getServerLocale() en layout.tsx — ¿usa Accept-Language header en lugar de solo la cookie? Fix: para rutas públicas (/) ignorar Accept-Language y usar siempre DEFAULT_LOCALE="es", o al menos para la landing de marketing.' },
           { title: 'BUG-046 — Check-in viernes: mensaje "espera al viernes" cuando HOY es viernes', done: true, priority: 'P2', note: 'DONE: checkin/page.tsx ya usa nowInTz (timezone America/Bogota) para dayOfWeek. isEarlyInWeek = dayOfWeek >= 1 && dayOfWeek <= 4 → viernes (5) siempre abre formulario directo.' },
-          { title: 'BUG-047 — Dashboard Sebastián: hero muestra "Sin plan activo" pero widget semanal muestra plan 5K', done: false, priority: 'P2', note: 'QA-2026-07-03: El dashboard de sebastian.rios@medaliq.com muestra en el hero "Sin plan activo" pero la sección ESTA SEMANA muestra "🏆 5K — 8 semanas · 0/13 sesiones completadas · Recuperación · día 8/14". El plan existe (posiblemente en estado COMPLETED o con status no reconocido por el hero). El hero y el widget semanal deben derivar el plan del mismo source. Investigar qué campo/status hace que el hero muestre "Sin plan" mientras el widget sí lo detecta.' },
+          { title: 'BUG-047 — Dashboard Sebastián: hero muestra "Sin plan activo" pero widget semanal muestra plan 5K', done: true, priority: 'P2', note: 'Cerrado: no es bug. Hero filtra status=\'ACTIVE\' → correcto. Widget semanal muestra PlanCompletionCard en modo RECOVERY (plan completado ≤14 días) → comportamiento diseñado según atleta.md:66-83.' },
           { title: 'BUG-048 — Onboarding paso 2: sin feedback de validación al usuario (valores inválidos bloqueados en silencio)', done: true, priority: 'P2', note: 'Fix: isStepValid() ahora valida rangos (edad 10-100, altura 100-250, peso 30-300). onboarding/page.tsx muestra mensajes de error inline en rojo bajo cada campo fuera de rango. Label "Talla" → "Altura" (UX-02). Branch: bugfix/mvp-ux-flows.' },
           { title: 'BUG-049 — Sidebar idioma persiste en PT (Portugués) entre sesiones de usuarios en ES', done: true, priority: 'P2', note: 'QA-2026-07-03: El sidebar de navegación muestra labels en Portugués ("Sair", "Início", "Meu Plano", "Nutrição") para múltiples usuarios (Ana, Miguel, Juan, Sebastián) aunque el contenido de la página está en español. El selector de idioma muestra "PT" activo. La cookie de idioma queda persistida en PT desde sesiones anteriores y no se limpia al hacer logout o al login de un nuevo usuario. Fix: al hacer login, verificar si hay cookie de idioma y solo resetear a DEFAULT_LOCALE="es" si el usuario no tiene preferencia explícita guardada en DB.' },
           { title: 'BUG-050 — /checkin UI muestra "Semana 6 · 22 may" aunque el check-in se guardó correctamente en semana 12', done: true, priority: 'P1', note: 'Fix: weekData sintético construido cuando PlanWeek no existe en DB. startMs = plan.startDate + (currentWeek-1)*7días. Elimina fallback al último PlanWeek. checkin/page.tsx. Branch: bugfix/mvp-ux-flows.' },
@@ -1077,7 +1234,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-057 — Dashboard "0/0 completadas" ignora SessionLog: atleta que entrena libremente no ve progreso semanal', done: true, priority: 'P2', note: 'CÓDIGO LOCALIZADO 2026-07-03. Archivo: src/app/(athlete)/dashboard/page.tsx líneas 367-369. `completedCount = selectedPlanWeekSessions.filter(s => s.log && s.type !== DESCANSO).length` y `totalTraining = selectedPlanWeekSessions.filter(s => s.type !== DESCANSO).length`. Ambos solo cuentan PlannedSession — SessionLog (actividades libres via /log/run) no entra. FIX: consultar también SessionLog de la semana actual y sumar al contador, o mostrar un contador adicional "N actividades libres esta semana" en DailySessionCard.' },
           { title: 'BUG-058 — /plan semanas sin PlanWeek en DB muestran "Día de descanso" sin distinguir de plan incompleto', done: true, priority: 'P1', note: 'Fix: condición !week antes del else → "📋 Semana sin sesiones definidas" vs "😴 Día de descanso". PlanClient.tsx. Branch: bugfix/mvp-ux-flows.' },
           { title: 'BUG-059 — /plan adherencia histórica 0% en semanas con plan vacío: métrica engañosa para atleta', done: true, priority: 'P2', note: 'QA-2026-07-03: El historial de adherencia en /plan muestra 0% para semanas 10-14. Técnicamente correcto (0 sesiones planificadas / 0 sesiones completadas = no aplica), pero se muestra como 0% que parece "mal desempeño". Las semanas donde el plan no tiene sesiones deberían mostrarse como "—" o "sin datos" en lugar de 0%. Fix: en el cálculo de adherencia, si denominador === 0 → mostrar null/"—" en lugar de 0%. Verificar el componente de adherencia en /plan y en /progress.' },
-          { title: 'BUG-060 — /nutrition: CTA "¿Quieres un plan de comidas?" aparece aunque el atleta ya tiene NutritionPlan activo', done: false, priority: 'P3', note: 'QA-2026-07-03: En /nutrition, se muestra el CTA "Configura tu plan nutricional →" aunque Miguel ya tiene NutritionPlan con macros completos (1733 kcal REST, 150g P, 118g C, 52g G). El CTA debería desaparecer cuando el usuario ya tiene plan nutricional configurado. Fix: NutritionClient.tsx — condicional que solo muestre el CTA si nutritionPlan === null o si los macros están todos en 0.' },
+          { title: 'BUG-060 — /nutrition: CTA "¿Quieres un plan de comidas?" aparece aunque el atleta ya tiene NutritionPlan activo', done: true, priority: 'P3', note: 'Cerrado: texto "Configura tu plan nutricional" no existe en código actual. nutrition/page.tsx usa condición !nutritionPlan correctamente. Si el atleta tiene NutritionPlan en DB, no se muestra ningún CTA.' },
           { title: 'BUG-061 — /progress adherencia histórica 0% en todas las semanas (doble causa: seed no guarda el campo + API calcula mal)', done: true, priority: 'P1', note: 'CÓDIGO LOCALIZADO 2026-07-03. CAUSA 1 — Seed no persiste el campo: prisma/seed.ts:258-264 crea WeeklyCheckIn con wkg/hr/sleep/score/rpe/pain/energy/notes pero OMITE `adh` (adherencia). El campo DB se llama `dietAdherencePct` (schema.prisma:449) — el seed nunca lo popula, queda en null. CAUSA 2 — API calcula adherencia solo desde logs: src/app/api/mobile/progress/route.ts:86-91 `adherencePct: adherencePct(w.sessions)` que cuenta `PlannedSession.log !== null`. Nunca consulta WeeklyCheckIn.dietAdherencePct. FIX DOBLE: (1) prisma/seed.ts:259 agregar `dietAdherencePct: ci.adh` al create de WeeklyCheckIn. (2) progress/route.ts:86: en la query incluir WeeklyCheckIn para la semana y usar su dietAdherencePct si existe, sino calcular desde sessions.' },
           { title: 'BUG-062 — /progress: texto "ÚLTIMAS 1 SESIONES" gramaticalmente incorrecto', done: false, priority: 'P3', note: 'QA-2026-07-03: El historial de actividad en /progress muestra "HISTORIAL DE ACTIVIDAD — ÚLTIMAS 1 SESIONES". Cuando hay 1 resultado, el texto debería ser "ÚLTIMA SESIÓN" o "ÚLTIMAS N SESIONES" (pluralización condicional). Fix: condicional en ProgressClient.tsx — if (sessions.length === 1) ? "ÚLTIMA SESIÓN" : `ÚLTIMAS ${sessions.length} SESIONES`.' },
           { title: 'BUG-063 — /gym B2B: atleta sin rutina asignada bloqueado sin acceso a plantillas (early return en gym/page.tsx:95-106)', done: true, priority: 'P2', note: 'Fix: early return eliminado. B2B sin rutina ve banner azul "Tu coach aún no te asignó una rutina" + plantillas públicas debajo. B2C sin coach ve plantillas directamente sin banner. Branch: bugfix/mvp-ux-flows.' },
@@ -1085,7 +1242,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-065 — /log/run: sin redirect ni confirmación visual tras guardar corrida', done: true, priority: 'P2', note: 'DONE: log/run/page.tsx ya hace router.push("/dashboard") tras POST exitoso. Feedback visual implícito vía navegación.' },
           { title: 'BUG-066 — /log/run: slider de duración no se resetea al valor default después de guardar', done: false, priority: 'P3', note: 'QA-2026-07-03: El slider de duración en /log/run queda en el último valor usado (ej. 50 min) en lugar de volver al default (45 min) después de guardar o cancelar. Fix: resetear todos los campos del formulario al estado inicial en el handler onSuccess. Verificar LogRunClient.tsx — el reset() del form state.' },
           { title: 'BUG-067 — /profile: fecha de nacimiento vacía pero edad muestra "30 años" (edad hardcodeada en HealthProfile.age)', done: true, priority: 'P2', note: 'DONE: ProfileClient.tsx muestra `{p.dateOfBirth ? calcAge(p.dateOfBirth) : p.age} años` — calcula dinámicamente desde birthDate si existe. Formulario de edición tiene campo dateOfBirth. calcAge() implementada con lógica correcta de cumpleaños.' },
-          { title: 'BUG-068 — /progress: gap S7-S11 en gráfico de peso por check-in guardado en semana incorrecta (encadenado con BUG-050)', done: false, priority: 'P2', note: 'QA-2026-07-03: El gráfico de peso en /progress salta de S6 a S12 sin datos intermedios. Causa encadenada: BUG-050 hace que el check-in de hoy (semana real 12) se guarde como WeeklyCheckIn con weekNumber=6. Por lo tanto no existe ningún registro en S7-S11. Cuando BUG-050 se corrija, este gap desaparecerá automáticamente — el check-in se guardará en S12 y el gráfico tendrá el punto correcto. No requiere fix independiente, pero documentar como consecuencia de BUG-050.' },
+          { title: 'BUG-068 — /progress: gap S7-S11 en gráfico de peso por check-in guardado en semana incorrecta (encadenado con BUG-050)', done: true, priority: 'P2', note: 'Cerrado: consecuencia de BUG-050 (ya resuelto). getPlanWeekNumber() ahora calcula correctamente. Los datos con weekNumber incorrecto eran de seed, no de usuarios reales.' },
           { title: 'BUG-069 — Onboarding: contador "Paso X de Y" cambia el total dinámicamente al seleccionar opciones', done: true, priority: 'P3', note: 'Fix: onboarding/page.tsx — totalSteps calculado excluyendo el paso "generating" (steps.filter(s => s !== "generating").length). El total ya no incluye la pantalla de carga como paso visible, estabilizando el contador. isLastDataStep sigue usando steps[stepIndex + 1] === "generating" (correcto). Branch: feature/landing-conversion.' },
           { title: 'BUG-070 — /new-goal: pre-selección de meta no corresponde al deporte elegido en onboarding', done: true, priority: 'P2', note: 'Resuelto por eliminación: directorio /new-goal eliminado (ARCH-01). La ruta no es accesible desde ningún flujo activo.' },
           { title: 'BUG-071 — /new-goal: "Error generando plan" (HTTP 500) — WorkoutDay FK no existe en producción', done: true, priority: 'P0', note: 'Fix (UX-04): /new-goal ya no genera plan. NewGoalClient llama PATCH /api/athlete/sport que guarda goalType en HealthProfile y redirige a /dashboard. El plan se genera cuando el coach lo asigne o vía flujo posterior. Branch: bugfix/mvp-ux-flows.' },
@@ -1264,6 +1421,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'PERF-11 — calcAdherencePct definida localmente en 3+ archivos — extraer a lib/core/adherence.ts', done: false, priority: 'P3', note: 'Archivos: app/(athlete)/progress/page.tsx líneas 15-21 + api/mobile/progress/route.ts líneas 7-10 + inline en dashboard. Fix: src/lib/core/adherence.ts con calcAdherencePct(completed, total) exportado + tests.' },
           { title: 'PERF-12 — getDailyNutritionTargets en athlete-formulas.ts: posible dead code vs getDailyNutritionTarget de daily-target.ts', done: false, priority: 'P3', note: 'Archivo: lib/core/athlete-formulas.ts líneas 41-71 vs lib/nutrition/daily-target.ts. Dos funciones para calcular lo mismo con interfaces distintas. Fix: verificar callers de getDailyNutritionTargets — si no se usa en ninguna route activa, eliminar.' },
           { title: 'NEW-P2-05 — mobile/progress: incluye plan completo con todos los weeks/sessions/logs (mismo antipatrón PERF-01)', done: true, priority: 'P2', note: 'Fix: include {} → select { weeks: { select: { weekNumber, phase, sessions: { where: date<=now, select: { log: { id, distanceKm } } } } } }. Solo carga semanas pasadas y los campos necesarios para adherencia (log id) y volumen (distanceKm). api/mobile/progress/route.ts.' },
+          { title: 'CONC-01 — generator.ts llama AI (Haiku) DENTRO de $transaction — bug de concurrencia latente', done: false, priority: 'P1', note: 'Auditoría 2026-07-08: src/domain/plan/generator.ts contiene llamada a Anthropic AI dentro del bloque $transaction. Viola el patrón de 3 fases del proyecto: Phase 2 (I/O externo como AI) debe ejecutarse FUERA del $transaction antes de iniciar los writes. Riesgo: si la llamada AI demora >30s → timeout del tx → rollback silencioso del plan ya generado. El bug no ocurre hoy porque AI_ONBOARDING_ENABLED=false desactiva el path, pero se activará cuando se habilite AI. Fix: extraer la llamada AI a fuera del $transaction, guardar el resultado en variable, y usarlo dentro del tx solo para los writes.' },
         ],
       },
 
@@ -1281,6 +1439,19 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-NEW-06 — Módulo Ejercicios (/gym) muestra solo rutinas de fuerza a atleta runner sin contenido relevante', done: false, priority: 'P2', note: 'E2E-2026-07-05: Atleta Running ve 5 rutinas de fuerza/hipertrofia (Push Pull Legs, Full Body, Upper/Lower, Fuerza 5×5, PPL 6 días). Ningún contenido de running. El módulo no filtra por activityType ni comunica por qué un corredor ve rutinas de pesas. Fix: leer HealthProfile.sport del atleta y priorizar o filtrar las rutinas según el deporte. O agregar sección de "Fuerza complementaria para runners".' },
           { title: 'BUG-NEW-07 — Naming inconsistency: nav lateral dice "Ejercicios" pero la ruta es /gym y el contenido es de gym', done: false, priority: 'P3', note: 'E2E-2026-07-05: El item del nav lateral se llama "Ejercicios" pero la URL es /gym y el contenido son plantillas de entrenamiento de fuerza en gym. Para un atleta runner, "Ejercicios" sugiere sus rutinas de running. La etiqueta no refleja el contenido del módulo. Fix: renombrar el nav item a "Gym" o "Fuerza", o ampliar el contenido del módulo para incluir también ejercicios de running.' },
           { title: 'BUG-NEW-08 — Registro diario en /profile pre-carga peso y FC reposo con valores que no pertenecen al usuario', done: true, priority: 'P1', note: 'Fix: ProfileClient.tsx — placeholders de los inputs de peso y FC reposo ahora usan p?.weightKg y p?.hrResting del HealthProfile en lugar de valores hardcodeados (75.0 kg, 55 bpm). Branch: bugfix/profile-preload.' },
+        ],
+      },
+
+      // ── QA API Mobile — Auditoría 2026-07-08 ─────────────────────────────────
+      {
+        id: 'bugs-e2e-0708',
+        label: 'QA API Mobile — Auditoría 2026-07-08',
+        period: 'Urgente — QA core loops mobile',
+        items: [
+          { title: 'BUG-NEW-09 — /api/mobile/nutrition/log: acumulación silenciosa de gramos sin feedback al cliente', done: false, priority: 'P2', note: 'QA-2026-07-08: POST /nutrition/log con grams:200 sobre un entry existente de 150g devuelve grams:350 sin indicar acumulación (PERSIST-01 es comportamiento intencional). El atleta no sabe que está sumando sobre un registro previo. Fix: incluir en el response previousGrams + addedGrams además del totalGrams. Archivo: src/app/api/mobile/nutrition/log/route.ts — rama del existing check.' },
+          { title: 'BUG-NEW-10 — /api/mobile/progress: overallAdherencePct:0 inconsistente con adherencePct por semana', done: false, priority: 'P2', note: 'QA-2026-07-08: El response muestra adherencePct:85 en semana 1 (desde checkIn.dietAdherencePct) pero overallAdherencePct:0 (desde sesiones con log≠null). Con sesiones sin log → 0% global aunque el atleta reporte alta adherencia en check-ins. Fix: usar el mismo criterio en ambos cálculos — preferiblemente checkIn.dietAdherencePct como fuente de verdad. Archivo: src/app/api/mobile/progress/route.ts:109-110.' },
+          { title: 'BUG-NEW-11 — /api/mobile/gym/week retorna 404 para atletas sin assignedWorkout con sesiones libres de fuerza', done: false, priority: 'P2', note: 'QA-2026-07-08: Atleta runner sin rutina de gym asignada recibe {"error":"Sin rutina asignada"} 404, aunque haya registrado sesiones FUERZA libres esa semana. Fix: retornar 200 con weekSessions que incluyan SessionLogs libres tipo FUERZA de la semana actual, en lugar de 404. Archivo: src/app/api/mobile/gym/week/route.ts.' },
+          { title: 'BUG-NEW-12 — /api/mobile/nutrition GET sin feature gate para atletas B2B inactivos', done: false, priority: 'P3', note: 'QA-2026-07-08: GET /api/mobile/nutrition retorna 200 con macros:null para atleta B2B con feature nutrition:false. POST /api/mobile/nutrition/log SÍ bloquea con 402. Inconsistencia de feature gate entre GET y POST del mismo módulo. Fix: agregar requireFeature(mobile.features, "nutrition") al GET handler. Archivo: src/app/api/mobile/nutrition/route.ts:14.' },
         ],
       },
 
@@ -1334,136 +1505,6 @@ export const GROUPS: RoadmapGroup[] = [
       },
     ],
   },
-
-  // ── MÓDULO EJERCICIOS — BIBLIOTECA VISUAL ────────────────────────────────
-  {
-    id: 'modulo-ejercicios',
-    label: 'Módulo Ejercicios — Biblioteca Visual',
-    color: '#0369a1',
-    bgColor: '#f0f9ff',
-    borderColor: '#7dd3fc',
-    phases: [
-      {
-        id: 'ejercicios-seed',
-        label: 'Fase 0 — Ingesta del dataset',
-        period: 'P1 — Base del módulo',
-        items: [
-          {
-            title: 'EX-01 — Modelo Prisma Exercise: id, name, bodyPart, target, equipment, difficulty, mechanic, force, caloriesPerMinute, met, popularityRank, isUnilateral, recommendedSets, recommendedReps, description, secondaryMuscles[], instructions[], gifUrl, gifStoredUrl?, source, syncedAt + índices bodyPart/target/equipment',
-            done: false,
-            priority: 'P0',
-            note: 'Migración nueva. gifUrl = URL CDN WorkoutX (fallback siempre presente). gifStoredUrl = URL AWS S3 propia (null hasta Fase 4). source: "workoutx" | "custom". @@index([bodyPart]), @@index([target]), @@index([equipment]). Ver implementacion/ejercicios.md.',
-          },
-          {
-            title: 'EX-02 — WorkoutXClient: adapter HTTP que consume WorkoutX API — solo usado en sync, nunca en producción runtime',
-            done: false,
-            priority: 'P0',
-            note: 'infrastructure/exercise-sync/workoutx.client.ts. Implementa IExerciseSourceClient. fetchAll() pagina de 100 en 100 (~14 requests). Mapea WorkoutX JSON → Exercise domain entity. API key desde env WORKOUTX_API_KEY. Plan free (500 req/mes) es suficiente: 14 req seed + 14 req re-sync mensual.',
-          },
-          {
-            title: 'EX-03 — ExerciseSyncUseCase: orquesta fetch → map → upsertMany. Endpoint admin POST /api/admin/exercises/sync',
-            done: false,
-            priority: 'P0',
-            note: 'infrastructure/exercise-sync/exercise-sync.use-case.ts. Recibe IExerciseSourceClient por inyección → agnóstico al proveedor. upsertMany con update on conflict (id). Retorna { synced, skipped, errors }. Endpoint protegido ADMIN. Trigger: manual desde panel admin.',
-          },
-          {
-            title: 'EX-04 — IExerciseRepository port + PrismaExerciseRepository: toda la app consume ejercicios desde nuestro DB, nunca desde WorkoutX',
-            done: false,
-            priority: 'P0',
-            note: 'domain/ports/exercise.repository.ts: findAll(filters), findById(id), findByBodyPart, findByTarget, findByEquipment, search(q), upsertMany. infrastructure/db/exercise.repository.ts implementa con Prisma. Cero llamadas a WorkoutX en runtime de producción.',
-          },
-          {
-            title: 'EX-05 — Seed inicial: correr ExerciseSyncUseCase una vez — carga 1,400+ ejercicios con metadata completa en DB local',
-            done: false,
-            priority: 'P0',
-            note: 'Script manual o llamada al endpoint admin. 14 requests del free plan (500/mes). Incluye: name, bodyPart, target, equipment, difficulty, mechanic, force, caloriesPerMinute, met, popularityRank, isUnilateral, recommendedSets, recommendedReps, gifUrl. gifStoredUrl = null hasta Fase 4.',
-          },
-        ],
-      },
-      {
-        id: 'ejercicios-api',
-        label: 'Fase 1 — API propia',
-        period: 'P1 — Sin dependencia runtime',
-        items: [
-          {
-            title: 'EX-06 — GET /api/exercises: filtros bodyPart, target, equipment, q= con paginado. GET /api/exercises/:id: detalle completo',
-            done: false,
-            priority: 'P0',
-            note: 'Sirve desde PrismaExerciseRepository. Responde { id, name, bodyPart, target, equipment, difficulty, gifUrl: gifStoredUrl ?? gifUrl, secondaryMuscles, instructions, ... }. El campo gif es siempre el mejor disponible: S3 propio si existe, CDN WorkoutX como fallback. Disponible también en /api/mobile/exercises para la app.',
-          },
-          {
-            title: 'EX-07 — GET /api/exercises/:id/similar: ejercicios similares calculados desde DB (mismo bodyPart + target)',
-            done: false,
-            priority: 'P1',
-            note: 'Sin llamada a WorkoutX en runtime. Calcula similares con query: WHERE bodyPart = X AND target = Y AND id != currentId LIMIT 6. Si se quieren relaciones exactas de WorkoutX: pagar Basic ($9.99) un mes, seedear /:id/similar para los 1,400 ejercicios (~1,400 req), cancelar. Guardar en campo similarIds String[] en Exercise.',
-          },
-        ],
-      },
-      {
-        id: 'ejercicios-ui',
-        label: 'Fase 2 — UI rediseñada',
-        period: 'P1 — Cerrar brecha visual vs Pulse',
-        items: [
-          {
-            title: 'EX-08 — Rediseño /coach/gym: tabla de texto → grid de cards con GIF + nombre + chips de músculo + badge dificultad + badge equipo',
-            done: false,
-            priority: 'P1',
-            note: 'Consumir GET /api/exercises con filtros. Cards: <img src={gif} /> + name + bodyPart chip + target chip + difficulty badge. Lazy load de GIFs (IntersectionObserver). Filtros laterales: bodyPart, target, equipment, búsqueda por nombre. Gap confirmado en prod: hoy es tabla de texto sin una sola imagen.',
-          },
-          {
-            title: 'EX-09 — Modal detalle de ejercicio: GIF grande + músculos primarios y secundarios + instrucciones paso a paso + badges completos',
-            done: false,
-            priority: 'P1',
-            note: 'Click en card → modal/sheet. GIF full width. Sección músculos: primary (target) + secondary (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a rutina" si está en el constructor. Depende de EX-08.',
-          },
-          {
-            title: 'EX-10 — Ejercicios con GIF inline en el constructor de rutinas del coach al asignar ejercicio',
-            done: false,
-            priority: 'P2',
-            note: 'En WorkoutTemplate builder: al buscar/seleccionar un ejercicio, mostrar el GIF en miniatura como preview. Reduce errores de asignación (el coach ve qué está poniendo). Depende de EX-08.',
-          },
-        ],
-      },
-      {
-        id: 'ejercicios-mobile',
-        label: 'Fase 3 — Mobile',
-        period: 'P2 — Atleta ve el ejercicio del día',
-        items: [
-          {
-            title: 'EX-11 — Ejercicio del día en mobile: GIF demo al ejecutar la sesión asignada por el coach',
-            done: false,
-            priority: 'P1',
-            note: 'En la pantalla de sesión activa mobile: cada ejercicio asignado muestra su GIF como guía visual antes de registrar sets. Consume /api/mobile/exercises/:id. Sin nueva infraestructura — el gifUrl ya está en DB.',
-          },
-          {
-            title: 'EX-12 — Búsqueda de ejercicios en mobile: atleta puede explorar la biblioteca desde la app',
-            done: false,
-            priority: 'P2',
-            note: 'Lista con filtros básicos (bodyPart, search). Detalle con GIF. Útil para atletas B2C que entrenan solos y quieren referencia visual. Depende de EX-11.',
-          },
-        ],
-      },
-      {
-        id: 'ejercicios-storage',
-        label: 'Fase 4 — Independencia total (GIFs en AWS S3)',
-        period: 'P2 — Trigger: 5 coaches pagando activos',
-        items: [
-          {
-            title: 'EX-13 — Script admin: descarga todos los GIFs desde gifUrl → sube a AWS S3 → actualiza gifStoredUrl en DB',
-            done: false,
-            priority: 'P2',
-            note: 'Endpoint POST /api/admin/exercises/upload-gifs — ADMIN only. Itera exercises WHERE gifStoredUrl IS NULL, fetch(gifUrl), upload S3 bucket medaliq-exercises/, update gifStoredUrl. Costo: ~70MB storage ($0.0016/mes) + egress S3 ($0.09/GB). A 500 coaches: ~$1.35/mes. Trigger: cuando haya 5 coaches pagando activos — el riesgo de dependencia WorkoutX CDN justifica el setup.',
-          },
-          {
-            title: 'EX-14 — UI transparente: gifStoredUrl ?? gifUrl en todos los componentes que muestran GIFs de ejercicios',
-            done: false,
-            priority: 'P2',
-            note: 'Cambio de 1 línea en /api/exercises response: gif: exercise.gifStoredUrl ?? exercise.gifUrl. Todos los clientes (web + mobile) lo reciben automáticamente sin cambios adicionales. Depende de EX-13.',
-          },
-        ],
-      },
-    ],
-  },
   {
     id: 'db-schema-v2',
     label: 'DB Schema v2 — Correcciones estructurales',
@@ -1496,9 +1537,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'DB-04 — Reemplazar modelo Exercise con schema WorkoutX-compatible',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Drop campos obsoletos: difficulty String?, instructions String?, videoUrl String?. Agregar: workoutXId String @unique (ID original WorkoutX para deduplicación en re-seed), category String, bodyParts String[] (muscle groups), equipment String, secondaryMuscles String[], difficulty String (WorkoutX scale: beginner|intermediate|advanced), sport String @default("general"), isCustom Boolean @default(false), instructions String[] (pasos como array). gifUrl ya existe. gifStoredUrl ya existe. Migración: crear nueva migración con renaming de campos incompatibles. Ver implementacion/ejercicios.md para schema completo.',
+            note: 'Implementado en worktree medaliq-exercise-rewrite. Schema reescrito: drop muscleGroups/equipment(enum)/category(enum)/isGlobal/imageUrl/tips → add bodyPart/target/equipment(String)/mechanic/gifUrl/gifStoredUrl/source/secondaryMuscles/instructions/etc. Migración SQL combinada (additive+backfill+destructive) en prisma/migrations/20260710000001_exercise_rewrite. Requiere: pnpm prisma migrate deploy → pnpm prisma generate.',
           },
         ],
       },
@@ -1540,19 +1581,41 @@ export const GROUPS: RoadmapGroup[] = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: 'back-db-v2',
-    label: 'Backend: código post-migración DB v2',
-    color: '#6b7280',
-    bgColor: '#f9fafb',
-    borderColor: '#d1d5db',
-    phases: [
+      {
+        id: 'db-p3',
+        label: 'Fase 4 — Retención y wearables (P2-P3)',
+        period: 'P2-P3 — después de lanzamiento y primeros clientes activos',
+        items: [
+          {
+            title: 'DB-09 — Modelo ActivityStreak (racha diaria del atleta)',
+            done: false,
+            priority: 'P2',
+            note: 'Prerequisito DB para el sistema de retención más crítico del producto (atleta.md §Sistema de recompensas Capa 2). Sin este modelo no se puede implementar la racha diaria ni la notificación "Racha en riesgo". Modelo sugerido: ActivityStreak { userId @unique, currentStreak Int @default(0), longestStreak Int @default(0), lastActivityAt DateTime? }. Se actualiza en POST /api/log/session y POST /api/gym/session/complete. Se rompe si lastActivityAt > 48h.',
+          },
+          {
+            title: 'DB-10 — Modelo UserAchievement (hitos de consistencia compartibles)',
+            done: false,
+            priority: 'P2',
+            note: 'Prerequisito DB para Capas 2 y 3 del sistema de recompensas (atleta.md). Hitos: PR_GYM (ya parcial via SetLog.isPR), PLAN_COMPLETED, STREAK_10, SESSIONS_50, MONTHS_3_ACTIVE, CHECKINS_10. Modelo sugerido: UserAchievement { id, userId, type AchievementType, unlockedAt DateTime, sharedAt DateTime? }. La imagen compartible (WhatsApp/Instagram) se genera en cliente a partir del hito.',
+          },
+          {
+            title: 'DB-11 — Modelo WearableConnection (OAuth tokens Strava/Garmin)',
+            done: false,
+            priority: 'P3',
+            note: 'Prerequisito DB para todas las integraciones de wearables (integraciones.md). Sin este modelo no se pueden almacenar OAuth tokens entre sesiones. Los campos de SessionLog para datos de wearables (hrAvg, hrMax, avgPaceSecPerKm, dataSource, externalId) ya existen en schema — solo falta este modelo para el flujo OAuth. Modelo sugerido: WearableConnection { id, userId, provider (STRAVA|GARMIN|HEALTHKIT), accessToken, refreshToken?, expiresAt?, lastSyncAt?, isActive Boolean, @@unique([userId, provider]) }.',
+          },
+          {
+            title: 'DB-12 — Modelo PlannedMeal (plan nutricional por fecha y alimento concreto)',
+            done: false,
+            priority: 'P2',
+            note: 'Equivalente a PlannedSession pero para nutrición. Permite al coach asignar alimentos concretos a días específicos del atleta, y al atleta autónomo planificar su propia semana alimentaria. Gap actual: NutritionTemplate solo define macros por tipo de día (hard/easy/rest), no alimentos concretos ni fechas específicas. Modelo sugerido: PlannedMeal { id, userId, createdById, date @db.Date, mealType MealType, foodId, grams Float, notes String?, @@index([userId, date]) }. createdById === userId → atleta autónomo. createdById !== userId → coach planifica para atleta. Endpoints: POST /api/coach/athlete/[id]/nutrition/plan, GET /api/mobile/nutrition/plan?date=, POST /api/mobile/nutrition/plan/[id]/log (convierte PlannedMeal → FoodLog en 1 tap).',
+          },
+        ],
+      },
       {
         id: 'back-safe',
-        label: 'Fase 1 — Código para migraciones aditivas (DB-01/02/03/05)',
-        period: 'Después de aplicar la migración conjunta DB-01+02+03+05',
+        label: 'Backend Fase 1 — Código para migraciones aditivas (DB-01/02/03/05)',
+        period: 'Completado',
         items: [
           {
             title: 'BACK-01 — Middleware: bloquear usuarios SUSPENDED y BLOCKED',
@@ -1582,38 +1645,38 @@ export const GROUPS: RoadmapGroup[] = [
       },
       {
         id: 'back-exercise',
-        label: 'Fase 2 — Sprint Ejercicios: reescritura completa del módulo (DB-04)',
-        period: 'Sprint dedicado — no aplicar DB-04 sin tener este código listo',
+        label: 'Backend Fase 2 — Sprint Ejercicios: reescritura completa (DB-04)',
+        period: 'Completado',
         items: [
           {
             title: 'BACK-04a — Admin ejercicios: reescribir /api/admin/exercises con nuevo schema WorkoutX',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Actualizar /api/admin/exercises/route.ts y /api/admin/exercises/[id]/route.ts. Reemplazar campos obsoletos (muscleGroups→bodyParts, equipment EquipmentType→String, category ExerciseCategory→String, isGlobal→isCustom, imageUrl→gifUrl). Actualizar select/create/update queries. Actualizar tests en route.test.ts. Actualizar ExercisesClient.tsx y ExerciseForm.tsx en /admin/exercises/.',
+            note: 'Implementado. /api/admin/exercises/route.ts y [id]/route.ts reescritos con bodyPart/target/equipment/mechanic/gifUrl. ExercisesClient.tsx reescrito (tabla + formulario). admin/exercises/page.tsx actualizado. Tests actualizados.',
           },
           {
             title: 'BACK-04b — Coach gym: reescribir rutas de ejercicios y rutinas',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Afecta: /api/coach/gym/exercises/route.ts, /api/coach/gym/routines/route.ts, /api/coach/gym/routines/[id]/route.ts, /api/coach/gym/routines/[id]/copy/route.ts, /api/coach/gym/athlete/[id]/logs/route.ts, /api/coach/gym/athlete/[id]/assigned/route.ts. Reemplazar referencias a muscleGroups, equipment como enum, category como enum, isGlobal. Actualizar páginas coach: /coach/gym/*, /coach/gym/exercises/, /coach/gym/routines/.',
+            note: 'Implementado. /api/coach/gym/exercises/route.ts, routines, assigned, logs actualizados. coach/gym/exercises/page.tsx + ExerciseForm.tsx reescritos. coach/gym/routines/new y [id]/page.tsx actualizados (ExerciseOption type). coach/gym/page.tsx actualizado. isGlobal→coachId: null en todos los where clauses.',
           },
           {
             title: 'BACK-04c — Atleta gym: reescribir rutas de sesiones y historial',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Afecta: /api/gym/session/today/route.ts, /api/gym/session/[id]/route.ts, /api/athlete/gym/routines/route.ts, /api/athlete/gym/routines/[id]/route.ts, /api/mobile/gym/week/route.ts, /api/mobile/gym/history/route.ts, /api/mobile/gym/templates/route.ts. Actualizar domain: src/domain/gym/build-gym-week.ts. Actualizar páginas atleta: /gym/*, /gym/session/, /gym/history/. Verificar que SetLog.exerciseName sigue funcionando como fallback PR.',
+            note: 'Implementado. /api/gym/session/today, [id], /api/mobile/gym/week, /api/athlete/gym/routines reescritos con bodyPart/target/gifUrl. athlete/gym/routines isGlobal→coachId: null. gym-labels.ts reescrito con BODY_PART_LABELS+TARGET_LABELS+compat translateMuscleGroup. build-gym-week.ts, plan/session-builder.ts y tests actualizados.',
           },
           {
             title: 'BACK-04d — Seed de ejercicios WorkoutX: script de carga inicial',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Implementar script de seed que descarga ejercicios de WorkoutX API y los persiste con el nuevo schema. Ver implementacion/ejercicios.md para el diseño completo. Campos clave: workoutXId (UK para deduplicación), bodyParts[], secondaryMuscles[], instructions[], gifUrl. El seed corre una vez en dev y una vez en producción vía pnpm prisma db seed. Sin seed el módulo gym queda sin ejercicios.',
+            note: 'Implementado. WorkoutXClient + ExerciseSyncUseCase en infrastructure/exercise-sync/. POST /api/admin/exercises/sync para re-seed manual. GET /api/exercises + /api/mobile/exercises (browse). seed.ts + seed.prod.ts actualizados con string fields. Requiere WORKOUTX_API_KEY en env.',
           },
         ],
       },
       {
         id: 'back-nutrition-platform',
-        label: 'Fase 3 — Nutrición y plataforma (DB-06/07/08)',
+        label: 'Backend Fase 3 — Nutrición y plataforma (DB-06/07/08)',
         period: 'Después de DB-06, DB-07, DB-08',
         items: [
           {
@@ -1636,43 +1699,72 @@ export const GROUPS: RoadmapGroup[] = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: 'goal-dailylog',
-    label: 'Goal + DailyLog — conectar al flujo real',
-    color: '#6b7280',
-    bgColor: '#f9fafb',
-    borderColor: '#d1d5db',
-    phases: [
       {
-        id: 'dailylog-impl',
-        label: 'DailyLog — expandir a canal de datos diario real',
-        period: 'P1 — Mobile endpoint primero',
+        id: 'db-fuerza',
+        label: 'Fase 5 — Fuerza & Ejercicios (schema)',
+        period: 'P0-P3',
         items: [
           {
-            title: 'DAILY-01 — Mobile endpoint: POST /api/mobile/metrics/log',
+            title: 'DB-13 — Exercise: agregar nameEs String? + instructionsEs String[] (español del dataset WorkoutX)',
+            done: false,
+            priority: 'P0',
+            note: 'Prerequisito bloqueante para EX-05 (seed 1,400+ ejercicios en español). Migración: pnpm prisma migrate dev --name exercise-add-spanish-fields. WorkoutXClient: fetch con ?lang=es → mapear name→nameEs + instructions→instructionsEs. UI usa nameEs ?? name + instructionsEs.length ? instructionsEs : instructions. DEBE ejecutarse ANTES de EX-05. Origen: EX-05b en modulo-fuerza.',
+          },
+          {
+            title: 'DB-14 — WorkoutExercise: agregar restSeconds Int? (tiempo de descanso entre sets)',
             done: false,
             priority: 'P1',
-            note: 'Crear /api/mobile/metrics/log (GET + POST) — espejo de /api/metrics/log pero con getMobileUser() en lugar de auth(). El atleta registra peso/sueño/energía desde la app sin pasar por el perfil web. Mismo upsert por userId_date. Incluir en GET /api/mobile/dashboard la métrica de hoy (peso, energía) si existe DailyLog del día.',
+            note: 'Coach define el descanso sugerido por ejercicio en el constructor de rutinas. Gym tracker mobile usa restSeconds como default del countdown — atleta puede sobreescribir durante la sesión. Migración simple: ALTER TABLE "WorkoutExercise" ADD COLUMN "restSeconds" INTEGER. Origen: "Timer descanso configurable" en fuerza-atleta-ux.',
           },
           {
-            title: 'DAILY-02 — Dashboard: mostrar peso y energía de hoy desde DailyLog',
-            done: false,
-            priority: 'P1',
-            note: 'En getDashboardSummary (web y mobile): incluir DailyLog del día en la respuesta si existe. El dashboard muestra: peso de hoy (si lo registró) + nivel de energía (1-5 iconos). Si no hay registro del día → CTA "Registra tus métricas de hoy". Esto hace al DailyLog parte del hábito diario del atleta, no un formulario enterrado en el perfil.',
-          },
-          {
-            title: 'DAILY-03 — /progress: usar DailyLog como fuente de curva de peso histórica',
+            title: 'DB-15 — SetLog: agregar setType SetType enum (WORK|WARMUP|DROPSET) + rpe Int?',
             done: false,
             priority: 'P2',
-            note: 'GET /api/progress y GET /api/mobile/progress: incluir DailyLog de los últimos 90 días como serie temporal de peso (fecha, weightKg). Graficable como curva de evolución. Hoy el progress solo tiene datos de SessionLog y WeeklyCheckIn. DailyLog tiene la granularidad diaria necesaria para una curva de peso precisa.',
+            note: 'Dos campos: (1) setType: clasifica cada set como principal, calentamiento o drop set — sets no-WORK excluidos del cálculo de volumen y PR detection. (2) rpe: RPE por ejercicio individual al completar todos sus sets, promedia en GymSession.rpe. Migración: CREATE TYPE "SetType" AS ENUM (\'WORK\',\'WARMUP\',\'DROPSET\'); ALTER TABLE "SetLog" ADD COLUMN "setType" "SetType" DEFAULT \'WORK\'; ALTER TABLE "SetLog" ADD COLUMN "rpe" INTEGER. Origen: "Drop sets" + "RPE por ejercicio" en fuerza-atleta-ux.',
           },
           {
-            title: 'DAILY-04 — Panel coach: mostrar últimos 7 días de DailyLog del atleta',
+            title: 'DB-16 — Exercise: agregar videoUrl String? (vídeo de referencia técnica)',
+            done: false,
+            priority: 'P3',
+            note: 'Coach asigna un link YouTube o Blob URL por ejercicio en el constructor. Visible en gym tracker mobile como botón "Ver técnica". Migración simple: ALTER TABLE "Exercise" ADD COLUMN "videoUrl" TEXT. Origen: "Vídeos de referencia por ejercicio" en fuerza-coach.',
+          },
+        ],
+      },
+      {
+        id: 'db-nutricion-avanzado',
+        label: 'Fase 6 — Nutrición Avanzada (schema)',
+        period: 'P2-P3',
+        items: [
+          {
+            title: 'DB-17 — Recipe + RecipeIngredient models (recetas compuestas del atleta)',
             done: false,
             priority: 'P2',
-            note: 'En GET /api/coach/athlete/[id] (o un endpoint separado /api/coach/athlete/[id]/dailylogs): devolver DailyLog de los últimos 7 días del atleta. El coach ve: peso diario, sueño, energía. Esta info + el check-in semanal le da al coach contexto real de cómo está el atleta entre check-ins.',
+            note: 'Recipe { id, userId, name String, createdAt }. RecipeIngredient { id, recipeId, foodId, grams Float }. @@index([userId]) en Recipe. @@index([recipeId]) en RecipeIngredient. Aparece en búsqueda de alimentos como ítem compuesto — kcal y macros calculados en runtime desde ingredientes, sin desnormalizar. Origen: "Recetas compuestas" en nutricion-atleta-avanzado.',
+          },
+          {
+            title: 'DB-18 — WaterLog model + NutritionPlan.waterMlTarget Int? (tracking de hidratación)',
+            done: false,
+            priority: 'P3',
+            note: 'WaterLog { id, userId, date @db.Date, ml Int, createdAt }. @@index([userId, date]). NutritionPlan.waterMlTarget Int? @default(2000). Quick-tap desde dashboard: +250ml. Meta diaria configurable en NutritionPlan. Migración: CREATE TABLE "WaterLog" + ALTER TABLE "NutritionPlan" ADD COLUMN "waterMlTarget" INTEGER DEFAULT 2000. Origen: "Metas de hidratación" en nutricion-atleta-avanzado.',
+          },
+          {
+            title: 'DB-19 — MealPlanVersion model (historial de cambios del plan nutricional)',
+            done: false,
+            priority: 'P3',
+            note: 'MealPlanVersion { id, userId, mealPlanId, version Int, planData Json, assignedAt DateTime, assignedById String? FK User onDelete:SetNull }. @@index([userId, mealPlanId]). MealPlan.version Int @default(1) ya existe — este modelo agrega el historial completo de versiones. Permite al coach ver cuándo cambió el plan y comparar versiones. Origen: "MealPlan versionado" en nutricion-sistema.',
+          },
+        ],
+      },
+      {
+        id: 'db-atleta-avanzado',
+        label: 'Fase 7 — Atleta Avanzado (schema)',
+        period: 'P2',
+        items: [
+          {
+            title: 'DB-20 — ProgressPhoto model (fotos de progreso semanales via Vercel Blob)',
+            done: false,
+            priority: 'P2',
+            note: 'ProgressPhoto { id, userId, url String, takenAt DateTime, description String?, createdAt }. @@index([userId, takenAt]). URL viene de Vercel Blob — la foto no se guarda en DB, solo la referencia. Comparador side-by-side en /progress: dos fotos seleccionadas por fecha. Endpoint: POST /api/progress/photos (multipart). Origen: "Fotos de progreso semanales" en atleta-avanzado.',
           },
         ],
       },
