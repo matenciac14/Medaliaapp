@@ -8,7 +8,7 @@
  *   FREE  — TDEE + nutrition + WeeklyRoutine, no sport
  *
  * No path generates a TrainingPlan during onboarding.
- * Structured plans are created via /new-goal (B2C) or by the coach (B2B).
+ * Structured plans are assigned by the coach (B2B) or generated via AI (B2C Pro, future).
  */
 
 import type { IHealthProfileRepository } from '@/domain/ports/health-profile.repository'

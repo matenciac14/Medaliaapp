@@ -3,7 +3,7 @@
 // El usuario define QUÉ hace (gym / running / ambos) y sus datos físicos.
 // No se genera un plan de entrenamiento — solo NutritionPlan + WeeklyRoutine vacía.
 //
-// Para planes estructurados (B2B coach o /new-goal) se usa un wizard separado.
+// Para planes estructurados (B2B coach) el plan lo asigna el entrenador.
 // ---------------------------------------------------------------------------
 
 export type ActivityType = 'GYM' | 'RUNNING' | 'BOTH' | 'FREE'
