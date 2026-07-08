@@ -1014,7 +1014,7 @@ export const GROUPS: RoadmapGroup[] = [
         label: 'Atleta — UX del Tracker',
         period: 'Próximo',
         items: [
-          { title: 'Timer descanso configurable por ejercicio (coach define restSeconds en constructor)', done: false, priority: 'P1', note: 'WorkoutExercise.restSeconds Int?. Coach lo define en el wizard de rutinas. Gym tracker mobile usa ese valor como default del countdown. Atleta puede sobreescribir en sesión para ese día.' },
+          { title: 'Timer descanso configurable por ejercicio (coach define restSeconds en constructor)', done: true, priority: 'P1', note: 'DONE: RestTimerModal mobile — botones −15s/+15s con Math.max(5s) mínimo + haptic. restSeconds del coach es el default al marcar set done. Atleta ajusta en sesión sin persistir. Branch: feature/gym-tracker-ux.' },
           { title: 'Sustitución de ejercicio durante sesión activa (swap in-session)', done: false, priority: 'P1', note: 'Botón "Sustituir" en cada ejercicio del gym tracker. Abre modal de búsqueda por grupo muscular equivalente. Swap registrado en SetLog.exerciseName. Coach ve qué sustituciones hace el atleta en Tab Gym.' },
           { title: 'Curva de fuerza por ejercicio: gráfica de 1RM estimado histórico', done: true, priority: 'P1', note: 'DONE (FASE 1): Brzycki client-side en Tab Sesiones de AthleteDetailClient.tsx. Coach ve gráfica 1RM por ejercicio, últimas 12 semanas. Pendiente: gráfica en /progress del atleta (mobile).' },
           { title: 'Sesión auto-dirigida con búsqueda en librería de ejercicios (sin template requerido)', done: false, priority: 'P1', note: 'Gym libre ya funciona. Mejorar: input de búsqueda en la DB de ejercicios (39 globales + custom del coach) en lugar de solo nombre libre. Filtro por grupo muscular. Nombre libre como fallback.' },
@@ -1673,9 +1673,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'UI-MOD-02 — Mobile nav: "Ejercicios" en menú "Más" en lugar de tab principal para atletas en modo GYM',
-            done: false,
+            done: true,
             priority: 'P3',
-            note: 'Para atletas con AssignedWorkout activo (dashboardMode=GYM), el módulo de gym es su acción principal. Sin embargo, el tab de "Ejercicios" está en el menú "Más" (popup), no en los 4 tabs principales. Fix: en modo GYM, colocar "Ejercicios" en los tabs principales y sacar "Plan" (que no tiene contenido). Requiere leer dashboardMode o features del layout en SidebarClient.',
+            note: 'DONE (parcial): SidebarClient.tsx — tab Plan oculto en mobile si features.plan=false (atletas GYM sin plan de running). Pendiente: promover "Ejercicios" a tab principal en modo GYM (hoy sigue en menú "Más").',
           },
           {
             title: 'UI-MOD-03 — Check-in: gate "espera al viernes" bloquea a atletas GYM sin sentido',

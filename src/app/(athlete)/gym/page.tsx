@@ -90,17 +90,23 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   })
 
   if (!assigned) {
-    const coachRelation = await prisma.coachAthlete.findFirst({
-      where: { athleteId, status: 'ACTIVE' },
-      select: { id: true },
-    })
+    const [coachRelation, publicTemplates, healthProfile] = await Promise.all([
+      prisma.coachAthlete.findFirst({
+        where: { athleteId, status: 'ACTIVE' },
+        select: { id: true },
+      }),
+      prisma.workoutTemplate.findMany({
+        where: { isPublic: true, isActive: true },
+        include: { days: { select: { isRestDay: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.healthProfile.findUnique({
+        where: { userId: athleteId },
+        select: { sport: true },
+      }),
+    ])
 
-    // Sin rutina asignada — mostrar plantillas públicas con banner contextual
-    const publicTemplates = await prisma.workoutTemplate.findMany({
-      where: { isPublic: true, isActive: true },
-      include: { days: { select: { isRestDay: true } } },
-      orderBy: { createdAt: 'asc' },
-    })
+    const isRunner = healthProfile?.sport === 'RUNNING'
 
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-4">
@@ -129,6 +135,17 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             >
               + Crear mi rutina
             </Link>
+          </div>
+        )}
+        {isRunner && (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🏃</span>
+            <div>
+              <p className="font-semibold text-green-800 text-sm">Fuerza complementaria para runners</p>
+              <p className="text-green-700 text-xs mt-0.5 leading-relaxed">
+                Como corredor, el trabajo de fuerza mejora tu economía de carrera, previene lesiones y aumenta tu potencia. 2 sesiones por semana son suficientes — prioriza Full Body o Upper/Lower.
+              </p>
+            </div>
           </div>
         )}
         <PublicTemplates templates={publicTemplates} />
