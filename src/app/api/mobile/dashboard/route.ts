@@ -106,7 +106,9 @@ export async function GET(req: NextRequest) {
   })
 
   if (planIdToComplete) {
-    prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch(() => {})
+    prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch((err) => {
+      console.error('[dashboard] failed to auto-complete plan', planIdToComplete, err)
+    })
   }
 
   return NextResponse.json({ ...summary, weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null })
