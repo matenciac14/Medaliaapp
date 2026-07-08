@@ -40,8 +40,8 @@ const ZONES: HRZones = {
 }
 
 const GYM_EXERCISES: GymExercise[] = [
-  { id: '1', name: 'Press plano con barra', muscleGroups: ['chest'], equipment: 'barbell' },
-  { id: '2', name: 'Elevación lateral con mancuernas', muscleGroups: ['shoulders'], equipment: 'dumbbell' },
+  { id: '1', name: 'Press plano con barra', bodyPart: 'chest', target: 'pectorals', equipment: 'barbell' },
+  { id: '2', name: 'Elevación lateral con mancuernas', bodyPart: 'shoulders', target: 'delts', equipment: 'dumbbell' },
 ]
 
 // ── sessionDate ───────────────────────────────────────────────────────────────

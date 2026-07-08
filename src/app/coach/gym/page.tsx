@@ -26,7 +26,7 @@ export default async function GymDashboardPage() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.exercise.count({
-      where: { OR: [{ coachId }, { isGlobal: true }] },
+      where: { OR: [{ coachId }, { coachId: null }] },
     }),
     prisma.assignedWorkout.count({
       where: { coachId, isActive: true },

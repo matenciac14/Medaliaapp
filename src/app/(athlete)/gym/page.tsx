@@ -76,7 +76,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             include: {
               exercises: {
                 include: {
-                  exercise: { select: { name: true, muscleGroups: true } },
+                  exercise: { select: { name: true, bodyPart: true, target: true } },
                 },
                 orderBy: { order: 'asc' },
               },

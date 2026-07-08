@@ -3,11 +3,12 @@ import { ExercisesClient } from './_components/ExercisesClient'
 
 export default async function AdminExercisesPage() {
   const exercises = await prisma.exercise.findMany({
-    where: { coachId: null, isGlobal: true },
-    orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    where: { coachId: null },
+    orderBy: [{ bodyPart: 'asc' }, { name: 'asc' }],
     select: {
-      id: true, name: true, category: true, equipment: true,
-      muscleGroups: true, description: true, tips: true,
+      id: true, name: true, bodyPart: true, target: true,
+      equipment: true, mechanic: true, description: true,
+      gifUrl: true, source: true,
     },
   })
 

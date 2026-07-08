@@ -114,10 +114,10 @@ async function main() {
     ` as Promise<unknown[]>
   )
 
-  await check('Exercise isGlobal=true pero con coachId', 'WARNING', () =>
+  await check('Exercise coachId=null sin bodyPart o target', 'WARNING', () =>
     prisma.exercise.findMany({
-      where: { isGlobal: true, coachId: { not: null } },
-      select: { id: true, name: true, coachId: true },
+      where: { coachId: null, OR: [{ bodyPart: '' }, { target: '' }] },
+      select: { id: true, name: true, bodyPart: true, target: true },
     })
   )
 

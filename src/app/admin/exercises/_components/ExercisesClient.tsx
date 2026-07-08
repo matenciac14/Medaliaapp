@@ -2,34 +2,34 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  EQUIPMENT_TYPES, EXERCISE_CATEGORIES,
-  EQUIPMENT_LABEL, CATEGORY_LABEL,
-  validateExercise,
-} from '@/domain/admin/exercise'
+import { validateExercise } from '@/domain/admin/exercise'
+import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
 
 type Exercise = {
   id: string
   name: string
-  category: string
+  bodyPart: string
+  target: string
   equipment: string
-  muscleGroups: string[]
+  mechanic: string | null
   description: string | null
-  tips: string | null
+  gifUrl: string | null
+  source: string
 }
 
 type FormState = {
   name: string
-  category: string
+  bodyPart: string
+  target: string
   equipment: string
-  muscleGroups: string
+  mechanic: string
   description: string
-  tips: string
+  gifUrl: string
 }
 
 const EMPTY_FORM: FormState = {
-  name: '', category: 'COMPOUND', equipment: 'BARBELL',
-  muscleGroups: '', description: '', tips: '',
+  name: '', bodyPart: '', target: '', equipment: '',
+  mechanic: '', description: '', gifUrl: '',
 }
 
 export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] }) {
@@ -44,8 +44,15 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
 
   function openCreate() { setForm(EMPTY_FORM); setErrors([]); setCreating(true); setEditing(null) }
   function openEdit(ex: Exercise) {
-    setForm({ name: ex.name, category: ex.category, equipment: ex.equipment,
-              muscleGroups: ex.muscleGroups.join(', '), description: ex.description ?? '', tips: ex.tips ?? '' })
+    setForm({
+      name: ex.name,
+      bodyPart: ex.bodyPart,
+      target: ex.target,
+      equipment: ex.equipment,
+      mechanic: ex.mechanic ?? '',
+      description: ex.description ?? '',
+      gifUrl: ex.gifUrl ?? '',
+    })
     setErrors([])
     setEditing(ex)
     setCreating(false)
@@ -55,11 +62,12 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
   function parsedForm() {
     return {
       name: form.name,
-      category: form.category,
+      bodyPart: form.bodyPart,
+      target: form.target,
       equipment: form.equipment,
-      muscleGroups: form.muscleGroups.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
+      mechanic: form.mechanic || null,
       description: form.description || null,
-      tips: form.tips || null,
+      gifUrl: form.gifUrl || null,
     }
   }
 
@@ -83,7 +91,7 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
     if (editing) {
       setExercises((prev) => prev.map((e) => e.id === editing.id ? { ...e, ...data, id: e.id } : e))
     } else {
-      setExercises((prev) => [...prev, { ...data, id: json.exercise.id, description: data.description, tips: data.tips }])
+      setExercises((prev) => [...prev, { ...data, id: json.exercise.id, source: 'manual' }])
     }
   }
 
@@ -98,8 +106,14 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
   }
 
   const filtered = filter
-    ? exercises.filter((e) => e.name.toLowerCase().includes(filter.toLowerCase()) || e.category.includes(filter.toUpperCase()))
+    ? exercises.filter((e) =>
+        e.name.toLowerCase().includes(filter.toLowerCase()) ||
+        e.bodyPart.toLowerCase().includes(filter.toLowerCase()) ||
+        e.target.toLowerCase().includes(filter.toLowerCase())
+      )
     : exercises
+
+  const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20'
 
   return (
     <div className="space-y-5">
@@ -108,7 +122,7 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filtrar por nombre o categoría…"
+          placeholder="Filtrar por nombre, parte del cuerpo o músculo…"
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20"
         />
         <button
@@ -137,38 +151,49 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
             <div className="col-span-2">
               <label className="text-xs font-medium text-gray-600 mb-1 block">Nombre *</label>
               <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20" />
+                className={inputCls} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Categoría *</label>
-              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none">
-                {EXERCISE_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-              </select>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Parte del cuerpo * <span className="text-gray-400 font-normal">(ej. upper legs)</span>
+              </label>
+              <input value={form.bodyPart} onChange={(e) => setForm((f) => ({ ...f, bodyPart: e.target.value }))}
+                placeholder="upper legs"
+                className={inputCls} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Equipamiento *</label>
-              <select value={form.equipment} onChange={(e) => setForm((f) => ({ ...f, equipment: e.target.value }))}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none">
-                {EQUIPMENT_TYPES.map((eq) => <option key={eq} value={eq}>{EQUIPMENT_LABEL[eq]}</option>)}
-              </select>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Músculo objetivo * <span className="text-gray-400 font-normal">(ej. quads)</span>
+              </label>
+              <input value={form.target} onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
+                placeholder="quads"
+                className={inputCls} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Equipamiento * <span className="text-gray-400 font-normal">(ej. barbell)</span>
+              </label>
+              <input value={form.equipment} onChange={(e) => setForm((f) => ({ ...f, equipment: e.target.value }))}
+                placeholder="barbell"
+                className={inputCls} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Mecánica <span className="text-gray-400 font-normal">(ej. compound)</span>
+              </label>
+              <input value={form.mechanic} onChange={(e) => setForm((f) => ({ ...f, mechanic: e.target.value }))}
+                placeholder="compound"
+                className={inputCls} />
             </div>
             <div className="col-span-2">
-              <label className="text-xs font-medium text-gray-600 mb-1 block">
-                Grupos musculares * <span className="text-gray-400 font-normal">(separados por coma: QUADRICEPS, GLUTES)</span>
-              </label>
-              <input value={form.muscleGroups} onChange={(e) => setForm((f) => ({ ...f, muscleGroups: e.target.value }))}
-                placeholder="QUADRICEPS, GLUTES, HAMSTRINGS"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20" />
+              <label className="text-xs font-medium text-gray-600 mb-1 block">URL del GIF</label>
+              <input value={form.gifUrl} onChange={(e) => setForm((f) => ({ ...f, gifUrl: e.target.value }))}
+                placeholder="https://..."
+                className={inputCls} />
             </div>
             <div className="col-span-2">
               <label className="text-xs font-medium text-gray-600 mb-1 block">Descripción</label>
               <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none resize-none" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Tips de ejecución</label>
-              <textarea value={form.tips} onChange={(e) => setForm((f) => ({ ...f, tips: e.target.value }))}
                 rows={2} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none resize-none" />
             </div>
           </div>
@@ -193,9 +218,10 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
                 <th className="px-5 py-3 text-left">Nombre</th>
-                <th className="px-5 py-3 text-left">Categoría</th>
+                <th className="px-5 py-3 text-left">Parte del cuerpo</th>
+                <th className="px-5 py-3 text-left">Músculo</th>
                 <th className="px-5 py-3 text-left">Equipamiento</th>
-                <th className="px-5 py-3 text-left">Grupos musculares</th>
+                <th className="px-5 py-3 text-left">Fuente</th>
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
@@ -203,9 +229,14 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
               {filtered.map((ex) => (
                 <tr key={ex.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{ex.name}</td>
-                  <td className="px-5 py-3 text-gray-500">{CATEGORY_LABEL[ex.category as keyof typeof CATEGORY_LABEL] ?? ex.category}</td>
-                  <td className="px-5 py-3 text-gray-500">{EQUIPMENT_LABEL[ex.equipment as keyof typeof EQUIPMENT_LABEL] ?? ex.equipment}</td>
-                  <td className="px-5 py-3 text-xs text-gray-400">{ex.muscleGroups.slice(0, 3).join(', ')}{ex.muscleGroups.length > 3 ? '…' : ''}</td>
+                  <td className="px-5 py-3 text-gray-500">{translateBodyPart(ex.bodyPart)}</td>
+                  <td className="px-5 py-3 text-gray-500">{translateTarget(ex.target)}</td>
+                  <td className="px-5 py-3 text-gray-500">{ex.equipment}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${ex.source === 'workoutx' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {ex.source}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 text-right space-x-3">
                     <button onClick={() => openEdit(ex)} className="text-xs text-blue-500 hover:text-blue-700">Editar</button>
                     <button onClick={() => handleDelete(ex.id, ex.name)} className="text-xs text-red-500 hover:text-red-700">Eliminar</button>
@@ -213,7 +244,7 @@ export function ExercisesClient({ exercises: initial }: { exercises: Exercise[] 
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-400">
+                <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
                   {filter ? `Sin resultados para "${filter}"` : 'Sin ejercicios globales.'}
                 </td></tr>
               )}

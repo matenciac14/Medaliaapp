@@ -2,45 +2,11 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import type { EquipmentType } from '@/generated/prisma/enums'
 import ExerciseForm from './_components/ExerciseForm'
-
-const MUSCLE_GROUP_LABELS: Record<string, string> = {
-  QUADRICEPS: 'Cuádriceps',
-  HAMSTRINGS: 'Isquiotibiales',
-  GLUTES: 'Glúteos',
-  CHEST: 'Pecho',
-  BACK: 'Espalda',
-  SHOULDERS: 'Hombros',
-  BICEPS: 'Bíceps',
-  TRICEPS: 'Tríceps',
-  ABS: 'Abdomen',
-  CALVES: 'Gemelos',
-  FULL_BODY: 'Cuerpo completo',
-}
-
-const EQUIPMENT_LABELS: Record<string, string> = {
-  BARBELL: 'Barra',
-  DUMBBELL: 'Mancuerna',
-  MACHINE: 'Máquina',
-  CABLE: 'Cable',
-  SMITH: 'Smith',
-  BODYWEIGHT: 'Peso corporal',
-  KETTLEBELL: 'Kettlebell',
-  BAND: 'Banda',
-  OTHER: 'Otro',
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  COMPOUND: 'Compuesto',
-  ISOLATION: 'Aislamiento',
-  CARDIO: 'Cardio',
-  FUNCTIONAL: 'Funcional',
-  STRETCH: 'Estiramiento',
-}
+import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
 
 interface Props {
-  searchParams: Promise<{ muscleGroup?: string; equipment?: string; adding?: string }>
+  searchParams: Promise<{ bodyPart?: string; equipment?: string; adding?: string }>
 }
 
 export default async function ExercisesPage({ searchParams }: Props) {
@@ -52,17 +18,22 @@ export default async function ExercisesPage({ searchParams }: Props) {
 
   const coachId = session.user.id
   const params = await searchParams
-  const { muscleGroup, equipment, adding } = params
+  const { bodyPart, equipment, adding } = params
 
   const exercises = await prisma.exercise.findMany({
     where: {
       AND: [
-        { OR: [{ coachId }, { isGlobal: true }] },
-        muscleGroup ? { muscleGroups: { has: muscleGroup } } : {},
-        equipment ? { equipment: equipment as EquipmentType } : {},
+        { OR: [{ coachId }, { coachId: null }] },
+        bodyPart ? { bodyPart: { contains: bodyPart, mode: 'insensitive' } } : {},
+        equipment ? { equipment: { contains: equipment, mode: 'insensitive' } } : {},
       ],
     },
-    orderBy: [{ isGlobal: 'asc' }, { name: 'asc' }],
+    orderBy: [{ bodyPart: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true, name: true, bodyPart: true, target: true,
+      equipment: true, mechanic: true, description: true,
+      gifUrl: true, coachId: true, source: true,
+    },
   })
 
   const showForm = adding === '1'
@@ -105,7 +76,7 @@ export default async function ExercisesPage({ searchParams }: Props) {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-        <FilterForm muscleGroup={muscleGroup} equipment={equipment} />
+        <FilterForm bodyPart={bodyPart} equipment={equipment} />
       </div>
 
       {/* Table */}
@@ -114,9 +85,9 @@ export default async function ExercisesPage({ searchParams }: Props) {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Ejercicio</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Músculos</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Parte del cuerpo</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Músculo</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Equipo</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Categoría</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Tipo</th>
             </tr>
           </thead>
@@ -136,29 +107,17 @@ export default async function ExercisesPage({ searchParams }: Props) {
                       <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{ex.description}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {ex.muscleGroups.slice(0, 2).map((mg) => (
-                        <span
-                          key={mg}
-                          className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium"
-                        >
-                          {MUSCLE_GROUP_LABELS[mg] ?? mg}
-                        </span>
-                      ))}
-                      {ex.muscleGroups.length > 2 && (
-                        <span className="text-xs text-gray-400">+{ex.muscleGroups.length - 2}</span>
-                      )}
-                    </div>
+                  <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
+                    {translateBodyPart(ex.bodyPart)}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell text-gray-600">
-                    {EQUIPMENT_LABELS[ex.equipment] ?? ex.equipment}
+                    {translateTarget(ex.target)}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell text-gray-600">
-                    {CATEGORY_LABELS[ex.category] ?? ex.category}
+                    {ex.equipment}
                   </td>
                   <td className="px-4 py-3">
-                    {ex.isGlobal ? (
+                    {!ex.coachId ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700">
                         Global
                       </span>
@@ -178,41 +137,26 @@ export default async function ExercisesPage({ searchParams }: Props) {
   )
 }
 
-// Server-rendered filter form that uses URL params
-function FilterForm({
-  muscleGroup,
-  equipment,
-}: {
-  muscleGroup?: string
-  equipment?: string
-}) {
+function FilterForm({ bodyPart, equipment }: { bodyPart?: string; equipment?: string }) {
   return (
     <form method="GET" className="flex flex-wrap gap-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Músculo:</label>
-        <select
-          name="muscleGroup"
-          defaultValue={muscleGroup ?? ''}
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        >
-          <option value="">Todos</option>
-          {Object.entries(MUSCLE_GROUP_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
+        <label className="text-sm font-medium text-gray-700">Parte del cuerpo:</label>
+        <input
+          name="bodyPart"
+          defaultValue={bodyPart ?? ''}
+          placeholder="ej. upper legs"
+          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 w-32"
+        />
       </div>
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-gray-700">Equipo:</label>
-        <select
+        <input
           name="equipment"
           defaultValue={equipment ?? ''}
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        >
-          <option value="">Todos</option>
-          {Object.entries(EQUIPMENT_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
+          placeholder="ej. barbell"
+          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 w-28"
+        />
       </div>
       <button
         type="submit"

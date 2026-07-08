@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           include: {
             days: {
               include: {
-                exercises: { include: { exercise: { select: { name: true, muscleGroups: true } } }, orderBy: { order: 'asc' } },
+                exercises: { include: { exercise: { select: { name: true, bodyPart: true, target: true, gifUrl: true, gifStoredUrl: true } } }, orderBy: { order: 'asc' } },
               },
             },
           },

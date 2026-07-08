@@ -10,23 +10,23 @@ async function requireAdmin() {
   return u?.role === 'ADMIN' ? session : null
 }
 
-// GET /api/admin/exercises — lista ejercicios globales
+// GET /api/admin/exercises — lista ejercicios globales (coachId null)
 export async function GET() {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const exercises = await prisma.exercise.findMany({
-    where: { coachId: null, isGlobal: true },
-    orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    where: { coachId: null },
+    orderBy: [{ bodyPart: 'asc' }, { name: 'asc' }],
     select: {
-      id: true, name: true, category: true, equipment: true,
-      muscleGroups: true, description: true, tips: true, isGlobal: true,
+      id: true, name: true, bodyPart: true, target: true, equipment: true,
+      mechanic: true, description: true, gifUrl: true, source: true,
     },
   })
 
   return NextResponse.json({ exercises })
 }
 
-// POST /api/admin/exercises — crear ejercicio global
+// POST /api/admin/exercises — crear ejercicio global manual
 export async function POST(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -36,16 +36,17 @@ export async function POST(req: NextRequest) {
 
   const exercise = await prisma.exercise.create({
     data: {
-      name:         body.name.trim(),
-      category:     body.category,
-      equipment:    body.equipment,
-      muscleGroups: body.muscleGroups,
-      description:  body.description?.trim() || null,
-      tips:         body.tips?.trim() || null,
-      coachId:      null,
-      isGlobal:     true,
+      name:        body.name.trim(),
+      bodyPart:    body.bodyPart.trim(),
+      target:      body.target.trim(),
+      equipment:   body.equipment.trim(),
+      mechanic:    body.mechanic?.trim() || null,
+      description: body.description?.trim() || null,
+      gifUrl:      body.gifUrl?.trim() || null,
+      coachId:     null,
+      source:      'manual',
     },
-    select: { id: true, name: true, category: true, equipment: true, muscleGroups: true },
+    select: { id: true, name: true, bodyPart: true, target: true, equipment: true },
   })
 
   return NextResponse.json({ exercise }, { status: 201 })

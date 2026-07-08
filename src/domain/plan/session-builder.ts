@@ -40,7 +40,8 @@ export type BuiltSession = {
 export type GymExercise = {
   id: string
   name: string
-  muscleGroups: string[]
+  bodyPart: string
+  target: string
   equipment: string
 }
 

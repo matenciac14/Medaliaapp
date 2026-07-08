@@ -491,41 +491,40 @@ model WeeklyCheckIn {
 // ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
 
 model Exercise {
-  id           String   @id @default(cuid())
-  coachId      String?  // null = librería global, string = ejercicio personalizado del coach
-  name         String
-  muscleGroups String[] // ["QUADRICEPS", "GLUTES", "HAMSTRINGS"]
-  equipment    EquipmentType @default(BARBELL)
-  category     ExerciseCategory @default(COMPOUND)
-  description  String?
-  tips         String?
-  imageUrl     String?
-  isGlobal     Boolean  @default(false) // true = librería base de Medaliq
+  id                String    @id @default(cuid())
+  coachId           String?   // null = librería global (WorkoutX), string = ejercicio personalizado del coach
+
+  name              String
+  bodyPart          String
+  target            String
+  equipment         String
+  difficulty        String?
+  mechanic          String?   // "compound" | "isolation"
+  force             String?   // "push" | "pull" | "static"
+  caloriesPerMinute Float?
+  met               Float?
+  popularityRank    Int?
+  isUnilateral      Boolean   @default(false)
+  recommendedSets   String?
+  recommendedReps   String?
+  description       String?
+  secondaryMuscles  String[]
+  instructions      String[]
+
+  gifUrl            String?   // URL CDN WorkoutX — null para ejercicios custom del coach
+  gifStoredUrl      String?   // URL S3 propia — null hasta Fase 4
+
+  source            String    @default("workoutx")  // "workoutx" | "custom" | "manual"
+  syncedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   coach            User?             @relation("CoachExercises", fields: [coachId], references: [id])
   workoutExercises WorkoutExercise[]
 
-  createdAt DateTime @default(now())
-}
-
-enum EquipmentType {
-  BARBELL
-  DUMBBELL
-  MACHINE
-  CABLE
-  SMITH
-  BODYWEIGHT
-  KETTLEBELL
-  BAND
-  OTHER
-}
-
-enum ExerciseCategory {
-  COMPOUND
-  ISOLATION
-  CARDIO
-  STRETCH
-  FUNCTIONAL
+  @@index([bodyPart])
+  @@index([target])
+  @@index([equipment])
 }
 
 model WorkoutTemplate {
