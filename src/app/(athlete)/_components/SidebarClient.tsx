@@ -25,9 +25,10 @@ import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 type Props = {
   user: { name: string; role: string }
   config: UserConfig
+  hasCoach?: boolean
 }
 
-export default function SidebarClient({ user, config }: Props) {
+export default function SidebarClient({ user, config, hasCoach = false }: Props) {
   const pathname = usePathname()
   const { features } = config
   const { t } = useLanguage()
@@ -55,7 +56,7 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
-    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: true, badge: unreadCount },
+    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
@@ -70,7 +71,7 @@ export default function SidebarClient({ user, config }: Props) {
   const moreLinks = [
     { href: '/gym',      label: s.gym,      icon: Dumbbell },
     { href: '/progress', label: s.progress, icon: TrendingUp },
-    { href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount },
+    ...(hasCoach ? [{ href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount }] : []),
     { href: '/profile',  label: s.profile,  icon: UserCircle },
   ]
 

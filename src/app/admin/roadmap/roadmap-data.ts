@@ -1434,7 +1434,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-NEW-01 — Typo de marca "Medalliq" (doble L) en subtítulo del onboarding paso 1', done: true, priority: 'P3', note: 'Fix: src/app/onboarding/page.tsx línea 136 — "Medalliq" → "Medaliq". Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-02 — /new-goal: metas de gym visibles para atleta runner (GOALS no filtra por activityType)', done: true, priority: 'P2', note: 'Resuelto por eliminación: directorio /new-goal eliminado (ARCH-01). Duplicado de BUG-070 y BUG-077.' },
           { title: 'BUG-NEW-03 — Dashboard: capitalización de fecha incorrecta en español ("5 De Julio De 2026")', done: true, priority: 'P3', note: 'Fix parcial: EarlyCheckInScreen.tsx — getNextFriday() ahora capitaliza el primer carácter del string de fecha con .charAt(0).toUpperCase() + .slice(1). El issue del dashboard completo requiere buscar el formateador específico del dashboard — pendiente localizar. Branch: feature/landing-conversion.' },
-          { title: 'BUG-NEW-04 — Check-in muestra "ajustar tu plan" a usuario sin plan activo', done: false, priority: 'P2', note: 'E2E-2026-07-05: El card de check-in en el dashboard dice "Tu plan se ajusta automáticamente según cómo te sientas" para un atleta FREE sin plan activo. No existe ningún plan que ajustar — el mensaje crea expectativa falsa sobre el comportamiento del sistema. Fix: condicionar el copy al estado del plan. Si !activePlan → mostrar "Registra cómo te sientes semana a semana para ver tu evolución".' },
+          { title: 'BUG-NEW-04 — Check-in muestra "ajustar tu plan" a usuario sin plan activo', done: true, priority: 'P2', note: 'DONE: dashboard/page.tsx — banner de check-in ahora condiciona el copy: activePlan ? "Tu plan se ajusta automáticamente según cómo te sientas" : "Registrá cómo te sentís esta semana para ver tu evolución". Sin plan activo el atleta entiende que el check-in sirve para acumular historial, no para ajustar un plan inexistente.' },
           { title: 'BUG-NEW-05 — Nutrición: macros en gramos no suman las calorías totales mostradas (diferencia de 295 kcal)', done: true, priority: 'P1', note: 'Fix: daily-target.ts — getDailyNutritionTarget() ahora calcula kcal como Math.round(proteinG*4 + carbsG*4 + fatG*9) en lugar de leer el valor almacenado (TDEE base). Esto garantiza que calorías mostradas siempre corresponden exactamente a la suma de macros. Los 4 casos (HIGH/MODERATE/LOW/REST) actualizados. Branch: feature/landing-conversion.' },
           { title: 'BUG-NEW-06 — Módulo Ejercicios (/gym) muestra solo rutinas de fuerza a atleta runner sin contenido relevante', done: false, priority: 'P2', note: 'E2E-2026-07-05: Atleta Running ve 5 rutinas de fuerza/hipertrofia (Push Pull Legs, Full Body, Upper/Lower, Fuerza 5×5, PPL 6 días). Ningún contenido de running. El módulo no filtra por activityType ni comunica por qué un corredor ve rutinas de pesas. Fix: leer HealthProfile.sport del atleta y priorizar o filtrar las rutinas según el deporte. O agregar sección de "Fuerza complementaria para runners".' },
           { title: 'BUG-NEW-07 — Naming inconsistency: nav lateral dice "Ejercicios" pero la ruta es /gym y el contenido es de gym', done: false, priority: 'P3', note: 'E2E-2026-07-05: El item del nav lateral se llama "Ejercicios" pero la URL es /gym y el contenido son plantillas de entrenamiento de fuerza en gym. Para un atleta runner, "Ejercicios" sugiere sus rutinas de running. La etiqueta no refleja el contenido del módulo. Fix: renombrar el nav item a "Gym" o "Fuerza", o ampliar el contenido del módulo para incluir también ejercicios de running.' },
@@ -1452,6 +1452,69 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'BUG-NEW-10 — /api/mobile/progress: overallAdherencePct:0 inconsistente con adherencePct por semana', done: true, priority: 'P2', note: 'Código correcto — falso positivo de QA. overallAdherencePct filtra semanas sin sesiones antes de promediar, dietAdherencePct viene de checkIn.dietAdherencePct. Son métricas distintas que miden conceptos distintos. Cerrado como no-bug.' },
           { title: 'BUG-NEW-11 — /api/mobile/gym/week retorna 404 para atletas sin assignedWorkout con sesiones libres de fuerza', done: true, priority: 'P2', note: 'Fix: antes del 404, se consultan SessionLog con freeSessionType=FUERZA y plannedSessionId=null de la semana. Si existen → 200 con { sessions, type:"free" }. Archivo: src/app/api/mobile/gym/week/route.ts. Branch: bugfix/mobile-qa-0708.' },
           { title: 'BUG-NEW-12 — /api/mobile/nutrition GET sin feature gate para atletas B2B inactivos', done: true, priority: 'P3', note: 'Fix: requireFeature(mobile.features, "nutrition") agregado al GET handler después del rate limit. Consistente con POST. Archivo: src/app/api/mobile/nutrition/route.ts. Branch: bugfix/mobile-qa-0708.' },
+        ],
+      },
+
+      // ── E2E QA Atleta B2C Autónomo — 2026-07-06 ──────────────────────────────
+      {
+        id: 'bugs-e2e-0706',
+        label: 'E2E QA — Atleta B2C Autónomo (2026-07-06)',
+        period: 'Urgente — Flujo atleta sin coach',
+        items: [
+          {
+            title: 'E2E-01 — Dashboard: FreeDashboard muestra CTAs vacíos aunque el atleta ya tiene rutina de gym asignada',
+            done: true,
+            priority: 'P1',
+            note: 'DONE: dashboardMode ahora incluye caso "GYM" — si assignedWorkoutRaw != null y no hay TrainingPlan activo → dashboardMode = "GYM". FreeDashboard solo renderiza cuando dashboardMode === "FREE". DashboardCalendarStrip y DailySessionCard ya manejaban hasGymToday/todayGymDay independientemente del modo. DailySessionCard.tsx actualizado: tipo extendido a "GYM", nuevo bloque de descanso y footer de consistencia semanal para modo GYM. Resuelve también E2E-04 (dos rutinas) — el bloque FREE de DailySessionCard (que mostraba WeeklyRoutine) ya no renderiza en modo GYM.',
+          },
+          {
+            title: 'E2E-02 — Dashboard: CalendarStrip vacío cuando hay AssignedWorkout activo (solo muestra sesiones de TrainingPlan)',
+            done: true,
+            priority: 'P1',
+            note: 'DONE: buildCalendarWeek() en infrastructure/db/calendar.ts ya consulta AssignedWorkout (con sus days) en paralelo con PlannedSession. Construye gymDayByDow y lo mapea a CalendarDay.gym. calendarDaysToWeekCells() maneja el caso gym-only: sessionType=FUERZA, done=gymSession?.completed, label=workoutDay.label. El CalendarStrip muestra correctamente los días de gym incluso sin TrainingPlan activo.',
+          },
+          {
+            title: 'E2E-03 — Dashboard: fecha con capitalización incorrecta ("Miércoles, 8 De Julio De 2026")',
+            done: true,
+            priority: 'P3',
+            note: 'DONE: formatDate() en dashboard/page.tsx ahora retorna s.charAt(0).toUpperCase() + s.slice(1). Clase capitalize eliminada del <p> en línea 561. Resultado: "Miércoles, 9 de julio de 2026" (solo primera letra mayúscula).',
+          },
+          {
+            title: 'E2E-04 — Dos sistemas de rutina coexisten con datos contradictorios (WeeklyRoutine + AssignedWorkout)',
+            done: true,
+            priority: 'P1',
+            note: 'DONE: resuelto como consecuencia de E2E-01. El bloque FREE de DailySessionCard (que mostraba "Según tu rutina semanal" de WeeklyRoutine) solo renderiza cuando dashboardMode === "FREE". Con AssignedWorkout activo, dashboardMode = "GYM" → el bloque FREE no renderiza → WeeklyRoutine desaparece del dashboard. AssignedWorkout se muestra vía hasGymToday/todayGymDay (modo-independiente, línea 133 de DailySessionCard).',
+          },
+          {
+            title: 'E2E-05 — /plan muestra "Sin plan activo" para atleta autónomo con gym y nutrición configurados',
+            done: true,
+            priority: 'P1',
+            note: 'DONE fix rápido: plan/page.tsx — en el bloque if(!plan), antes de mostrar "Sin plan activo", query prisma.assignedWorkout. Si existe → redirect("/gym"). Atleta gym-only llega directamente a su módulo de rutina. Rediseño completo de /plan como hub B2C (E2E-09 + pestaña nutrición) queda pendiente en roadmap como feature mayor.',
+          },
+          {
+            title: 'E2E-06 — Nav "Mensajes" visible para atleta sin coach asignado (sin conversación posible)',
+            done: true,
+            priority: 'P2',
+            note: 'DONE: layout.tsx ahora hace query a CoachAthlete({ athleteId, status:"ACTIVE" }) en paralelo con dbUser y pasa hasCoach={!!coachRelation} a SidebarClient. SidebarClient.tsx: Props incluye hasCoach?:boolean, default false. allNavLinks: show:hasCoach para Mensajes. moreLinks (mobile): spread condicional incluye Mensajes solo si hasCoach. Sin coach → item oculto en desktop sidebar y en menú "Más" mobile.',
+          },
+          {
+            title: 'E2E-07 — /progreso: CTA "Ver mi plan" lleva a /plan vacío para atleta sin TrainingPlan activo',
+            done: true,
+            priority: 'P2',
+            note: 'DONE: progress/page.tsx — estado vacío (sin check-ins). CTA secundario cambiado: ahora siempre apunta a /gym con texto condicional: si hasGymSessions → "Ver historial ejercicios", si no → "Ir a ejercicios". Eliminado el CTA "Ver mi plan" que llevaba a /plan vacío. El botón /checkin sigue siendo el principal.',
+          },
+          {
+            title: 'E2E-08 — Check-in: diferenciación conceptual vs registro diario en /profile no está clara para el usuario',
+            done: true,
+            priority: 'P2',
+            note: 'DONE: (1) CheckInClient.tsx — párrafo explicativo bajo el subtitle: "Acá reportás tu carga subjetiva: energía, estrés, dolor, RPE y motivación. Es distinto al registro diario de peso y FC en tu perfil." (2) ProfileClient.tsx — description del "Registro diario" actualizada: "Métricas objetivas del día: peso, FC reposo y sueño. El check-in semanal complementa esto con tu percepción de carga y es lo que ajusta tu plan de entrenamiento."',
+          },
+          {
+            title: 'E2E-09 — Constructor de rutina propio para atleta autónomo (gap de producto)',
+            done: true,
+            priority: 'P2',
+            note: 'DONE: (1) /gym/builder/page.tsx — servidor, verifica auth + bloquea atletas con coach activo + carga ejercicios globales. (2) /gym/builder/_components/GymRoutineBuilder.tsx — wizard 3 pasos: nombre/objetivo/nivel → selección de días (toggles Lun-Dom) → ejercicios por día (search client-side + sets/reps editables). POST a /api/athlete/gym/routines → POST a /api/gym/assign para activar. (3) /api/gym/assign modificado: acepta templates propios del atleta (athleteId: userId) además de los públicos. (4) gym/page.tsx en estado sin-rutina: botón "+ Crear mi rutina" → /gym/builder para atletas sin coach.',
+          },
         ],
       },
 

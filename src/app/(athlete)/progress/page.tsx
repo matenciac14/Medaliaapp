@@ -227,10 +227,9 @@ export default async function ProgressPage() {
         </p>
         <div className="flex gap-3 mt-2 flex-wrap justify-center">
           <a href="/checkin" className="inline-block rounded-xl bg-[#ea580c] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
-          {hasGymSessions
-            ? <a href="/gym/history" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver historial ejercicios</a>
-            : <a href="/plan" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">Ver mi plan</a>
-          }
+          <a href="/gym" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">
+            {hasGymSessions ? 'Ver historial ejercicios' : 'Ir a ejercicios'}
+          </a>
         </div>
       </div>
     )

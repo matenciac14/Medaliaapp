@@ -114,7 +114,20 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
               </p>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-[#1e3a5f]">Elegí tu rutina</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Seleccioná una plantilla o crea la tuya propia.</p>
+            </div>
+            <Link
+              href="/gym/builder"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[#ea580c]/50 text-[#ea580c] text-sm font-semibold hover:bg-[#ea580c]/5 transition-colors"
+            >
+              + Crear mi rutina
+            </Link>
+          </div>
+        )}
         <PublicTemplates templates={publicTemplates} />
       </div>
     )
