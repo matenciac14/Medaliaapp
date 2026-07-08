@@ -3,6 +3,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { requireFeature } from '@/lib/guards/feature-gate'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition`, { limit: 300, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'nutrition')
+  if (featureGuard) return featureGuard
 
   const userId = mobile.id
   const todayDow = jsToOurDow(new Date().getDay())
