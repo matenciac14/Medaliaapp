@@ -957,9 +957,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-05b — Migración Prisma: agregar nameEs String? + instructionsEs String[] al modelo Exercise + actualizar WorkoutXClient con lang=es',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Dos pasos: (1) Migración: pnpm prisma migrate dev --name exercise-add-spanish-fields — agrega nameEs String? e instructionsEs String[] al modelo Exercise. (2) WorkoutXClient: al hacer fetch de cada página pasar ?lang=es → mapear name→nameEs, instructions→instructionsEs. Mantener name e instructions en inglés como fallback. UI usa: nameEs ?? name e instructionsEs.length ? instructionsEs : instructions. Ejecutar ANTES de EX-05 para que el seed cargue español desde el primer sync. Cero costo adicional — mismo plan FREE, mismos 14 requests.',
+            note: 'DONE: (1) Migración ya aplicada en DB-13 (20260708180057). (2) WorkoutXClient actualizado: fetchAll() pasa ?lang=es, interface WorkoutXExerciseEs extiende base con nameEs?/instructionsEs?. map() persiste ambos campos. UpsertExerciseData + Exercise domain types actualizados con nameEs?/instructionsEs[]. Branch: feature/exercise-seed-ready.',
           },
         ],
       },
@@ -970,9 +970,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'EX-19 — upsertMany: reemplazar 1,400 queries secuenciales por $transaction por batches de 100',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'exercise.repository.ts:69 — el loop actual hace 1 query por ejercicio = ~28s con latencia Neon. Fix: dividir en chunks de 100 y envolver cada chunk en prisma.$transaction(batch.map(ex => prisma.exercise.upsert({...}))). 14 transacciones de 100 en lugar de 1,400 queries sueltas. Cada batch es atómico. BLOQUEANTE para EX-05 — si se corre el seed con la implementación actual, Vercel corta la request por timeout.',
+            note: 'DONE: exercise.repository.ts — loop secuencial reemplazado por chunks de 100 en prisma.$transaction(batch.map(upsert)). 14 transacciones atómicas en lugar de 1,400 queries sueltas. Elimina timeout de Vercel. Branch: feature/exercise-seed-ready.',
           },
           {
             title: 'EX-20 — Mover ExerciseSyncUseCase de infrastructure/ a domain/exercise/',
@@ -982,9 +982,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-21 — /api/coach/gym/exercises GET: reemplazar prisma directo por PrismaExerciseRepository + agregar paginación',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'coach/gym/exercises/route.ts:14 — hace prisma.exercise.findMany() sin limit ni skip → con 1,400 ejercicios carga todo en memoria. Además bypassea el repository: no resuelve gif: gifStoredUrl ?? gifUrl → en Fase 4 (S3) este endpoint servirá URLs de WorkoutX CDN aunque todos los demás ya no. Fix: usar repo.findAll({ coachId, ...filters }) con paginación. Depende de EX-25 (coachId en ExerciseFilters).',
+            note: 'DONE: coach/gym/exercises/route.ts reescrito — usa PrismaExerciseRepository.findAll({ coachId, q, bodyPart, target, equipment, page, limit }). Respuesta: { exercises[], total, page, limit }. Callers (routines/new y routines/[id]) actualizados a data?.exercises. Branch: feature/exercise-seed-ready.',
           },
           {
             title: 'EX-22 — requireAdmin en sync/route.ts: leer role del JWT en lugar de hacer query extra a DB',
@@ -1006,9 +1006,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-25 — Agregar coachId como filtro opcional en ExerciseFilters e IExerciseRepository',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'ExerciseFilters no tiene coachId. El endpoint del coach filtra con OR:[{coachId},{coachId:null}] en raw, bypasseando el repo. Fix: agregar coachId?: string | null a ExerciseFilters. En PrismaExerciseRepository.findAll: if coachId → where.OR = [{coachId},{coachId:null}], else → solo ejercicios globales. Permite que EX-21 use repo.findAll() correctamente.',
+            note: 'DONE: ExerciseFilters.coachId?: string agregado en exercise.types.ts. PrismaExerciseRepository.findAll: si coachId → AND[OR[{coachId},{coachId:null}], ...otros filtros]. Sin coachId → solo { coachId: null }. AND[] evita colisión de múltiples OR en el mismo objeto Prisma. Branch: feature/exercise-seed-ready.',
           },
           {
             title: 'EX-26 — NaN guard en query params page y limit en /api/exercises y /api/mobile/exercises',
