@@ -20,9 +20,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Tu coach gestiona tu rutina. Pídele que te asigne una.' }, { status: 403 })
   }
 
-  // Verificar que la plantilla existe y es pública
+  // Verificar que la plantilla existe: pública activa O propia del atleta
   const template = await prisma.workoutTemplate.findFirst({
-    where: { id: templateId, isPublic: true, isActive: true },
+    where: {
+      id: templateId,
+      OR: [
+        { isPublic: true, isActive: true },
+        { athleteId },
+      ],
+    },
   })
   if (!template) return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 })
 

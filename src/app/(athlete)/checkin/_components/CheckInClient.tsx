@@ -231,6 +231,9 @@ export default function CheckInClient({
         <div className="mb-5">
           <h1 className="text-2xl font-bold text-[#0f1e30]">Check-in Semanal</h1>
           <p className="text-sm text-gray-400 mt-0.5">{weekLabel} · Cuéntanos cómo te fue</p>
+          <p className="text-xs text-gray-400 mt-2 max-w-lg">
+            <span className="font-medium text-gray-500">¿Para qué sirve esto?</span> Acá reportás tu carga subjetiva de la semana: energía, estrés, dolor, RPE y motivación. Es distinto al registro diario de peso y FC en tu perfil — esas son métricas objetivas. El check-in semanal sincroniza tu bienestar con tu entrenamiento y va construyendo tu historial de progreso.
+          </p>
         </div>
 
         {/* Check-in rápido */}
