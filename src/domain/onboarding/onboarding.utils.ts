@@ -1,5 +1,5 @@
 /**
- * Pure helpers shared by plan-generation flows (coach plan builder, /new-goal).
+ * Pure helpers shared by plan-generation flows (coach plan builder).
  * Not used by the simplified onboarding wizard.
  * No I/O, no Prisma, no Next.js.
  */

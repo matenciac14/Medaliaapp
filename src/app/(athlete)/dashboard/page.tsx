@@ -830,7 +830,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
-              {/* ── FREE: bienvenida prominente — reemplaza CTAs a /new-goal (deprecado ARCH-01) ── */}
+              {/* FREE: bienvenida prominente */}
               {dashboardMode === 'FREE' && (
                 <div className="mb-4">
                   <FreeDashboard
