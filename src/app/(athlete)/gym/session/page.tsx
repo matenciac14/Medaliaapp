@@ -35,6 +35,7 @@ type WorkoutExercise = {
   notes: string | null
   setType: string
   supersetWith: string | null
+  suggestedNextWeightKg: number | null
   exercise: ExerciseData
 }
 
@@ -295,7 +296,7 @@ export default function GymSessionPage() {
               (l) => l.workoutExerciseId === we.id && l.setNumber === idx + 1
             )
             return {
-              weightKg: '',
+              weightKg: we.suggestedNextWeightKg != null ? String(we.suggestedNextWeightKg) : '',
               repsCompleted: '',
               completed: false,
               _prevWeight: prev?.weightKg ?? null,

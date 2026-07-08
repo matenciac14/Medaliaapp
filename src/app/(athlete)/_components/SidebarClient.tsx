@@ -63,7 +63,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
   // Mobile: 4 tabs principales + "Más" para el resto
   const mobileNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard },
-    { href: '/plan',      label: s.plan,        icon: CalendarDays },
+    ...(features.plan ? [{ href: '/plan', label: s.plan, icon: CalendarDays }] : []),
     { href: '/nutrition', label: s.nutrition,   icon: Apple },
     { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck },
   ]

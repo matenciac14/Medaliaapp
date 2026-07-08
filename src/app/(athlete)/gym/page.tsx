@@ -110,8 +110,11 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             <div>
               <p className="font-semibold text-blue-800 text-sm">Tu coach aún no te asignó una rutina</p>
               <p className="text-blue-600 text-xs mt-0.5">
-                Mientras tanto, puedes usar una de estas plantillas para empezar.
+                Mientras tanto, puedes usar una de estas plantillas o registrar una sesión libre.
               </p>
+              <Link href="/gym/session" className="inline-block mt-2 text-xs font-semibold text-[#ea580c] hover:underline">
+                Registrar sesión libre →
+              </Link>
             </div>
           </div>
         ) : (
