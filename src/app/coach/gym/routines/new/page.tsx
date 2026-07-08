@@ -9,10 +9,10 @@ import Link from 'next/link'
 interface ExerciseOption {
   id: string
   name: string
-  muscleGroups: string[]
+  bodyPart: string
+  target: string
   equipment: string
-  category: string
-  isGlobal: boolean
+  coachId: string | null
 }
 
 interface DayExercise {
@@ -564,7 +564,7 @@ export default function NewRoutinePage() {
                       <option value="">Seleccionar ejercicio...</option>
                       {exerciseLib.map((lib) => (
                         <option key={lib.id} value={lib.id}>
-                          {lib.name}{lib.isGlobal ? '' : ' (tuyo)'}
+                          {lib.name}{!lib.coachId ? '' : ' (tuyo)'}
                         </option>
                       ))}
                     </select>

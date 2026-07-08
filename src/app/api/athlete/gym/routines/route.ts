@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   const exerciseIds = days.flatMap(d => d.exercises.map(e => e.exerciseId)).filter(Boolean)
   if (exerciseIds.length > 0) {
     const valid = await prisma.exercise.findMany({
-      where: { id: { in: exerciseIds }, isGlobal: true },
+      where: { id: { in: exerciseIds }, coachId: null },
       select: { id: true },
     })
     const validIds = new Set(valid.map(e => e.id))

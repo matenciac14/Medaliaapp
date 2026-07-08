@@ -10,10 +10,10 @@ import { Loader2 } from 'lucide-react'
 interface ExerciseOption {
   id: string
   name: string
-  muscleGroups: string[]
+  bodyPart: string
+  target: string
   equipment: string
-  category: string
-  isGlobal: boolean
+  coachId: string | null
 }
 
 interface DayExercise {
@@ -451,7 +451,7 @@ export default function EditRoutinePage() {
                     <select value={ex.exerciseId} onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none text-gray-800 bg-white">
                       <option value="">Seleccionar ejercicio...</option>
                       {exerciseLib.map((lib) => (
-                        <option key={lib.id} value={lib.id}>{lib.name}{lib.isGlobal ? '' : ' (tuyo)'}</option>
+                        <option key={lib.id} value={lib.id}>{lib.name}{!lib.coachId ? '' : ' (tuyo)'}</option>
                       ))}
                     </select>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

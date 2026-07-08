@@ -19,9 +19,9 @@ const PARAMS = { params: Promise.resolve({ id: 'ex-1' }) }
 
 const VALID_BODY = {
   name: 'Sentadilla',
-  category: 'COMPOUND',
-  equipment: 'BARBELL',
-  muscleGroups: ['QUADRICEPS'],
+  bodyPart: 'upper legs',
+  target: 'quads',
+  equipment: 'barbell',
 }
 
 function patchReq(body: unknown) {
@@ -55,10 +55,10 @@ describe('PATCH /api/admin/exercises/[id]', () => {
     expect(res.status).toBe(404)
   })
 
-  it('retorna 404 si el ejercicio no es global', async () => {
+  it('retorna 404 si el ejercicio pertenece a un coach', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: 'coach-x', isGlobal: false } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: 'coach-x' } as any)
     const res = await PATCH(patchReq(VALID_BODY), PARAMS)
     expect(res.status).toBe(404)
   })
@@ -66,15 +66,15 @@ describe('PATCH /api/admin/exercises/[id]', () => {
   it('retorna 400 si el body es inválido', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
-    const res = await PATCH(patchReq({ name: '', category: 'COMPOUND', equipment: 'BARBELL', muscleGroups: [] }), PARAMS)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null } as any)
+    const res = await PATCH(patchReq({ name: '', bodyPart: '', target: '', equipment: '' }), PARAMS)
     expect(res.status).toBe(400)
   })
 
   it('actualiza y retorna el ejercicio', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null } as any)
     vi.mocked(prisma.exercise.update).mockResolvedValue({ id: 'ex-1', ...VALID_BODY } as any)
     const res = await PATCH(patchReq(VALID_BODY), PARAMS)
     expect(res.status).toBe(200)
@@ -101,15 +101,15 @@ describe('DELETE /api/admin/exercises/[id]', () => {
   it('retorna 404 si el ejercicio pertenece a un coach', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: 'coach-x', isGlobal: true } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: 'coach-x' } as any)
     const res = await DELETE(deleteReq(), PARAMS)
     expect(res.status).toBe(404)
   })
 
-  it('retorna 409 si el ejercicio está en uso en rutinas', async () => {
+  it('retorna 409 si el ejercicio está en uso', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null } as any)
     vi.mocked(prisma.workoutExercise.count).mockResolvedValue(3)
     const res = await DELETE(deleteReq(), PARAMS)
     expect(res.status).toBe(409)
@@ -119,7 +119,7 @@ describe('DELETE /api/admin/exercises/[id]', () => {
   it('elimina el ejercicio y retorna ok', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null, isGlobal: true } as any)
+    vi.mocked(prisma.exercise.findUnique).mockResolvedValue({ coachId: null } as any)
     vi.mocked(prisma.workoutExercise.count).mockResolvedValue(0)
     vi.mocked(prisma.exercise.delete).mockResolvedValue({} as any)
     const res = await DELETE(deleteReq(), PARAMS)

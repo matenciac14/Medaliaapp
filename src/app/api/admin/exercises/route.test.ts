@@ -25,9 +25,9 @@ function jsonReq(body: unknown, method = 'POST') {
 
 const VALID_EXERCISE = {
   name: 'Sentadilla',
-  category: 'COMPOUND',
-  equipment: 'BARBELL',
-  muscleGroups: ['QUADRICEPS', 'GLUTES'],
+  bodyPart: 'upper legs',
+  target: 'quads',
+  equipment: 'barbell',
 }
 
 beforeEach(() => {
@@ -44,7 +44,7 @@ describe('GET /api/admin/exercises', () => {
   it('retorna la lista de ejercicios globales', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    const exercises = [{ id: 'ex1', name: 'Sentadilla', category: 'COMPOUND', equipment: 'BARBELL', muscleGroups: ['QUADRICEPS'], description: null, tips: null, isGlobal: true }]
+    const exercises = [{ id: 'ex1', name: 'Sentadilla', bodyPart: 'upper legs', target: 'quads', equipment: 'barbell', mechanic: 'compound', description: null, gifUrl: null, source: 'manual' }]
     vi.mocked(prisma.exercise.findMany).mockResolvedValue(exercises as any)
     const res = await GET()
     expect(res.status).toBe(200)
@@ -63,7 +63,7 @@ describe('POST /api/admin/exercises', () => {
   it('retorna 400 con errores si el body es inválido', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
-    const res = await POST(jsonReq({ name: '', category: 'COMPOUND', equipment: 'BARBELL', muscleGroups: [] }))
+    const res = await POST(jsonReq({ name: '', bodyPart: '', target: 'quads', equipment: 'barbell' }))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.errors).toBeInstanceOf(Array)
@@ -81,14 +81,14 @@ describe('POST /api/admin/exercises', () => {
     expect(body.exercise.id).toBe('new-ex')
   })
 
-  it('crea con coachId null e isGlobal true', async () => {
+  it('crea con coachId null y source manual', async () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: 'ADMIN' } as any)
     vi.mocked(prisma.exercise.create).mockResolvedValue({ id: 'x' } as any)
     await POST(jsonReq(VALID_EXERCISE))
     expect(prisma.exercise.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ coachId: null, isGlobal: true }),
+        data: expect.objectContaining({ coachId: null, source: 'manual' }),
       })
     )
   })

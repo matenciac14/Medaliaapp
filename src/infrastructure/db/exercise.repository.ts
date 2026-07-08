@@ -1,0 +1,169 @@
+/**
+ * Infrastructure — Prisma implementation of IExerciseRepository.
+ */
+import type { IExerciseRepository } from '@/domain/exercise/ports/exercise.repository'
+import type { Exercise, ExerciseFilters, UpsertExerciseData } from '@/domain/exercise/exercise.types'
+import { prisma } from '@/lib/db/prisma'
+
+const PAGE_SIZE_DEFAULT = 20
+const PAGE_SIZE_MAX = 100
+
+function resolveGif(gifStoredUrl: string | null, gifUrl: string | null): string {
+  return gifStoredUrl ?? gifUrl ?? ''
+}
+
+export class PrismaExerciseRepository implements IExerciseRepository {
+  async findAll(filters: ExerciseFilters = {}): Promise<{ exercises: Exercise[]; total: number }> {
+    const { bodyPart, target, equipment, q, page = 1, limit = PAGE_SIZE_DEFAULT } = filters
+    const take = Math.min(limit, PAGE_SIZE_MAX)
+    const skip = (page - 1) * take
+
+    const where = {
+      ...(bodyPart ? { bodyPart: { equals: bodyPart, mode: 'insensitive' as const } } : {}),
+      ...(target ? { target: { equals: target, mode: 'insensitive' as const } } : {}),
+      ...(equipment ? { equipment: { equals: equipment, mode: 'insensitive' as const } } : {}),
+      ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
+    }
+
+    const [rows, total] = await Promise.all([
+      prisma.exercise.findMany({
+        where,
+        orderBy: [{ popularityRank: 'asc' }, { name: 'asc' }],
+        skip,
+        take,
+      }),
+      prisma.exercise.count({ where }),
+    ])
+
+    return {
+      exercises: rows.map((r) => this.toEntity(r)),
+      total,
+    }
+  }
+
+  async findById(id: string): Promise<Exercise | null> {
+    const row = await prisma.exercise.findUnique({ where: { id } })
+    return row ? this.toEntity(row) : null
+  }
+
+  async findSimilar(id: string, limit = 6): Promise<Exercise[]> {
+    const source = await prisma.exercise.findUnique({
+      where: { id },
+      select: { bodyPart: true, target: true },
+    })
+    if (!source) return []
+
+    const rows = await prisma.exercise.findMany({
+      where: {
+        id: { not: id },
+        bodyPart: source.bodyPart,
+        target: source.target,
+      },
+      orderBy: [{ popularityRank: 'asc' }, { name: 'asc' }],
+      take: limit,
+    })
+
+    return rows.map((r) => this.toEntity(r))
+  }
+
+  async upsertMany(exercises: UpsertExerciseData[]): Promise<{ synced: number }> {
+    let synced = 0
+    for (const ex of exercises) {
+      await prisma.exercise.upsert({
+        where: { id: ex.id },
+        create: {
+          id: ex.id,
+          name: ex.name,
+          bodyPart: ex.bodyPart,
+          target: ex.target,
+          equipment: ex.equipment,
+          difficulty: ex.difficulty ?? null,
+          mechanic: ex.mechanic ?? null,
+          force: ex.force ?? null,
+          caloriesPerMinute: ex.caloriesPerMinute ?? null,
+          met: ex.met ?? null,
+          popularityRank: ex.popularityRank ?? null,
+          isUnilateral: ex.isUnilateral,
+          recommendedSets: ex.recommendedSets ?? null,
+          recommendedReps: ex.recommendedReps ?? null,
+          description: ex.description ?? null,
+          secondaryMuscles: ex.secondaryMuscles,
+          instructions: ex.instructions,
+          gifUrl: ex.gifUrl,
+          source: ex.source,
+          syncedAt: ex.syncedAt,
+        },
+        update: {
+          name: ex.name,
+          bodyPart: ex.bodyPart,
+          target: ex.target,
+          equipment: ex.equipment,
+          difficulty: ex.difficulty ?? null,
+          mechanic: ex.mechanic ?? null,
+          force: ex.force ?? null,
+          caloriesPerMinute: ex.caloriesPerMinute ?? null,
+          met: ex.met ?? null,
+          popularityRank: ex.popularityRank ?? null,
+          isUnilateral: ex.isUnilateral,
+          recommendedSets: ex.recommendedSets ?? null,
+          recommendedReps: ex.recommendedReps ?? null,
+          description: ex.description ?? null,
+          secondaryMuscles: ex.secondaryMuscles,
+          instructions: ex.instructions,
+          gifUrl: ex.gifUrl,
+          source: ex.source,
+          syncedAt: ex.syncedAt,
+        },
+      })
+      synced++
+    }
+    return { synced }
+  }
+
+  private toEntity(row: {
+    id: string
+    name: string
+    bodyPart: string
+    target: string
+    equipment: string
+    difficulty: string | null
+    mechanic: string | null
+    force: string | null
+    caloriesPerMinute: number | null
+    met: number | null
+    popularityRank: number | null
+    isUnilateral: boolean
+    recommendedSets: string | null
+    recommendedReps: string | null
+    description: string | null
+    secondaryMuscles: string[]
+    instructions: string[]
+    gifUrl: string | null
+    gifStoredUrl: string | null
+    source: string
+    syncedAt: Date | null
+  }): Exercise {
+    return {
+      id: row.id,
+      name: row.name,
+      bodyPart: row.bodyPart,
+      target: row.target,
+      equipment: row.equipment,
+      difficulty: row.difficulty ?? undefined,
+      mechanic: row.mechanic ?? undefined,
+      force: row.force ?? undefined,
+      caloriesPerMinute: row.caloriesPerMinute ?? undefined,
+      met: row.met ?? undefined,
+      popularityRank: row.popularityRank ?? undefined,
+      isUnilateral: row.isUnilateral,
+      recommendedSets: row.recommendedSets ?? undefined,
+      recommendedReps: row.recommendedReps ?? undefined,
+      description: row.description ?? undefined,
+      secondaryMuscles: row.secondaryMuscles,
+      instructions: row.instructions,
+      gif: resolveGif(row.gifStoredUrl, row.gifUrl),
+      source: row.source,
+      syncedAt: row.syncedAt ?? undefined,
+    }
+  }
+}

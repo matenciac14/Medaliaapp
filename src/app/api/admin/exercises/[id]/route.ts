@@ -18,8 +18,8 @@ export async function PATCH(
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
-  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true, isGlobal: true } })
-  if (!existing || existing.coachId !== null || !existing.isGlobal) {
+  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true } })
+  if (!existing || existing.coachId !== null) {
     return NextResponse.json({ error: 'Ejercicio no encontrado o no es global.' }, { status: 404 })
   }
 
@@ -30,14 +30,15 @@ export async function PATCH(
   const exercise = await prisma.exercise.update({
     where: { id },
     data: {
-      name:         body.name.trim(),
-      category:     body.category,
-      equipment:    body.equipment,
-      muscleGroups: body.muscleGroups,
-      description:  body.description?.trim() || null,
-      tips:         body.tips?.trim() || null,
+      name:        body.name.trim(),
+      bodyPart:    body.bodyPart.trim(),
+      target:      body.target.trim(),
+      equipment:   body.equipment.trim(),
+      mechanic:    body.mechanic?.trim() || null,
+      description: body.description?.trim() || null,
+      gifUrl:      body.gifUrl?.trim() || null,
     },
-    select: { id: true, name: true, category: true, equipment: true, muscleGroups: true },
+    select: { id: true, name: true, bodyPart: true, target: true, equipment: true },
   })
 
   return NextResponse.json({ exercise })
@@ -51,8 +52,8 @@ export async function DELETE(
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
-  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true, isGlobal: true } })
-  if (!existing || existing.coachId !== null || !existing.isGlobal) {
+  const existing = await prisma.exercise.findUnique({ where: { id }, select: { coachId: true } })
+  if (!existing || existing.coachId !== null) {
     return NextResponse.json({ error: 'Ejercicio no encontrado o no es global.' }, { status: 404 })
   }
 

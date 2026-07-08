@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const validExercises = await prisma.exercise.findMany({
       where: {
         id: { in: exerciseIds },
-        OR: [{ coachId }, { isGlobal: true }],
+        OR: [{ coachId }, { coachId: null }],
       },
       select: { id: true },
     })

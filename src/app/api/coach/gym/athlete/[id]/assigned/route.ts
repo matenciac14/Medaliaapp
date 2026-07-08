@@ -44,7 +44,7 @@ export async function GET(
             include: {
               exercises: {
                 orderBy: { order: 'asc' },
-                include: { exercise: { select: { id: true, name: true, muscleGroups: true } } },
+                include: { exercise: { select: { id: true, name: true, bodyPart: true, target: true } } },
               },
             },
           },

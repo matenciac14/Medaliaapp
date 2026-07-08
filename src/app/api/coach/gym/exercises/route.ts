@@ -13,9 +13,9 @@ export async function GET(_req: NextRequest) {
 
   const exercises = await prisma.exercise.findMany({
     where: {
-      OR: [{ coachId }, { isGlobal: true }],
+      OR: [{ coachId }, { coachId: null }],
     },
-    orderBy: [{ isGlobal: 'asc' }, { name: 'asc' }],
+    orderBy: { name: 'asc' },
   })
 
   return NextResponse.json(exercises)
@@ -31,27 +31,34 @@ export async function POST(req: NextRequest) {
   const coachId = session.user.id
 
   const body = await req.json()
-  const { name, muscleGroups, equipment, category, description, tips, imageUrl } = body
+  const { name, bodyPart, target, equipment, description, gifUrl } = body
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
   }
 
-  if (!muscleGroups || muscleGroups.length === 0) {
-    return NextResponse.json({ error: 'Selecciona al menos un grupo muscular' }, { status: 400 })
+  if (!bodyPart?.trim()) {
+    return NextResponse.json({ error: 'La parte del cuerpo (bodyPart) es obligatoria' }, { status: 400 })
+  }
+
+  if (!target?.trim()) {
+    return NextResponse.json({ error: 'El músculo objetivo (target) es obligatorio' }, { status: 400 })
+  }
+
+  if (!equipment?.trim()) {
+    return NextResponse.json({ error: 'El equipamiento es obligatorio' }, { status: 400 })
   }
 
   const exercise = await prisma.exercise.create({
     data: {
       coachId,
-      name: name.trim(),
-      muscleGroups,
-      equipment: equipment ?? 'BARBELL',
-      category: category ?? 'COMPOUND',
+      name:        name.trim(),
+      bodyPart:    bodyPart.trim(),
+      target:      target.trim(),
+      equipment:   equipment.trim(),
       description: description?.trim() || null,
-      tips: tips?.trim() || null,
-      imageUrl: imageUrl || null,
-      isGlobal: false,
+      gifUrl:      gifUrl?.trim() || null,
+      source:      'custom',
     },
   })
 
