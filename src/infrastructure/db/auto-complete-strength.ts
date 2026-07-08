@@ -29,17 +29,24 @@ export async function autoCompleteStrengthSession(params: {
 
   if (!fuerzaSession) return null
 
-  const log = await prisma.sessionLog.create({
-    data: {
-      userId: athleteId,
-      plannedSessionId: fuerzaSession.id,
-      completedAt: new Date(),
-      rpe: rpe ?? null,
-      durationMin: durationMin ?? null,
-      notes: notes ?? null,
-    },
-    select: { id: true },
-  })
-
-  return log.id
+  try {
+    const log = await prisma.sessionLog.create({
+      data: {
+        userId: athleteId,
+        plannedSessionId: fuerzaSession.id,
+        completedAt: new Date(),
+        rpe: rpe ?? null,
+        durationMin: durationMin ?? null,
+        notes: notes ?? null,
+      },
+      select: { id: true },
+    })
+    return log.id
+  } catch (err: unknown) {
+    // P2002: duplicate SessionLog for the same plannedSession — already logged, skip silently
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
+      return null
+    }
+    throw err
+  }
 }
