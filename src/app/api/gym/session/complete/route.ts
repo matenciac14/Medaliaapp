@@ -21,6 +21,7 @@ const SetPayloadSchema = z.object({
   weightKg: z.number().min(0).max(1000).nullable(),
   repsCompleted: z.number().int().min(0).max(200).nullable(),
   completed: z.boolean(),
+  setLogType: z.enum(['WORK', 'WARMUP', 'DROPSET']).optional(),
 })
 
 const ExerciseOverrideSchema = z.object({
@@ -226,6 +227,7 @@ export async function POST(req: NextRequest) {
               repsCompleted: s.repsCompleted ?? null,
               completed: s.completed,
               isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+              setLogType: s.setLogType ?? 'WORK',
             })),
           },
         },
@@ -271,6 +273,7 @@ export async function POST(req: NextRequest) {
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
             isPR: applyPRByName(s.exerciseName, s.weightKg, s.completed),
+            setLogType: s.setLogType ?? 'WORK',
           })),
         },
       },
@@ -319,6 +322,7 @@ export async function POST(req: NextRequest) {
             repsCompleted: s.repsCompleted ?? null,
             completed: s.completed,
             isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
+            setLogType: s.setLogType ?? 'WORK',
           })),
         },
       },
