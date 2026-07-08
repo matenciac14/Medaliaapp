@@ -5,10 +5,12 @@ declare module 'next-auth' {
     user: {
       id: string
       role: string
+      status?: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
       onboardingCompleted: boolean
       activated: boolean
       isB2B: boolean
       userPlan: 'FREE' | 'PRO'
+      profileComplete: boolean
       features: {
         plan: boolean
         checkin: boolean
@@ -27,10 +29,12 @@ declare module 'next-auth' {
 
   interface User {
     role?: string
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
     onboardingCompleted?: boolean
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    profileComplete?: boolean
     needsRoleSelection?: boolean
     features?: {
       plan: boolean
@@ -48,10 +52,12 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id?: string
     role?: string
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
     onboardingCompleted?: boolean
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    profileComplete?: boolean
     needsRoleSelection?: boolean
     features?: {
       plan: boolean
@@ -71,10 +77,12 @@ declare module '@auth/core/jwt' {
   interface JWT {
     id?: string
     role?: string
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
     onboardingCompleted?: boolean
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    profileComplete?: boolean
     needsRoleSelection?: boolean
     features?: {
       plan: boolean
@@ -92,10 +100,12 @@ declare module '@auth/core/jwt.js' {
   interface JWT {
     id?: string
     role?: string
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETED'
     onboardingCompleted?: boolean
     activated?: boolean
     isB2B?: boolean
     userPlan?: 'FREE' | 'PRO'
+    profileComplete?: boolean
     needsRoleSelection?: boolean
     features?: {
       plan: boolean

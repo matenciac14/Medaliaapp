@@ -165,17 +165,17 @@ export class PrismaPlanRepository implements IPlanRepository {
   async upsertNutrition(userId: string, targets: NutritionTargets): Promise<void> {
     await this.db.nutritionPlan.upsert({
       where: { userId },
-      create: { userId, ...targets },
+      create: { userId, source: 'SYSTEM', ...targets },
       update: targets,
     })
   }
 
   async findExercisesByNames(names: string[]): Promise<GymExercise[]> {
     const all = await this.db.exercise.findMany({
-      where: { isGlobal: true },
-      select: { id: true, name: true, muscleGroups: true, equipment: true },
+      where: { coachId: null },
+      select: { id: true, name: true, bodyPart: true, target: true, equipment: true },
     })
-    // Return all exercises that match any of the requested names (partial, case-insensitive)
+    // Return exercises that match any of the requested names (partial, case-insensitive)
     return all.filter(e =>
       names.some(
         n => e.name.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(e.name.toLowerCase())

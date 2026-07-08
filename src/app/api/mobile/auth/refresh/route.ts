@@ -4,7 +4,7 @@ import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 
 const USER_SELECT = {
-  id: true, email: true, name: true, role: true,
+  id: true, email: true, name: true, role: true, status: true,
   featurePlan: true, featureCheckin: true, featureNutrition: true,
   featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
   onboardingCompleted: true,
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     email: user.email,
     name: user.name ?? '',
     role: user.role,
+    status: user.status,
     onboardingCompleted: user.onboardingCompleted,
     userPlan: 'PRO',
     features,

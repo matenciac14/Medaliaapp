@@ -52,10 +52,6 @@ export default async function CoachAthletesPage() {
                 weekNumber: true,
               },
             },
-            goals: {
-              where: { status: 'ACTIVE' },
-              take: 1,
-            },
           },
         },
       },

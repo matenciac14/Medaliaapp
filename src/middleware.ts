@@ -26,10 +26,17 @@ export default auth((req) => {
   if (isLoggedIn) {
     const onboardingCompleted = session.user.onboardingCompleted ?? true
     const role = session.user.role
+    const status = session.user.status ?? 'ACTIVE'
     const activated = session.user.activated ?? false
     const isB2B = session.user.isB2B ?? false
     const userPlan = session.user.userPlan ?? 'FREE'
     const needsRoleSelection = session.user.needsRoleSelection ?? false
+
+    // Cuenta suspendida o bloqueada por admin — bloquear acceso total (excepto API y rutas públicas)
+    if (status !== 'ACTIVE' && !pathname.startsWith('/api') && !isPublicRoute) {
+      const message = status === 'BLOCKED' ? 'Tu cuenta ha sido bloqueada.' : 'Tu cuenta está suspendida.'
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(message)}`, nextUrl))
+    }
 
     // Google OAuth user que no ha seleccionado su rol
     if (needsRoleSelection && !pathname.startsWith('/select-role') && !pathname.startsWith('/api')) {

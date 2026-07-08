@@ -133,7 +133,7 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">¿Cómo quieres entrenar?</h2>
-      <p className="text-gray-500 text-sm mb-4">Medalliq se adapta a tu forma de entrenar — sin obligarte a seguir un plan.</p>
+      <p className="text-gray-500 text-sm mb-4">Medaliq se adapta a tu forma de entrenar — sin obligarte a seguir un plan.</p>
 
       {activities.map((a) => (
         <SelectCard
@@ -370,7 +370,8 @@ export default function OnboardingPage() {
 
   const steps = getSteps(data)
   const currentStepId = steps[stepIndex]
-  const totalSteps = steps.length
+  // Excluir 'generating' del conteo visible — es una pantalla de carga, no un paso real
+  const totalSteps = steps.filter(s => s !== 'generating').length
   const progressPct = Math.min(((stepIndex + 1) / totalSteps) * 100, 100)
   const isLastDataStep = steps[stepIndex + 1] === 'generating'
 

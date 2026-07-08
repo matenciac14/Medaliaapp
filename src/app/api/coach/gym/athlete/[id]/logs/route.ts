@@ -46,7 +46,7 @@ export async function GET(
     {
       exerciseId: string
       name: string
-      muscleGroups: string[]
+      bodyPart: string
       logs: {
         date: string
         sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null }[]
@@ -68,12 +68,12 @@ export async function GET(
     for (const [exId, logs] of Object.entries(byExercise)) {
       const ex = logs[0].workoutExercise?.exercise
       const exName = ex?.name ?? logs[0].exerciseName ?? 'Ejercicio'
-      const exMuscles = ex?.muscleGroups ?? []
+      const exBodyPart = ex?.bodyPart ?? ''
       if (!exerciseMap[exId]) {
         exerciseMap[exId] = {
           exerciseId: exId,
           name: exName,
-          muscleGroups: exMuscles,
+          bodyPart: exBodyPart,
           logs: [],
         }
       }

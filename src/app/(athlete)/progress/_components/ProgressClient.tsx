@@ -507,15 +507,15 @@ export default function ProgressClient({
     )
   }
 
-  const weightStart = weightData[0].kg
-  const weightEnd   = weightData[weightData.length - 1].kg
-  const hrStart     = hrData[0].bpm
-  const hrEnd       = hrData[hrData.length - 1].bpm
+  const weightStart = weightData.length > 0 ? weightData[0].kg : null
+  const weightEnd   = weightData.length > 0 ? weightData[weightData.length - 1].kg : null
+  const hrStart     = hrData.length > 0 ? hrData[0].bpm : null
+  const hrEnd       = hrData.length > 0 ? hrData[hrData.length - 1].bpm : null
 
-  const weightMin = Math.min(...weightData.map((d) => d.kg)) - 0.5
-  const weightMax = Math.max(...weightData.map((d) => d.kg)) + 0.5
-  const hrMin     = Math.min(...hrData.map((d) => d.bpm)) - 1
-  const hrMax     = Math.max(...hrData.map((d) => d.bpm)) + 1
+  const weightMin = weightData.length > 0 ? Math.min(...weightData.map((d) => d.kg)) - 0.5 : 0
+  const weightMax = weightData.length > 0 ? Math.max(...weightData.map((d) => d.kg)) + 0.5 : 100
+  const hrMin     = hrData.length > 0 ? Math.min(...hrData.map((d) => d.bpm)) - 1 : 40
+  const hrMax     = hrData.length > 0 ? Math.max(...hrData.map((d) => d.bpm)) + 1 : 100
 
   const avgAdherence =
     weekData.length > 0
@@ -550,6 +550,7 @@ export default function ProgressClient({
       </div>
 
       {/* Peso */}
+      {weightData.length > 0 && (
       <SectionCard title="Peso (kg)">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div className="flex items-center gap-5">
@@ -557,7 +558,7 @@ export default function ProgressClient({
               <p className="text-2xl font-bold text-gray-900">{weightEnd} kg</p>
               <p className="text-xs text-gray-500">Actual</p>
             </div>
-            <TrendBadge start={weightStart} end={weightEnd} lowerIsBetter unit=" kg" />
+            {weightStart != null && weightEnd != null && <TrendBadge start={weightStart} end={weightEnd} lowerIsBetter unit=" kg" />}
             {weightGoal ? (
               <div>
                 <p className="text-sm font-semibold text-[#16a34a]">{weightGoal} kg</p>
@@ -569,7 +570,7 @@ export default function ProgressClient({
               </Link>
             )}
           </div>
-          {weightGoal ? (
+          {weightGoal && weightEnd != null ? (
             <span className="text-xs text-gray-500 font-medium">
               {weightEnd > weightGoal
                 ? `Faltan ${(weightEnd - weightGoal).toFixed(1)} kg`
@@ -588,8 +589,10 @@ export default function ProgressClient({
           maxVal={weightMax}
         />
       </SectionCard>
+      )}
 
       {/* FC Reposo */}
+      {hrData.length > 0 && (
       <SectionCard title="FC Reposo (bpm)">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div className="flex items-center gap-5">
@@ -597,12 +600,13 @@ export default function ProgressClient({
               <p className="text-2xl font-bold text-gray-900">{hrEnd} bpm</p>
               <p className="text-xs text-gray-500">Actual</p>
             </div>
-            <TrendBadge start={hrStart} end={hrEnd} lowerIsBetter unit=" bpm" />
+            {hrStart != null && hrEnd != null && <TrendBadge start={hrStart} end={hrEnd} lowerIsBetter unit=" bpm" />}
             <div>
               <p className="text-sm font-semibold text-gray-600">{hrStart} bpm</p>
               <p className="text-xs text-gray-500">Inicio</p>
             </div>
           </div>
+          {hrEnd != null && (
           <span
             className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
               hrEnd <= 54
@@ -614,6 +618,7 @@ export default function ProgressClient({
           >
             {hrEnd <= 54 ? 'Excelente' : hrEnd <= 58 ? 'Buena' : 'Normal'}
           </span>
+          )}
         </div>
 
         <LineChart
@@ -625,6 +630,7 @@ export default function ProgressClient({
           maxVal={hrMax}
         />
       </SectionCard>
+      )}
 
       {/* Bienestar */}
       {wellbeingSlice.length > 0 && (
@@ -669,18 +675,18 @@ export default function ProgressClient({
         {/* Mobile: cards */}
         <div className="sm:hidden space-y-3">
           {[
-            ...(weightGoal !== null ? [{
+            ...(weightGoal !== null && weightEnd != null ? [{
               label: 'Peso vs objetivo',
               start: `${weightStart} kg`,
               end: `${weightEnd} kg`,
               status: weightEnd <= weightGoal ? 'logrado' : 'pendiente',
             }] : []),
-            {
+            ...(hrStart != null && hrEnd != null ? [{
               label: 'FC Reposo',
               start: `${hrStart} bpm`,
               end: `${hrEnd} bpm`,
               status: hrEnd < hrStart ? 'mejorando' : hrEnd === hrStart ? 'igual' : 'empeorando',
-            },
+            }] : []),
           ].map((row) => (
             <div key={row.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
               <div className="flex-1 min-w-0">
@@ -709,7 +715,7 @@ export default function ProgressClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {weightGoal !== null && (
+              {weightGoal !== null && weightEnd != null && (
                 <tr>
                   <td className="py-3 pr-4 font-medium text-gray-900">Peso actual vs objetivo</td>
                   <td className="py-3 pr-4 text-gray-500">{weightStart} kg</td>
@@ -721,6 +727,7 @@ export default function ProgressClient({
                   </td>
                 </tr>
               )}
+              {hrStart != null && hrEnd != null && (
               <tr>
                 <td className="py-3 pr-4 font-medium text-gray-900">FC Reposo</td>
                 <td className="py-3 pr-4 text-gray-500">{hrStart} bpm</td>
@@ -731,6 +738,7 @@ export default function ProgressClient({
                   : <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-[#dc2626]">Empeorando</span>}
                 </td>
               </tr>
+              )}
             </tbody>
           </table>
         </div>

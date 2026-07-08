@@ -11,7 +11,7 @@
 
 // ─── Tipos de dominio (espejean los enums DB, sin importar Prisma) ────────────
 
-export type AthleteSubscriptionTier = 'TRIAL' | 'FREE' | 'PRO'
+export type AthleteSubscriptionTier = 'FREE' | 'PRO'
 
 export type CoachTier = 'STARTER' | 'GROWTH' | 'PRO' | 'SCALE'
 
@@ -33,14 +33,12 @@ export type CoachLimits = {
 
 /**
  * Devuelve las feature flags correspondientes al tier del atleta B2C.
- * TRIAL tiene acceso completo durante el período de prueba.
- * FREE: solo log manual (acceso mínimo post-trial).
+ * FREE: tracking básico (log, nutrición, gym). Sin plan adaptativo ni check-in.
  * PRO: acceso completo excepto panel de coach.
  */
 export function computeAthleteFeatures(tier: AthleteSubscriptionTier): AthleteFeatures {
   switch (tier) {
     case 'PRO':
-    case 'TRIAL':
       return {
         plan:      true,
         checkin:   true,
@@ -52,7 +50,7 @@ export function computeAthleteFeatures(tier: AthleteSubscriptionTier): AthleteFe
       }
     case 'FREE':
       return {
-        plan:      true,
+        plan:      false,
         checkin:   false,
         nutrition: true,
         progress:  false,

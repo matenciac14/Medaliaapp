@@ -19,7 +19,7 @@ export async function GET(
         include: {
           workoutExercise: {
             include: {
-              exercise: { select: { name: true, muscleGroups: true, equipment: true } },
+              exercise: { select: { name: true, bodyPart: true, target: true, equipment: true, gifUrl: true, gifStoredUrl: true } },
             },
           },
         },

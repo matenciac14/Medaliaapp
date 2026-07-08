@@ -40,6 +40,14 @@ model User {
   // Push notifications (Expo Push Token del dispositivo mobile)
   pushToken  String?
 
+  // Coach identity — anti-fraude y billing (ver domains/coach-identidad.md)
+  identification  String?  @unique  // cédula / pasaporte / NIT — formato libre, 5-30 chars
+  phoneWa         String?  @unique  // WhatsApp E.164: +57XXXXXXXXXX — único por coach
+  showPhoneWa     Boolean  @default(false) // opt-in: mostrar phoneWa en perfil público /p/[slug]
+
+  // Estado de la cuenta — control de acceso administrativo
+  status  UserStatus  @default(ACTIVE)
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -48,7 +56,6 @@ model User {
   accounts          Account[]
   sessions          Session[]
   profile           HealthProfile?
-  goals             Goal[]
   trainingPlans     TrainingPlan[]
   sessionLogs          SessionLog[]
   checkIns             WeeklyCheckIn[]
@@ -106,12 +113,26 @@ model User {
   nutritionTemplates    NutritionTemplate[]    @relation("CoachNutritionTemplates")
   assignedNutritionPlan AssignedNutritionPlan? @relation("AthleteNutritionPlan")
   coachNutritionPlans   AssignedNutritionPlan[] @relation("CoachNutritionPlans")
+
+  // Notificaciones in-app
+  notifications  Notification[]
+
+  // Propuestas de alimentos a la librería global
+  proposedFoods      FoodProposal[] @relation("ProposedFoods")
+  reviewedProposals  FoodProposal[] @relation("ReviewedProposals")
 }
 
 enum UserRole {
   ATHLETE
   COACH
   ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  DELETED
 }
 
 model Account {
@@ -211,6 +232,7 @@ model HealthProfile {
   medications    String[]
   sleepHoursAvg  Float?
   sleepScoreAvg  Float?
+  vo2maxEstimate Float?  // estimado desde wearable (ml/kg/min) — INT-05
   gender         String?   // male | female — afecta cálculo TDEE Mifflin-St Jeor (~166 kcal diferencia)
   // Sport-specific fields
   sport          String?   // RUNNING | CYCLING | SWIMMING | TRIATHLON | FOOTBALL | STRENGTH
@@ -225,23 +247,8 @@ model HealthProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── OBJETIVO ───────────────────────────────────────────────────────────────
-
-model Goal {
-  id             String     @id @default(cuid())
-  userId         String
-  type           GoalType
-  raceDate       DateTime?
-  targetTimeSecs Int?
-  targetWeightKg Float?
-  description    String?
-  status         GoalStatus @default(ACTIVE)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trainingPlans TrainingPlan[]
-}
+// ─── TIPOS DE OBJETIVO ──────────────────────────────────────────────────────
+// GoalType se usa como campo directo en TrainingPlan.goalType (no como FK a una tabla Goal)
 
 enum GoalType {
   RACE_5K
@@ -258,18 +265,11 @@ enum GoalType {
   GENERAL_FITNESS
 }
 
-enum GoalStatus {
-  ACTIVE
-  COMPLETED
-  ABANDONED
-}
-
 // ─── PLAN DE ENTRENAMIENTO ──────────────────────────────────────────────────
 
 model TrainingPlan {
   id          String     @id @default(cuid())
   userId      String
-  goalId      String?
   name        String
   goalType    GoalType?  // enum constraint — antes era String?
   totalWeeks  Int
@@ -282,7 +282,6 @@ model TrainingPlan {
   updatedAt   DateTime   @updatedAt
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal  Goal?      @relation(fields: [goalId], references: [id])
   weeks PlanWeek[]
 
   @@index([userId, status])
@@ -371,6 +370,14 @@ enum SessionType {
   OTRO
 }
 
+enum SessionDiscipline {
+  RUNNING
+  STRENGTH
+  CYCLING
+  SWIMMING
+  OTHER
+}
+
 // ─── REGISTRO DE SESIÓN ─────────────────────────────────────────────────────
 
 model SessionLog {
@@ -388,6 +395,12 @@ model SessionLog {
   garminActivityId String?
   freeSessionType  SessionType?      // solo para logs libres (plannedSessionId = null)
   actualIntensity  SessionIntensity? // intensidad real registrada por el atleta
+  discipline       SessionDiscipline? // discriminador de deporte — RUNNING|STRENGTH|CYCLING|SWIMMING|OTHER
+  // Wearables — INT-05
+  caloriesBurned   Int?    // kcal totales quemadas (fuente: wearable)
+  avgPaceSecPerKm  Int?    // ritmo promedio en segundos/km (running)
+  dataSource       String? // MANUAL | STRAVA | GARMIN | HEALTHKIT
+  externalId       String? // ID externo (Strava activity ID, Garmin activity ID, etc.)
 
   user                     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannedSession           PlannedSession?            @relation(fields: [plannedSessionId], references: [id], onDelete: SetNull)
@@ -460,6 +473,7 @@ model WeeklyCheckIn {
   armsCm               Float?  // brazos (cm, promedio)
   hipsCm               Float?  // caderas (cm)
   thighsCm             Float?  // muslos (cm, promedio)
+  hrvMs                Float?  // Heart Rate Variability en milisegundos — INT-05
   notes                String?
   adjustmentsTriggered String[]
 
@@ -477,41 +491,40 @@ model WeeklyCheckIn {
 // ─── GYM COACH FEATURE ──────────────────────────────────────────────────────
 
 model Exercise {
-  id           String   @id @default(cuid())
-  coachId      String?  // null = librería global, string = ejercicio personalizado del coach
-  name         String
-  muscleGroups String[] // ["QUADRICEPS", "GLUTES", "HAMSTRINGS"]
-  equipment    EquipmentType @default(BARBELL)
-  category     ExerciseCategory @default(COMPOUND)
-  description  String?
-  tips         String?
-  imageUrl     String?
-  isGlobal     Boolean  @default(false) // true = librería base de Medaliq
+  id                String    @id @default(cuid())
+  coachId           String?   // null = librería global (WorkoutX), string = ejercicio personalizado del coach
+
+  name              String
+  bodyPart          String
+  target            String
+  equipment         String
+  difficulty        String?
+  mechanic          String?   // "compound" | "isolation"
+  force             String?   // "push" | "pull" | "static"
+  caloriesPerMinute Float?
+  met               Float?
+  popularityRank    Int?
+  isUnilateral      Boolean   @default(false)
+  recommendedSets   String?
+  recommendedReps   String?
+  description       String?
+  secondaryMuscles  String[]
+  instructions      String[]
+
+  gifUrl            String?   // URL CDN WorkoutX — null para ejercicios custom del coach
+  gifStoredUrl      String?   // URL S3 propia — null hasta Fase 4
+
+  source            String    @default("workoutx")  // "workoutx" | "custom" | "manual"
+  syncedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   coach            User?             @relation("CoachExercises", fields: [coachId], references: [id])
   workoutExercises WorkoutExercise[]
 
-  createdAt DateTime @default(now())
-}
-
-enum EquipmentType {
-  BARBELL
-  DUMBBELL
-  MACHINE
-  CABLE
-  SMITH
-  BODYWEIGHT
-  KETTLEBELL
-  BAND
-  OTHER
-}
-
-enum ExerciseCategory {
-  COMPOUND
-  ISOLATION
-  CARDIO
-  STRETCH
-  FUNCTIONAL
+  @@index([bodyPart])
+  @@index([target])
+  @@index([equipment])
 }
 
 model WorkoutTemplate {
@@ -582,6 +595,13 @@ enum SetType {
   CIRCUIT
 }
 
+// Tipo de set a nivel de log — independiente del tipo estructural en WorkoutExercise
+enum SetLogType {
+  WORK     // set de trabajo real — cuenta para volumen y PR detection
+  WARMUP   // calentamiento — excluido de volumen y PRs
+  DROPSET  // drop set — excluido de PR detection, incluido en volumen
+}
+
 model AssignedWorkout {
   id            String    @id @default(cuid())
   templateId    String
@@ -639,7 +659,8 @@ model SetLog {
   weightKg          Float?
   repsCompleted     Int?
   completed         Boolean @default(false)
-  isPR              Boolean @default(false)
+  isPR              Boolean    @default(false)
+  setLogType        SetLogType @default(WORK) // tipo de set — excluye WARMUP/DROPSET de volumen y PRs
   notes             String?
 
   session         GymSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -721,6 +742,12 @@ enum PostType {
 
 // ─── PLAN NUTRICIONAL ───────────────────────────────────────────────────────
 
+enum NutritionSource {
+  SYSTEM  // generado por onboarding o check-in automático
+  COACH   // asignado por el coach vía NutritionTemplate
+  ATHLETE // creado por el atleta B2C (self-coach)
+}
+
 /// Singleton — siempre un solo registro con id = "singleton"
 model SystemConfig {
   id        String   @id @default("singleton")
@@ -729,8 +756,9 @@ model SystemConfig {
 }
 
 model NutritionPlan {
-  id             String   @id @default(cuid())
-  userId         String   @unique
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  source         NutritionSource @default(SYSTEM) // origen del plan: SYSTEM | COACH | ATHLETE
   tdee           Int
   targetKcalHard Int
   targetKcalEasy Int
@@ -799,14 +827,21 @@ model Food {
   isVerified     Boolean  @default(true)  // false = enviado por comunidad, pendiente revisión
   createdBy      String?                  // null = sistema Medaliq
   isActive       Boolean  @default(true)
+  // Trazabilidad y búsqueda por código — NUT-01
+  source         String   @default("system") // system | usda | icbf | openfoodfacts | community
+  barcode        String?  @unique             // EAN-13 / UPC para lookup Open Food Facts
+  country        String?                      // ISO 3166-1 alpha-2 (CO, MX, AR, PE...)
   createdAt      DateTime @default(now())
 
   foodLogs              FoodLog[]
   mealTemplateItems     MealTemplateItem[]
   nutritionTemplateItems NutritionTemplateFoodItem[]
+  proposals             FoodProposal[]
 
   @@index([category])
   @@index([isActive])
+  @@index([barcode])
+  @@index([country])
 }
 
 // Registro diario de ingesta — listo para fase de tracking
@@ -1105,6 +1140,60 @@ model AssignedNutritionPlan {
 
   @@index([coachId])
   @@index([templateId])
+}
+
+// ─── NOTIFICACIONES IN-APP ───────────────────────────────────────────────────
+// PLT-07 — centro de notificaciones in-app (campana + feed de eventos)
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // SESION_HOY | CHECKIN_DISPONIBLE | PLAN_ACTUALIZADO | MENSAJE_COACH | AJUSTE_NUTRICIONAL | LOGRO | PROPUESTA_COACH
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  metadata  Json?    // payload extra según el tipo (planId, sessionId, etc.)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ─── PROPUESTAS DE ALIMENTOS ─────────────────────────────────────────────────
+// NUT-03 — atleta propone alimento a la librería global — admin aprueba/rechaza
+
+enum FoodProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model FoodProposal {
+  id             String             @id @default(cuid())
+  submittedById  String
+  name           String
+  category       String             // PROTEIN | CARB | FAT | VEGETABLE | FRUIT | DAIRY | LEGUME | OTHER
+  kcalPer100g    Float
+  proteinPer100g Float
+  carbsPer100g   Float
+  fatPer100g     Float
+  country        String?            // ISO 3166-1 alpha-2
+  notes          String?            // notas del atleta al proponer
+  status         FoodProposalStatus @default(PENDING)
+  reviewedById   String?
+  reviewNote     String?            // motivo de rechazo o nota de aprobación
+  foodId         String?            // Food creado al aceptar la propuesta
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  submittedBy  User  @relation("ProposedFoods",     fields: [submittedById], references: [id], onDelete: Cascade)
+  reviewedBy   User? @relation("ReviewedProposals", fields: [reviewedById],  references: [id], onDelete: SetNull)
+  food         Food? @relation(fields: [foodId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([submittedById])
 }
 
 // ─── AUDITORÍA ADMIN ─────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ const USER_SELECT = {
   name: true,
   image: true,
   role: true,
+  status: true,
   password: true,
   featurePlan: true,
   featureCheckin: true,
@@ -25,6 +26,8 @@ const USER_SELECT = {
   featureGym: true,
   onboardingCompleted: true,
   needsRoleSelection: true,
+  identification: true,
+  phoneWa: true,
 } as const
 
 function buildFeaturesFromUser(u: {
@@ -44,7 +47,7 @@ function buildFeaturesFromUser(u: {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: '/login',
     newUser: '/onboarding',
@@ -94,12 +97,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
+          status: user.status,
           onboardingCompleted: user.onboardingCompleted,
           activated: user.featurePlan,
           isB2B: !!coachRelation,
           userPlan: 'PRO' as const,
           features,
           needsRoleSelection: user.needsRoleSelection,
+          profileComplete: !!(user.identification && user.phoneWa),
         }
       },
     }),
@@ -109,12 +114,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id
         token.role = user.role
+        token.status = user.status ?? 'ACTIVE'
         token.onboardingCompleted = user.onboardingCompleted ?? false
         token.activated = user.activated ?? false
         token.isB2B = user.isB2B ?? false
         token.userPlan = user.userPlan ?? 'FREE'
         token.features = user.features ?? DEFAULT_USER_CONFIG.features
         token.needsRoleSelection = user.needsRoleSelection ?? false
+        token.profileComplete = user.profileComplete ?? false
       }
 
       // Google OAuth — siempre leer desde DB (PrismaAdapter no llama authorize())
@@ -128,20 +135,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             if (dbUser.needsRoleSelection) {
               token.needsRoleSelection = true
+              token.status = 'ACTIVE'
               token.onboardingCompleted = false
               token.activated = false
               token.isB2B = false
               token.userPlan = 'FREE'
               token.features = DEFAULT_USER_CONFIG.features
+              token.profileComplete = false
             } else {
               const features = buildFeaturesFromUser(dbUser)
               token.role = dbUser.role
+              token.status = dbUser.status
               token.needsRoleSelection = false
               token.onboardingCompleted = dbUser.onboardingCompleted
               token.activated = dbUser.featurePlan
               token.isB2B = !!coachRelation
               token.userPlan = 'PRO'
               token.features = features
+              token.profileComplete = !!(dbUser.identification && dbUser.phoneWa)
             }
           }
         } catch {
@@ -159,12 +170,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             const features = buildFeaturesFromUser(dbUser)
             token.role = dbUser.role
+            token.status = dbUser.status
             token.activated = dbUser.featurePlan
             token.isB2B = !!coachRelation
             token.onboardingCompleted = dbUser.onboardingCompleted
             token.userPlan = 'PRO'
             token.features = features
             token.needsRoleSelection = false
+            token.profileComplete = !!(dbUser.identification && dbUser.phoneWa)
           }
         } catch {
           // silently fail — token retains last known value
@@ -178,12 +191,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (t) {
         session.user.id = t.id ?? ''
         session.user.role = t.role ?? 'ATHLETE'
+        session.user.status = t.status ?? 'ACTIVE'
         session.user.onboardingCompleted = t.onboardingCompleted ?? false
         session.user.activated = t.activated ?? false
         session.user.isB2B = t.isB2B ?? false
         session.user.userPlan = t.userPlan ?? 'FREE'
         session.user.needsRoleSelection = t.needsRoleSelection ?? false
         session.user.features = t.features ?? DEFAULT_USER_CONFIG.features
+        session.user.profileComplete = t.profileComplete ?? false
       }
       return session
     },

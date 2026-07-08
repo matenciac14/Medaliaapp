@@ -105,11 +105,12 @@ export async function GET(req: NextRequest) {
         exercise: {
           id: we.exercise.id,
           name: we.exercise.name,
-          muscleGroups: we.exercise.muscleGroups,
+          bodyPart: we.exercise.bodyPart,
+          target: we.exercise.target,
           equipment: we.exercise.equipment,
-          category: we.exercise.category,
+          mechanic: we.exercise.mechanic,
           description: we.exercise.description,
-          tips: we.exercise.tips,
+          gif: we.exercise.gifStoredUrl ?? we.exercise.gifUrl ?? null,
         },
         previousLogs: (previousSession?.setLogs ?? [])
           .filter(sl => sl.workoutExerciseId === we.id)
@@ -195,11 +196,12 @@ export async function GET(req: NextRequest) {
             exercise: {
               id: we.exercise.id,
               name: we.exercise.name,
-              muscleGroups: we.exercise.muscleGroups,
+              bodyPart: we.exercise.bodyPart,
+              target: we.exercise.target,
               equipment: we.exercise.equipment,
-              category: we.exercise.category,
+              mechanic: we.exercise.mechanic,
               description: we.exercise.description,
-              tips: we.exercise.tips,
+              gif: we.exercise.gifStoredUrl ?? we.exercise.gifUrl ?? null,
             },
             previousLogs: (previousSession?.setLogs ?? [])
               .filter(sl => sl.workoutExerciseId === we.id)

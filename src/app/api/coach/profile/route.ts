@@ -8,12 +8,18 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const profile = await prisma.coachProfile.findUnique({
-    where: { coachId: session.user.id },
-    include: { programs: true, posts: true },
-  })
+  const [profile, user] = await Promise.all([
+    prisma.coachProfile.findUnique({
+      where: { coachId: session.user.id },
+      include: { programs: true, posts: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { identification: true, phoneWa: true, showPhoneWa: true },
+    }),
+  ])
 
-  return NextResponse.json({ profile })
+  return NextResponse.json({ profile, identification: user?.identification ?? null, phoneWa: user?.phoneWa ?? null, showPhoneWa: user?.showPhoneWa ?? false })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -26,7 +32,7 @@ export async function PATCH(req: NextRequest) {
   const {
     slug, bio, headline, city, country, whatsapp, instagram,
     yearsExp, specialties, certifications, isPublic, avatarUrl,
-    primarySpecialty,
+    primarySpecialty, identification, phoneWa,
   } = body
 
   const VALID_SPECIALTIES = ['RUNNING', 'GYM', 'NUTRITION', 'ALL']
@@ -42,21 +48,80 @@ export async function PATCH(req: NextRequest) {
     )
   }
 
-  // Check slug uniqueness (exclude current coach)
-  if (slug) {
-    const existing = await prisma.coachProfile.findUnique({ where: { slug } })
-    if (existing && existing.coachId !== session.user.id) {
-      return NextResponse.json({ error: 'Ese slug ya está en uso.' }, { status: 409 })
+  // Validate identification: 5–30 chars
+  if (identification !== undefined) {
+    const trimmed = (identification ?? '').trim()
+    if (trimmed.length < 5 || trimmed.length > 30) {
+      return NextResponse.json(
+        { error: 'La identificación debe tener entre 5 y 30 caracteres.' },
+        { status: 400 }
+      )
     }
+  }
+
+  // Validate phoneWa: E.164 format
+  if (phoneWa !== undefined && !/^\+[1-9]\d{7,14}$/.test(phoneWa ?? '')) {
+    return NextResponse.json(
+      { error: 'El número de WhatsApp debe estar en formato internacional (ej: +573001234567).' },
+      { status: 400 }
+    )
+  }
+
+  const coachId = session.user.id
+
+  // Uniqueness checks + slug check in parallel
+  const [slugConflict, idConflict, phoneConflict] = await Promise.all([
+    slug
+      ? prisma.coachProfile.findUnique({ where: { slug } })
+      : Promise.resolve(null),
+    identification !== undefined
+      ? prisma.user.findFirst({
+          where: { identification: identification.trim(), role: 'COACH', NOT: { id: coachId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    phoneWa !== undefined
+      ? prisma.user.findFirst({
+          where: { phoneWa, role: 'COACH', NOT: { id: coachId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ])
+
+  if (slugConflict && slugConflict.coachId !== coachId) {
+    return NextResponse.json({ error: 'Ese slug ya está en uso.' }, { status: 409 })
+  }
+  if (idConflict) {
+    return NextResponse.json(
+      { error: 'Ya existe un coach registrado con esa identificación.' },
+      { status: 409 }
+    )
+  }
+  if (phoneConflict) {
+    return NextResponse.json(
+      { error: 'Ya existe un coach registrado con ese número de WhatsApp.' },
+      { status: 409 }
+    )
+  }
+
+  // Persist identification + phoneWa in User if provided
+  if (identification !== undefined || phoneWa !== undefined) {
+    await prisma.user.update({
+      where: { id: coachId },
+      data: {
+        ...(identification !== undefined && { identification: identification.trim() }),
+        ...(phoneWa !== undefined && { phoneWa }),
+      },
+    })
   }
 
   let profile
   try {
     profile = await prisma.coachProfile.upsert({
-      where: { coachId: session.user.id },
+      where: { coachId },
       create: {
-        coachId: session.user.id,
-        slug: slug ?? session.user.id,
+        coachId,
+        slug: slug ?? coachId,
         bio: bio ?? null,
         avatarUrl: avatarUrl ?? null,
         headline: headline ?? null,

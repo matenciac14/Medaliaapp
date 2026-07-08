@@ -11,13 +11,14 @@ import ProgressClient, {
   type MeasurementPoint,
 } from './_components/ProgressClient'
 
-// Adherencia real: sesiones con log / sesiones planificadas
+// Adherencia real: sesiones con log / sesiones planificadas (excluye DESCANSO)
 function calcAdherencePct(
-  sessions: { log: { id: string } | null }[]
+  sessions: { log: { id: string } | null; type: string }[]
 ): number {
-  if (sessions.length === 0) return 0
-  const completed = sessions.filter((s) => s.log !== null).length
-  return Math.round((completed / sessions.length) * 100)
+  const training = sessions.filter((s) => s.type !== 'DESCANSO')
+  if (training.length === 0) return 0
+  const completed = training.filter((s) => s.log !== null).length
+  return Math.round((completed / training.length) * 100)
 }
 
 export default async function ProgressPage() {
@@ -31,7 +32,7 @@ export default async function ProgressPage() {
         <span className="text-5xl">📊</span>
         <h2 className="text-xl font-bold text-[#1e3a5f]">Progreso disponible en Pro</h2>
         <p className="text-gray-500 text-sm max-w-xs">Visualiza tu evolución de peso, FC y adherencia semana a semana con el plan Pro.</p>
-        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $15/mes</a>
+        <a href="/upgrade" className="mt-2 inline-block rounded-xl bg-[#ea580c] text-white px-6 py-3 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Ver planes → Pro $9.99/mes</a>
       </div>
     )
   }

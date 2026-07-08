@@ -45,6 +45,7 @@ export type DashboardInput = {
   recentLogs: RecentLogInput[]
   nutritionPlan: NutritionPlan | null
   assignedWorkout?: AssignedWorkoutInput
+  gymCompletionDates?: Date[]  // fechas de GymSession completadas — para streak
 }
 
 export type WeekSessionSlot = {
@@ -216,7 +217,11 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const nutritionTarget = nt ? { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label } : null
 
   // ── Streak ────────────────────────────────────────────────────────
-  const logDateSet = new Set(recentLogs.map(l => new Date(l.completedAt).toDateString()))
+  // Incluye tanto SessionLog (running/libre) como GymSession completadas
+  const logDateSet = new Set([
+    ...recentLogs.map(l => new Date(l.completedAt).toDateString()),
+    ...(input.gymCompletionDates ?? []).map(d => new Date(d).toDateString()),
+  ])
   let streakDays = 0
   const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
   for (let i = 0; i <= 59; i++) {

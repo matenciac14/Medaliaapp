@@ -30,42 +30,58 @@ export function getDailyNutritionTarget(
   plan: NutritionPlanTargets
 ): DailyNutritionTarget {
   switch (intensity) {
-    case 'HIGH':
+    case 'HIGH': {
+      const proteinG = plan.proteinG
+      const carbsG = plan.carbsHardG
+      const fatG = plan.fatG
       return {
-        kcal: plan.targetKcalHard,
-        proteinG: plan.proteinG,
-        carbsG: plan.carbsHardG,
-        fatG: plan.fatG,
+        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
+        proteinG,
+        carbsG,
+        fatG,
         label: 'Día duro',
         intensity: 'HIGH',
       }
-    case 'MODERATE':
+    }
+    case 'MODERATE': {
+      const proteinG = plan.proteinG
+      const carbsG = plan.carbsEasyG
+      const fatG = plan.fatG
       return {
-        kcal: plan.targetKcalEasy,
-        proteinG: plan.proteinG,
-        carbsG: plan.carbsEasyG,
-        fatG: plan.fatG,
+        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
+        proteinG,
+        carbsG,
+        fatG,
         label: 'Día moderado',
         intensity: 'MODERATE',
       }
-    case 'LOW':
+    }
+    case 'LOW': {
+      const proteinG = plan.proteinG
+      const carbsG = Math.round(plan.carbsEasyG * 0.75)
+      const fatG = plan.fatG
       return {
-        kcal: Math.round(plan.targetKcalEasy * 0.88), // ~200 kcal menos que fácil
-        proteinG: plan.proteinG,
-        carbsG: Math.round(plan.carbsEasyG * 0.75),
-        fatG: plan.fatG,
+        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
+        proteinG,
+        carbsG,
+        fatG,
         label: 'Día suave',
         intensity: 'LOW',
       }
+    }
     case 'REST':
-    default:
+    default: {
+      const proteinG = plan.proteinG
+      const carbsG = Math.round(plan.carbsEasyG * 0.7)
+      const fatG = plan.fatG
       return {
-        kcal: plan.targetKcalRest,
-        proteinG: plan.proteinG,
-        carbsG: Math.round(plan.carbsEasyG * 0.7),
-        fatG: plan.fatG,
+        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
+        proteinG,
+        carbsG,
+        fatG,
         label: 'Día descanso',
         intensity: intensity ?? 'REST',
       }
+    }
   }
 }

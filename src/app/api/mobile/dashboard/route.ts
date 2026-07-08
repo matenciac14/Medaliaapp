@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const userId = mobile.id
 
   // PERF-01 Phase 1: plan metadata sin sesiones
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine] = await Promise.all([
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -53,6 +53,12 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
+    prisma.gymSession.findMany({
+      where: { athleteId: userId, completed: true },
+      orderBy: { date: 'desc' },
+      take: 60,
+      select: { date: true },
+    }),
   ])
 
   // PERF-01 Phase 2: cargar solo la semana actual con sesiones completas
@@ -96,6 +102,7 @@ export async function GET(req: NextRequest) {
   const { summary, planIdToComplete } = getDashboardSummary({
     user, activePlanRaw: activePlan, lastCompletedPlan, checkIns, recentLogs, nutritionPlan,
     assignedWorkout: assignedWorkoutRaw ?? null,
+    gymCompletionDates: recentGymSessions.map(gs => gs.date),
   })
 
   if (planIdToComplete) {

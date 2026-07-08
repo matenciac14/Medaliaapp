@@ -87,9 +87,9 @@ async function main() {
     })
   )
 
-  await check('TrainingPlan sin goalType pero con goalId', 'WARNING', () =>
+  await check('TrainingPlan sin goalType', 'WARNING', () =>
     prisma.trainingPlan.findMany({
-      where: { goalId: { not: null }, goalType: null },
+      where: { goalType: null },
       select: { id: true, userId: true, name: true },
     })
   )
@@ -114,10 +114,10 @@ async function main() {
     ` as Promise<unknown[]>
   )
 
-  await check('Exercise isGlobal=true pero con coachId', 'WARNING', () =>
+  await check('Exercise coachId=null sin bodyPart o target', 'WARNING', () =>
     prisma.exercise.findMany({
-      where: { isGlobal: true, coachId: { not: null } },
-      select: { id: true, name: true, coachId: true },
+      where: { coachId: null, OR: [{ bodyPart: '' }, { target: '' }] },
+      select: { id: true, name: true, bodyPart: true, target: true },
     })
   )
 

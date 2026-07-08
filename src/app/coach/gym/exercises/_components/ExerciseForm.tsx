@@ -3,65 +3,21 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const MUSCLE_GROUPS = [
-  { value: 'QUADRICEPS', label: 'Cuádriceps' },
-  { value: 'HAMSTRINGS', label: 'Isquiotibiales' },
-  { value: 'GLUTES', label: 'Glúteos' },
-  { value: 'CHEST', label: 'Pecho' },
-  { value: 'BACK', label: 'Espalda' },
-  { value: 'SHOULDERS', label: 'Hombros' },
-  { value: 'BICEPS', label: 'Bíceps' },
-  { value: 'TRICEPS', label: 'Tríceps' },
-  { value: 'ABS', label: 'Abdomen' },
-  { value: 'CALVES', label: 'Gemelos' },
-  { value: 'FULL_BODY', label: 'Cuerpo completo' },
-]
-
-const EQUIPMENT_OPTIONS = [
-  { value: 'BARBELL', label: 'Barra' },
-  { value: 'DUMBBELL', label: 'Mancuerna' },
-  { value: 'MACHINE', label: 'Máquina' },
-  { value: 'CABLE', label: 'Cable' },
-  { value: 'SMITH', label: 'Smith' },
-  { value: 'BODYWEIGHT', label: 'Peso corporal' },
-  { value: 'KETTLEBELL', label: 'Kettlebell' },
-  { value: 'BAND', label: 'Banda elástica' },
-  { value: 'OTHER', label: 'Otro' },
-]
-
-const CATEGORY_OPTIONS = [
-  { value: 'COMPOUND', label: 'Compuesto' },
-  { value: 'ISOLATION', label: 'Aislamiento' },
-  { value: 'CARDIO', label: 'Cardio' },
-  { value: 'FUNCTIONAL', label: 'Funcional' },
-  { value: 'STRETCH', label: 'Estiramiento' },
-]
-
 export default function ExerciseForm() {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [muscleGroups, setMuscleGroups] = useState<string[]>([])
-  const [equipment, setEquipment] = useState('BARBELL')
-  const [category, setCategory] = useState('COMPOUND')
+  const [bodyPart, setBodyPart] = useState('')
+  const [target, setTarget] = useState('')
+  const [equipment, setEquipment] = useState('')
+  const [mechanic, setMechanic] = useState('')
   const [description, setDescription] = useState('')
-  const [tips, setTips] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function toggleMuscle(value: string) {
-    setMuscleGroups((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    )
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) {
-      setError('El nombre es obligatorio')
-      return
-    }
-    if (muscleGroups.length === 0) {
-      setError('Selecciona al menos un grupo muscular')
+    if (!name.trim() || !bodyPart.trim() || !target.trim() || !equipment.trim()) {
+      setError('Nombre, parte del cuerpo, músculo objetivo y equipamiento son obligatorios')
       return
     }
 
@@ -72,7 +28,7 @@ export default function ExerciseForm() {
       const res = await fetch('/api/coach/gym/exercises', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, muscleGroups, equipment, category, description, tips }),
+        body: JSON.stringify({ name, bodyPart, target, equipment, mechanic: mechanic || null, description: description || null }),
       })
 
       if (!res.ok) {
@@ -82,27 +38,25 @@ export default function ExerciseForm() {
 
       router.push('/coach/gym/exercises')
       router.refresh()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al crear ejercicio')
     } finally {
       setLoading(false)
     }
   }
 
+  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 placeholder-gray-300'
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-semibold text-gray-900">Nuevo ejercicio</h2>
-        <a
-          href="/coach/gym/exercises"
-          className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
-        >
+        <a href="/coach/gym/exercises" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
           Cancelar
         </a>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Nombre <span className="text-red-500">*</span>
@@ -112,62 +66,65 @@ export default function ExerciseForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="ej. Sentadilla con barra"
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 placeholder-gray-300"
+            className={inputCls}
           />
         </div>
 
-        {/* Muscle groups */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Grupos musculares <span className="text-red-500">*</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {MUSCLE_GROUPS.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => toggleMuscle(value)}
-                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  muscleGroups.includes(value)
-                    ? 'border-orange-400 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Equipment + Category */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Equipo</label>
-            <select
-              value={equipment}
-              onChange={(e) => setEquipment(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800"
-            >
-              {EQUIPMENT_OPTIONS.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Parte del cuerpo <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal ml-1">(ej. upper legs)</span>
+            </label>
+            <input
+              type="text"
+              value={bodyPart}
+              onChange={(e) => setBodyPart(e.target.value)}
+              placeholder="upper legs"
+              className={inputCls}
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800"
-            >
-              {CATEGORY_OPTIONS.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Músculo objetivo <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal ml-1">(ej. quads)</span>
+            </label>
+            <input
+              type="text"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="quads"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Equipamiento <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal ml-1">(ej. barbell)</span>
+            </label>
+            <input
+              type="text"
+              value={equipment}
+              onChange={(e) => setEquipment(e.target.value)}
+              placeholder="barbell"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mecánica
+              <span className="text-gray-400 font-normal ml-1">(ej. compound)</span>
+            </label>
+            <input
+              type="text"
+              value={mechanic}
+              onChange={(e) => setMechanic(e.target.value)}
+              placeholder="compound"
+              className={inputCls}
+            />
           </div>
         </div>
 
-        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
           <textarea
@@ -175,18 +132,6 @@ export default function ExerciseForm() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descripción breve del ejercicio y técnica..."
             rows={3}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 placeholder-gray-300 resize-none"
-          />
-        </div>
-
-        {/* Tips */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tips de ejecución</label>
-          <textarea
-            value={tips}
-            onChange={(e) => setTips(e.target.value)}
-            placeholder="Errores comunes a evitar, cues de activación..."
-            rows={2}
             className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 placeholder-gray-300 resize-none"
           />
         </div>

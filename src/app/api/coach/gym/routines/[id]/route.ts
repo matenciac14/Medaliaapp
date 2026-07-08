@@ -102,7 +102,7 @@ export async function PATCH(
 
   if (exerciseIds.length > 0) {
     const valid = await prisma.exercise.findMany({
-      where: { id: { in: exerciseIds }, OR: [{ coachId }, { isGlobal: true }] },
+      where: { id: { in: exerciseIds }, OR: [{ coachId }, { coachId: null }] },
       select: { id: true },
     })
     const validIds = new Set(valid.map((e) => e.id))

@@ -41,7 +41,6 @@ async function main() {
   // Nutrition, check-ins, goals — all have onDelete:Cascade but explicit for safety
   await prisma.nutritionPlan.deleteMany({ where: { userId: { in: ids } } })
   await prisma.weeklyCheckIn.deleteMany({ where: { userId: { in: ids } } })
-  await prisma.goal.deleteMany({ where: { userId: { in: ids } } })
   await prisma.healthProfile.deleteMany({ where: { userId: { in: ids } } })
   await prisma.coachAthlete.deleteMany({ where: { OR: [{ athleteId: { in: ids } }, { coachId: { in: ids } }] } })
 

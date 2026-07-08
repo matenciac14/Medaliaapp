@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { getWeekMonday, formatWeekRange, jsToWeekIdx } from '@/lib/core/date-utils'
+import { getPlanWeekNumber } from '@/lib/core/week-number'
 import type { CalendarDay, CalendarWeek } from '@/domain/calendar/calendar.types'
 
 /**
@@ -29,13 +30,13 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
     select: { id: true, startDate: true },
   })
 
-  // Map calendar week → plan weekNumber (1-indexed, same formula as Plan page)
+  // Map calendar week → plan weekNumber usando la misma fórmula que dashboard/plan/checkin.
+  // getPlanWeekNumber usa Date.now() como referencia → semana actual del plan.
+  // weekOffset 0 = semana actual, -1 = semana pasada, +1 = semana siguiente.
   let targetWeekNumber: number | null = null
   if (activePlan) {
-    const diffDays = Math.floor(
-      (monday.getTime() - new Date(activePlan.startDate).getTime()) / 86_400_000
-    )
-    targetWeekNumber = Math.floor(diffDays / 7) + 1
+    const currentPlanWeek = getPlanWeekNumber(new Date(activePlan.startDate))
+    targetWeekNumber = currentPlanWeek + weekOffset
   }
 
   const [plannedSessions, assignedWorkout, gymSessions, freeRunLogs] = await Promise.all([

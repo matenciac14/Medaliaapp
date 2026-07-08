@@ -45,7 +45,7 @@ export default async function PlanPage() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#1e3a5f' }}
           >
-            Activar plan Pro → $15/mes
+            Activar plan Pro → $9.99/mes
           </a>
         </div>
       </div>

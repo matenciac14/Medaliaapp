@@ -1,7 +1,7 @@
 // DEV ONLY — seed de desarrollo con usuarios de prueba.
 // Para producción usar: tsx prisma/seed.prod.ts
 import 'dotenv/config'
-import { PrismaClient, UserRole, GoalType, GoalStatus, PlanStatus, PlanSource, Phase, SessionType, EquipmentType, ExerciseCategory, SubscriptionTier, CoachSubscriptionTier } from '../src/generated/prisma/client'
+import { PrismaClient, UserRole, GoalType, PlanStatus, PlanSource, Phase, SessionType, SubscriptionTier, CoachSubscriptionTier } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
 
@@ -126,16 +126,7 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 78,
         },
       },
-      goals: {
-        create: {
-          type: GoalType.RACE_HALF_MARATHON,
-          raceDate: new Date('2026-10-01'),
-          targetTimeSecs: 6300,
-          status: GoalStatus.ACTIVE,
-        },
-      },
     },
-    include: { goals: true },
   })
 
 
@@ -159,7 +150,6 @@ async function main() {
     create: {
       id: 'seed-plan-1',
       userId: athlete1.id,
-      goalId: athlete1.goals[0].id,
       name: 'Media Maratón — 18 semanas',
       totalWeeks: 18,
       startDate: plan1Start,
@@ -307,17 +297,13 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 75,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_10K, raceDate: new Date('2026-08-15'), targetTimeSecs: 2700, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach1.id, athleteId: a3.id } },
     update: {}, create: { coachId: coach1.id, athleteId: a3.id },
   })
-  await seedRunningPlan(prisma, a3.id, a3.goals[0].id, 'seed-plan-3', '10K — 12 semanas', 12, weeksAgo(5), GoalType.RACE_10K, [
+  await seedRunningPlan(prisma, a3.id, 'seed-plan-3', '10K — 12 semanas', 12, weeksAgo(5), GoalType.RACE_10K, [
     { wn: 1, phase: Phase.BASE, vol: 22, focus: 'Base aeróbica inicial', recovery: false },
     { wn: 2, phase: Phase.BASE, vol: 25, focus: 'Consolidación base', recovery: false },
     { wn: 3, phase: Phase.BASE, vol: 28, focus: 'Primer fartlek', recovery: false },
@@ -351,17 +337,13 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 72,
         },
       },
-      goals: {
-        create: { type: GoalType.BODY_RECOMPOSITION, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach2.id, athleteId: a4.id } },
     update: {}, create: { coachId: coach2.id, athleteId: a4.id },
   })
-  await seedBodyPlan(prisma, a4.id, a4.goals[0].id, 'seed-plan-4', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(8), [
+  await seedBodyPlan(prisma, a4.id, 'seed-plan-4', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(8), [
     { wn: 1, wkg: 68.2, hr: 65, sleep: 7.0, score: 70, rpe: 6, adh: 75, pain: false, energy: 3, notes: 'Primera semana de gym — DOMS en piernas' },
     { wn: 2, wkg: 67.9, hr: 64, sleep: 7.2, score: 74, rpe: 7, adh: 80, pain: false, energy: 4, notes: 'Mejor adaptación, cargas subieron' },
     { wn: 3, wkg: 67.6, hr: 63, sleep: 7.5, score: 78, rpe: 7, adh: 82, pain: false, energy: 4, notes: 'Sentadilla llegó a 50kg' },
@@ -392,13 +374,9 @@ async function main() {
           sleepHoursAvg: 6.5, sleepScoreAvg: 70,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_CYCLING, raceDate: new Date('2026-09-20'), status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedCyclingPlan(prisma, a5.id, a5.goals[0].id, 'seed-plan-5', 'Ciclismo — 18 semanas', 18, weeksAgo(4), [
+  await seedCyclingPlan(prisma, a5.id, 'seed-plan-5', 'Ciclismo — 18 semanas', 18, weeksAgo(4), [
     { wn: 1, wkg: 80.3, hr: 52, sleep: 6.5, score: 68, rpe: 7, adh: 75, pain: false, energy: 3, notes: 'Primera semana, piernas aún adaptando al sillín' },
     { wn: 2, wkg: 80.0, hr: 51, sleep: 6.8, score: 72, rpe: 7, adh: 78, pain: false, energy: 4, notes: 'Sweet spot estuvo bien' },
     { wn: 3, wkg: 79.7, hr: 51, sleep: 7.0, score: 75, rpe: 8, adh: 80, pain: false, energy: 4, notes: 'Primer intervalo VO2max — muy exigente' },
@@ -425,13 +403,9 @@ async function main() {
           sleepHoursAvg: 7.5, sleepScoreAvg: 80,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_HALF_MARATHON, raceDate: new Date('2026-11-01'), targetTimeSecs: 6600, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedRunningPlan(prisma, a6.id, a6.goals[0].id, 'seed-plan-6', 'Media Maratón — 18 semanas', 18, weeksAgo(3), GoalType.RACE_HALF_MARATHON, [
+  await seedRunningPlan(prisma, a6.id, 'seed-plan-6', 'Media Maratón — 18 semanas', 18, weeksAgo(3), GoalType.RACE_HALF_MARATHON, [
     { wn: 1, phase: Phase.BASE, vol: 28, focus: 'Adaptación — cuidado fascitis plantar', recovery: false },
     { wn: 2, phase: Phase.BASE, vol: 32, focus: 'Consolidación base aeróbica', recovery: false },
     { wn: 3, phase: Phase.BASE, vol: 35, focus: 'Primer fartlek — monitorear pie', recovery: false },
@@ -461,17 +435,13 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 74,
         },
       },
-      goals: {
-        create: { type: GoalType.GENERAL_FITNESS, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach2.id, athleteId: a7.id } },
     update: {}, create: { coachId: coach2.id, athleteId: a7.id },
   })
-  await seedBodyPlan(prisma, a7.id, a7.goals[0].id, 'seed-plan-7', 'Fuerza & Composición — 16 semanas', 16, weeksAgo(6), [
+  await seedBodyPlan(prisma, a7.id, 'seed-plan-7', 'Fuerza & Composición — 16 semanas', 16, weeksAgo(6), [
     { wn: 1, wkg: 88.1, hr: 62, sleep: 7.0, score: 73, rpe: 7, adh: 78, pain: false, energy: 4, notes: 'Reanudé entrenamiento después de 3 meses — bien' },
     { wn: 2, wkg: 87.8, hr: 61, sleep: 7.2, score: 76, rpe: 8, adh: 82, pain: false, energy: 4, notes: 'Peso muerto volvió a 120kg' },
     { wn: 3, wkg: 87.5, hr: 61, sleep: 7.5, score: 78, rpe: 8, adh: 80, pain: false, energy: 3, notes: 'Sentadilla 100kg — técnica mejorando' },
@@ -500,13 +470,9 @@ async function main() {
           sleepHoursAvg: 6.5, sleepScoreAvg: 68,
         },
       },
-      goals: {
-        create: { type: GoalType.BODY_RECOMPOSITION, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedBodyPlan(prisma, a8.id, a8.goals[0].id, 'seed-plan-8', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(3), [
+  await seedBodyPlan(prisma, a8.id, 'seed-plan-8', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(3), [
     { wn: 1, wkg: 65.2, hr: 68, sleep: 6.5, score: 66, rpe: 6, adh: 70, pain: false, energy: 3, notes: 'Primera semana en gym — emocionada pero cansada' },
     { wn: 2, wkg: 64.8, hr: 67, sleep: 6.8, score: 70, rpe: 7, adh: 75, pain: false, energy: 3, notes: 'DOMS menos, cargas subiendo poco a poco' },
     { wn: 3, wkg: 64.5, hr: 66, sleep: 7.0, score: 73, rpe: 7, adh: 78, pain: false, energy: 4, notes: 'Hip thrust 45kg — buena activación glúteos' },
@@ -532,17 +498,13 @@ async function main() {
           sleepHoursAvg: 8, sleepScoreAvg: 85,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_5K, raceDate: new Date('2026-07-12'), targetTimeSecs: 1320, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach1.id, athleteId: a9.id } },
     update: {}, create: { coachId: coach1.id, athleteId: a9.id },
   })
-  await seedRunningPlan(prisma, a9.id, a9.goals[0].id, 'seed-plan-9', '5K — 8 semanas', 8, weeksAgo(4), GoalType.RACE_5K, [
+  await seedRunningPlan(prisma, a9.id, 'seed-plan-9', '5K — 8 semanas', 8, weeksAgo(4), GoalType.RACE_5K, [
     { wn: 1, phase: Phase.BASE, vol: 20, focus: 'Base aeróbica 5K', recovery: false },
     { wn: 2, phase: Phase.BASE, vol: 23, focus: 'Fartlek cortos', recovery: false },
     { wn: 3, phase: Phase.ESPECIFICO, vol: 25, focus: 'Ritmo 5K específico', recovery: false },
@@ -574,13 +536,9 @@ async function main() {
           sleepHoursAvg: 7.5, sleepScoreAvg: 82,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_TRIATHLON, raceDate: new Date('2026-10-18'), status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedTriathlonPlan(prisma, a10.id, a10.goals[0].id, 'seed-plan-10', 'Triatlón Olímpico — 18 semanas', 18, weeksAgo(5), [
+  await seedTriathlonPlan(prisma, a10.id, 'seed-plan-10', 'Triatlón Olímpico — 18 semanas', 18, weeksAgo(5), [
     { wn: 1, wkg: 60.1, hr: 48, sleep: 7.5, score: 82, rpe: 7, adh: 85, pain: false, energy: 4, notes: 'Primera semana multi-disciplina — natación la más débil' },
     { wn: 2, wkg: 59.9, hr: 48, sleep: 7.8, score: 84, rpe: 7, adh: 87, pain: false, energy: 4, notes: 'CSS mejoró — técnica de nado avanzando' },
     { wn: 3, wkg: 59.6, hr: 47, sleep: 7.5, score: 81, rpe: 8, adh: 85, pain: false, energy: 4, notes: 'Brick run duro pero bien' },
@@ -608,13 +566,9 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 76,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_CYCLING, raceDate: new Date('2026-09-05'), status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedCyclingPlan(prisma, a11.id, a11.goals[0].id, 'seed-plan-11', 'Ciclismo — 18 semanas', 18, weeksAgo(7), [
+  await seedCyclingPlan(prisma, a11.id, 'seed-plan-11', 'Ciclismo — 18 semanas', 18, weeksAgo(7), [
     { wn: 1, wkg: 76.2, hr: 55, sleep: 7.0, score: 75, rpe: 7, adh: 80, pain: false, energy: 4, notes: 'Bien — FTP estimado 230W' },
     { wn: 2, wkg: 75.9, hr: 54, sleep: 7.2, score: 78, rpe: 7, adh: 82, pain: false, energy: 4, notes: 'Sweet spot x30 min — aguanté bien' },
     { wn: 3, wkg: 75.6, hr: 54, sleep: 7.5, score: 80, rpe: 8, adh: 83, pain: false, energy: 3, notes: 'VO2max muy exigente — pero progresando' },
@@ -644,17 +598,13 @@ async function main() {
           sleepHoursAvg: 7.5, sleepScoreAvg: 73,
         },
       },
-      goals: {
-        create: { type: GoalType.BODY_RECOMPOSITION, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach2.id, athleteId: a12.id } },
     update: {}, create: { coachId: coach2.id, athleteId: a12.id },
   })
-  await seedBodyPlan(prisma, a12.id, a12.goals[0].id, 'seed-plan-12', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(4), [
+  await seedBodyPlan(prisma, a12.id, 'seed-plan-12', 'Recomposición Corporal — 16 semanas', 16, weeksAgo(4), [
     { wn: 1, wkg: 70.1, hr: 66, sleep: 7.5, score: 73, rpe: 6, adh: 76, pain: false, energy: 3, notes: 'Inicio bien — tiroides controlada' },
     { wn: 2, wkg: 69.8, hr: 65, sleep: 7.8, score: 76, rpe: 7, adh: 80, pain: false, energy: 4, notes: 'Cargas mejorando — más energía que la semana pasada' },
     { wn: 3, wkg: 69.5, hr: 65, sleep: 7.3, score: 74, rpe: 7, adh: 82, pain: false, energy: 3, notes: 'Sentadilla llegó a 45kg — progreso notable' },
@@ -681,17 +631,13 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 75,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_HALF_MARATHON, raceDate: new Date('2026-10-25'), targetTimeSecs: 7200, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach1.id, athleteId: a13.id } },
     update: {}, create: { coachId: coach1.id, athleteId: a13.id },
   })
-  await seedRunningPlan(prisma, a13.id, a13.goals[0].id, 'seed-plan-13', 'Media Maratón — 18 semanas', 18, weeksAgo(2), GoalType.RACE_HALF_MARATHON, [
+  await seedRunningPlan(prisma, a13.id, 'seed-plan-13', 'Media Maratón — 18 semanas', 18, weeksAgo(2), GoalType.RACE_HALF_MARATHON, [
     { wn: 1, phase: Phase.BASE, vol: 25, focus: 'Adaptación inicial — regreso al running', recovery: false },
     { wn: 2, phase: Phase.BASE, vol: 28, focus: 'Base aeróbica — sin lesiones', recovery: false },
   ], [
@@ -719,13 +665,9 @@ async function main() {
           sleepHoursAvg: 8, sleepScoreAvg: 85,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_10K, raceDate: new Date('2026-08-30'), targetTimeSecs: 3000, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
-  await seedRunningPlan(prisma, a14.id, a14.goals[0].id, 'seed-plan-14', '10K — 12 semanas', 12, weeksAgo(4), GoalType.RACE_10K, [
+  await seedRunningPlan(prisma, a14.id, 'seed-plan-14', '10K — 12 semanas', 12, weeksAgo(4), GoalType.RACE_10K, [
     { wn: 1, phase: Phase.BASE, vol: 20, focus: 'Base aeróbica 10K', recovery: false },
     { wn: 2, phase: Phase.BASE, vol: 23, focus: 'Fartleks suaves', recovery: false },
     { wn: 3, phase: Phase.DESARROLLO, vol: 26, focus: 'Tempo + volumen', recovery: false },
@@ -757,17 +699,13 @@ async function main() {
           sleepHoursAvg: 7, sleepScoreAvg: 76,
         },
       },
-      goals: {
-        create: { type: GoalType.RACE_MARATHON, raceDate: new Date('2027-02-07'), targetTimeSecs: 14400, status: GoalStatus.ACTIVE },
-      },
     },
-    include: { goals: true },
   })
   await prisma.coachAthlete.upsert({
     where: { coachId_athleteId: { coachId: coach1.id, athleteId: a15.id } },
     update: {}, create: { coachId: coach1.id, athleteId: a15.id },
   })
-  await seedRunningPlan(prisma, a15.id, a15.goals[0].id, 'seed-plan-15', 'Maratón — 18 semanas', 18, weeksAgo(10), GoalType.RACE_MARATHON, [
+  await seedRunningPlan(prisma, a15.id, 'seed-plan-15', 'Maratón — 18 semanas', 18, weeksAgo(10), GoalType.RACE_MARATHON, [
     { wn: 1,  phase: Phase.BASE,      vol: 40,  focus: 'Base aeróbica — rodajes suaves',         recovery: false },
     { wn: 2,  phase: Phase.BASE,      vol: 45,  focus: 'Consolidación base',                     recovery: false },
     { wn: 3,  phase: Phase.BASE,      vol: 50,  focus: 'Primer tempo maratón',                   recovery: false },
@@ -793,55 +731,55 @@ async function main() {
 
   // ── Ejercicios globales ────────────────────────────────────────────────────
   const globalExercises: Array<{
-    id: string; name: string; muscleGroups: string[]; equipment: EquipmentType; category: ExerciseCategory
+    id: string; name: string; bodyPart: string; target: string; equipment: string; mechanic: string
   }> = [
-    { id: 'global-exercise-sentadilla-frontal',         name: 'Sentadilla frontal',              muscleGroups: ['QUADRICEPS', 'GLUTES'],                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-sentadilla-sumo',            name: 'Sentadilla sumo',                 muscleGroups: ['QUADRICEPS', 'GLUTES', 'HAMSTRINGS'],     equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-prensa',                     name: 'Prensa',                          muscleGroups: ['QUADRICEPS', 'GLUTES'],                  equipment: EquipmentType.MACHINE,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-extension-rodillas',         name: 'Extensión de rodillas',           muscleGroups: ['QUADRICEPS'],                            equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-avanzadas',                  name: 'Avanzadas (Lunges)',               muscleGroups: ['QUADRICEPS', 'GLUTES'],                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-sentadilla-hack',            name: 'Sentadilla hack',                 muscleGroups: ['QUADRICEPS'],                            equipment: EquipmentType.MACHINE,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-flexion-rodillas-acostado',  name: 'Flexión de rodillas acostado',    muscleGroups: ['HAMSTRINGS'],                            equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-flexion-rodillas-sentado',   name: 'Flexión de rodillas sentado',     muscleGroups: ['HAMSTRINGS'],                            equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-peso-muerto',                name: 'Peso muerto',                     muscleGroups: ['HAMSTRINGS', 'GLUTES', 'BACK'],          equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-hip-thrust',                 name: 'Hip Thrust',                      muscleGroups: ['GLUTES', 'HAMSTRINGS'],                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-patada-gluteos-maquina',     name: 'Patada de glúteos en máquina',    muscleGroups: ['GLUTES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-abduccion-maquina',          name: 'Abducción en máquina',            muscleGroups: ['GLUTES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-aduccion-maquina',           name: 'Aducción en máquina',             muscleGroups: ['GLUTES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-press-plano-barra',          name: 'Press plano con barra',           muscleGroups: ['CHEST'],                                 equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-press-inclinado-barra',      name: 'Press inclinado con barra',       muscleGroups: ['CHEST'],                                 equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-press-declinado-mancuernas', name: 'Press declinado con mancuernas',  muscleGroups: ['CHEST'],                                 equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-cruces-polea-alta',          name: 'Cruces en polea alta',            muscleGroups: ['CHEST'],                                 equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-remo-barra',                 name: 'Remo con barra',                  muscleGroups: ['BACK'],                                  equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-remo-mancuernas',            name: 'Remo con mancuernas',             muscleGroups: ['BACK'],                                  equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-jalon-polea-alta',           name: 'Jalón polea alta',                muscleGroups: ['BACK'],                                  equipment: EquipmentType.CABLE,      category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-dominadas',                  name: 'Dominadas',                       muscleGroups: ['BACK'],                                  equipment: EquipmentType.BODYWEIGHT, category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-press-militar-barra',        name: 'Press militar con barra',         muscleGroups: ['SHOULDERS'],                             equipment: EquipmentType.BARBELL,    category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-press-arnold',               name: 'Press Arnold',                    muscleGroups: ['SHOULDERS'],                             equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.COMPOUND },
-    { id: 'global-exercise-elevacion-lateral',          name: 'Elevación lateral',               muscleGroups: ['SHOULDERS'],                             equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-elevacion-frontal',          name: 'Elevación frontal',               muscleGroups: ['SHOULDERS'],                             equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-pajaros',                    name: 'Pájaros (Reverse Fly)',            muscleGroups: ['SHOULDERS'],                             equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-flexion-barra-z',            name: 'Flexión de codo con barra Z',     muscleGroups: ['BICEPS'],                                equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-martillo-mancuernas',        name: 'Martillo con mancuernas',         muscleGroups: ['BICEPS'],                                equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-concentrado-mancuernas',     name: 'Concentrado con mancuernas',      muscleGroups: ['BICEPS'],                                equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-predicador',                 name: 'Predicador',                      muscleGroups: ['BICEPS'],                                equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-press-frances',              name: 'Press francés',                   muscleGroups: ['TRICEPS'],                               equipment: EquipmentType.BARBELL,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-push-down',                  name: 'Push down en polea',              muscleGroups: ['TRICEPS'],                               equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-extension-codo',             name: 'Extensión de codo',               muscleGroups: ['TRICEPS'],                               equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-patada-triceps',             name: 'Patada de tríceps',               muscleGroups: ['TRICEPS'],                               equipment: EquipmentType.DUMBBELL,   category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-extension-triceps-polea',    name: 'Extensión de tríceps en polea',   muscleGroups: ['TRICEPS'],                               equipment: EquipmentType.CABLE,      category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-elevacion-talones-maquina',  name: 'Elevación de talones en máquina', muscleGroups: ['CALVES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-extension-plantar-prensa',   name: 'Extensión plantar en prensa',     muscleGroups: ['CALVES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-elevacion-talones-sentado',  name: 'Elevación de talones sentado',    muscleGroups: ['CALVES'],                                equipment: EquipmentType.MACHINE,    category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-elevacion-piernas-colgado',  name: 'Elevación de piernas colgado',    muscleGroups: ['ABS'],                                   equipment: EquipmentType.BODYWEIGHT, category: ExerciseCategory.ISOLATION },
-    { id: 'global-exercise-abs-roller',                 name: 'Abs roller',                      muscleGroups: ['ABS'],                                   equipment: EquipmentType.OTHER,      category: ExerciseCategory.ISOLATION },
+    { id: 'global-exercise-sentadilla-frontal',         name: 'Sentadilla frontal',              bodyPart: 'upper legs', target: 'quads',      equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-sentadilla-sumo',            name: 'Sentadilla sumo',                 bodyPart: 'upper legs', target: 'quads',      equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-prensa',                     name: 'Prensa',                          bodyPart: 'upper legs', target: 'quads',      equipment: 'machine',    mechanic: 'compound'  },
+    { id: 'global-exercise-extension-rodillas',         name: 'Extensión de rodillas',           bodyPart: 'upper legs', target: 'quads',      equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-avanzadas',                  name: 'Avanzadas (Lunges)',               bodyPart: 'upper legs', target: 'quads',      equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-sentadilla-hack',            name: 'Sentadilla hack',                 bodyPart: 'upper legs', target: 'quads',      equipment: 'machine',    mechanic: 'compound'  },
+    { id: 'global-exercise-flexion-rodillas-acostado',  name: 'Flexión de rodillas acostado',    bodyPart: 'upper legs', target: 'hamstrings', equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-flexion-rodillas-sentado',   name: 'Flexión de rodillas sentado',     bodyPart: 'upper legs', target: 'hamstrings', equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-peso-muerto',                name: 'Peso muerto',                     bodyPart: 'upper legs', target: 'hamstrings', equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-hip-thrust',                 name: 'Hip Thrust',                      bodyPart: 'upper legs', target: 'glutes',     equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-patada-gluteos-maquina',     name: 'Patada de glúteos en máquina',    bodyPart: 'upper legs', target: 'glutes',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-abduccion-maquina',          name: 'Abducción en máquina',            bodyPart: 'upper legs', target: 'glutes',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-aduccion-maquina',           name: 'Aducción en máquina',             bodyPart: 'upper legs', target: 'glutes',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-press-plano-barra',          name: 'Press plano con barra',           bodyPart: 'chest',      target: 'pectorals',  equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-press-inclinado-barra',      name: 'Press inclinado con barra',       bodyPart: 'chest',      target: 'pectorals',  equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-press-declinado-mancuernas', name: 'Press declinado con mancuernas',  bodyPart: 'chest',      target: 'pectorals',  equipment: 'dumbbell',   mechanic: 'compound'  },
+    { id: 'global-exercise-cruces-polea-alta',          name: 'Cruces en polea alta',            bodyPart: 'chest',      target: 'pectorals',  equipment: 'cable',      mechanic: 'isolation' },
+    { id: 'global-exercise-remo-barra',                 name: 'Remo con barra',                  bodyPart: 'back',       target: 'upper back', equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-remo-mancuernas',            name: 'Remo con mancuernas',             bodyPart: 'back',       target: 'upper back', equipment: 'dumbbell',   mechanic: 'compound'  },
+    { id: 'global-exercise-jalon-polea-alta',           name: 'Jalón polea alta',                bodyPart: 'back',       target: 'lats',       equipment: 'cable',      mechanic: 'compound'  },
+    { id: 'global-exercise-dominadas',                  name: 'Dominadas',                       bodyPart: 'back',       target: 'lats',       equipment: 'body weight', mechanic: 'compound'  },
+    { id: 'global-exercise-press-militar-barra',        name: 'Press militar con barra',         bodyPart: 'shoulders',  target: 'delts',      equipment: 'barbell',    mechanic: 'compound'  },
+    { id: 'global-exercise-press-arnold',               name: 'Press Arnold',                    bodyPart: 'shoulders',  target: 'delts',      equipment: 'dumbbell',   mechanic: 'compound'  },
+    { id: 'global-exercise-elevacion-lateral',          name: 'Elevación lateral',               bodyPart: 'shoulders',  target: 'delts',      equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-elevacion-frontal',          name: 'Elevación frontal',               bodyPart: 'shoulders',  target: 'delts',      equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-pajaros',                    name: 'Pájaros (Reverse Fly)',            bodyPart: 'shoulders',  target: 'delts',      equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-flexion-barra-z',            name: 'Flexión de codo con barra Z',     bodyPart: 'upper arms', target: 'biceps',     equipment: 'barbell',    mechanic: 'isolation' },
+    { id: 'global-exercise-martillo-mancuernas',        name: 'Martillo con mancuernas',         bodyPart: 'upper arms', target: 'biceps',     equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-concentrado-mancuernas',     name: 'Concentrado con mancuernas',      bodyPart: 'upper arms', target: 'biceps',     equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-predicador',                 name: 'Predicador',                      bodyPart: 'upper arms', target: 'biceps',     equipment: 'barbell',    mechanic: 'isolation' },
+    { id: 'global-exercise-press-frances',              name: 'Press francés',                   bodyPart: 'upper arms', target: 'triceps',    equipment: 'barbell',    mechanic: 'isolation' },
+    { id: 'global-exercise-push-down',                  name: 'Push down en polea',              bodyPart: 'upper arms', target: 'triceps',    equipment: 'cable',      mechanic: 'isolation' },
+    { id: 'global-exercise-extension-codo',             name: 'Extensión de codo',               bodyPart: 'upper arms', target: 'triceps',    equipment: 'cable',      mechanic: 'isolation' },
+    { id: 'global-exercise-patada-triceps',             name: 'Patada de tríceps',               bodyPart: 'upper arms', target: 'triceps',    equipment: 'dumbbell',   mechanic: 'isolation' },
+    { id: 'global-exercise-extension-triceps-polea',    name: 'Extensión de tríceps en polea',   bodyPart: 'upper arms', target: 'triceps',    equipment: 'cable',      mechanic: 'isolation' },
+    { id: 'global-exercise-elevacion-talones-maquina',  name: 'Elevación de talones en máquina', bodyPart: 'lower legs', target: 'calves',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-extension-plantar-prensa',   name: 'Extensión plantar en prensa',     bodyPart: 'lower legs', target: 'calves',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-elevacion-talones-sentado',  name: 'Elevación de talones sentado',    bodyPart: 'lower legs', target: 'calves',     equipment: 'machine',    mechanic: 'isolation' },
+    { id: 'global-exercise-elevacion-piernas-colgado',  name: 'Elevación de piernas colgado',    bodyPart: 'waist',      target: 'abs',        equipment: 'body weight', mechanic: 'isolation' },
+    { id: 'global-exercise-abs-roller',                 name: 'Abs roller',                      bodyPart: 'waist',      target: 'abs',        equipment: 'other',      mechanic: 'isolation' },
   ]
 
   for (const ex of globalExercises) {
     await prisma.exercise.upsert({
       where: { id: ex.id },
-      update: { name: ex.name, muscleGroups: ex.muscleGroups, equipment: ex.equipment, category: ex.category },
-      create: { id: ex.id, coachId: null, name: ex.name, muscleGroups: ex.muscleGroups, equipment: ex.equipment, category: ex.category, isGlobal: true },
+      update: { name: ex.name, bodyPart: ex.bodyPart, target: ex.target, equipment: ex.equipment, mechanic: ex.mechanic },
+      create: { id: ex.id, coachId: null, name: ex.name, bodyPart: ex.bodyPart, target: ex.target, equipment: ex.equipment, mechanic: ex.mechanic, source: 'manual' },
     })
   }
 
@@ -1224,7 +1162,6 @@ async function main() {
 async function seedRunningPlan(
   prisma: PrismaClient,
   userId: string,
-  goalId: string,
   planId: string,
   name: string,
   totalWeeks: number,
@@ -1237,7 +1174,7 @@ async function seedRunningPlan(
     where: { id: planId },
     update: {},
     create: {
-      id: planId, userId, goalId, name, totalWeeks,
+      id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
       status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
       hrZones: { z1: { min: 90, max: 115 }, z2: { min: 116, max: 135 }, z3: { min: 136, max: 155 }, z4: { min: 156, max: 172 }, z5: { min: 173, max: 195 } },
@@ -1310,7 +1247,6 @@ async function seedRunningPlan(
 async function seedBodyPlan(
   prisma: PrismaClient,
   userId: string,
-  goalId: string,
   planId: string,
   name: string,
   totalWeeks: number,
@@ -1321,7 +1257,7 @@ async function seedBodyPlan(
     where: { id: planId },
     update: {},
     create: {
-      id: planId, userId, goalId, name, totalWeeks,
+      id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
       status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
       hrZones: {},
@@ -1394,7 +1330,6 @@ async function seedBodyPlan(
 async function seedCyclingPlan(
   prisma: PrismaClient,
   userId: string,
-  goalId: string,
   planId: string,
   name: string,
   totalWeeks: number,
@@ -1405,7 +1340,7 @@ async function seedCyclingPlan(
     where: { id: planId },
     update: {},
     create: {
-      id: planId, userId, goalId, name, totalWeeks,
+      id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
       status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
       hrZones: { z1: { min: 88, max: 110 }, z2: { min: 111, max: 130 }, z3: { min: 131, max: 150 }, z4: { min: 151, max: 168 }, z5: { min: 169, max: 190 } },
@@ -1485,7 +1420,6 @@ async function seedCyclingPlan(
 async function seedTriathlonPlan(
   prisma: PrismaClient,
   userId: string,
-  goalId: string,
   planId: string,
   name: string,
   totalWeeks: number,
@@ -1496,7 +1430,7 @@ async function seedTriathlonPlan(
     where: { id: planId },
     update: {},
     create: {
-      id: planId, userId, goalId, name, totalWeeks,
+      id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
       status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
       hrZones: { z1: { min: 88, max: 111 }, z2: { min: 112, max: 131 }, z3: { min: 132, max: 151 }, z4: { min: 152, max: 170 }, z5: { min: 171, max: 190 } },
