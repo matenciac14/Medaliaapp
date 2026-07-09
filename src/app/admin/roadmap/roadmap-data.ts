@@ -1185,9 +1185,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'EX-08 — Rediseño /coach/gym/exercises: tabla de texto → hero con contadores + selector visual de bodyPart + chips de equipment + search bar + grid 3 col de cards con GIF',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Referencia: workoutxapp.com/exercises.html. (1) Hero: N ejercicios · 19 músculos · 9 body parts. (2) Selector bodyPart: imágenes anatómicas como chips visuales (no dropdown). (3) Filtros equipment como pills clickeables (Body Weight / Barbell / Dumbbell / Cable / Machine…). (4) Search bar global con filtros de dificultad + categoría + sort. (5) Grid 3 col: card con gifUrl <img lazy /> + nombre + bodyPart chip + target chip + difficulty badge + kcal/min. Lazy load con IntersectionObserver. Depende de EX-05 (seed 1,400+ ejercicios).',
+            note: 'DONE: tabla → hero stats (total/grupos/tuyos) + search bar + 10 body-part chips + grid 4 col con GIF lazy-load aspect-square + bodyPart/target badges + Global/Tuyo. Paginación 48/página con URLs limpias. Server component, sin JS cliente. Elimina columnas en favor de densidad visual.',
           },
           {
             title: 'EX-09 — Modal detalle de ejercicio: GIF grande + músculos primarios y secundarios + instrucciones paso a paso + badges completos',
@@ -1234,9 +1234,9 @@ export const GROUPS: RoadmapGroup[] = [
         items: [
           {
             title: 'EX-11 — Ejercicio del día en mobile: GIF demo al ejecutar la sesión asignada por el coach',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'En la pantalla de sesión activa mobile: cada ejercicio asignado muestra su GIF como guía visual antes de registrar sets. Consume /api/mobile/exercises/:id. Sin nueva infraestructura — el gifUrl ya está en DB.',
+            note: 'DONE: GIF 160px height + resizeMode:contain en exercise header card de gym-session.tsx. Solo visible cuando exercise.gif no es null y no hay swap activo. API ya retornaba gif (gifStoredUrl??gifUrl) en ambas rutas (AssignedWorkout + Plan-based). Fix type: GymSessionData.exercise muscleGroups/tips/category → bodyPart/target/mechanic/gif (match real API). Fix muscleGroups.map → bodyPart+target badges. RN Image desde react-native (no deps nuevas).',
           },
           {
             title: 'EX-12 — Búsqueda de ejercicios en mobile: atleta puede explorar la biblioteca desde la app',
