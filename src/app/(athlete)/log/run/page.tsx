@@ -71,6 +71,11 @@ export default function LogRunPage() {
         throw new Error(json.error ?? 'Error al guardar')
       }
 
+      setRunType(null)
+      setDurationMin(45)
+      setDistanceKm('')
+      setRpe(null)
+      setNotes('')
       router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')

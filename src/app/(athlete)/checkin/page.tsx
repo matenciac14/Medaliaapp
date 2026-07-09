@@ -73,9 +73,10 @@ export default async function CheckinPage() {
   // 'submitted' → ya envió esta semana
   // 'early'     → Lun-Jue, aún no envió → mostrar resumen semana pasada + banner
   // 'open'      → Vie-Dom, aún no envió → formulario directo
+  const hasPlan = session.user.features?.plan ?? false
   const checkInState: CheckInState =
-    thisWeekCheckIn ? 'submitted' :
-    isEarlyInWeek   ? 'early'     :
+    thisWeekCheckIn        ? 'submitted' :
+    isEarlyInWeek && hasPlan ? 'early'   :
     'open'
 
   // Sesiones de la semana actual

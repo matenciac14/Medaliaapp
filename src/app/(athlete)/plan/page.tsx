@@ -25,27 +25,56 @@ export default async function PlanPage() {
 
     if (!hasActivePlan) {
       // GYM user with assigned workout → redirect to gym module
-      const gymRoutine = await prisma.assignedWorkout.findFirst({
-        where: { athleteId: session.user.id, isActive: true },
-        select: { id: true },
-      })
+      const [gymRoutine, healthProfile] = await Promise.all([
+        prisma.assignedWorkout.findFirst({
+          where: { athleteId: session.user.id, isActive: true },
+          select: { id: true },
+        }),
+        prisma.healthProfile.findUnique({
+          where: { userId: session.user.id },
+          select: { sport: true },
+        }),
+      ])
       if (gymRoutine) redirect('/gym')
+
+      const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
 
       // Sin plan activo — modo libre
       return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="text-5xl mb-4">🎯</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Estás en modo libre</h2>
-          <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            Podés registrar tus entrenamientos sin un plan estructurado. Activá el plan Pro para obtener un plan periodizado según tu deporte y metas.
-          </p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-6">
+          <div className="text-5xl">{isRunner ? '🏃' : '🎯'}</div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {isRunner ? 'Listo para tu plan de running' : 'Estás en modo libre'}
+            </h2>
+            <p className="text-gray-500 text-sm max-w-sm mx-auto">
+              {isRunner
+                ? 'Con el plan Pro recibís un plan periodizado calculado para tu fisiología: zonas Karvonen, nutrición ajustada por sesión y check-in semanal que adapta la carga automáticamente.'
+                : 'Podés registrar tus entrenamientos sin un plan estructurado. Activá el plan Pro para obtener un plan periodizado según tu deporte y metas.'}
+            </p>
+          </div>
+          {isRunner && (
+            <div className="grid grid-cols-3 gap-3 text-left">
+              {[
+                { icon: '📊', label: 'Plan periodizado', desc: 'Fases Base → Específico → Afinamiento' },
+                { icon: '❤️', label: 'Zonas Karvonen', desc: 'Calculadas con tu FC real, no genéricas' },
+                { icon: '🔄', label: 'Check-in semanal', desc: 'La carga se ajusta según tus datos' },
+              ].map((f) => (
+                <div key={f.label} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xl mb-1">{f.icon}</p>
+                  <p className="text-xs font-semibold text-gray-800">{f.label}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          )}
           <a
             href="/upgrade"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#1e3a5f' }}
           >
-            Activar plan Pro → $9.99/mes
+            {isRunner ? 'Activar mi plan de running → $9.99/mes' : 'Activar plan Pro → $9.99/mes'}
           </a>
         </div>
       </div>

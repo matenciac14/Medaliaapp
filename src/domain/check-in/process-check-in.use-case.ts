@@ -72,9 +72,22 @@ export async function processCheckIn(
   // ─────────────────────────────────────────────────────────
   // PHASE 1 — Reads (parallel, no side effects, outside tx)
   // ─────────────────────────────────────────────────────────
-  const [prevCheckIn, activePlan] = await Promise.all([
+  const [prevCheckIn, activePlan, assignedWorkout] = await Promise.all([
     deps.checkInRepo.findLatest(userId),
     deps.planRepo.findActive(userId),
+    deps.db.assignedWorkout.findFirst({
+      where: { athleteId: userId, isActive: true },
+      include: {
+        template: {
+          include: {
+            days: {
+              where: { isRestDay: false },
+              select: { id: true, warmupNotes: true },
+            },
+          },
+        },
+      },
+    }),
   ])
 
   const weekNumber = activePlan
@@ -135,6 +148,21 @@ export async function processCheckIn(
           triggers,
           txPlan
         )
+      }
+    }
+
+    // 2b. Add gym note when pain/RPE triggers fire for GYM athletes (GYM-01)
+    const gymTrigger = triggers.includes('dolor_activo') || triggers.includes('rpe_excesivo')
+    if (assignedWorkout && gymTrigger) {
+      const gymNote = triggers.includes('dolor_activo')
+        ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
+        : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.'
+      for (const day of assignedWorkout.template.days) {
+        if (day.warmupNotes?.includes('[AUTO]')) continue
+        await tx.workoutDay.update({
+          where: { id: day.id },
+          data: { warmupNotes: day.warmupNotes ? `${day.warmupNotes} ${gymNote}` : gymNote },
+        })
       }
     }
 

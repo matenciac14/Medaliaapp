@@ -246,8 +246,8 @@ export default async function NutritionPage() {
       {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
-      {/* Guía de alimentos — siempre visible si hay alimentos en la librería */}
-      {allFoods.length > 0 && (
+      {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
+      {allFoods.length > 0 && nutritionPlan && (
         <div className="pt-2">
           <FoodGuide
             foods={allFoods}
