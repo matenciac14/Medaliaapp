@@ -575,3 +575,57 @@ export async function sendPlanUpdatedEmail(to: string, name: string, adjustments
 </html>`,
   })
 }
+
+export async function sendCoachPendingAthleteEmail(
+  to: string,
+  coachName: string,
+  athleteName: string,
+  athleteId: string,
+  hoursPending: number,
+) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://medaliq.com'
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `${athleteName} lleva ${hoursPending}h esperando activación — Medaliq`,
+    html: `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:white;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="background:#1e3a5f;padding:32px 40px;text-align:center">
+            <span style="font-size:28px;font-weight:900;color:white">Medal</span><span style="font-size:28px;font-weight:900;color:#ea580c">iq</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px">
+            <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e3a5f">Hola ${coachName} 👋</h1>
+            <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6">
+              <strong>${athleteName}</strong> completó su registro y lleva <strong>${hoursPending} horas</strong> esperando que lo actives.
+            </p>
+            <p style="margin:0 0 24px;font-size:14px;color:#374151;background:#fff7ed;border-left:3px solid #ea580c;border-radius:6px;padding:14px 18px;line-height:1.6">
+              Tu asesorado no puede ver su plan ni empezar a entrenar hasta que lo actives desde tu panel.
+            </p>
+            <a href="${appUrl}/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+              Activar a ${athleteName} →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 40px 32px;text-align:center">
+            <p style="margin:0;font-size:11px;color:#94a3b8">Medaliq · No respondas este correo</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+}

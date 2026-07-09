@@ -6,6 +6,7 @@
   "crons": [
     { "path": "/api/cron/checkin-reminder", "schedule": "0 23 * * 0" },
     { "path": "/api/cron/session-reminder", "schedule": "0 12 * * 1" },
-    { "path": "/api/cron/payment-overdue",  "schedule": "0 14 * * *" }
+    { "path": "/api/cron/payment-overdue",          "schedule": "0 14 * * *" },
+    { "path": "/api/cron/pending-athlete-reminder", "schedule": "0 12 * * *" }
   ]
 }
