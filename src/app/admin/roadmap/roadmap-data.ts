@@ -1203,21 +1203,21 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-15 — Biblioteca de ejercicios para atleta en web: /exercises con filtros bodyPart + equipment + search + grid de cards con GIF',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'Ruta /exercises (atleta B2C Free/Pro) o /gym/exercises. Misma librería de ejercicios globales que ve el coach pero sin herramientas de edición. Filtros: bodyPart (chips visuales), equipment (pills), search. Grid 3 col con cards GIF + nombre + target. Útil para atletas que entrenan solos y buscan referencia visual de un movimiento. Depende de EX-05 (1,400+ ejercicios en DB) y EX-08 (componentes UI reutilizables).',
+            note: 'DONE: /gym/exercises/page.tsx — server page con bodyPart chips + search + paginación PAGE_SIZE=48. AthleteExercisesGrid.tsx (client) — grid + modal detalle igual que coach (GIF, badges, instrucciones ES). API GET /api/gym/exercises/[id] accesible a ATHLETE y COACH. Link "Ejercicios" en header de /gym. Branch: develop.',
           },
           {
             title: 'EX-16 — Modal detalle de ejercicio para atleta: GIF + músculos + instrucciones + botón "Agregar a rutina libre"',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'Click en card desde EX-15 → modal. GIF full width. Músculos primarios (target) + secundarios (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a mi rutina" → agrega exercise a la sesión libre activa del atleta (featureGym). Depende de EX-15.',
+            note: 'DONE: ExerciseModal en AthleteExercisesGrid.tsx — GIF full-width, nombre ES+EN, badges (bodyPart/target/difficulty/mechanic/force/equipment), secondaryMuscles, instrucciones numeradas ES. Backdrop click cierra. Loading overlay. Branch: develop.',
           },
           {
             title: 'EX-17 — Swap de ejercicio en sesión activa: sugerencia de alternativas calculada desde DB local (mismo bodyPart + equipment compatible)',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'En sesión activa (coach plan o rutina libre): botón "Swap" por ejercicio → llama GET /api/exercises/:id/alternatives (implementado 100% desde DB local — sin llamada a WorkoutX en runtime). Query: WHERE bodyPart = $bodyPart AND (equipment = $equipment OR equipment = "body weight") AND id != $exerciseId ORDER BY popularityRank ASC LIMIT 5. Si no hay resultados con mismo equipment → fallback: WHERE bodyPart = $bodyPart AND id != $exerciseId LIMIT 5. Atleta elige el reemplazo → SessionLog registra exerciseId real ejecutado. Util para: no tienes barbell → reemplaza por mancuernas. Cero costo adicional, sin upgrade de tier. Depende de EX-05 (1,400 ejercicios en DB con popularityRank) y EX-08.',
+            note: 'DONE: GET /api/mobile/exercises/[id]/alternatives — bodyPart+equipment match OR body weight, fallback any bodyPart, LIMIT 5. SwapModal: exerciseId prop + fetch alternativas on open + sección "Sugeridas" con scroll horizontal + thumbnail GIF. swapTarget state incluye exerciseId. Cero llamadas a WorkoutX. Branch: develop + feature/16-self-directed-tracking.',
           },
           {
             title: 'EX-18 — Calorías quemadas en sesión gym: caloriesPerMinute × duración → kcalBurned en SessionLog → descuento en balance nutricional del día',

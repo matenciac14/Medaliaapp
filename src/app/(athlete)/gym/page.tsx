@@ -313,13 +313,22 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             {assigned.coach ? `Coach: ${assigned.coach.name ?? 'Tu coach'} · ` : ''}desde {formatDate(assigned.startDate)}
           </p>
         </div>
-        <Link
-          href="/gym/history"
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
-        >
-          <History size={16} />
-          Historial
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/gym/exercises"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
+          >
+            <Dumbbell size={16} />
+            Ejercicios
+          </Link>
+          <Link
+            href="/gym/history"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
+          >
+            <History size={16} />
+            Historial
+          </Link>
+        </div>
       </div>
 
       {/* Plan context banner */}
