@@ -1191,9 +1191,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-09 — Modal detalle de ejercicio: GIF grande + músculos primarios y secundarios + instrucciones paso a paso + badges completos',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'Click en card → modal/sheet. GIF full width. Sección músculos: primary (target) + secondary (secondaryMuscles[]). Instrucciones numeradas. Badges: difficulty, mechanic, force, equipment. Botón "Agregar a rutina" si está en el constructor. Depende de EX-08.',
+            note: 'DONE: ExercisesGrid.tsx (client component) — click en card → fetch GET /api/coach/gym/exercises/[id] (nuevo endpoint) → modal con GIF full-width, nombre ES+EN, badges (bodyPart/target/difficulty/mechanic/force/equipment), secondaryMuscles chips, instrucciones numeradas (instructionsEs ?? instructions), description. Backdrop click cierra. Loading overlay. Depende de EX-08.',
           },
           {
             title: 'EX-10 — Ejercicios con GIF inline en el constructor de rutinas del coach al asignar ejercicio',
