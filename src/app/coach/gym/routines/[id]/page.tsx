@@ -10,9 +10,11 @@ import { Loader2 } from 'lucide-react'
 interface ExerciseOption {
   id: string
   name: string
+  nameEs?: string
   bodyPart: string
   target: string
   equipment: string
+  gif?: string
   coachId: string | null
 }
 
@@ -448,12 +450,22 @@ export default function EditRoutinePage() {
                         <button onClick={() => removeExercise(activeDay, exIndex)} className="w-6 h-6 rounded flex items-center justify-center text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
                       </div>
                     </div>
-                    <select value={ex.exerciseId} onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none text-gray-800 bg-white">
-                      <option value="">Seleccionar ejercicio...</option>
-                      {exerciseLib.map((lib) => (
-                        <option key={lib.id} value={lib.id}>{lib.name}{!lib.coachId ? '' : ' (tuyo)'}</option>
-                      ))}
-                    </select>
+                    {/* Exercise select + EX-10 GIF preview */}
+                    <div className="flex gap-3 items-start">
+                      <select value={ex.exerciseId} onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none text-gray-800 bg-white">
+                        <option value="">Seleccionar ejercicio...</option>
+                        {exerciseLib.map((lib) => (
+                          <option key={lib.id} value={lib.id}>{lib.nameEs ?? lib.name}{!lib.coachId ? '' : ' (tuyo)'}</option>
+                        ))}
+                      </select>
+                      {(() => {
+                        const sel = exerciseLib.find(e => e.id === ex.exerciseId)
+                        return sel?.gif ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={sel.gif} alt={sel.nameEs ?? sel.name} title={sel.nameEs ?? sel.name} className="w-16 h-16 rounded-lg object-contain bg-gray-50 border border-gray-100 shrink-0" />
+                        ) : null
+                      })()}
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
                         <label className="block text-[11px] text-gray-500 mb-0.5">Series</label>

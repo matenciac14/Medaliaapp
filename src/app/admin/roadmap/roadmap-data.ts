@@ -1017,7 +1017,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Timer descanso configurable por ejercicio (coach define restSeconds en constructor)', done: true, priority: 'P1', note: 'DONE: RestTimerModal mobile — botones −15s/+15s con Math.max(5s) mínimo + haptic. restSeconds del coach es el default al marcar set done. Atleta ajusta en sesión sin persistir. Branch: feature/gym-tracker-ux.' },
           { title: 'Sustitución de ejercicio durante sesión activa (swap in-session)', done: true, priority: 'P1', note: 'DONE: SwapModal mobile con búsqueda debounced + filtro bodyPart. Botón Sustituir en header del ejercicio (oculto si hay sets completados). Nombre swapped en UI con "Antes: X". exerciseOverrides en payload → route.ts ya aceptaba el schema. Branch: feature/gym-swap-session + feature/16-self-directed-tracking.' },
           { title: 'Curva de fuerza por ejercicio: gráfica de 1RM estimado histórico', done: true, priority: 'P1', note: 'DONE (FASE 1): Brzycki client-side en Tab Sesiones de AthleteDetailClient.tsx. Coach ve gráfica 1RM por ejercicio, últimas 12 semanas. Pendiente: gráfica en /progress del atleta (mobile).' },
-          { title: 'Sesión auto-dirigida con búsqueda en librería de ejercicios (sin template requerido)', done: false, priority: 'P1', note: 'Gym libre ya funciona. Mejorar: input de búsqueda en la DB de ejercicios (39 globales + custom del coach) en lugar de solo nombre libre. Filtro por grupo muscular. Nombre libre como fallback.' },
+          { title: 'Sesión auto-dirigida con búsqueda en librería de ejercicios (sin template requerido)', done: true, priority: 'P1', note: 'DONE: AddExerciseModal en gym-session.tsx — búsqueda debounced en /api/mobile/exercises con filtro bodyPart + thumbnail GIF. FreeExercise con localId virtual. addFreeExercise() + addFreeSet(). Sets con exerciseName en lugar de workoutExerciseId para payload. Estado vacío con CTA. session.freeSession flag desde API. Branch: feature/16-self-directed-tracking.' },
           { title: 'Visualización de sesión anterior mejorada: Δ peso/reps por set (verde si mejora, rojo si baja)', done: true, priority: 'P1', note: 'DONE: gym-session.tsx — prevLog por setNumber. weightDelta y repsDelta calculados en render. Delta label bajo cada input: "+2.5kg" verde, "-2.5kg" rojo, "=80kg" gris, "ant: 80kg" si sin input aún. Placeholder del Kg input muestra valor anterior. Branch: feature/gym-tracker-ux.' },
           { title: 'Drop sets y sets de calentamiento: marcar tipo de set (trabajo / calentamiento / drop)', done: true, priority: 'P2', note: 'DONE (GYM-15): LocalSet.setLogType en gym-session.tsx. Tap en número de set cicla WORK → WARMUP (badge W, fondo naranja) → DROPSET (badge ↓, fondo rojo). SET_TYPE_CONFIG con estilos por tipo. cycleSetType() guarda en draft. setLogType en payload y persistido en SetLog. 3 paths de route.ts actualizados. Backward compat: drafts viejos → default WORK.' },
           { title: 'RPE por ejercicio individual al terminar todos sus sets (no solo RPE de sesión completa)', done: false, priority: 'P2', note: 'SetLog.rpe Int? o por WorkoutExercise al completar todos sus sets. Promedio pesa en GymSession.rpe. Coach ve distribución de esfuerzo por ejercicio para ajustar volumen individualmente.' },
@@ -1197,9 +1197,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-10 — Ejercicios con GIF inline en el constructor de rutinas del coach al asignar ejercicio',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'En WorkoutTemplate builder: al buscar/seleccionar un ejercicio, mostrar el GIF en miniatura como preview. Reduce errores de asignación (el coach ve qué está poniendo). Depende de EX-08.',
+            note: 'DONE: routines/new/page.tsx + routines/[id]/page.tsx — ExerciseOption incluye nameEs?/gif?. Al seleccionar ejercicio → thumbnail GIF 64×64 inline junto al select (flex container). gifStoredUrl??gifUrl en query del builder. Reduce errores de asignación visual. Branch: develop.',
           },
           {
             title: 'EX-15 — Biblioteca de ejercicios para atleta en web: /exercises con filtros bodyPart + equipment + search + grid de cards con GIF',
@@ -1240,9 +1240,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-12 — Búsqueda de ejercicios en mobile: atleta puede explorar la biblioteca desde la app',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'Lista con filtros básicos (bodyPart, search). Detalle con GIF. Útil para atletas B2C que entrenan solos y quieren referencia visual. Depende de EX-11.',
+            note: 'DONE: AddExerciseModal en gym-session.tsx implementa búsqueda full con debounce + filtro bodyPart + thumbnail GIF + lista de resultados. Cubre el caso de exploración de ejercicios desde la app en contexto de sesión libre. src/api/gym.ts: gif? en ExerciseSearchResult. Branch: feature/16-self-directed-tracking.',
           },
         ],
       },
