@@ -649,6 +649,7 @@ model GymSession {
   date              DateTime
   durationMin       Int?
   rpe               Int?     // 1-10
+  caloriesBurned    Int?     // kcal estimadas (durationMin × avgCaloriesPerMinute de los ejercicios)
   notes             String?
   completed         Boolean  @default(false)
 

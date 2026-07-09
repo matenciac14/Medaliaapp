@@ -1221,9 +1221,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-18 — Calorías quemadas en sesión gym: caloriesPerMinute × duración → kcalBurned en SessionLog → descuento en balance nutricional del día',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'El campo caloriesPerMinute ya está en Exercise (seed WorkoutX). Al guardar sets en SetLog: calcular kcalBurned = SUM(sets × reps × caloriesPerMinute × avgRepDuration). Al cerrar la sesión: persistir en SessionLog.kcalBurned (campo ya existe). En el módulo de nutrición del día: balance = targetKcal - kcalLogged + SessionLog.kcalBurned. Es el eslabón que une el módulo gym con nutrición — actualmente están desconectados. Cero llamadas externas — todo calculado desde datos en DB. Depende de EX-05 (caloriesPerMinute cargado desde WorkoutX seed).',
+            note: 'DONE: GymSession.caloriesBurned Int? (migración 20260711000001). complete/route.ts: estimateCalories(durationMin) = durationMin × avg(caloriesPerMinute de ejercicios, fallback 5.0 kcal/min). 3 paths actualizados. /api/mobile/nutrition/route.ts: query gymSessionToday.caloriesBurned → gymKcalBurned en response. NutritionData type + nutrition.tsx: badge "🔥 Quemaste X kcal en gym hoy" naranja debajo de macros.',
           },
         ],
       },

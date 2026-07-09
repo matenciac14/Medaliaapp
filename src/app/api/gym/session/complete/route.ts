@@ -79,12 +79,24 @@ export async function POST(req: NextRequest) {
   const workoutExercises = weIds.length > 0
     ? await prisma.workoutExercise.findMany({
         where: { id: { in: weIds } },
-        select: { id: true, exerciseId: true, sets: true, exercise: { select: { name: true } } },
+        select: { id: true, exerciseId: true, sets: true, exercise: { select: { name: true, caloriesPerMinute: true } } },
       })
     : []
   const weNameMap = new Map(workoutExercises.map(we => [we.id, we.exercise.name]))
   const weExIdMap = new Map(workoutExercises.map(we => [we.id, we.exerciseId]))
   const weSetsCountMap = new Map(workoutExercises.map(we => [we.id, we.sets]))
+
+  // EX-18: estimate calories from session duration × avg caloriesPerMinute across exercises
+  function estimateCalories(durMin?: number): number | null {
+    if (!durMin || durMin <= 0) return null
+    const cpmValues = workoutExercises
+      .map(we => we.exercise.caloriesPerMinute)
+      .filter((v): v is number => v != null)
+    const avgCpm = cpmValues.length > 0
+      ? cpmValues.reduce((a, b) => a + b, 0) / cpmValues.length
+      : 5.0 // fallback: ~5 kcal/min (MET ~4 para fuerza, persona ~70kg)
+    return Math.round(durMin * avgCpm)
+  }
 
   // ── PR detection: max weightKg per exercise across all sessions ──────────────
   const exerciseIds = [...new Set(workoutExercises.map(we => we.exerciseId))]
@@ -215,6 +227,7 @@ export async function POST(req: NextRequest) {
           date: today,
           durationMin: durationMin ?? null,
           rpe: rpe ?? null,
+          caloriesBurned: estimateCalories(durationMin),
           notes: notes ?? null,
           completed: true,
           exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
@@ -262,6 +275,7 @@ export async function POST(req: NextRequest) {
         date: today,
         durationMin: durationMin ?? null,
         rpe: rpe ?? null,
+        caloriesBurned: estimateCalories(durationMin),
         notes: notes ?? null,
         completed: true,
         setLogs: {
@@ -310,6 +324,7 @@ export async function POST(req: NextRequest) {
         date: today,
         durationMin: durationMin ?? null,
         rpe: rpe ?? null,
+        caloriesBurned: estimateCalories(durationMin),
         notes: notes ?? null,
         completed: true,
         exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
