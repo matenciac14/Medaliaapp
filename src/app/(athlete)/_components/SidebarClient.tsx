@@ -14,6 +14,7 @@ import {
   Dumbbell,
   UserCircle,
   MessageSquare,
+  Bell,
   MoreHorizontal,
   X,
 } from 'lucide-react'
@@ -34,6 +35,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
   const { t } = useLanguage()
   const s = t.app.sidebar
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifCount, setNotifCount] = useState(0)
   const [showMore, setShowMore] = useState(false)
 
   useEffect(() => { setShowMore(false) }, [pathname])
@@ -49,6 +51,17 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const load = () =>
+      fetch('/api/notifications')
+        .then(r => r.json())
+        .then(d => setNotifCount(d.unreadCount ?? 0))
+        .catch(() => {})
+    load()
+    const interval = setInterval(load, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
   const allNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard, show: true },
     { href: '/plan',      label: s.plan,        icon: CalendarDays,    show: features.plan },
@@ -56,8 +69,9 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
-    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
-    { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
+    { href: '/messages',       label: 'Mensajes',       icon: MessageSquare, show: hasCoach, badge: unreadCount },
+    { href: '/notifications',  label: 'Notificaciones', icon: Bell,          show: true,    badge: notifCount },
+    { href: '/profile',        label: s.profile,        icon: UserCircle,    show: true },
   ].filter((l) => l.show)
 
   // Mobile: 4 tabs principales + "Más" para el resto
@@ -69,10 +83,11 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
   ]
 
   const moreLinks = [
-    { href: '/gym',      label: s.gym,      icon: Dumbbell },
-    { href: '/progress', label: s.progress, icon: TrendingUp },
+    { href: '/gym',           label: s.gym,            icon: Dumbbell },
+    { href: '/progress',      label: s.progress,       icon: TrendingUp },
     ...(hasCoach ? [{ href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount }] : []),
-    { href: '/profile',  label: s.profile,  icon: UserCircle },
+    { href: '/notifications', label: 'Notificaciones', icon: Bell,         badge: notifCount },
+    { href: '/profile',       label: s.profile,        icon: UserCircle },
   ]
 
   function isActive(href: string) {
@@ -151,6 +166,14 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />
+          <Link href="/notifications" className="relative flex items-center justify-center min-w-[44px] min-h-[44px] text-white/80 hover:text-white">
+            <Bell size={20} />
+            {notifCount > 0 && (
+              <span className="absolute top-2 right-2 min-w-[14px] h-[14px] rounded-full bg-[#ea580c] text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </Link>
           <button
             onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
