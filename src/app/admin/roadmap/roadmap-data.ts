@@ -1117,9 +1117,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-20 — Mover ExerciseSyncUseCase de infrastructure/ a domain/exercise/',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'src/infrastructure/exercise-sync/exercise-sync.use-case.ts → mover a src/domain/exercise/exercise-sync.use-case.ts. Violación de capa: un use case pertenece al dominio, no a la infraestructura. La infra implementa ports, no orquesta casos de uso. Actualizar import en sync/route.ts.',
+            note: 'DONE: domain/exercise/exercise-sync.use-case.ts creado con imports relativos a ports/ del dominio. infrastructure/exercise-sync/exercise-sync.use-case.ts eliminado. admin/exercises/sync/route.ts actualizado con nuevo path de import.',
           },
           {
             title: 'EX-21 — /api/coach/gym/exercises GET: reemplazar prisma directo por PrismaExerciseRepository + agregar paginación',
@@ -1129,21 +1129,21 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-22 — requireAdmin en sync/route.ts: leer role del JWT en lugar de hacer query extra a DB',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'sync/route.ts:8 — llama auth() + prisma.user.findUnique para verificar rol. El role ya está en session.user.role (JWT). Fix: return session?.user?.role === "ADMIN" ? session : null. Elimina 1 query a Neon en cada llamada al sync.',
+            note: 'DONE: requireAdmin() simplificado — session?.user?.role === "ADMIN". Eliminado prisma.user.findUnique + import de prisma. 1 query DB eliminada por cada llamada al sync.',
           },
           {
             title: 'EX-23 — Unificar UpsertExerciseData con Exercise eliminando duplicación de campos',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'exercise.types.ts:39 — UpsertExerciseData duplica casi todos los campos de Exercise. Si se agrega nameEs/instructionsEs (EX-05b) hay que actualizarlo en dos interfaces y en el mapper. Fix: type UpsertExerciseData = Omit<Exercise, "gif" | "syncedAt"> & { gifUrl: string; syncedAt: Date }. Reduce superficie de mantenimiento.',
+            note: 'DONE: UpsertExerciseData → type alias: Omit<Exercise, "gif" | "syncedAt" | "instructionsEs"> & { gifUrl: string; syncedAt: Date; instructionsEs?: string[] }. instructionsEs opcional en el override para custom exercises sin traducción. 0 errores TS.',
           },
           {
             title: 'EX-24 — Usar validateExercise() del dominio en /api/coach/gym/exercises POST en lugar de validación inline duplicada',
-            done: false,
+            done: true,
             priority: 'P2',
-            note: 'coach/gym/exercises/route.ts:36 — valida campos con if-checks manuales. domain/admin/exercise.ts ya tiene validateExercise() con las mismas reglas + límite de 120 chars en nombre (que el endpoint inline no tiene). Fix: importar validateExercise, ejecutar, si errors.length > 0 → return 400 con errors array.',
+            note: 'DONE: 4 if-checks manuales reemplazados por validateExercise({ name, bodyPart, target, equipment, description }). Ahora incluye límite de 120 chars en nombre que el inline no tenía. Retorna { errors[] } en 400.',
           },
           {
             title: 'EX-25 — Agregar coachId como filtro opcional en ExerciseFilters e IExerciseRepository',
@@ -1153,9 +1153,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-26 — NaN guard en query params page y limit en /api/exercises y /api/mobile/exercises',
-            done: false,
+            done: true,
             priority: 'P3',
-            note: 'exercises/route.ts:17 — Number(searchParams.get("page")) produce NaN si el valor no es numérico → skip = NaN → Prisma lanza 500. Fix: usar parseInt(val ?? "1", 10) || 1 y parseInt(val ?? "20", 10) || 20. Aplicar igual en mobile/exercises/route.ts.',
+            note: 'DONE: api/exercises/route.ts + api/mobile/exercises/route.ts — parseInt(val ?? "1", 10) || 1. Fallback a 1/20 si el param es no-numérico. Previene Prisma 500 por skip: NaN.',
           },
         ],
       },

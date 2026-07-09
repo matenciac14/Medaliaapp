@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { PrismaExerciseRepository } from '@/infrastructure/db/exercise.repository'
+import { validateExercise } from '@/domain/admin/exercise'
 import { prisma } from '@/lib/db/prisma'
 
 const repo = new PrismaExerciseRepository()
@@ -39,20 +40,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { name, bodyPart, target, equipment, description, gifUrl } = body
 
-  if (!name?.trim()) {
-    return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
-  }
-
-  if (!bodyPart?.trim()) {
-    return NextResponse.json({ error: 'La parte del cuerpo (bodyPart) es obligatoria' }, { status: 400 })
-  }
-
-  if (!target?.trim()) {
-    return NextResponse.json({ error: 'El músculo objetivo (target) es obligatorio' }, { status: 400 })
-  }
-
-  if (!equipment?.trim()) {
-    return NextResponse.json({ error: 'El equipamiento es obligatorio' }, { status: 400 })
+  // EX-24: usar validateExercise() del dominio (incluye límite de 120 chars en nombre)
+  const errors = validateExercise({ name, bodyPart, target, equipment, description })
+  if (errors.length > 0) {
+    return NextResponse.json({ errors }, { status: 400 })
   }
 
   const exercise = await prisma.exercise.create({

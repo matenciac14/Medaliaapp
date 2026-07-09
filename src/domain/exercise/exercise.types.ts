@@ -42,27 +42,11 @@ export interface ExerciseFilters {
   coachId?: string
 }
 
-export interface UpsertExerciseData {
-  id: string
-  name: string
-  nameEs?: string
-  bodyPart: string
-  target: string
-  equipment: string
-  difficulty?: string
-  mechanic?: string
-  force?: string
-  caloriesPerMinute?: number
-  met?: number
-  popularityRank?: number
-  isUnilateral: boolean
-  recommendedSets?: string
-  recommendedReps?: string
-  description?: string
-  secondaryMuscles: string[]
-  instructions: string[]
-  instructionsEs?: string[]
+// EX-23: tipo derivado de Exercise para eliminar duplicación de campos.
+// gifUrl reemplaza gif (raw URL vs URL resuelta), syncedAt es requerido,
+// instructionsEs es opcional (custom exercises del coach no la proveen).
+export type UpsertExerciseData = Omit<Exercise, 'gif' | 'syncedAt' | 'instructionsEs'> & {
   gifUrl: string
-  source: string
   syncedAt: Date
+  instructionsEs?: string[]
 }

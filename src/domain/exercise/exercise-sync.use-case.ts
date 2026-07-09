@@ -1,5 +1,5 @@
-import type { IExerciseSourceClient } from '@/domain/exercise/ports/exercise-source.client'
-import type { IExerciseRepository } from '@/domain/exercise/ports/exercise.repository'
+import type { IExerciseSourceClient } from './ports/exercise-source.client'
+import type { IExerciseRepository } from './ports/exercise.repository'
 
 export class ExerciseSyncUseCase {
   constructor(

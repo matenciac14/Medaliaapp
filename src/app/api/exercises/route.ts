@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
     target:    searchParams.get('target')    ?? undefined,
     equipment: searchParams.get('equipment') ?? undefined,
     q:         searchParams.get('q')         ?? undefined,
-    page:      searchParams.get('page')  ? Number(searchParams.get('page'))  : 1,
-    limit:     searchParams.get('limit') ? Number(searchParams.get('limit')) : 20,
+    page:      parseInt(searchParams.get('page')  ?? '1',  10) || 1,
+    limit:     parseInt(searchParams.get('limit') ?? '20', 10) || 20,
   }
 
   const { exercises, total } = await repo.findAll(filters)
