@@ -35,6 +35,7 @@ export default async function CoachDashboardPage() {
     lastMonthTotal,
     recentActivity,
     sportRows,
+    overduePayments,
   ] = await Promise.all([
     // Todos los atletas para calcular alertas, adherencia y deporte
     prisma.coachAthlete.findMany({
@@ -96,6 +97,19 @@ export default async function CoachDashboardPage() {
       where: { user: { coachedBy: { some: { coachId } } } },
       select: { sport: true },
     }),
+    // Pagos vencidos del coach
+    prisma.payment.findMany({
+      where: { coachId, status: 'PENDING', dueDate: { lt: now } },
+      orderBy: { dueDate: 'asc' },
+      take: 5,
+      select: {
+        id: true,
+        amount: true,
+        dueDate: true,
+        athleteId: true,
+        athlete: { select: { name: true } },
+      },
+    }),
   ])
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
@@ -151,13 +165,21 @@ export default async function CoachDashboardPage() {
             Vista general de tu negocio · {now.toLocaleDateString('es', { month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <a
-          href="/coach/clients/new"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#1e3a5f' }}
-        >
-          + Nuevo asesorado
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/coach/invite"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors"
+          >
+            Compartir link
+          </a>
+          <a
+            href="/coach/clients/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            + Nuevo asesorado
+          </a>
+        </div>
       </div>
 
       {/* First-time experience — solo cuando no hay atletas */}
@@ -244,9 +266,27 @@ export default async function CoachDashboardPage() {
           ) : (
             <ul className="divide-y divide-gray-50">
               {athletesWithAlerts.slice(0, 5).map((a) => {
+                const TRIGGER_LABEL: Record<string, { msg: string; color: string }> = {
+                  rpe_excesivo:   { msg: 'RPE alto',       color: '#ea580c' },
+                  dolor_activo:   { msg: 'Dolor activo',   color: '#dc2626' },
+                  sueno_bajo:     { msg: 'Sueño bajo',     color: '#7c3aed' },
+                  energia_baja:   { msg: 'Energía baja',   color: '#d97706' },
+                  estres_alto:    { msg: 'Estrés alto',    color: '#b45309' },
+                  motivacion_baja:{ msg: 'Motivación baja',color: '#6b7280' },
+                  fc_alta:        { msg: 'FC elevada',     color: '#dc2626' },
+                  perdida_peso_rapida: { msg: 'Baja peso rápido', color: '#eab308' },
+                }
                 const alerts: { msg: string; color: string }[] = []
                 if (a.alertFlags.noCheckin) alerts.push({ msg: 'Sin check-in +7d', color: '#dc2626' })
-                if (a.alertFlags.highRpe) alerts.push({ msg: 'Carga alta', color: '#ea580c' })
+                // Use adjustments from check-in for differentiated labels
+                const triggerAlerts = (a.alertFlags.adjustments ?? [])
+                  .map((t: string) => TRIGGER_LABEL[t])
+                  .filter(Boolean) as { msg: string; color: string }[]
+                if (triggerAlerts.length > 0) {
+                  alerts.push(...triggerAlerts)
+                } else if (a.alertFlags.highRpe) {
+                  alerts.push({ msg: 'Carga alta', color: '#ea580c' })
+                }
                 if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#eab308' })
                 return (
                   <li key={a.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
@@ -327,6 +367,44 @@ export default async function CoachDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Pagos vencidos */}
+      {overduePayments.length > 0 && (
+        <div className="mb-6 bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-red-100 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <h2 className="font-semibold text-gray-900 text-sm">Pagos vencidos</h2>
+            <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+              {overduePayments.length} pendiente{overduePayments.length !== 1 ? 's' : ''}
+            </span>
+            <a href="/coach/finanzas" className="text-xs text-blue-600 hover:underline ml-2">
+              Ver finanzas →
+            </a>
+          </div>
+          <ul className="divide-y divide-gray-50">
+            {overduePayments.map((p) => {
+              const daysOverdue = Math.floor((now.getTime() - p.dueDate.getTime()) / 86_400_000)
+              return (
+                <li key={p.id} className="px-5 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{p.athlete?.name ?? 'Asesorado eliminado'}</p>
+                    <p className="text-xs text-red-600">{daysOverdue}d vencido · ${Number(p.amount)} USD</p>
+                  </div>
+                  {p.athleteId && (
+                    <a
+                      href={`/coach/athlete/${p.athleteId}`}
+                      className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
+                      style={{ backgroundColor: '#dc2626' }}
+                    >
+                      Cobrar →
+                    </a>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Actividad reciente */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
