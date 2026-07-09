@@ -99,5 +99,6 @@ export async function GET(req: NextRequest) {
     mealPlan: parseMealPlanData(mealPlan?.data ?? null),
     pendingAdjustment,
     gymKcalBurned,
+    waterMlTarget: nutritionPlan.waterMlTarget ?? 2000,
   })
 }
