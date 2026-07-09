@@ -36,6 +36,7 @@ export default async function CoachDashboardPage() {
     recentActivity,
     sportRows,
     overduePayments,
+    pendingOnboarding,
   ] = await Promise.all([
     // Todos los atletas para calcular alertas, adherencia y deporte
     prisma.coachAthlete.findMany({
@@ -110,9 +111,22 @@ export default async function CoachDashboardPage() {
         athlete: { select: { name: true } },
       },
     }),
+    // Atletas pendientes de onboarding (B2B sin completar)
+    prisma.coachAthlete.findMany({
+      where: { coachId, status: 'ACTIVE', athlete: { onboardingCompleted: false } },
+      select: {
+        athleteId: true,
+        createdAt: true,
+        athlete: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 5,
+    }),
   ])
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
+
+  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === 'SIN PLAN')
 
   const totalAlerts = athletes.reduce((acc, a) => {
     const f = a.alertFlags
@@ -403,6 +417,70 @@ export default async function CoachDashboardPage() {
               )
             })}
           </ul>
+        </div>
+      )}
+
+      {/* Atletas sin plan / pendientes de onboarding */}
+      {(athletesWithoutPlan.length > 0 || pendingOnboarding.length > 0) && (
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {pendingOnboarding.length > 0 && (
+            <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-amber-100 flex items-center gap-2">
+                <span className="text-amber-500">⏳</span>
+                <h2 className="font-semibold text-gray-900 text-sm">Pendientes de onboarding</h2>
+                <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                  {pendingOnboarding.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {pendingOnboarding.map((rel) => {
+                  const daysAgo = Math.floor((now.getTime() - rel.createdAt.getTime()) / 86_400_000)
+                  return (
+                    <li key={rel.athleteId} className="px-5 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{rel.athlete.name ?? rel.athlete.email}</p>
+                        <p className="text-xs text-gray-400">Invitado hace {daysAgo}d</p>
+                      </div>
+                      <a
+                        href={`/coach/athlete/${rel.athleteId}`}
+                        className="text-xs text-amber-700 font-semibold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Ver →
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          {athletesWithoutPlan.length > 0 && (
+            <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-blue-100 flex items-center gap-2">
+                <span className="text-blue-500">📋</span>
+                <h2 className="font-semibold text-gray-900 text-sm">Sin plan asignado</h2>
+                <span className="ml-auto text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  {athletesWithoutPlan.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {athletesWithoutPlan.slice(0, 5).map((a) => (
+                  <li key={a.id} className="px-5 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
+                      <p className="text-xs text-gray-400">{a.sport ? a.sport : 'Sin deporte'}</p>
+                    </div>
+                    <a
+                      href={`/coach/athlete/${a.id}`}
+                      className="text-xs text-blue-700 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Asignar →
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
