@@ -26,7 +26,29 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  if (!plan) return NextResponse.json(null)
+  if (!plan) {
+    const lastCompleted = await prisma.trainingPlan.findFirst({
+      where: { userId: mobile.id, status: 'COMPLETED' },
+      orderBy: { endDate: 'desc' },
+      select: {
+        name: true,
+        totalWeeks: true,
+        endDate: true,
+        weeks: { select: { sessions: { select: { log: { select: { id: true } } } } } },
+      },
+    })
+    if (!lastCompleted) return NextResponse.json(null)
+    const allSessions = lastCompleted.weeks.flatMap(w => w.sessions)
+    return NextResponse.json({
+      lastCompletedPlan: {
+        name: lastCompleted.name,
+        totalWeeks: lastCompleted.totalWeeks,
+        endDate: lastCompleted.endDate?.toISOString() ?? null,
+        sessionsLogged: allSessions.filter(s => s.log).length,
+        sessionsTotal: allSessions.length,
+      },
+    })
+  }
 
   const currentWeek = getPlanWeekNumber(plan.startDate, plan.totalWeeks)
 
