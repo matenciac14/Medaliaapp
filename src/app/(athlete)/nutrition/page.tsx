@@ -40,6 +40,10 @@ export default async function NutritionPage() {
   const tomorrow = new Date(todayDate)
   tomorrow.setDate(tomorrow.getDate() + 1)
   tomorrow.setHours(0, 0, 0, 0)
+  const weekStart = new Date(todayDate)
+  weekStart.setDate(weekStart.getDate() - 6) // ultimos 7 dias
+  weekStart.setHours(0, 0, 0, 0)
+
   // Cargar datos en paralelo — una sola ronda
   const [
     pendingAdjustment,
@@ -50,6 +54,7 @@ export default async function NutritionPage() {
     gymToday,
     healthProfile,
     allFoods,
+    weekFoodLogs,
   ] = await Promise.all([
     prisma.pendingNutritionAdjustment.findFirst({
       where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
@@ -106,6 +111,10 @@ export default async function NutritionPage() {
         servingG: true, servingLabel: true,
       },
     }),
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: weekStart } },
+      select: { date: true, kcalLogged: true, grams: true, food: { select: { kcalPer100g: true } } },
+    }),
   ])
 
   // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
@@ -133,6 +142,23 @@ export default async function NutritionPage() {
   const parsedMealPlan = mealPlan ? parseMealPlanData(mealPlan.data) : null
   const hasMealPlan = !!parsedMealPlan
   const hasFoodProfile = !!foodProfile
+
+  // Adherencia semanal — días donde kcal loggeada >= target * 0.9
+  let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
+  if (nutritionPlanRaw && weekFoodLogs.length > 0) {
+    const targetKcal = nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0
+    if (targetKcal > 0) {
+      const kcalByDay: Record<string, number> = {}
+      for (const log of weekFoodLogs) {
+        const day = log.date.toISOString().slice(0, 10)
+        const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
+        kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
+      }
+      const loggedDays = Object.values(kcalByDay)
+      const daysHit = loggedDays.filter((k) => k >= targetKcal * 0.9).length
+      weeklyAdherence = { daysHit, totalDays: loggedDays.length }
+    }
+  }
 
   // Targets del día — fuente única de verdad: getDailyNutritionTarget
   const todayIntensity = (todaySession?.intensity as string | null)
@@ -187,6 +213,26 @@ export default async function NutritionPage() {
           }}
           foods={allFoods}
         />
+      )}
+
+      {/* Adherencia semanal */}
+      {weeklyAdherence && weeklyAdherence.totalDays > 0 && (
+        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+          <span className="text-lg">📊</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800">
+              Esta semana cumpliste tu meta <span style={{ color: weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.7 ? '#16a34a' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.4 ? '#d97706' : '#dc2626' }}>{weeklyAdherence.daysHit} de {weeklyAdherence.totalDays} días</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.8 ? '¡Excelente consistencia!' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.5 ? 'Vas bien, sigue así.' : 'Registra más días para mejorar.'}
+            </p>
+          </div>
+          <div className="flex gap-1">
+            {Array.from({ length: weeklyAdherence.totalDays }, (_, i) => (
+              <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: i < weeklyAdherence!.daysHit ? '#22c55e' : '#e5e7eb' }} />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Contenido real — si hay meal plan completo */}
