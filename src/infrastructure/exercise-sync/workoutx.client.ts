@@ -30,8 +30,14 @@ interface WorkoutXExercise {
   category: string
 }
 
+/** Respuesta del endpoint con lang=es — campos traducidos cuando el param está presente. */
+interface WorkoutXExerciseEs extends WorkoutXExercise {
+  nameEs?: string
+  instructionsEs?: string[]
+}
+
 interface WorkoutXResponse {
-  data: WorkoutXExercise[]
+  data: WorkoutXExerciseEs[]
   total: number
   page: number
   limit: number
@@ -46,7 +52,7 @@ export class WorkoutXClient implements IExerciseSourceClient {
     let hasMore = true
 
     while (hasMore) {
-      const url = `${WORKOUTX_BASE_URL}/exercises?page=${page}&limit=${PAGE_SIZE}`
+      const url = `${WORKOUTX_BASE_URL}/exercises?page=${page}&limit=${PAGE_SIZE}&lang=es`
       const response = await fetch(url, {
         headers: { 'x-api-key': this.apiKey },
       })
@@ -69,10 +75,11 @@ export class WorkoutXClient implements IExerciseSourceClient {
     return allExercises
   }
 
-  private map(raw: WorkoutXExercise): UpsertExerciseData {
+  private map(raw: WorkoutXExerciseEs): UpsertExerciseData {
     return {
       id: raw.id,
       name: raw.name,
+      nameEs: raw.nameEs || undefined,
       bodyPart: raw.bodyPart,
       target: raw.target,
       equipment: raw.equipment,
@@ -88,6 +95,7 @@ export class WorkoutXClient implements IExerciseSourceClient {
       description: raw.description || undefined,
       secondaryMuscles: raw.secondaryMuscles ?? [],
       instructions: raw.instructions ?? [],
+      instructionsEs: raw.instructionsEs ?? [],
       gifUrl: raw.gifUrl,
       source: 'workoutx',
       syncedAt: new Date(),

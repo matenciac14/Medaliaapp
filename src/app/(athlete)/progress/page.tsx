@@ -1,5 +1,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getISOWeekNumber } from '@/lib/core/week-number'
+import { calcAdherencePct } from '@/lib/core/adherence'
 import ProgressClient, {
   type WeightPoint,
   type HrPoint,
@@ -9,17 +11,9 @@ import ProgressClient, {
   type GymPR,
   type HistoryItem,
   type MeasurementPoint,
+  type GymAdherencePoint,
 } from './_components/ProgressClient'
 
-// Adherencia real: sesiones con log / sesiones planificadas (excluye DESCANSO)
-function calcAdherencePct(
-  sessions: { log: { id: string } | null; type: string }[]
-): number {
-  const training = sessions.filter((s) => s.type !== 'DESCANSO')
-  if (training.length === 0) return 0
-  const completed = training.filter((s) => s.log !== null).length
-  return Math.round((completed / training.length) * 100)
-}
 
 export default async function ProgressPage() {
   const session = await auth()
@@ -123,7 +117,7 @@ export default async function ProgressPage() {
         date: true,
         durationMin: true,
         rpe: true,
-        assignedWorkout: { select: { template: { select: { name: true } } } },
+        assignedWorkout: { select: { template: { select: { name: true, daysPerWeek: true } } } },
         plannedSession: { select: { workoutDay: { select: { label: true } } } },
       },
     }),
@@ -207,7 +201,10 @@ export default async function ProgressPage() {
         weekNumber: w.weekNumber,
         phase: w.phase as string,
         volumeKm: w.volumeKm ?? 0,
-        adherencePct: calcAdherencePct(w.sessions),
+        adherencePct: (() => {
+          const training = w.sessions.filter(s => s.type !== 'DESCANSO')
+          return calcAdherencePct(training.filter(s => s.log !== null).length, training.length)
+        })(),
       }))
     : []
 
@@ -235,6 +232,19 @@ export default async function ProgressPage() {
     )
   }
 
+  // ── Gym adherence by week (GYM-03) ─────────────────────────────────────
+  const gymSessionsByWeek = new Map<number, number>()
+  const gymExpectedPerWeek = rawGymSessions[0]?.assignedWorkout?.template.daysPerWeek ?? 0
+  for (const gs of rawGymSessions) {
+    const week = getISOWeekNumber(new Date(gs.date))
+    gymSessionsByWeek.set(week, (gymSessionsByWeek.get(week) ?? 0) + 1)
+  }
+  const gymAdherenceByWeek: GymAdherencePoint[] = gymExpectedPerWeek > 0
+    ? [...gymSessionsByWeek.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([isoWeek, completed]) => ({ isoWeek, completed, total: gymExpectedPerWeek }))
+    : []
+
   return (
     <ProgressClient
       weightCheckins={weightCheckins}
@@ -246,6 +256,7 @@ export default async function ProgressPage() {
       gymPRs={gymPRs}
       recentActivity={recentActivity}
       measurementCheckins={measurementCheckins}
+      gymAdherenceByWeek={gymAdherenceByWeek}
     />
   )
 }

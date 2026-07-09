@@ -57,6 +57,12 @@ export type MeasurementPoint = {
   thighsCm: number | null
 }
 
+export type GymAdherencePoint = {
+  isoWeek: number
+  completed: number
+  total: number
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -67,6 +73,7 @@ export type ProgressClientProps = {
   gymPRs: GymPR[]
   recentActivity: HistoryItem[]
   measurementCheckins: MeasurementPoint[]
+  gymAdherenceByWeek: GymAdherencePoint[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -483,6 +490,7 @@ export default function ProgressClient({
   gymPRs,
   recentActivity,
   measurementCheckins,
+  gymAdherenceByWeek,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
 
@@ -771,9 +779,37 @@ export default function ProgressClient({
         </SectionCard>
       )}
 
+      {/* ── Adherencia gym por semana ────────────────────────────────────────── */}
+      {gymAdherenceByWeek.length > 1 && (
+        <SectionCard title="Adherencia Gym — por semana">
+          <div className="space-y-2">
+            {gymAdherenceByWeek.slice(-period).map(({ isoWeek, completed, total }) => {
+              const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+              return (
+                <div key={isoWeek} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 w-16 shrink-0">Sem {isoWeek}</span>
+                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626',
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-700 w-16 text-right shrink-0">
+                    {completed}/{total} · {pct}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </SectionCard>
+      )}
+
       {/* ── Historial de actividad ──────────────────────────────────────────── */}
       {recentActivity.length > 0 && (
-        <SectionCard title={`Historial de actividad — últimas ${recentActivity.length} sesiones`}>
+        <SectionCard title={recentActivity.length === 1 ? 'Historial de actividad — última sesión' : `Historial de actividad — últimas ${recentActivity.length} sesiones`}>
           <div className="space-y-2">
             {recentActivity.map(item => (
               <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">

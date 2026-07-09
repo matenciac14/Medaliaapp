@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { PrismaExerciseRepository } from '@/infrastructure/db/exercise.repository'
 import { prisma } from '@/lib/db/prisma'
 
-export async function GET(_req: NextRequest) {
+const repo = new PrismaExerciseRepository()
+
+export async function GET(req: NextRequest) {
   const session = await auth()
 
   if (!session?.user?.id || session.user.role !== 'COACH') {
@@ -10,15 +13,18 @@ export async function GET(_req: NextRequest) {
   }
 
   const coachId = session.user.id
+  const { searchParams } = req.nextUrl
 
-  const exercises = await prisma.exercise.findMany({
-    where: {
-      OR: [{ coachId }, { coachId: null }],
-    },
-    orderBy: { name: 'asc' },
-  })
+  const page = parseInt(searchParams.get('page') ?? '1', 10) || 1
+  const limit = parseInt(searchParams.get('limit') ?? '20', 10) || 20
+  const q = searchParams.get('q') ?? undefined
+  const bodyPart = searchParams.get('bodyPart') ?? undefined
+  const target = searchParams.get('target') ?? undefined
+  const equipment = searchParams.get('equipment') ?? undefined
 
-  return NextResponse.json(exercises)
+  const { exercises, total } = await repo.findAll({ coachId, q, bodyPart, target, equipment, page, limit })
+
+  return NextResponse.json({ exercises, total, page, limit })
 }
 
 export async function POST(req: NextRequest) {

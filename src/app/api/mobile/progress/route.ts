@@ -3,11 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { requireFeature } from '@/lib/guards/feature-gate'
 import { rateLimitAsync } from '@/lib/rate-limit'
-
-function adherencePct(sessions: { log: { id: string } | null }[]): number {
-  if (sessions.length === 0) return 0
-  return Math.round((sessions.filter(s => s.log !== null).length / sessions.length) * 100)
-}
+import { calcAdherencePct } from '@/lib/core/adherence'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -98,7 +94,7 @@ export async function GET(req: NextRequest) {
     return {
       weekNumber: w.weekNumber,
       phase: w.phase,
-      adherencePct: checkIn?.dietAdherencePct ?? adherencePct(w.sessions),
+      adherencePct: checkIn?.dietAdherencePct ?? calcAdherencePct(w.sessions.filter(s => s.log !== null).length, w.sessions.length),
       volumeKm: w.sessions.reduce((acc, s) => acc + (s.log?.distanceKm ?? 0), 0),
     }
   }) ?? []
@@ -107,7 +103,7 @@ export async function GET(req: NextRequest) {
   // Solo promediar semanas con sesiones pasadas — semanas futuras (0 sesiones) no deben arrastrar el promedio
   const weeksWithPastSessions = plan?.weeks.filter(w => w.sessions.length > 0) ?? []
   const overallAdherence = weeksWithPastSessions.length > 0
-    ? Math.round(weeksWithPastSessions.reduce((acc, w) => acc + adherencePct(w.sessions), 0) / weeksWithPastSessions.length)
+    ? Math.round(weeksWithPastSessions.reduce((acc, w) => acc + calcAdherencePct(w.sessions.filter(s => s.log !== null).length, w.sessions.length), 0) / weeksWithPastSessions.length)
     : 0
 
   return NextResponse.json({

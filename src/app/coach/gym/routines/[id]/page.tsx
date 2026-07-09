@@ -163,9 +163,9 @@ export default function EditRoutinePage() {
   useEffect(() => {
     if (step === 3 && exerciseLib.length === 0) {
       setLibLoading(true)
-      fetch('/api/coach/gym/exercises')
+      fetch('/api/coach/gym/exercises?limit=100')
         .then((r) => r.json())
-        .then((data) => setExerciseLib(Array.isArray(data) ? data : []))
+        .then((data) => setExerciseLib(Array.isArray(data?.exercises) ? data.exercises : []))
         .catch(() => {})
         .finally(() => setLibLoading(false))
     }

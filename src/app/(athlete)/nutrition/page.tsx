@@ -40,23 +40,31 @@ export default async function NutritionPage() {
   const tomorrow = new Date(todayDate)
   tomorrow.setDate(tomorrow.getDate() + 1)
   tomorrow.setHours(0, 0, 0, 0)
-  const pendingAdjustment = await prisma.pendingNutritionAdjustment.findFirst({
-    where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
-    select: {
-      id: true,
-      deltaKcal: true,
-      deltaCarbsG: true,
-      plannedKcal: true,
-      adjustedKcal: true,
-      plannedCarbsG: true,
-      adjustedCarbsG: true,
-      plannedIntensity: true,
-      actualIntensity: true,
-    },
-  })
-
-  // Cargar datos en paralelo
-  const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, healthProfile, allFoods] = await Promise.all([
+  // Cargar datos en paralelo — una sola ronda
+  const [
+    pendingAdjustment,
+    nutritionPlanRaw,
+    mealPlan,
+    foodProfile,
+    todaySession,
+    gymToday,
+    healthProfile,
+    allFoods,
+  ] = await Promise.all([
+    prisma.pendingNutritionAdjustment.findFirst({
+      where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
+      select: {
+        id: true,
+        deltaKcal: true,
+        deltaCarbsG: true,
+        plannedKcal: true,
+        adjustedKcal: true,
+        plannedCarbsG: true,
+        adjustedCarbsG: true,
+        plannedIntensity: true,
+        actualIntensity: true,
+      },
+    }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     prisma.foodProfile.findUnique({ where: { userId } }),
@@ -89,6 +97,7 @@ export default async function NutritionPage() {
     prisma.food.findMany({
       where: { isActive: true },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      take: 100,
       select: {
         id: true, name: true, category: true,
         kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true,
@@ -237,8 +246,8 @@ export default async function NutritionPage() {
       {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
-      {/* Guía de alimentos — siempre visible si hay alimentos en la librería */}
-      {allFoods.length > 0 && (
+      {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
+      {allFoods.length > 0 && nutritionPlan && (
         <div className="pt-2">
           <FoodGuide
             foods={allFoods}
