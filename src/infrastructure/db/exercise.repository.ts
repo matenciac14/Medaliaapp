@@ -77,17 +77,15 @@ export class PrismaExerciseRepository implements IExerciseRepository {
   }
 
   async upsertMany(exercises: UpsertExerciseData[]): Promise<{ synced: number }> {
-    const BATCH_SIZE = 100
+    const BATCH_SIZE = 50
     let synced = 0
 
     for (let i = 0; i < exercises.length; i += BATCH_SIZE) {
       const batch = exercises.slice(i, i + BATCH_SIZE)
       await prisma.$transaction(
-        batch.map((ex) =>
-          prisma.exercise.upsert({
-            where: { id: ex.id },
-            create: {
-              id: ex.id,
+        async (tx) => {
+          for (const ex of batch) {
+            const data = {
               name: ex.name,
               nameEs: ex.nameEs ?? null,
               bodyPart: ex.bodyPart,
@@ -109,32 +107,11 @@ export class PrismaExerciseRepository implements IExerciseRepository {
               gifUrl: ex.gifUrl,
               source: ex.source,
               syncedAt: ex.syncedAt,
-            },
-            update: {
-              name: ex.name,
-              nameEs: ex.nameEs ?? null,
-              bodyPart: ex.bodyPart,
-              target: ex.target,
-              equipment: ex.equipment,
-              difficulty: ex.difficulty ?? null,
-              mechanic: ex.mechanic ?? null,
-              force: ex.force ?? null,
-              caloriesPerMinute: ex.caloriesPerMinute ?? null,
-              met: ex.met ?? null,
-              popularityRank: ex.popularityRank ?? null,
-              isUnilateral: ex.isUnilateral,
-              recommendedSets: ex.recommendedSets ?? null,
-              recommendedReps: ex.recommendedReps ?? null,
-              description: ex.description ?? null,
-              secondaryMuscles: ex.secondaryMuscles,
-              instructions: ex.instructions,
-              instructionsEs: ex.instructionsEs ?? [],
-              gifUrl: ex.gifUrl,
-              source: ex.source,
-              syncedAt: ex.syncedAt,
-            },
-          }),
-        ),
+            }
+            await tx.exercise.upsert({ where: { id: ex.id }, create: { id: ex.id, ...data }, update: data })
+          }
+        },
+        { timeout: 30_000 },
       )
       synced += batch.length
     }

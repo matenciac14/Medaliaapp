@@ -1092,9 +1092,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'EX-05 — Seed inicial: correr ExerciseSyncUseCase una vez — carga 1,400+ ejercicios con metadata completa en DB local',
-            done: false,
+            done: true,
             priority: 'P0',
-            note: 'Pendiente: (1) configurar WORKOUTX_API_KEY en Vercel env vars, (2) llamar POST /api/admin/exercises/sync desde el panel admin. El código está listo. Sin este seed la biblioteca de ejercicios tiene solo los 39 ejercicios custom del seed manual. EJECUTAR DESPUÉS de EX-05b (migración nameEs/instructionsEs).',
+            note: 'DONE: 1,330 ejercicios sincronizados en DB Neon (producción) vía scripts/sync-exercises.ts. WorkoutXClient corregido: header X-WorkoutX-Key, PAGE_SIZE=10 (free plan cap), loop allExercises.length < total, retry 429 con backoff exponential (attempt*5000ms), 500ms delay entre páginas. PrismaExerciseRepository: BATCH_SIZE=50, $transaction interactivo con timeout:30000ms. Desbloquea EX-08/EX-09/EX-10/EX-11/EX-15/EX-16.',
           },
           {
             title: 'EX-05b — Migración Prisma: agregar nameEs String? + instructionsEs String[] al modelo Exercise + actualizar WorkoutXClient con lang=es',
