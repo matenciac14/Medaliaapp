@@ -46,7 +46,34 @@ const CATEGORY_LABELS: Record<string, string> = {
   LEGUME:    'Legumbres',
 }
 
-type Step = 'search' | 'detail' | 'save-template'
+type Step = 'search' | 'detail' | 'save-template' | 'propose'
+
+type ProposeForm = {
+  name: string
+  category: string
+  kcalPer100g: string
+  proteinPer100g: string
+  carbsPer100g: string
+  fatPer100g: string
+  country: string
+  notes: string
+}
+
+const DEFAULT_PROPOSE: ProposeForm = {
+  name: '', category: 'CARB', kcalPer100g: '', proteinPer100g: '',
+  carbsPer100g: '', fatPer100g: '', country: '', notes: '',
+}
+
+const PROPOSE_CATEGORIES = ['PROTEIN', 'CARB', 'FAT', 'VEGETABLE', 'FRUIT', 'DAIRY', 'LEGUME']
+const PROPOSE_COUNTRIES  = [
+  { key: '',   label: 'Universal' },
+  { key: 'CO', label: 'Colombia'  },
+  { key: 'MX', label: 'México'    },
+  { key: 'AR', label: 'Argentina' },
+  { key: 'PE', label: 'Perú'      },
+  { key: 'VE', label: 'Venezuela' },
+  { key: 'CL', label: 'Chile'     },
+]
 
 type Props = {
   foods: FoodItem[]
@@ -67,6 +94,9 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   const [templateName, setTemplateName] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [loggingTemplate, setLoggingTemplate] = useState<string | null>(null)
+  const [proposeForm, setProposeForm]         = useState<ProposeForm>(DEFAULT_PROPOSE)
+  const [proposeSuccess, setProposeSuccess]   = useState(false)
+  const [proposing, setProposing]             = useState(false)
 
   useEffect(() => {
     fetch('/api/nutrition/meal-templates')
@@ -148,6 +178,31 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     }
   }
 
+  async function handleSubmitPropose() {
+    const { name, category, kcalPer100g, proteinPer100g, carbsPer100g, fatPer100g } = proposeForm
+    if (!name.trim() || !kcalPer100g || !proteinPer100g || !carbsPer100g || !fatPer100g) return
+    setProposing(true)
+    try {
+      await fetch('/api/nutrition/foods/propose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          category,
+          kcalPer100g:    Number(kcalPer100g),
+          proteinPer100g: Number(proteinPer100g),
+          carbsPer100g:   Number(carbsPer100g),
+          fatPer100g:     Number(fatPer100g),
+          country: proposeForm.country || undefined,
+          notes:   proposeForm.notes.trim() || undefined,
+        }),
+      })
+      setProposeSuccess(true)
+    } finally {
+      setProposing(false)
+    }
+  }
+
   async function handleDeleteTemplate(id: string) {
     await fetch(`/api/nutrition/meal-templates/${id}`, { method: 'DELETE' })
     setTemplates(prev => prev.filter(t => t.id !== id))
@@ -160,6 +215,8 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     setGrams('')
     setMealType('BREAKFAST')
     setTemplateName('')
+    setProposeForm(DEFAULT_PROPOSE)
+    setProposeSuccess(false)
     onClose()
   }
 
@@ -183,16 +240,16 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            {(step === 'detail' || step === 'save-template') && (
+            {(step === 'detail' || step === 'save-template' || step === 'propose') && (
               <button
-                onClick={() => step === 'save-template' ? setStep('detail') : setStep('search')}
+                onClick={() => step === 'save-template' ? setStep('detail') : step === 'propose' ? setStep('search') : setStep('search')}
                 className="text-gray-400 hover:text-gray-600 text-xl leading-none"
               >
                 ←
               </button>
             )}
             <h2 className="text-base font-bold text-gray-900">
-              {step === 'search' ? 'Registrar comida' : step === 'save-template' ? 'Guardar plantilla' : selected?.name}
+              {step === 'search' ? 'Registrar comida' : step === 'save-template' ? 'Guardar plantilla' : step === 'propose' ? 'Proponer alimento' : selected?.name}
             </h2>
           </div>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
@@ -295,6 +352,19 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
                   )
                 })
               )}
+
+              {query.trim().length >= 2 && (
+                <button
+                  onClick={() => {
+                    setProposeForm(f => ({ ...f, name: query.trim() }))
+                    setProposeSuccess(false)
+                    setStep('propose')
+                  }}
+                  className="w-full mt-4 py-3 rounded-xl border border-dashed border-gray-300 text-xs text-gray-500 hover:border-[#1e3a5f]/40 hover:text-[#1e3a5f] transition-colors"
+                >
+                  ¿No lo encontraste? &nbsp;<span className="font-semibold">Proponer alimento →</span>
+                </button>
+              )}
             </div>
           </>
         )}
@@ -394,6 +464,137 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
               >
                 + Guardar como plantilla
               </button>
+            </div>
+          </>
+        )}
+
+        {/* STEP: propose */}
+        {step === 'propose' && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pt-5 pb-2 space-y-5">
+              {proposeSuccess ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-3xl">✓</div>
+                  <p className="text-base font-bold text-gray-900">¡Propuesta enviada!</p>
+                  <p className="text-sm text-gray-400 text-center">
+                    Tu alimento quedó visible mientras el equipo lo revisa.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Nombre */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Nombre del alimento</p>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={proposeForm.name}
+                      onChange={e => setProposeForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Ej: Arepa de chócolo"
+                      maxLength={100}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:border-[#1e3a5f] transition-colors placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  {/* Categoría */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Categoría</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPOSE_CATEGORIES.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setProposeForm(f => ({ ...f, category: cat }))}
+                          className={`px-3.5 py-2 rounded-full border text-xs font-medium transition-colors ${
+                            proposeForm.category === cat
+                              ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {CATEGORY_LABELS[cat] ?? cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Macros por 100g */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Macros por 100g</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { key: 'kcalPer100g',    label: 'Calorías (kcal)' },
+                        { key: 'proteinPer100g', label: 'Proteína (g)'    },
+                        { key: 'carbsPer100g',   label: 'Carbos (g)'      },
+                        { key: 'fatPer100g',     label: 'Grasas (g)'      },
+                      ] as const).map(field => (
+                        <div key={field.key}>
+                          <p className="text-xs text-gray-400 mb-1">{field.label}</p>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={proposeForm[field.key]}
+                            onChange={e => setProposeForm(f => ({ ...f, [field.key]: e.target.value }))}
+                            placeholder="0"
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#1e3a5f] transition-colors"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* País */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">País (opcional)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPOSE_COUNTRIES.map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setProposeForm(f => ({ ...f, country: c.key }))}
+                          className={`px-3.5 py-2 rounded-full border text-xs font-medium transition-colors ${
+                            proposeForm.country === c.key
+                              ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notas */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notas (opcional)</p>
+                    <textarea
+                      value={proposeForm.notes}
+                      onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))}
+                      placeholder="Marca, presentación, fuente de los datos..."
+                      rows={3}
+                      maxLength={300}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:border-[#1e3a5f] transition-colors placeholder:text-gray-400 resize-none"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100">
+              {proposeSuccess ? (
+                <button
+                  onClick={handleClose}
+                  className="w-full py-3.5 rounded-2xl text-sm font-bold bg-[#1e3a5f] text-white hover:bg-[#162d4a] transition-colors"
+                >
+                  Listo
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmitPropose}
+                  disabled={proposing || !proposeForm.name.trim() || !proposeForm.kcalPer100g || !proposeForm.proteinPer100g || !proposeForm.carbsPer100g || !proposeForm.fatPer100g}
+                  className="w-full py-3.5 rounded-2xl text-sm font-bold transition-colors disabled:bg-gray-100 disabled:text-gray-400 bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+                >
+                  {proposing ? 'Enviando...' : 'Enviar propuesta'}
+                </button>
+              )}
             </div>
           </>
         )}
