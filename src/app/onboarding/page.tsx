@@ -314,7 +314,7 @@ function StepGenerating() {
       </div>
       <div className="text-center">
         <p className="text-lg font-semibold text-[#1e3a5f]">Configurando tu cuenta...</p>
-        <p className="text-sm text-gray-400 mt-1">Calculando calorías, macros y preparando tu espacio</p>
+        <p className="text-sm text-gray-400 mt-1">Configurando tu perfil y calculando tus objetivos iniciales</p>
       </div>
     </div>
   )

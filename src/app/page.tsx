@@ -1,6 +1,7 @@
 /** @format */
 
 import RevealOnScroll from "./_components/RevealOnScroll";
+import ROICalculator from "./_components/ROICalculator";
 import { allTranslations } from "@/lib/i18n";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
 import ProfileTabs from "./_components/ProfileTabs";
@@ -190,10 +191,9 @@ export default function Home() {
               </a>
               <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
                 <div className="flex items-center gap-2 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full">
-                  <span className="text-[#34d399] text-xs font-bold">Medaliq 0%</span>
-                  <span className="text-white/30 text-xs">vs</span>
-                  <span className="text-white/50 text-xs line-through decoration-red-400">TrueCoach 5%</span>
-                  <span className="text-blue-200 text-xs">· Ahorra ~$60 USD/mes</span>
+                  <span className="text-[#34d399] text-xs font-bold">✓ 0% de comisión</span>
+                  <span className="text-white/40 text-xs">·</span>
+                  <span className="text-blue-200 text-xs">tus ingresos son tuyos, siempre</span>
                 </div>
               </div>
             </div>
@@ -778,6 +778,47 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 4b · Herramientas para coaches */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <RevealOnScroll>
+            <div className="text-center mb-14">
+              <span className="inline-block bg-[#1e3a5f]/8 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-4">
+                Herramientas para coaches
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
+                Todo lo que necesitas. Nada que no uses.
+              </h2>
+              <p className="text-gray-500 text-base max-w-xl mx-auto">
+                Diseñado para entrenadores que llevan atletas reales — no para hacer burocracia.
+              </p>
+            </div>
+          </RevealOnScroll>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: <FileSpreadsheet size={22} />, title: 'Constructor de planes', desc: 'Crea planes periodizados semana a semana. Asigna sesiones, zonas y notas por día.' },
+              { icon: <Users size={22} />, title: 'Panel multi-atleta', desc: 'Todos tus asesorados en una vista. Cumplimiento, alertas y pendientes en tiempo real.' },
+              { icon: <Activity size={22} />, title: 'Rutinas de gym', desc: 'Diseña rutinas de fuerza y asígnalas a cada atleta. Ejercicios, series y progresión incluidos.' },
+              { icon: <Wallet size={22} />, title: 'Gestión de cobros', desc: 'Registra honorarios y pagos por atleta. Sin apps externas, sin planillas.' },
+              { icon: <MessageSquare size={22} />, title: 'Notas por sesión', desc: 'Deja instrucciones específicas para cada sesión. Tu atleta las ve en la app antes de entrenar.' },
+              { icon: <TrendingUp size={22} />, title: 'Alertas de progreso', desc: 'Recibe alertas cuando un atleta no cumple su plan o su adherencia baja semana a semana.' },
+            ].map((item) => (
+              <RevealOnScroll key={item.title}>
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50 hover:bg-[#1e3a5f]/4 transition-colors border border-gray-100 hover:border-[#1e3a5f]/15">
+                  <div className="w-10 h-10 rounded-xl bg-[#ea580c]/10 flex items-center justify-center shrink-0 text-[#ea580c]">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#1e3a5f] text-sm mb-1">{item.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              </RevealOnScroll>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 5 · Features */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -909,6 +950,74 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 6b · Flujo atleta B2C */}
+      <section className="py-20 px-4 bg-[#1e3a5f]">
+        <div className="max-w-5xl mx-auto">
+          <RevealOnScroll>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                ¿Sin entrenador? Medaliq también es para ti.
+              </h2>
+              <p className="text-blue-200 text-base max-w-xl mx-auto">
+                Registra tus entrenamientos, controla tu nutrición y mejora semana a semana — a tu ritmo.
+              </p>
+            </div>
+          </RevealOnScroll>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RevealOnScroll>
+              <div className="bg-white/8 border border-white/15 rounded-2xl p-7 flex flex-col h-full">
+                <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full mb-5 w-fit">
+                  <span className="text-white text-xs font-semibold">Gratis · Para siempre</span>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-3">Empieza a registrar hoy</h3>
+                <ul className="space-y-3 text-blue-200 text-sm flex-1">
+                  {[
+                    'Log de sesiones de running y gym',
+                    'Registro de nutrición diaria',
+                    'Historial de entrenamientos',
+                    'Sin tarjeta, sin compromiso',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <span className="text-[#34d399] shrink-0">✓</span>{f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/register" className="block mt-6">
+                  <button className="w-full py-3 rounded-xl border border-white/30 text-white hover:bg-white/10 font-semibold transition-colors text-sm">
+                    Crear cuenta gratis →
+                  </button>
+                </a>
+              </div>
+            </RevealOnScroll>
+            <RevealOnScroll delay={100}>
+              <div className="bg-white/8 border border-[#ea580c]/40 rounded-2xl p-7 flex flex-col h-full">
+                <div className="inline-flex items-center gap-2 bg-[#ea580c]/20 px-3 py-1 rounded-full mb-5 w-fit">
+                  <span className="text-[#ea580c] text-xs font-bold">Pro · $9.99/mes</span>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-3">Con inteligencia real</h3>
+                <ul className="space-y-3 text-blue-200 text-sm flex-1">
+                  {[
+                    'Plan periodizado calculado para tu cuerpo',
+                    'Nutrición diferente cada día según la sesión',
+                    'Check-in semanal que ajusta la carga automáticamente',
+                    'Métricas de progreso semana a semana',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <span className="text-[#ea580c] shrink-0">✓</span>{f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/register" className="block mt-6">
+                  <button className="w-full py-3 rounded-xl bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold transition-transform hover:scale-105 active:scale-95 text-sm anim-pulse-cta">
+                    Probar Pro gratis →
+                  </button>
+                </a>
+              </div>
+            </RevealOnScroll>
+          </div>
+        </div>
+      </section>
+
       {/* 7b · Testimonios */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center">
@@ -979,6 +1088,15 @@ export default function Home() {
               </RevealOnScroll>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ROI Calculator */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <RevealOnScroll>
+            <ROICalculator />
+          </RevealOnScroll>
         </div>
       </section>
 
@@ -1194,10 +1312,67 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 8 · WhatsApp CTA */}
+      <section className="py-16 px-4 bg-[#1e3a5f]">
+        <div className="max-w-2xl mx-auto text-center">
+          <RevealOnScroll>
+            <p className="text-blue-300 text-xs font-semibold uppercase tracking-widest mb-4">
+              Hablemos
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+              ¿Tienes dudas? Escríbenos por WhatsApp
+            </h2>
+            <p className="text-blue-200 text-base mb-8">
+              Resolvemos tus preguntas en minutos — sin formularios, sin esperas.
+            </p>
+            <a
+              href="https://wa.me/573113630732?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Medaliq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block"
+            >
+              <button className="inline-flex items-center gap-3 bg-[#25d366] hover:bg-[#1ebe5b] text-white font-bold px-8 py-4 rounded-xl text-base transition-transform hover:scale-105 active:scale-95">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 shrink-0">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.552 4.113 1.518 5.842L0 24l6.335-1.47A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.817 9.817 0 01-4.997-1.364l-.358-.213-3.758.871.909-3.652-.234-.375A9.817 9.817 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182c5.43 0 9.818 4.388 9.818 9.818 0 5.43-4.388 9.818-9.818 9.818z" />
+                </svg>
+                Escribir por WhatsApp
+              </button>
+            </a>
+          </RevealOnScroll>
+        </div>
+      </section>
+
+      {/* Seguridad de datos */}
+      <section className="py-12 px-4 bg-gray-50">
+        <div className="max-w-3xl mx-auto">
+          <RevealOnScroll>
+            <div className="flex flex-col sm:flex-row items-start gap-5 bg-white border border-gray-200 rounded-2xl px-6 py-5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" strokeWidth="2" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-[#1e3a5f] text-base mb-1">Tus datos y los de tus atletas están seguros</p>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  Medaliq usa HTTPS en todas las conexiones, almacenamiento en Neon (PostgreSQL serverless con backups automáticos) y autenticación segura. Los datos de salud de tus atletas nunca se comparten con terceros ni se usan para publicidad.
+                </p>
+              </div>
+            </div>
+          </RevealOnScroll>
+        </div>
+      </section>
+
       {/* 9b · Garantía + FAQ */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
           <RevealOnScroll>
+            <div className="flex justify-center mb-4">
+              <span className="inline-flex items-center gap-2 bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                ✓ 30 días de garantía
+              </span>
+            </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
               {l.guarantee.title}
             </h2>
