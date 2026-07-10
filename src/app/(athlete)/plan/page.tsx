@@ -39,43 +39,46 @@ export default async function PlanPage() {
 
       const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
 
-      // Sin plan activo — modo libre
+      // Sin plan activo — sin coach asignado
       return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-6">
           <div className="text-5xl">{isRunner ? '🏃' : '🎯'}</div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {isRunner ? 'Listo para tu plan de running' : 'Estás en modo libre'}
+              Todavía no tenés un plan activo
             </h2>
             <p className="text-gray-500 text-sm max-w-sm mx-auto">
               {isRunner
-                ? 'Con el plan Pro recibís un plan periodizado calculado para tu fisiología: zonas Karvonen, nutrición ajustada por sesión y check-in semanal que adapta la carga automáticamente.'
-                : 'Podés registrar tus entrenamientos sin un plan estructurado. Activá el plan Pro para obtener un plan periodizado según tu deporte y metas.'}
+                ? 'Un entrenador te diseña un plan periodizado con zonas Karvonen, nutrición ajustada por sesión y seguimiento semanal.'
+                : 'Un entrenador te asigna un plan de fuerza o composición corporal adaptado a tus objetivos y seguimiento personalizado.'}
             </p>
           </div>
-          {isRunner && (
-            <div className="grid grid-cols-3 gap-3 text-left">
-              {[
-                { icon: '📊', label: 'Plan periodizado', desc: 'Fases Base → Específico → Afinamiento' },
-                { icon: '❤️', label: 'Zonas Karvonen', desc: 'Calculadas con tu FC real, no genéricas' },
-                { icon: '🔄', label: 'Check-in semanal', desc: 'La carga se ajusta según tus datos' },
-              ].map((f) => (
-                <div key={f.label} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xl mb-1">{f.icon}</p>
-                  <p className="text-xs font-semibold text-gray-800">{f.label}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">{f.desc}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          <a
-            href="/upgrade"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
-          >
-            {isRunner ? 'Activar mi plan de running → $9.99/mes' : 'Activar plan Pro → $9.99/mes'}
-          </a>
+          <div className="grid grid-cols-3 gap-3 text-left">
+            {[
+              { icon: '📊', label: 'Plan a medida', desc: 'Diseñado para tu fisiología y objetivos' },
+              { icon: '❤️', label: 'Seguimiento real', desc: 'Tu coach ajusta el plan cada semana' },
+              { icon: '💬', label: 'Comunicación directa', desc: 'Notas y feedback por sesión' },
+            ].map((f) => (
+              <div key={f.label} className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xl mb-1">{f.icon}</p>
+                <p className="text-xs font-semibold text-gray-800">{f.label}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3">
+            <a
+              href="/coaches"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              Encontrar mi entrenador →
+            </a>
+            <a href="/dashboard" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Volver al dashboard
+            </a>
+          </div>
         </div>
       </div>
       )

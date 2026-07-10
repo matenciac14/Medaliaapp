@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Pencil, Copy } from 'lucide-react'
 import { getInitialWeekIdx } from '@/lib/core/week-number'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +69,11 @@ type WeekEditState = {
   volumeKm: number | null
 }
 
+type CopyModalState = {
+  sessionId: string
+  sessionLabel: string
+}
+
 type Props = {
   athleteId: string
   athleteName: string
@@ -111,6 +116,16 @@ function formatWeekRange(startDate: string, endDate: string): string {
   return `${s.getDate()} al ${e.getDate()} ${MONTHS[e.getMonth()]}`
 }
 
+// ── Template metadata (client-only, no server imports) ────────────────────────
+
+const TEMPLATE_META = [
+  { id: 'RACE_5K',            label: '5K',            emoji: '🏃', weeks: 8,  sport: 'Running' },
+  { id: 'RACE_10K',           label: '10K',           emoji: '🏅', weeks: 12, sport: 'Running' },
+  { id: 'RACE_HALF_MARATHON', label: 'Media Maratón', emoji: '🏆', weeks: 18, sport: 'Running' },
+  { id: 'BODY_RECOMPOSITION', label: 'Recomposición', emoji: '🔥', weeks: 12, sport: 'Fuerza + Cardio' },
+  { id: 'STRENGTH_TRAINING',  label: 'Fuerza',        emoji: '🏋️', weeks: 12, sport: 'Fuerza' },
+]
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 const PHASES = ['BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO', 'COMPETICIÓN', 'RECUPERACIÓN']
@@ -123,13 +138,32 @@ const PHASE_COLORS: Record<string, string> = {
 export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
 
-  // ── Estado para crear plan desde cero ──────────────────────────────────────
-  const [creating, setCreating]           = useState(false)
-  const [newName, setNewName]             = useState(`Plan ${athleteName.split(' ')[0]}`)
-  const [newWeeks, setNewWeeks]           = useState(12)
-  const [newStart, setNewStart]           = useState(() => new Date().toISOString().split('T')[0])
-  const [createError, setCreateError]     = useState<string | null>(null)
-  const [createLoading, setCreateLoading] = useState(false)
+  // ── Estado para crear plan ────────────────────────────────────────────────
+  type CreateMode = 'initial' | 'blank-form' | 'template-form'
+  const [createMode, setCreateMode]         = useState<CreateMode>('initial')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [newName, setNewName]               = useState(`Plan ${athleteName.split(' ')[0]}`)
+  const [newWeeks, setNewWeeks]             = useState(12)
+  const [newStart, setNewStart]             = useState(() => new Date().toISOString().split('T')[0])
+  const [createError, setCreateError]       = useState<string | null>(null)
+  const [createLoading, setCreateLoading]   = useState(false)
+
+  function openTemplateForm(templateId: string) {
+    const meta = TEMPLATE_META.find((t) => t.id === templateId)!
+    setSelectedTemplateId(templateId)
+    setNewName(`Plan ${meta.label} — ${athleteName.split(' ')[0]}`)
+    setNewWeeks(meta.weeks)
+    setCreateMode('template-form')
+    setCreateError(null)
+  }
+
+  function openBlankForm() {
+    setSelectedTemplateId(null)
+    setNewName(`Plan ${athleteName.split(' ')[0]}`)
+    setNewWeeks(12)
+    setCreateMode('blank-form')
+    setCreateError(null)
+  }
 
   async function handleCreateCustomPlan() {
     setCreateError(null)
@@ -149,10 +183,67 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
       setCreateLoading(false)
     }
   }
+
+  async function handleCreateFromTemplate() {
+    if (!selectedTemplateId) return
+    setCreateError(null)
+    setCreateLoading(true)
+    try {
+      const res = await fetch(`/api/coach/athlete/${athleteId}/plan/from-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: selectedTemplateId, name: newName, startDate: newStart }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error al crear el plan')
+      setPlan(data.plan)
+    } catch (err: any) {
+      setCreateError(err.message)
+    } finally {
+      setCreateLoading(false)
+    }
+  }
   const [weekIdx, setWeekIdx] = useState(() => getInitialWeekIdx(initialPlan))
   const [modal, setModal] = useState<ModalState | null>(null)
   const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
   const [saving, setSaving] = useState(false)
+  const [copyModal, setCopyModal] = useState<CopyModalState | null>(null)
+
+  async function handleCopySession(targetWeekId: string, dayOfWeek: number) {
+    if (!copyModal || !plan) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/coach/sessions/${copyModal.sessionId}/copy-to`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetWeekId, dayOfWeek }),
+      })
+      if (!res.ok) throw new Error('Error copiando sesión')
+      const { session: newSession } = await res.json()
+      setPlan((prev) =>
+        prev
+          ? {
+              ...prev,
+              weeks: prev.weeks.map((w) =>
+                w.id === targetWeekId
+                  ? {
+                      ...w,
+                      sessions: [...w.sessions, { ...newSession, workoutDay: null }].sort(
+                        (a, b) => a.dayOfWeek - b.dayOfWeek
+                      ),
+                    }
+                  : w
+              ),
+            }
+          : prev
+      )
+      setCopyModal(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const week = plan?.weeks[weekIdx] ?? null
 
@@ -317,38 +408,128 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
     }
   }
 
-  // ── No plan — formulario de creación desde cero ──────────────────────────
+  // ── No plan — selector de templates o formulario ─────────────────────────
 
   if (!plan) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
         <BuilderHeader athleteId={athleteId} athleteName={athleteName} />
         <div className="flex-1 flex items-center justify-center p-6">
-          {!creating ? (
-            <div className="text-center">
-              <p className="text-5xl mb-4">📋</p>
-              <h2 className="text-xl font-semibold text-gray-700 mb-2">Sin plan activo</h2>
-              <p className="text-gray-400 text-sm mb-6">Crea un plan en blanco y rellénalo sesión a sesión</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+
+          {/* Vista inicial — grid de templates + botón en blanco */}
+          {createMode === 'initial' && (
+            <div className="w-full max-w-2xl">
+              <div className="text-center mb-8">
+                <p className="text-5xl mb-4">📋</p>
+                <h2 className="text-xl font-semibold text-gray-800 mb-1">Nuevo plan para {athleteName.split(' ')[0]}</h2>
+                <p className="text-gray-400 text-sm">Elige un template o crea un plan en blanco</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                {TEMPLATE_META.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => openTemplateForm(t.id)}
+                    className="flex flex-col items-start gap-2 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#1e3a5f]/20 transition-all text-left group"
+                  >
+                    <span className="text-3xl">{t.emoji}</span>
+                    <div>
+                      <p className="font-semibold text-gray-900 group-hover:text-[#1e3a5f] transition-colors">
+                        {t.label}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t.sport} · {t.weeks} semanas</p>
+                    </div>
+                    <span className="text-xs font-medium text-[#ea580c] mt-auto">
+                      Usar template →
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-2">
                 <button
-                  onClick={() => setCreating(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#1e3a5f' }}
+                  onClick={openBlankForm}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
                 >
-                  + Crear plan en blanco
+                  + Plan en blanco
                 </button>
                 <Link
                   href={`/coach/athlete/${athleteId}`}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
                 >
                   ← Ir al panel del atleta
                 </Link>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* Vista template-form */}
+          {createMode === 'template-form' && selectedTemplateId && (() => {
+            const meta = TEMPLATE_META.find((t) => t.id === selectedTemplateId)!
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 w-full max-w-md space-y-5">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{meta.emoji}</span>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Template {meta.label}</h2>
+                    <p className="text-sm text-gray-400">{meta.sport} · {meta.weeks} semanas pre-pobladas</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del plan</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                  <input
+                    type="date"
+                    value={newStart}
+                    onChange={(e) => setNewStart(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
+                  <div className="w-full border border-gray-100 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500">
+                    {meta.weeks} semanas (fijo por template)
+                  </div>
+                </div>
+
+                {createError && <p className="text-sm text-red-500">{createError}</p>}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => { setCreateMode('initial'); setCreateError(null) }}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    onClick={handleCreateFromTemplate}
+                    disabled={createLoading || !newName.trim()}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                    style={{ backgroundColor: '#1e3a5f' }}
+                  >
+                    {createLoading ? 'Creando...' : 'Crear plan →'}
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Vista blank-form — formulario existente sin cambios */}
+          {createMode === 'blank-form' && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 w-full max-w-md space-y-5">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Nuevo plan de entrenamiento</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Plan en blanco</h2>
                 <p className="text-sm text-gray-400 mt-1">Se crearán las semanas vacías. Agrega las sesiones desde el builder.</p>
               </div>
 
@@ -386,16 +567,14 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                 />
               </div>
 
-              {createError && (
-                <p className="text-sm text-red-500">{createError}</p>
-              )}
+              {createError && <p className="text-sm text-red-500">{createError}</p>}
 
               <div className="flex gap-3 pt-1">
                 <button
-                  onClick={() => { setCreating(false); setCreateError(null) }}
+                  onClick={() => { setCreateMode('initial'); setCreateError(null) }}
                   className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                  Cancelar
+                  ← Volver
                 </button>
                 <button
                   onClick={handleCreateCustomPlan}
@@ -408,6 +587,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
               </div>
             </div>
           )}
+
         </div>
       </div>
     )
@@ -529,37 +709,48 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                     {sessions.map((s) => {
                       const cfg = getSessionConfig(s.type)
                       return (
-                        <button
-                          key={s.id}
-                          onClick={() => openEditModal(s, week!.id)}
-                          className="w-full text-left p-2.5 rounded-lg bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div
-                            className="h-0.5 rounded-full mb-1.5"
-                            style={{ backgroundColor: cfg.color }}
-                          />
-                          <p className="text-xs font-semibold text-gray-900 leading-tight">
-                            {cfg.label}
-                          </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            {s.durationMin} min{s.zoneTarget && s.zoneTarget !== 'N/A' && s.type !== 'FUERZA' ? ` · ${s.zoneTarget}` : ''}
-                          </p>
-                          {s.sportLabel && (
-                            <p className="text-[10px] text-blue-500 mt-0.5 truncate font-medium">
-                              {s.sportLabel}
+                        <div key={s.id} className="relative group">
+                          <button
+                            onClick={() => openEditModal(s, week!.id)}
+                            className="w-full text-left p-2.5 rounded-lg bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div
+                              className="h-0.5 rounded-full mb-1.5"
+                              style={{ backgroundColor: cfg.color }}
+                            />
+                            <p className="text-xs font-semibold text-gray-900 leading-tight">
+                              {cfg.label}
                             </p>
-                          )}
-                          {s.detailText && (
-                            <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                              {s.detailText}
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {s.durationMin} min{s.zoneTarget && s.zoneTarget !== 'N/A' && s.type !== 'FUERZA' ? ` · ${s.zoneTarget}` : ''}
                             </p>
-                          )}
-                          {s.type === 'FUERZA' && s.workoutDay && (
-                            <p className="text-[10px] text-purple-500 mt-0.5 truncate font-medium">
-                              💪 {s.workoutDay.label}
-                            </p>
-                          )}
-                        </button>
+                            {s.sportLabel && (
+                              <p className="text-[10px] text-blue-500 mt-0.5 truncate font-medium">
+                                {s.sportLabel}
+                              </p>
+                            )}
+                            {s.detailText && (
+                              <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                                {s.detailText}
+                              </p>
+                            )}
+                            {s.type === 'FUERZA' && s.workoutDay && (
+                              <p className="text-[10px] text-purple-500 mt-0.5 truncate font-medium">
+                                💪 {s.workoutDay.label}
+                              </p>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCopyModal({ sessionId: s.id, sessionLabel: cfg.label })
+                            }}
+                            title="Copiar sesión a otra semana"
+                            className="absolute top-1.5 right-1.5 p-0.5 rounded bg-white text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Copy size={10} />
+                          </button>
+                        </div>
                       )
                     })}
                     <button
@@ -635,6 +826,17 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
           state={weekEdit}
           onSave={handleSaveWeekMeta}
           onClose={() => setWeekEdit(null)}
+          saving={saving}
+        />
+      )}
+
+      {/* Copy session modal */}
+      {copyModal && plan && (
+        <CopySessionModal
+          sessionLabel={copyModal.sessionLabel}
+          weeks={plan.weeks}
+          onCopy={handleCopySession}
+          onClose={() => setCopyModal(null)}
           saving={saving}
         />
       )}
@@ -1017,6 +1219,101 @@ function WeekEditModal({
             style={{ backgroundColor: '#1e3a5f' }}
           >
             {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Copy session modal ────────────────────────────────────────────────────────
+
+function CopySessionModal({
+  sessionLabel,
+  weeks,
+  onCopy,
+  onClose,
+  saving,
+}: {
+  sessionLabel: string
+  weeks: BuilderWeek[]
+  onCopy: (targetWeekId: string, dayOfWeek: number) => void
+  onClose: () => void
+  saving: boolean
+}) {
+  const [targetWeekId, setTargetWeekId] = useState(weeks[0]?.id ?? '')
+  const [dayOfWeek, setDayOfWeek] = useState(1)
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Copiar sesión</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-sm text-gray-500">
+            Copiando <span className="font-medium text-gray-800">{sessionLabel}</span> a:
+          </p>
+
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Semana destino
+            </p>
+            <select
+              value={targetWeekId}
+              onChange={(e) => setTargetWeekId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-200"
+            >
+              {weeks.map((w) => (
+                <option key={w.id} value={w.id}>
+                  Semana {w.weekNumber} — {w.phase}
+                  {w.isRecoveryWeek ? ' (recuperación)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Día
+            </p>
+            <div className="grid grid-cols-7 gap-1">
+              {DAY_NAMES.map((d, i) => (
+                <button
+                  key={i}
+                  onClick={() => setDayOfWeek(i + 1)}
+                  className="py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={
+                    dayOfWeek === i + 1
+                      ? { backgroundColor: '#1e3a5f', color: '#fff' }
+                      : { backgroundColor: '#f3f4f6', color: '#374151' }
+                  }
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onCopy(targetWeekId, dayOfWeek)}
+            disabled={saving || !targetWeekId}
+            className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            {saving ? 'Copiando...' : 'Copiar'}
           </button>
         </div>
       </div>

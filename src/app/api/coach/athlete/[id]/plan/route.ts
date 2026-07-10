@@ -44,6 +44,19 @@ export async function POST(
     )
   }
 
+  // Look for a recent 5K benchmark to calibrate pace hints in running sessions
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  const benchmark5K = await prisma.performanceBenchmark.findFirst({
+    where: {
+      userId: athleteId,
+      sport: 'RUNNING',
+      metric: '5K_TIME',
+      testedAt: { gte: ninetyDaysAgo },
+    },
+    orderBy: { testedAt: 'desc' },
+    select: { value: true },
+  })
+
   const result = await generatePlan({
     userId: athleteId,
     goalType,
@@ -60,6 +73,7 @@ export async function POST(
     nutritionCommitment: 'moderate',
     weightGoalKg: profile?.weightGoalKg ?? undefined,
     generatedBy: 'COACH',
+    recentBenchmark5KSecs: benchmark5K ? Number(benchmark5K.value) : undefined,
   })
 
   return NextResponse.json({ success: true, planId: result.planId })
