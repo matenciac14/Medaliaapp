@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
       id: w.id,
       weekNumber: w.weekNumber,
       phase: w.phase,
+      focusDescription: w.focusDescription ?? null,
+      isRecoveryWeek: w.isRecoveryWeek,
       sessions: w.sessions.map(s => ({
         id: s.id,
         type: s.type,
