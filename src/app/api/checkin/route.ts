@@ -34,15 +34,22 @@ export async function GET(_req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
 
-  const last = await prisma.weeklyCheckIn.findFirst({
-    where: { userId: session.user.id },
-    orderBy: { recordedAt: 'desc' },
-    select: {
-      weightKg: true, hrResting: true, sleepHours: true, energyLevel: true,
-      hardestSessionRpe: true, sleepScore: true, stressLevel: true,
-      motivationLevel: true, nutritionAdherencePct: true,
-    },
-  })
+  const [last, pendingSuggestions] = await Promise.all([
+    prisma.weeklyCheckIn.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { recordedAt: 'desc' },
+      select: {
+        weightKg: true, hrResting: true, sleepHours: true, energyLevel: true,
+        hardestSessionRpe: true, sleepScore: true, stressLevel: true,
+        motivationLevel: true, nutritionAdherencePct: true,
+      },
+    }),
+    prisma.checkInSuggestion.findMany({
+      where: { userId: session.user.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+      select: { id: true, type: true, title: true, description: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ])
 
   return ok({
     weightKg: last?.weightKg ?? null,
@@ -54,6 +61,7 @@ export async function GET(_req: NextRequest) {
     stressLevel: last?.stressLevel ?? null,
     motivationLevel: last?.motivationLevel ?? null,
     nutritionAdherencePct: last?.nutritionAdherencePct ?? null,
+    pendingSuggestions,
   })
 }
 
@@ -108,6 +116,16 @@ export async function POST(req: NextRequest) {
       }
     }).catch(() => {})
 
+    // Fetch suggestions created by this check-in (fire after tx completes)
+    const suggestions = result.pendingSuggestions > 0
+      ? await prisma.checkInSuggestion.findMany({
+          where: { userId: session.user.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+          select: { id: true, type: true, title: true, description: true, expiresAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        })
+      : []
+
     return ok({
       ok: true,
       adjustment: {
@@ -116,6 +134,8 @@ export async function POST(req: NextRequest) {
         adjustments: result.adjustments,
         triggers: result.triggers,
       },
+      pendingSuggestions: result.pendingSuggestions,
+      suggestions,
     })
   } catch (err) {
     console.error('[checkin] processCheckIn error:', err)

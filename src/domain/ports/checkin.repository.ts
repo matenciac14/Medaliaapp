@@ -15,8 +15,8 @@ export interface ICheckInRepository {
   /** Most recent check-in for a user, for HR and weight baseline. */
   findLatest(userId: string): Promise<PreviousCheckIn | null>
 
-  /** Persist check-in (upsert by userId + weekNumber). */
-  save(userId: string, data: SaveCheckInPayload): Promise<void>
+  /** Persist check-in (upsert by userId + weekNumber). Returns the check-in id. */
+  save(userId: string, data: SaveCheckInPayload): Promise<{ id: string }>
 
   /** Count total check-ins for a user (used to activate progress feature on first check-in). */
   count(userId: string): Promise<number>

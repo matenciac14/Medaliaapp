@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import type { PrevMetrics, LastWeekSummary } from './checkin.types'
 import { TRIGGER_LABELS } from './checkin.types'
+import type { CheckInSuggestion } from './CheckInResultScreen'
 
 interface Props {
   prevMetrics: PrevMetrics
@@ -9,6 +11,8 @@ interface Props {
   submittedAt: Date | null
   submittedTriggers: string[]
   lastWeekSummary: LastWeekSummary | null
+  suggestions?: CheckInSuggestion[]
+  onRespond?: (id: string, action: 'accept' | 'reject') => Promise<void>
   onUpdate: () => void
   onBack: () => void
 }
@@ -28,9 +32,19 @@ export default function SubmittedCheckInView({
   submittedAt,
   submittedTriggers,
   lastWeekSummary,
+  suggestions = [],
+  onRespond,
   onUpdate,
   onBack,
 }: Props) {
+  const [responding, setResponding] = useState<string | null>(null)
+
+  async function handleRespond(id: string, action: 'accept' | 'reject') {
+    if (!onRespond) return
+    setResponding(id)
+    try { await onRespond(id, action) } finally { setResponding(null) }
+  }
+
   const submittedDateStr = submittedAt
     ? new Date(submittedAt).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : null
@@ -102,6 +116,36 @@ export default function SubmittedCheckInView({
           <p className="text-[11px] text-[#808080] uppercase tracking-wide font-semibold">Próximo check-in</p>
           <p className="text-[15px] font-bold text-[#0f1e30]">{getNextFridayAfterSubmit()}</p>
         </div>
+
+        {suggestions.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-[13px] font-semibold text-[#0f1e30]">💡 Sugerencias para tu plan</h3>
+            {suggestions.map(s => (
+              <div key={s.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">{s.title}</p>
+                  <p className="text-xs text-blue-700 mt-1">{s.description}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleRespond(s.id, 'reject')}
+                    disabled={responding === s.id}
+                    className="py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    onClick={() => handleRespond(s.id, 'accept')}
+                    disabled={responding === s.id}
+                    className="py-2 text-xs font-semibold rounded-lg bg-[#1e3a5f] text-white hover:bg-[#162d4a] disabled:opacity-50 transition-colors"
+                  >
+                    {responding === s.id ? '...' : 'Aceptar'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-2 pb-8">
           <button onClick={onBack} className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
