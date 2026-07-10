@@ -3,33 +3,45 @@
  * Sin dependencias de Prisma, Next.js ni ningún framework.
  */
 
+import type { CoachTier } from '@/domain/subscription/tier-features'
+
 export const ATHLETE_PRO_PRICE_USD = 9.99
 
 /**
- * Calcula el fee mensual que un coach debe pagar a Medaliq
- * según el número de atletas activos bajo su gestión.
- *
- * Tramos:
- *   1–50   → $6/atleta
- *   51–100 → $5/atleta
- *   +100   → $3/atleta
+ * Fee mensual plano por tier de coach.
+ * SCALE: $129 base + $1.50 por asesorado sobre 100 (Scale+).
  */
-export function coachFeeRate(athleteCount: number): number {
-  if (athleteCount <= 0)  return 0
-  if (athleteCount <= 50)  return athleteCount * 6
-  if (athleteCount <= 100) return 50 * 6 + (athleteCount - 50) * 5
-  return 50 * 6 + 50 * 5 + (athleteCount - 100) * 3
+export function coachTierFee(tier: CoachTier, athleteCount: number = 0): number {
+  switch (tier) {
+    case 'STARTER': return 0
+    case 'GROWTH':  return 39
+    case 'PRO':     return 79
+    case 'SCALE':   return 129 + Math.max(0, athleteCount - 100) * 1.5
+  }
 }
 
 /**
- * Etiqueta legible del tramo de fee aplicado a un coach.
+ * Etiqueta legible del tier del coach.
  */
-export function feeLabel(athleteCount: number): string {
-  if (athleteCount <= 0)   return '—'
-  if (athleteCount <= 50)  return '$6/atleta'
-  if (athleteCount <= 100) return '$5/atleta (>50)'
-  return '$3/atleta (>100)'
+export function coachTierFeeLabel(tier: CoachTier, athleteCount: number = 0): string {
+  switch (tier) {
+    case 'STARTER': return 'Starter — $0/mes'
+    case 'GROWTH':  return 'Growth — $39/mes'
+    case 'PRO':     return 'Pro — $79/mes'
+    case 'SCALE':
+      return athleteCount > 100
+        ? `Scale+ — $129 + $${((athleteCount - 100) * 1.5).toFixed(0)} extra`
+        : 'Scale — $129/mes'
+  }
 }
+
+/**
+ * Calcula el MRR estimado de atletas Pro.
+ * @deprecated Usar coachTierFee(). Modelo por-asesorado eliminado.
+ */
+export function coachFeeRate(_athleteCount: number): number { return 0 }
+/** @deprecated Usar coachTierFeeLabel(). */
+export function feeLabel(_athleteCount: number): string { return '—' }
 
 /**
  * Calcula el MRR estimado de atletas Pro.
