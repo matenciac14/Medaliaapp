@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export type FoodLogEntry = {
   id: string
@@ -36,16 +37,119 @@ function adherenceColor(pct: number | null): string {
   return '#dc2626'
 }
 
+type ProposeFormState = {
+  message: string
+  deltaKcal: string
+  deltaProtein: string
+  deltaCarbs: string
+  deltaFat: string
+}
+
+function ProposeModal({ athleteId, onClose }: { athleteId: string; onClose: () => void }) {
+  const router = useRouter()
+  const [form, setForm] = useState<ProposeFormState>({
+    message: '', deltaKcal: '0', deltaProtein: '0', deltaCarbs: '0', deltaFat: '0',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    const res = await fetch(`/api/coach/athlete/${athleteId}/nutrition/propose`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message:      form.message,
+        deltaKcal:    parseInt(form.deltaKcal) || 0,
+        deltaProtein: parseInt(form.deltaProtein) || 0,
+        deltaCarbs:   parseInt(form.deltaCarbs) || 0,
+        deltaFat:     parseInt(form.deltaFat) || 0,
+      }),
+    })
+    setLoading(false)
+    if (!res.ok) { setError('Error al enviar. Intenta nuevamente.'); return }
+    router.refresh()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <form onSubmit={submit} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-gray-900">Proponer ajuste nutricional</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+        <p className="text-xs text-gray-500">El atleta recibirá esta propuesta y podrá aceptarla o rechazarla.</p>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Mensaje al atleta *</label>
+          <textarea
+            required
+            minLength={10}
+            maxLength={300}
+            rows={3}
+            value={form.message}
+            onChange={(e) => setForm({ ...form, message: e.target.value })}
+            placeholder="Ej: Esta semana aumenta 30g de proteína — tu déficit calórico es muy alto."
+            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            ['deltaKcal', 'Calorías (kcal)', 'deltaKcal'],
+            ['deltaProtein', 'Proteína (g)', 'deltaProtein'],
+            ['deltaCarbs', 'Carbohidratos (g)', 'deltaCarbs'],
+            ['deltaFat', 'Grasas (g)', 'deltaFat'],
+          ] as [keyof ProposeFormState, string, keyof ProposeFormState][]).map(([key, label]) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+              <input
+                type="number"
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+          ))}
+        </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            {loading ? 'Enviando...' : 'Enviar propuesta'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export function FoodLogsSection({
   foodLogs,
   nutritionPlan,
   loaded,
+  athleteId,
 }: {
   foodLogs: FoodLogEntry[]
   nutritionPlan: NutritionPlanData
   loaded: boolean
+  athleteId: string
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [showPropose, setShowPropose] = useState(false)
 
   if (!loaded) {
     return <p className="text-sm text-gray-400">Cargando...</p>
@@ -86,7 +190,21 @@ export function FoodLogsSection({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-3">
+      {showPropose && <ProposeModal athleteId={athleteId} onClose={() => setShowPropose(false)} />}
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">Últimos 7 días</p>
+        <button
+          onClick={() => setShowPropose(true)}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: '#1e3a5f' }}
+        >
+          + Proponer ajuste
+        </button>
+      </div>
+
+      <div className="space-y-1">
       {Array.from(byDate.entries())
         .sort((a, b) => b[0].localeCompare(a[0]))
         .map(([dateKey, day]) => {
@@ -151,6 +269,7 @@ export function FoodLogsSection({
           Target promedio: {avgTargetKcal} kcal/día
         </p>
       )}
+      </div>
     </div>
   )
 }
