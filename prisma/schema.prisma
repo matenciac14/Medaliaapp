@@ -109,10 +109,11 @@ model User {
   // Rutina semanal self-directed (sin plan)
   weeklyRoutine      WeeklyRoutine?
 
-  // Constructor Visual de Nutrición (coach)
-  nutritionTemplates    NutritionTemplate[]    @relation("CoachNutritionTemplates")
-  assignedNutritionPlan AssignedNutritionPlan? @relation("AthleteNutritionPlan")
-  coachNutritionPlans   AssignedNutritionPlan[] @relation("CoachNutritionPlans")
+  // Constructor Visual de Nutrición (coach y atleta B2C)
+  nutritionTemplates        NutritionTemplate[]    @relation("CoachNutritionTemplates")
+  athleteNutritionTemplates NutritionTemplate[]    @relation("AthleteNutritionTemplates")
+  assignedNutritionPlan     AssignedNutritionPlan? @relation("AthleteNutritionPlan")
+  coachNutritionPlans       AssignedNutritionPlan[] @relation("CoachNutritionPlans")
 
   // Notificaciones in-app
   notifications  Notification[]
@@ -134,6 +135,13 @@ model User {
 
   // Progreso visual (DB-20)
   progressPhotos     ProgressPhoto[]
+
+  // Sugerencias de ajuste del check-in (CI-DB-01)
+  checkInSuggestions CheckInSuggestion[]
+
+  // Propuestas nutricionales del coach al atleta
+  coachNutritionProposalsSent     CoachNutritionProposal[] @relation("CoachNutritionProposalsSent")
+  coachNutritionProposalsReceived CoachNutritionProposal[] @relation("CoachNutritionProposalsReceived")
 }
 
 enum UserRole {
@@ -312,6 +320,7 @@ enum PlanSource {
   AI
   COACH
   AI_COACH_APPROVED
+  ATHLETE
 }
 
 model PlanWeek {
@@ -491,7 +500,8 @@ model WeeklyCheckIn {
   notes                String?
   adjustmentsTriggered String[]
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestions CheckInSuggestion[]
 
   // Unicidad manejada por dos partial indexes en SQL (ver migration fix_checkin_plan_scope):
   //   WHERE planId IS NOT NULL → unique (userId, planId, weekNumber)
@@ -1088,21 +1098,24 @@ enum NutritionDayType {
   REST
 }
 
-// Plan nutricional reutilizable del coach — se asigna a atletas como un template
+// Plan nutricional reutilizable — del coach o del atleta B2C (coachId XOR athleteId)
 model NutritionTemplate {
   id          String   @id @default(cuid())
-  coachId     String
+  coachId     String?  // null si es template propio del atleta B2C
+  athleteId   String?  // null si es template del coach; FK → User
   name        String
   description String?
   goal        String?  // "RENDIMIENTO", "PÉRDIDA DE PESO", "GANANCIA MUSCULAR", "MANTENIMIENTO"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  coach       User                    @relation("CoachNutritionTemplates", fields: [coachId], references: [id], onDelete: Cascade)
+  coach       User?                   @relation("CoachNutritionTemplates",  fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete     User?                   @relation("AthleteNutritionTemplates", fields: [athleteId], references: [id], onDelete: Cascade)
   days        NutritionTemplateDay[]
   assignments AssignedNutritionPlan[]
 
   @@index([coachId])
+  @@index([athleteId])
 }
 
 // Un día por tipo (HARD/EASY/REST) dentro del template
@@ -1354,4 +1367,67 @@ model ProgressPhoto {
   createdAt   DateTime @default(now())
 
   @@index([userId, takenAt])
+}
+
+// ─── CHECK-IN SUGERENCIAS (CI-DB-01) ────────────────────────────────────────
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum SuggestionType {
+  PLAN_ADJUSTMENT
+  RECOVERY_WEEK
+  NUTRITION_CHANGE
+  GYM_DELOAD
+}
+
+model CheckInSuggestion {
+  id          String           @id @default(cuid())
+  userId      String
+  checkInId   String
+  type        SuggestionType
+  status      SuggestionStatus @default(PENDING)
+  title       String
+  description String
+  payload     Json             // datos específicos del ajuste sugerido
+  expiresAt   DateTime         // checkIn.recordedAt + 7 días
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIn WeeklyCheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([checkInId])
+}
+
+model CoachNutritionProposal {
+  id           String                  @id @default(cuid())
+  coachId      String
+  athleteId    String
+  message      String
+  deltaKcal    Int                     @default(0)
+  deltaProtein Int                     @default(0)
+  deltaCarbs   Int                     @default(0)
+  deltaFat     Int                     @default(0)
+  status       CoachProposalStatus     @default(PENDING)
+  respondedAt  DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  coach   User @relation("CoachNutritionProposalsSent",     fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("CoachNutritionProposalsReceived", fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId, status])
+  @@index([coachId])
+}
+
+enum CoachProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
