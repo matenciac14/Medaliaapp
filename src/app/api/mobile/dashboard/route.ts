@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
   const userId = mobile.id
 
   // PERF-01 Phase 1: plan metadata sin sesiones
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions] = await Promise.all([
+  const todayUtc = new Date(); todayUtc.setHours(0, 0, 0, 0)
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -58,6 +59,11 @@ export async function GET(req: NextRequest) {
       orderBy: { date: 'desc' },
       take: 60,
       select: { date: true },
+    }),
+    // DAILY-02: registro de hoy para widget en dashboard
+    prisma.dailyLog.findUnique({
+      where: { userId_date: { userId, date: todayUtc } },
+      select: { weightKg: true, energyLevel: true },
     }),
   ])
 
@@ -106,8 +112,14 @@ export async function GET(req: NextRequest) {
   })
 
   if (planIdToComplete) {
-    prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch(() => {})
+    prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch((err) => {
+      console.error('[dashboard] failed to auto-complete plan', planIdToComplete, err)
+    })
   }
 
-  return NextResponse.json({ ...summary, weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null })
+  return NextResponse.json({
+    ...summary,
+    weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null,
+    todayLog: todayLog ?? null,
+  })
 }

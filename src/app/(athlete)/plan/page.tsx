@@ -25,28 +25,60 @@ export default async function PlanPage() {
 
     if (!hasActivePlan) {
       // GYM user with assigned workout → redirect to gym module
-      const gymRoutine = await prisma.assignedWorkout.findFirst({
-        where: { athleteId: session.user.id, isActive: true },
-        select: { id: true },
-      })
+      const [gymRoutine, healthProfile] = await Promise.all([
+        prisma.assignedWorkout.findFirst({
+          where: { athleteId: session.user.id, isActive: true },
+          select: { id: true },
+        }),
+        prisma.healthProfile.findUnique({
+          where: { userId: session.user.id },
+          select: { sport: true },
+        }),
+      ])
       if (gymRoutine) redirect('/gym')
 
-      // Sin plan activo — modo libre
+      const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
+
+      // Sin plan activo — sin coach asignado
       return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="text-5xl mb-4">🎯</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Estás en modo libre</h2>
-          <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            Podés registrar tus entrenamientos sin un plan estructurado. Activá el plan Pro para obtener un plan periodizado según tu deporte y metas.
-          </p>
-          <a
-            href="/upgrade"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
-          >
-            Activar plan Pro → $9.99/mes
-          </a>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-6">
+          <div className="text-5xl">{isRunner ? '🏃' : '🎯'}</div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Todavía no tenés un plan activo
+            </h2>
+            <p className="text-gray-500 text-sm max-w-sm mx-auto">
+              {isRunner
+                ? 'Un entrenador te diseña un plan periodizado con zonas Karvonen, nutrición ajustada por sesión y seguimiento semanal.'
+                : 'Un entrenador te asigna un plan de fuerza o composición corporal adaptado a tus objetivos y seguimiento personalizado.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-left">
+            {[
+              { icon: '📊', label: 'Plan a medida', desc: 'Diseñado para tu fisiología y objetivos' },
+              { icon: '❤️', label: 'Seguimiento real', desc: 'Tu coach ajusta el plan cada semana' },
+              { icon: '💬', label: 'Comunicación directa', desc: 'Notas y feedback por sesión' },
+            ].map((f) => (
+              <div key={f.label} className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xl mb-1">{f.icon}</p>
+                <p className="text-xs font-semibold text-gray-800">{f.label}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3">
+            <a
+              href="/coaches"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#1e3a5f' }}
+            >
+              Encontrar mi entrenador →
+            </a>
+            <a href="/dashboard" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Volver al dashboard
+            </a>
+          </div>
         </div>
       </div>
       )
@@ -231,11 +263,17 @@ export default async function PlanPage() {
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <a
-              href="/log"
+              href="/gym/builder"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#1e3a5f' }}
             >
-              Registrar sesión libre →
+              Crear mi rutina →
+            </a>
+            <a
+              href="/log"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Sesión libre
             </a>
             {!isB2B && (
               <a

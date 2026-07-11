@@ -3,6 +3,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { requireFeature } from '@/lib/guards/feature-gate'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:nutrition`, { limit: 300, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'nutrition')
+  if (featureGuard) return featureGuard
 
   const userId = mobile.id
   const todayDow = jsToOurDow(new Date().getDay())
@@ -28,7 +31,7 @@ export async function GET(req: NextRequest) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile, gymSessionToday] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -61,6 +64,12 @@ export async function GET(req: NextRequest) {
       where: { userId },
       select: { weightKg: true, heightCm: true, age: true, gender: true, weightGoalKg: true },
     }),
+    // EX-18: gym calories burned today
+    prisma.gymSession.findFirst({
+      where: { athleteId: userId, date: { gte: todayStart }, completed: true },
+      select: { caloriesBurned: true },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   // PERSIST-09: GET no hace writes. El lazy-init fue eliminado para no violar REST
@@ -72,8 +81,10 @@ export async function GET(req: NextRequest) {
   const sessionIntensity = todaySession?.intensity ?? (hasGymToday ? 'HIGH' : null)
   const dayType = intensityToDayType(sessionIntensity)
 
+  const gymKcalBurned = gymSessionToday?.caloriesBurned ?? null
+
   if (!nutritionPlan) {
-    return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null })
+    return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null, gymKcalBurned })
   }
 
   const dailyTarget = getDailyNutritionTarget(sessionIntensity, nutritionPlan)
@@ -87,5 +98,7 @@ export async function GET(req: NextRequest) {
     macros,
     mealPlan: parseMealPlanData(mealPlan?.data ?? null),
     pendingAdjustment,
+    gymKcalBurned,
+    waterMlTarget: nutritionPlan.waterMlTarget ?? 2000,
   })
 }

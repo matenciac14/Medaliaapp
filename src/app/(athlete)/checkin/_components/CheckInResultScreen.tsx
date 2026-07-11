@@ -1,14 +1,28 @@
+'use client'
+
+import { useState } from 'react'
+
 const TRIGGER_LABELS: Record<string, string> = {
-  fc_alta:             'FC reposo elevada',
-  sueno_bajo:          'Sueño insuficiente',
-  rpe_excesivo:        'RPE alto en fase BASE',
-  dolor_activo:        'Dolor / molestias activas',
-  energia_baja:        'Energía baja',
-  estres_alto:         'Estrés elevado',
-  motivacion_baja:     'Motivación muy baja',
-  nutricion_baja:      'Adherencia nutricional baja',
-  perdida_peso_rapida: 'Pérdida de peso acelerada',
-  fatiga_acumulada:    'Fatiga acumulada (múltiples señales)',
+  fc_alta:                  'FC reposo elevada',
+  sueno_bajo:               'Sueño insuficiente',
+  rpe_excesivo:             'RPE alto en fase BASE',
+  dolor_activo:             'Dolor / molestias activas',
+  energia_baja:             'Energía baja',
+  estres_alto:              'Estrés elevado',
+  motivacion_baja:          'Motivación muy baja',
+  nutricion_baja:           'Adherencia nutricional baja',
+  nutricion_deficit_critico:'Déficit nutricional crítico',
+  perdida_peso_rapida:      'Pérdida de peso acelerada',
+  fatiga_acumulada:         'Fatiga acumulada (múltiples señales)',
+  gym_sobrecarga:           'Sobrecarga en gym',
+}
+
+export type CheckInSuggestion = {
+  id: string
+  type: string
+  title: string
+  description: string
+  expiresAt: string | Date
 }
 
 type Props = {
@@ -16,6 +30,7 @@ type Props = {
   triggers: string[]
   adjustments: string[]
   severity: 'ok' | 'warning' | 'critical'
+  suggestions?: CheckInSuggestion[]
   onBack: () => void
 }
 
@@ -25,12 +40,27 @@ const SEVERITY_STYLES = {
   critical: { banner: 'bg-red-50 border-red-200',       icon: '🚨', text: 'text-red-800'   },
 }
 
-export default function CheckInResultScreen({ weekLabel, triggers, adjustments, severity, onBack }: Props) {
+export default function CheckInResultScreen({ weekLabel, triggers, adjustments, severity, suggestions = [], onBack }: Props) {
   const s = SEVERITY_STYLES[severity]
   const hasIssues = triggers.length > 0
   const detectedLabels = triggers
     .filter(t => t !== 'fatiga_acumulada')
     .map(t => TRIGGER_LABELS[t] ?? t)
+
+  const [respondedIds, setRespondedIds] = useState<Record<string, 'accepted' | 'rejected'>>({})
+  const [responding, setResponding] = useState<string | null>(null)
+
+  async function respond(id: string, action: 'accept' | 'reject') {
+    setResponding(id)
+    try {
+      await fetch(`/api/checkin/suggestions/${id}/${action}`, { method: 'POST' })
+      setRespondedIds(prev => ({ ...prev, [id]: action === 'accept' ? 'accepted' : 'rejected' }))
+    } finally {
+      setResponding(null)
+    }
+  }
+
+  const pendingSuggestions = suggestions.filter(s => !respondedIds[s.id])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
@@ -84,6 +114,48 @@ export default function CheckInResultScreen({ weekLabel, triggers, adjustments, 
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* Sugerencias del coach (plan COACH) */}
+        {pendingSuggestions.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Sugerencias para tu plan
+            </p>
+            {pendingSuggestions.map(suggestion => {
+              const responded = respondedIds[suggestion.id]
+              return (
+                <div key={suggestion.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">{suggestion.title}</p>
+                    <p className="text-xs text-blue-700 mt-1">{suggestion.description}</p>
+                  </div>
+                  {responded ? (
+                    <p className="text-xs text-center font-medium text-gray-500">
+                      {responded === 'accepted' ? '✓ Aceptado' : '✗ Rechazado'}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => respond(suggestion.id, 'reject')}
+                        disabled={responding === suggestion.id}
+                        className="py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                      >
+                        Rechazar
+                      </button>
+                      <button
+                        onClick={() => respond(suggestion.id, 'accept')}
+                        disabled={responding === suggestion.id}
+                        className="py-2 text-xs font-semibold rounded-lg bg-[#1e3a5f] text-white hover:bg-[#162d4a] disabled:opacity-50 transition-colors"
+                      >
+                        {responding === suggestion.id ? '...' : 'Aceptar'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

@@ -343,8 +343,8 @@ export default function ProfileClient({ user }: Props) {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deporte</p>
                 <div className="flex flex-wrap gap-2">
                   {p.sport && (
-                    <span className="text-xs bg-[#1e3a5f]/10 text-[#1e3a5f] font-semibold px-2.5 py-1 rounded-full capitalize">
-                      {p.sport.toLowerCase().replace(/_/g, ' ')}
+                    <span className="text-xs bg-[#1e3a5f]/10 text-[#1e3a5f] font-semibold px-2.5 py-1 rounded-full">
+                      {({ RUNNING: 'Running', STRENGTH: 'Fuerza', BOTH: 'Running + Fuerza', GYM: 'Gym' } as Record<string, string>)[p.sport] ?? p.sport.toLowerCase().replace(/_/g, ' ')}
                     </span>
                   )}
                   {p.experienceLevel && (
@@ -394,7 +394,7 @@ export default function ProfileClient({ user }: Props) {
             Check-in semanal →
           </a>
         </div>
-        <p className="text-xs text-gray-400 -mt-1">Datos del día — peso, FC y sueño. El check-in semanal también actualiza peso y FC reposo con contexto de entrenamiento.</p>
+        <p className="text-xs text-gray-400 -mt-1">Métricas objetivas del día: peso, FC reposo y sueño. El <a href="/checkin" className="underline hover:text-gray-600">check-in semanal</a> complementa esto con tu percepción de carga — energía, estrés, RPE y motivación — y es lo que ajusta tu plan de entrenamiento.</p>
 
         <div>
           <label className="text-xs font-medium text-gray-500 mb-1 block">Fecha</label>

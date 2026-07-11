@@ -1,72 +1,61 @@
 import { describe, it, expect } from 'vitest'
-import { coachFeeRate, feeLabel, mrrAthletes, mrrCoaches, ATHLETE_PRO_PRICE_USD } from './finanzas'
+import { coachTierFee, coachTierFeeLabel, mrrAthletes, mrrCoaches, ATHLETE_PRO_PRICE_USD } from './finanzas'
 
 // ---------------------------------------------------------------------------
-// coachFeeRate — tramos de fee
+// coachTierFee — tier plano
 // ---------------------------------------------------------------------------
-describe('coachFeeRate', () => {
-  it('0 atletas → fee 0', () => {
-    expect(coachFeeRate(0)).toBe(0)
+describe('coachTierFee', () => {
+  it('STARTER → $0', () => {
+    expect(coachTierFee('STARTER')).toBe(0)
+    expect(coachTierFee('STARTER', 5)).toBe(0)
   })
 
-  it('número negativo → fee 0', () => {
-    expect(coachFeeRate(-5)).toBe(0)
+  it('GROWTH → $39', () => {
+    expect(coachTierFee('GROWTH')).toBe(39)
+    expect(coachTierFee('GROWTH', 20)).toBe(39)
   })
 
-  it('tramo 1 — 1 atleta → $6', () => {
-    expect(coachFeeRate(1)).toBe(6)
+  it('PRO → $79', () => {
+    expect(coachTierFee('PRO')).toBe(79)
+    expect(coachTierFee('PRO', 75)).toBe(79)
   })
 
-  it('tramo 1 — 25 atletas → $150', () => {
-    expect(coachFeeRate(25)).toBe(150)
+  it('SCALE ≤100 atletas → $129', () => {
+    expect(coachTierFee('SCALE')).toBe(129)
+    expect(coachTierFee('SCALE', 100)).toBe(129)
   })
 
-  it('tramo 1 — 50 atletas (límite) → $300', () => {
-    expect(coachFeeRate(50)).toBe(300)
+  it('SCALE 110 atletas → $129 + 10×$1.5 = $144', () => {
+    expect(coachTierFee('SCALE', 110)).toBeCloseTo(144)
   })
 
-  it('tramo 2 — 51 atletas → $305 (300 + 1×5)', () => {
-    expect(coachFeeRate(51)).toBe(305)
-  })
-
-  it('tramo 2 — 75 atletas → $425 (300 + 25×5)', () => {
-    expect(coachFeeRate(75)).toBe(425)
-  })
-
-  it('tramo 2 — 100 atletas (límite) → $550 (300 + 50×5)', () => {
-    expect(coachFeeRate(100)).toBe(550)
-  })
-
-  it('tramo 3 — 101 atletas → $553 (550 + 1×3)', () => {
-    expect(coachFeeRate(101)).toBe(553)
-  })
-
-  it('tramo 3 — 200 atletas → $850 (550 + 100×3)', () => {
-    expect(coachFeeRate(200)).toBe(850)
+  it('SCALE 200 atletas → $129 + 100×$1.5 = $279', () => {
+    expect(coachTierFee('SCALE', 200)).toBeCloseTo(279)
   })
 })
 
 // ---------------------------------------------------------------------------
-// feeLabel — etiqueta de tramo
+// coachTierFeeLabel — etiqueta de tier
 // ---------------------------------------------------------------------------
-describe('feeLabel', () => {
-  it('0 atletas → "—"', () => {
-    expect(feeLabel(0)).toBe('—')
+describe('coachTierFeeLabel', () => {
+  it('STARTER → "Starter — $0/mes"', () => {
+    expect(coachTierFeeLabel('STARTER')).toBe('Starter — $0/mes')
   })
 
-  it('tramo 1 (1-50) → "$6/atleta"', () => {
-    expect(feeLabel(1)).toBe('$6/atleta')
-    expect(feeLabel(50)).toBe('$6/atleta')
+  it('GROWTH → "Growth — $39/mes"', () => {
+    expect(coachTierFeeLabel('GROWTH')).toBe('Growth — $39/mes')
   })
 
-  it('tramo 2 (51-100) → "$5/atleta (>50)"', () => {
-    expect(feeLabel(51)).toBe('$5/atleta (>50)')
-    expect(feeLabel(100)).toBe('$5/atleta (>50)')
+  it('PRO → "Pro — $79/mes"', () => {
+    expect(coachTierFeeLabel('PRO')).toBe('Pro — $79/mes')
   })
 
-  it('tramo 3 (+100) → "$3/atleta (>100)"', () => {
-    expect(feeLabel(101)).toBe('$3/atleta (>100)')
-    expect(feeLabel(500)).toBe('$3/atleta (>100)')
+  it('SCALE ≤100 → "Scale — $129/mes"', () => {
+    expect(coachTierFeeLabel('SCALE', 100)).toBe('Scale — $129/mes')
+  })
+
+  it('SCALE 110 → incluye extra', () => {
+    expect(coachTierFeeLabel('SCALE', 110)).toContain('Scale+')
   })
 })
 

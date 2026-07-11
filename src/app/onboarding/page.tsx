@@ -10,6 +10,7 @@ import {
   StepId,
   ActivityType,
   GymGoal,
+  RunningGoal,
   ExperienceLevel,
   isStepValid,
 } from './_types'
@@ -73,7 +74,7 @@ function SelectCard({
   )
 }
 
-function ToggleBtn({
+function PillBtn({
   selected,
   onClick,
   label,
@@ -98,28 +99,42 @@ function ToggleBtn({
   )
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-medium text-[#1e3a5f] mb-1.5">{children}</p>
+function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
+  return (
+    <p className="text-sm font-medium text-[#1e3a5f] mb-1.5">
+      {children}
+      {optional && <span className="ml-1.5 text-xs text-gray-400 font-normal">opcional</span>}
+    </p>
+  )
 }
 
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { hasError?: boolean }) {
+  const { hasError, ...rest } = props
   return (
     <input
-      {...props}
-      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-[#1e3a5f] transition-colors bg-white"
+      {...rest}
+      className={cn(
+        'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-gray-50',
+        hasError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
+      )}
     />
   )
 }
 
 // ---------------------------------------------------------------------------
-// Step components
+// Step 1: Objetivo
 // ---------------------------------------------------------------------------
 
 function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<WizardData>) => void }) {
-  // UX-01: 2 opciones principales — BOTH y FREE son edge cases manejados post-onboarding
   const activities: { value: ActivityType; icon: string; label: string; subtext: string }[] = [
-    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios',     subtext: 'Gym, pesas y recomposición corporal' },
-    { value: 'RUNNING', icon: '🏃', label: 'Running',         subtext: 'Correr, mejorar ritmo y resistencia' },
+    { value: 'RUNNING', icon: '🏃', label: 'Running', subtext: 'Correr, mejorar ritmo y resistencia' },
+    { value: 'GYM',     icon: '🏋️', label: 'Ejercicios', subtext: 'Gym, pesas y recomposición corporal' },
+  ]
+
+  const runningGoals: { value: RunningGoal; icon: string; label: string }[] = [
+    { value: 'GENERAL_FITNESS', icon: '💪', label: 'Fitness general' },
+    { value: 'RACE_5K',         icon: '🏅', label: 'Carrera 5K' },
+    { value: 'RACE_10K',        icon: '🏅', label: 'Carrera 10K' },
   ]
 
   const gymGoals: { value: GymGoal; icon: string; label: string }[] = [
@@ -128,6 +143,7 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
     { value: 'RECOMPOSITION', icon: '⚖️', label: 'Los dos (recomposición)' },
   ]
 
+  const showRunningGoal = data.activityType === 'RUNNING' || data.activityType === 'BOTH'
   const showGymGoal = data.activityType === 'GYM' || data.activityType === 'BOTH'
 
   return (
@@ -139,47 +155,85 @@ function StepGoal({ data, update }: { data: WizardData; update: (d: Partial<Wiza
         <SelectCard
           key={a.value}
           selected={data.activityType === a.value}
-          onClick={() => update({ activityType: a.value, gymGoal: null })}
+          onClick={() => update({ activityType: a.value, gymGoal: null, runningGoal: null })}
           icon={a.icon}
           label={a.label}
           subtext={a.subtext}
         />
       ))}
 
+      {showRunningGoal && (
+        <SubGoalPanel title="¿Cuál es tu meta en running?">
+          {runningGoals.map((g) => (
+            <SubGoalButton
+              key={g.value}
+              icon={g.icon}
+              label={g.label}
+              selected={data.runningGoal === g.value}
+              onClick={() => update({ runningGoal: g.value })}
+            />
+          ))}
+        </SubGoalPanel>
+      )}
+
       {showGymGoal && (
-        <div className="mt-1 p-4 rounded-2xl border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/3">
-          <p className="text-sm font-semibold text-[#1e3a5f] mb-3">¿Cuál es tu meta en el gym?</p>
-          <div className="flex flex-col gap-2">
-            {gymGoals.map((g) => (
-              <button
-                key={g.value}
-                type="button"
-                onClick={() => update({ gymGoal: g.value })}
-                className={cn(
-                  'px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center gap-2',
-                  data.gymGoal === g.value
-                    ? 'border-[#ea580c] bg-[#ea580c]/10 text-[#ea580c]'
-                    : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
-                )}
-              >
-                <span>{g.icon}</span>
-                <span>{g.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <SubGoalPanel title="¿Cuál es tu meta en el gym?">
+          {gymGoals.map((g) => (
+            <SubGoalButton
+              key={g.value}
+              icon={g.icon}
+              label={g.label}
+              selected={data.gymGoal === g.value}
+              onClick={() => update({ gymGoal: g.value })}
+            />
+          ))}
+        </SubGoalPanel>
       )}
     </div>
   )
 }
 
-function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (d: Partial<WizardData>) => void; prefilled?: boolean }) {
+function SubGoalPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-1 p-4 rounded-2xl border-2 border-[#1e3a5f]/20 bg-[#1e3a5f]/3">
+      <p className="text-sm font-semibold text-[#1e3a5f] mb-3">{title}</p>
+      <div className="flex flex-col gap-2">{children}</div>
+    </div>
+  )
+}
+
+function SubGoalButton({ icon, label, selected, onClick }: { icon: string; label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center gap-2',
+        selected
+          ? 'border-[#ea580c] bg-[#ea580c]/10 text-[#ea580c]'
+          : 'border-gray-200 bg-white text-[#1e3a5f] hover:border-[#1e3a5f]/40'
+      )}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 2: Tu perfil (dos columnas en desktop, una en mobile)
+// ---------------------------------------------------------------------------
+
+function StepProfile({ data, update, prefilled }: { data: WizardData; update: (d: Partial<WizardData>) => void; prefilled?: boolean }) {
   const hasGym = data.activityType === 'GYM' || data.activityType === 'BOTH'
+
   const levels: { value: ExperienceLevel; label: string; subtext: string }[] = [
-    { value: 'BEGINNER',     label: 'Principiante', subtext: 'Menos de 1 año' },
+    { value: 'BEGINNER',     label: 'Principiante', subtext: '< 1 año' },
     { value: 'INTERMEDIATE', label: 'Intermedio',   subtext: '1–3 años' },
-    { value: 'ADVANCED',     label: 'Avanzado',     subtext: 'Más de 3 años' },
+    { value: 'ADVANCED',     label: 'Avanzado',     subtext: '3+ años' },
   ]
+
+  const sessionOptions = [30, 45, 60, 90]
 
   const ageErr = data.age !== null && (data.age < 10 || data.age > 100)
   const heightErr = data.heightCm !== null && (data.heightCm < 100 || data.heightCm > 250)
@@ -187,126 +241,197 @@ function StepPhysical({ data, update, prefilled }: { data: WizardData; update: (
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Datos básicos</h2>
-      <p className="text-gray-500 text-sm mb-2">Con esto calculamos tus calorías y macros.</p>
+      <div>
+        <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Tu perfil</h2>
+        <p className="text-gray-500 text-sm">Con esto calculamos tus calorías, macros y ajustamos tu experiencia.</p>
+      </div>
 
       {prefilled && (
         <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-800">
           <span className="shrink-0">ℹ️</span>
-          <span>Tu entrenador ya registró estos datos. Confirma que son correctos o ajústalos antes de continuar.</span>
+          <span>Tu entrenador ya registró estos datos. Confirma que son correctos o ajústalos.</span>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Edad (años)</Label>
-          <input
-            type="number"
-            placeholder="32"
-            value={data.age ?? ''}
-            onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : null })}
-            className={cn(
-              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
-              ageErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
-            )}
-          />
-          {ageErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 10 y 100 años</p>}
-        </div>
-        <div>
-          <Label>Altura (cm)</Label>
-          <input
-            type="number"
-            placeholder="170"
-            value={data.heightCm ?? ''}
-            onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : null })}
-            className={cn(
-              'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
-              heightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
-            )}
-          />
-          {heightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 100 y 250 cm</p>}
-        </div>
-      </div>
+      {/* Dos columnas en desktop, una en mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Columna izquierda: Datos físicos */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 flex flex-col gap-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-8 h-8 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center text-base">📏</span>
+            <h3 className="font-semibold text-[#1e3a5f]">Datos físicos</h3>
+          </div>
 
-      <div>
-        <Label>Peso actual (kg)</Label>
-        <input
-          type="number"
-          placeholder="68"
-          value={data.weightKg ?? ''}
-          onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : null })}
-          className={cn(
-            'w-full px-4 py-3 rounded-xl border-2 text-sm outline-none transition-colors bg-white',
-            weightErr ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#1e3a5f]'
-          )}
-        />
-        {weightErr && <p className="text-xs text-red-500 mt-1">Debe estar entre 30 y 300 kg</p>}
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FieldLabel>Edad</FieldLabel>
+              <FieldInput
+                type="number"
+                placeholder="32"
+                value={data.age ?? ''}
+                onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : null })}
+                hasError={ageErr}
+              />
+              {ageErr && <p className="text-xs text-red-500 mt-1">10–100 años</p>}
+            </div>
+            <div>
+              <FieldLabel>Altura (cm)</FieldLabel>
+              <FieldInput
+                type="number"
+                placeholder="170"
+                value={data.heightCm ?? ''}
+                onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : null })}
+                hasError={heightErr}
+              />
+              {heightErr && <p className="text-xs text-red-500 mt-1">100–250 cm</p>}
+            </div>
+          </div>
 
-      <div>
-        <Label>Género</Label>
-        <div className="flex gap-3 mt-1">
-          <ToggleBtn selected={data.gender === 'male'}   onClick={() => update({ gender: 'male' })}   label="Hombre" />
-          <ToggleBtn selected={data.gender === 'female'} onClick={() => update({ gender: 'female' })} label="Mujer" />
-        </div>
-      </div>
-
-      <div>
-        <Label>Días disponibles para entrenar por semana</Label>
-        <div className="flex gap-2 mt-1 flex-wrap">
-          {[3, 4, 5, 6].map((d) => (
-            <ToggleBtn
-              key={d}
-              selected={data.daysPerWeek === d}
-              onClick={() => update({ daysPerWeek: d })}
-              label={`${d} días`}
+          <div>
+            <FieldLabel>Peso actual (kg)</FieldLabel>
+            <FieldInput
+              type="number"
+              placeholder="68"
+              value={data.weightKg ?? ''}
+              onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : null })}
+              hasError={weightErr}
             />
-          ))}
+            {weightErr && <p className="text-xs text-red-500 mt-1">30–300 kg</p>}
+          </div>
+
+          <div>
+            <FieldLabel>Género</FieldLabel>
+            <div className="flex gap-3 mt-0.5">
+              <button
+                type="button"
+                onClick={() => update({ gender: 'male' })}
+                className={cn(
+                  'flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2',
+                  data.gender === 'male'
+                    ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
+                )}
+              >
+                <span className="text-lg">♂</span> Hombre
+              </button>
+              <button
+                type="button"
+                onClick={() => update({ gender: 'female' })}
+                className={cn(
+                  'flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2',
+                  data.gender === 'female'
+                    ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
+                )}
+              >
+                <span className="text-lg">♀</span> Mujer
+              </button>
+            </div>
+          </div>
+
+          {/* Peso objetivo — solo si aplica */}
+          {(hasGym || data.activityType === 'FREE') && (
+            <div>
+              <FieldLabel optional>Peso objetivo (kg)</FieldLabel>
+              <FieldInput
+                type="number"
+                placeholder="65"
+                value={data.weightGoalKg ?? ''}
+                onChange={(e) => update({ weightGoalKg: e.target.value ? Number(e.target.value) : null })}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Columna derecha: Disponibilidad + Salud */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 flex flex-col gap-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-8 h-8 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center text-base">📅</span>
+            <h3 className="font-semibold text-[#1e3a5f]">Disponibilidad y salud</h3>
+          </div>
+
+          <div>
+            <FieldLabel>Días por semana</FieldLabel>
+            <div className="flex gap-2 mt-0.5 flex-wrap">
+              {[3, 4, 5, 6].map((d) => (
+                <PillBtn
+                  key={d}
+                  selected={data.daysPerWeek === d}
+                  onClick={() => update({ daysPerWeek: d })}
+                  label={`${d} días`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel>Duración por sesión</FieldLabel>
+            <div className="flex gap-2 mt-0.5 flex-wrap">
+              {sessionOptions.map((m) => (
+                <PillBtn
+                  key={m}
+                  selected={data.sessionMinutes === m}
+                  onClick={() => update({ sessionMinutes: m })}
+                  label={`${m} min`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel optional>Nivel de experiencia</FieldLabel>
+            <div className="flex flex-col gap-2 mt-0.5">
+              {levels.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  onClick={() => update({ experienceLevel: data.experienceLevel === l.value ? null : l.value })}
+                  className={cn(
+                    'px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center justify-between',
+                    data.experienceLevel === l.value
+                      ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                      : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
+                  )}
+                >
+                  <span className="font-semibold">{l.label}</span>
+                  <span className="text-xs text-gray-400">{l.subtext}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel optional>Lesiones o molestias</FieldLabel>
+            <FieldInput
+              type="text"
+              placeholder="Ej: dolor en rodilla derecha"
+              value={data.injuries}
+              onChange={(e) => update({ injuries: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <FieldLabel optional>Condiciones médicas</FieldLabel>
+            <FieldInput
+              type="text"
+              placeholder="Ej: hipertensión, asma"
+              value={data.conditions}
+              onChange={(e) => update({ conditions: e.target.value })}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Nivel de experiencia — opcional pero útil para intensidades */}
-      <div>
-        <Label>Nivel de experiencia (opcional)</Label>
-        <div className="flex flex-col gap-2 mt-1">
-          {levels.map((l) => (
-            <button
-              key={l.value}
-              type="button"
-              onClick={() => update({ experienceLevel: data.experienceLevel === l.value ? null : l.value })}
-              className={cn(
-                'px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left flex items-center justify-between',
-                data.experienceLevel === l.value
-                  ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              )}
-            >
-              <span className="font-semibold">{l.label}</span>
-              <span className="text-xs text-gray-400">{l.subtext}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Peso objetivo — opcional, solo si tiene sentido */}
-      {(hasGym || data.activityType === 'FREE') && (
-        <div>
-          <Label>Peso objetivo (kg) — opcional</Label>
-          <Input
-            type="number"
-            placeholder="65"
-            value={data.weightGoalKg ?? ''}
-            onChange={(e) => update({ weightGoalKg: e.target.value ? Number(e.target.value) : null })}
-          />
-        </div>
-      )}
     </div>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Step 3: Configurando
+// ---------------------------------------------------------------------------
+
 function StepGenerating() {
   return (
-    <div className="flex flex-col items-center justify-center gap-8 py-12">
+    <div className="flex flex-col items-center justify-center gap-8 py-16">
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-[#1e3a5f]/10" />
         <div className="absolute inset-0 rounded-full border-4 border-t-[#ea580c] animate-spin" />
@@ -314,7 +439,7 @@ function StepGenerating() {
       </div>
       <div className="text-center">
         <p className="text-lg font-semibold text-[#1e3a5f]">Configurando tu cuenta...</p>
-        <p className="text-sm text-gray-400 mt-1">Calculando calorías, macros y preparando tu espacio</p>
+        <p className="text-sm text-gray-400 mt-1">Calculando tus objetivos iniciales</p>
       </div>
     </div>
   )
@@ -325,8 +450,8 @@ function StepGenerating() {
 // ---------------------------------------------------------------------------
 
 const STEP_LABELS: Record<StepId, string> = {
-  'goal':       'Tu actividad',
-  'physical':   'Tus datos',
+  'goal':       'Tu objetivo',
+  'profile':    'Tu perfil',
   'generating': 'Configurando',
 }
 
@@ -339,7 +464,6 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null)
   const [hasPrefilled, setHasPrefilled] = useState(false)
 
-  // Pre-populate physical data for B2B athletes whose coach already filled their profile
   useEffect(() => {
     const isB2B = (session?.user as { isB2B?: boolean } | undefined)?.isB2B
     if (!isB2B) return
@@ -370,7 +494,6 @@ export default function OnboardingPage() {
 
   const steps = getSteps(data)
   const currentStepId = steps[stepIndex]
-  // Excluir 'generating' del conteo visible — es una pantalla de carga, no un paso real
   const totalSteps = steps.filter(s => s !== 'generating').length
   const progressPct = Math.min(((stepIndex + 1) / totalSteps) * 100, 100)
   const isLastDataStep = steps[stepIndex + 1] === 'generating'
@@ -423,7 +546,7 @@ export default function OnboardingPage() {
 
   const stepContent: Record<StepId, React.ReactNode> = {
     goal:       <StepGoal data={data} update={update} />,
-    physical:   <StepPhysical data={data} update={update} prefilled={hasPrefilled} />,
+    profile:    <StepProfile data={data} update={update} prefilled={hasPrefilled} />,
     generating: <StepGenerating />,
   }
 
@@ -433,7 +556,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <span className="text-xl font-bold text-[#1e3a5f]">Medaliq</span>
           <span className="text-gray-300">·</span>
           <span className="text-gray-500 text-sm flex-1">
@@ -455,7 +578,7 @@ export default function OnboardingPage() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-[600px] w-full mx-auto px-4 py-8 pb-32">
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8 pb-32">
         <div key={currentStepId} className="animate-in fade-in slide-in-from-right-4 duration-200">
           {stepContent[currentStepId]}
         </div>
@@ -470,7 +593,7 @@ export default function OnboardingPage() {
       {/* Footer nav */}
       {!isGeneratingStep && (
         <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <div className="max-w-[600px] mx-auto px-4 py-4 flex gap-3">
+          <div className="max-w-3xl mx-auto px-4 py-4 flex gap-3">
             {stepIndex > 0 && (
               <button
                 onClick={prevStep}

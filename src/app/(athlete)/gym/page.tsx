@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { DAY_LABELS } from '@/lib/constants/sessions'
-import { translateMuscleGroup } from '@/lib/gym-labels'
+import { translateMuscleGroup, translateBodyPart, translateTarget } from '@/lib/gym-labels'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
 import PublicTemplates from './_components/PublicTemplates'
@@ -90,32 +90,165 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   })
 
   if (!assigned) {
-    const coachRelation = await prisma.coachAthlete.findFirst({
-      where: { athleteId, status: 'ACTIVE' },
-      select: { id: true },
-    })
+    const [coachRelation, publicTemplates, healthProfile, featuredExercises] = await Promise.all([
+      prisma.coachAthlete.findFirst({
+        where: { athleteId, status: 'ACTIVE' },
+        select: { id: true },
+      }),
+      prisma.workoutTemplate.findMany({
+        where: { isPublic: true, isActive: true },
+        include: { days: { select: { isRestDay: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.healthProfile.findUnique({
+        where: { userId: athleteId },
+        select: { sport: true },
+      }),
+      prisma.exercise.findMany({
+        where: { coachId: null, gifUrl: { not: null } },
+        select: {
+          id: true, name: true, nameEs: true, bodyPart: true, target: true,
+          gifUrl: true, gifStoredUrl: true,
+        },
+        orderBy: { popularityRank: 'asc' },
+        take: 6,
+      }),
+    ])
 
-    // Sin rutina asignada — mostrar plantillas públicas con banner contextual
-    const publicTemplates = await prisma.workoutTemplate.findMany({
-      where: { isPublic: true, isActive: true },
-      include: { days: { select: { isRestDay: true } } },
-      orderBy: { createdAt: 'asc' },
-    })
+    const isRunner = healthProfile?.sport === 'RUNNING'
 
     return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-4">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+
+        {/* ── HEADER ───────────────────────────────────────────── */}
         {coachRelation ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 flex items-start gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 flex items-start gap-3">
             <span className="text-xl mt-0.5">🏋️</span>
             <div>
               <p className="font-semibold text-blue-800 text-sm">Tu coach aún no te asignó una rutina</p>
-              <p className="text-blue-600 text-xs mt-0.5">
-                Mientras tanto, puedes usar una de estas plantillas para empezar.
+              <p className="text-blue-600 text-xs mt-1">
+                Mientras tanto, entrena con una plantilla o registra una sesión libre.
+              </p>
+              <Link href="/gym/session" className="inline-block mt-2 text-xs font-semibold text-[#ea580c] hover:underline">
+                Registrar sesión libre →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold text-[#1e3a5f]">Tu gym</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Elige una plantilla o construye tu propia rutina.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/gym/exercises"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                <Dumbbell size={14} />
+                Ejercicios
+              </Link>
+              <Link
+                href="/gym/builder"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                + Crear mi rutina
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── RUNNER TIP ───────────────────────────────────────── */}
+        {isRunner && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🏃</span>
+            <div>
+              <p className="font-semibold text-green-800 text-sm">Fuerza complementaria para runners</p>
+              <p className="text-green-700 text-xs mt-1 leading-relaxed">
+                2 sesiones por semana de fuerza mejoran tu economía de carrera y previenen lesiones — prioriza <strong>Full Body</strong> o <strong>Upper/Lower</strong>.
               </p>
             </div>
           </div>
-        ) : null}
-        <PublicTemplates templates={publicTemplates} />
+        )}
+
+        {/* ── PLANTILLAS ───────────────────────────────────────── */}
+        <section>
+          <div className="mb-3">
+            <h2 className="text-base font-bold text-[#1e3a5f]">Plantillas</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Empieza hoy — sin coach, sin configuración.</p>
+          </div>
+          <PublicTemplates templates={publicTemplates} />
+        </section>
+
+        {/* ── BIBLIOTECA WORKOUTX ──────────────────────────────── */}
+        {featuredExercises.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-base font-bold text-[#1e3a5f]">Explora ejercicios</h2>
+                <p className="text-xs text-gray-400 mt-0.5">+1,300 ejercicios con instrucciones y demo animado</p>
+              </div>
+              <Link
+                href="/gym/exercises"
+                className="text-xs font-semibold text-[#ea580c] hover:underline shrink-0"
+              >
+                Ver todos →
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {featuredExercises.map((ex) => {
+                const gif = ex.gifStoredUrl ?? ex.gifUrl
+                return (
+                  <Link
+                    key={ex.id}
+                    href={`/gym/exercises?open=${ex.id}`}
+                    className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
+                  >
+                    <div className="bg-gray-50 aspect-square overflow-hidden relative">
+                      {gif ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={gif}
+                          alt={ex.nameEs ?? ex.name}
+                          loading="lazy"
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-200">
+                          <Dumbbell size={28} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2.5">
+                      <p className="font-semibold text-[11px] text-gray-900 line-clamp-2 leading-snug">
+                        {ex.nameEs ?? ex.name}
+                      </p>
+                      <span className="inline-block mt-1 text-[10px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">
+                        {translateBodyPart(ex.bodyPart)}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── COACH TIP ────────────────────────────────────────── */}
+        <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5">
+          <span className="text-base mt-0.5">👤</span>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            <span className="font-semibold text-gray-700">¿Tienes un entrenador?</span>{' '}
+            Tu coach puede asignarte una rutina personalizada desde su panel — reemplazará automáticamente la plantilla.{' '}
+            <Link href="/coaches" className="text-[#ea580c] font-semibold hover:underline">
+              Buscar coach →
+            </Link>
+          </p>
+        </div>
+
       </div>
     )
   }
@@ -280,13 +413,22 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
             {assigned.coach ? `Coach: ${assigned.coach.name ?? 'Tu coach'} · ` : ''}desde {formatDate(assigned.startDate)}
           </p>
         </div>
-        <Link
-          href="/gym/history"
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
-        >
-          <History size={16} />
-          Historial
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/gym/exercises"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
+          >
+            <Dumbbell size={16} />
+            Ejercicios
+          </Link>
+          <Link
+            href="/gym/history"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#ea580c] transition-colors"
+          >
+            <History size={16} />
+            Historial
+          </Link>
+        </div>
       </div>
 
       {/* Plan context banner */}

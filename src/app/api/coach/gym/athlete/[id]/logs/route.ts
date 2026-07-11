@@ -49,7 +49,13 @@ export async function GET(
       bodyPart: string
       logs: {
         date: string
-        sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null }[]
+        sets: {
+          setNumber: number
+          weightKg: number | null
+          repsCompleted: number | null
+          isPR: boolean
+          setLogType: string
+        }[]
       }[]
     }
   > = {}
@@ -85,6 +91,8 @@ export async function GET(
             setNumber: l.setNumber,
             weightKg: l.weightKg != null ? Number(l.weightKg) : null,
             repsCompleted: l.repsCompleted,
+            isPR: l.isPR,
+            setLogType: l.setLogType,
           })),
       })
     }

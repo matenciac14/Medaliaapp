@@ -34,6 +34,8 @@ import { PrismaCheckInRepository } from '@/infrastructure/db/check-in.repository
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import { PrismaSuggestionRepository } from '@/infrastructure/db/suggestion.repository'
+import { generateSuggestions } from './generate-suggestions'
 
 export type ProcessCheckInInput = {
   userId: string
@@ -47,6 +49,8 @@ export type ProcessCheckInResult = {
   recommendation: string
   severity: 'ok' | 'warning' | 'critical'
   sessionsAdjusted: number
+  /** Populated only when plan.source === 'COACH' — suggestions created instead of auto-applying. */
+  pendingSuggestions: number
 }
 
 /** Full Prisma client (not transaction client) — needed to open $transaction. */
@@ -72,9 +76,29 @@ export async function processCheckIn(
   // ─────────────────────────────────────────────────────────
   // PHASE 1 — Reads (parallel, no side effects, outside tx)
   // ─────────────────────────────────────────────────────────
-  const [prevCheckIn, activePlan] = await Promise.all([
+  const [prevCheckIn, activePlan, assignedWorkout, recentCheckIns] = await Promise.all([
     deps.checkInRepo.findLatest(userId),
     deps.planRepo.findActive(userId),
+    deps.db.assignedWorkout.findFirst({
+      where: { athleteId: userId, isActive: true },
+      include: {
+        template: {
+          include: {
+            days: {
+              where: { isRestDay: false },
+              select: { id: true, warmupNotes: true },
+            },
+          },
+        },
+      },
+    }),
+    // Last 4 check-ins to compute consecutiveLowEnergyWeeks
+    deps.db.weeklyCheckIn.findMany({
+      where: { userId },
+      orderBy: { weekNumber: 'desc' },
+      take: 4,
+      select: { energyLevel: true },
+    }),
   ])
 
   const weekNumber = activePlan
@@ -88,6 +112,10 @@ export async function processCheckIn(
   // ─────────────────────────────────────────────────────────
   // PHASE 2 — Pure evaluation (deterministic, no external I/O)
   // ─────────────────────────────────────────────────────────
+  const hasGymPlan = !!assignedWorkout
+  const sport = hasGymPlan ? 'STRENGTH' : activePlan ? 'RUNNING' : undefined
+  const consecutiveLowEnergyWeeks = countConsecutiveLowEnergy(recentCheckIns)
+
   const planContext: PlanContext = {
     planId: activePlan?.id ?? '',
     currentWeek: activePlan?.currentWeek ?? 1,
@@ -96,6 +124,9 @@ export async function processCheckIn(
     weekNumber,
     hrRestingBaseline: prevCheckIn?.heartRate ?? undefined,
     previousWeight: prevCheckIn?.weight ?? undefined,
+    sport,
+    hasGymPlan,
+    consecutiveLowEnergyWeeks,
   }
 
   const { triggers, adjustments, severity } = evaluateCheckInRules(data, planContext)
@@ -109,6 +140,7 @@ export async function processCheckIn(
   // If any step fails, the entire check-in is rolled back.
   // ─────────────────────────────────────────────────────────
   let sessionsAdjusted = 0
+  let pendingSuggestions = 0
 
   await deps.db.$transaction(async (tx) => {
     const txCheckIn = new PrismaCheckInRepository(tx)
@@ -116,8 +148,8 @@ export async function processCheckIn(
     const txHealthProfile = new PrismaHealthProfileRepository(tx)
     const txUser = new PrismaUserRepository(tx)
 
-    // 1. Persist check-in
-    await txCheckIn.save(userId, {
+    // 1. Persist check-in — capture id for linking suggestions
+    const { id: checkInId } = await txCheckIn.save(userId, {
       ...data,
       trainingAdherence,
       triggers,
@@ -125,8 +157,25 @@ export async function processCheckIn(
       planId: activePlan?.id ?? null,
     })
 
-    // 2. Apply session adjustments to next week (if triggers fired)
-    if (activePlan && triggers.length > 0) {
+    // 2a. COACH plan → generate suggestions instead of auto-applying
+    if (activePlan?.source === 'COACH' && triggers.length > 0) {
+      const nextWeek = activePlan.currentWeek + 1
+      if (nextWeek <= activePlan.totalWeeks) {
+        const suggestions = generateSuggestions(triggers, adjustments, {
+          ...planContext,
+          planId: activePlan.id,
+          nextWeek,
+        })
+        if (suggestions.length > 0) {
+          const txSuggestion = new PrismaSuggestionRepository(tx)
+          await txSuggestion.createMany(userId, checkInId, suggestions)
+          pendingSuggestions = suggestions.length
+        }
+      }
+    }
+
+    // 2b. AI/template plan → auto-apply session adjustments
+    if (activePlan && activePlan.source !== 'COACH' && triggers.length > 0) {
       const nextWeek = activePlan.currentWeek + 1
       if (nextWeek <= activePlan.totalWeeks) {
         sessionsAdjusted = await applySessionAdjustments(
@@ -135,6 +184,21 @@ export async function processCheckIn(
           triggers,
           txPlan
         )
+      }
+    }
+
+    // 2b. Add gym note when pain/RPE triggers fire for GYM athletes (GYM-01)
+    const gymTrigger = triggers.includes('dolor_activo') || triggers.includes('rpe_excesivo')
+    if (assignedWorkout && gymTrigger) {
+      const gymNote = triggers.includes('dolor_activo')
+        ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
+        : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.'
+      for (const day of assignedWorkout.template.days) {
+        if (day.warmupNotes?.includes('[AUTO]')) continue
+        await tx.workoutDay.update({
+          where: { id: day.id },
+          data: { warmupNotes: day.warmupNotes ? `${day.warmupNotes} ${gymNote}` : gymNote },
+        })
       }
     }
 
@@ -155,14 +219,14 @@ export async function processCheckIn(
     }
   }, { timeout: 30_000 })
 
-  return { weekNumber, triggers, adjustments, recommendation, severity, sessionsAdjusted }
+  return { weekNumber, triggers, adjustments, recommendation, severity, sessionsAdjusted, pendingSuggestions }
 }
 
 // ─────────────────────────────────────────────────────────
-// Private helpers
+// Helpers (exported for use in accept suggestion endpoint)
 // ─────────────────────────────────────────────────────────
 
-async function applySessionAdjustments(
+export async function applySessionAdjustments(
   planId: string,
   nextWeekNumber: number,
   triggers: string[],
@@ -217,6 +281,15 @@ async function applySessionAdjustments(
     }
   }
 
+  return count
+}
+
+function countConsecutiveLowEnergy(checkIns: { energyLevel: number | null }[]): number {
+  let count = 0
+  for (const c of checkIns) {
+    if (c.energyLevel !== null && c.energyLevel <= 3) count++
+    else break
+  }
   return count
 }
 

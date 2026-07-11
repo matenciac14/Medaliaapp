@@ -10,9 +10,11 @@ import { Loader2 } from 'lucide-react'
 interface ExerciseOption {
   id: string
   name: string
+  nameEs?: string
   bodyPart: string
   target: string
   equipment: string
+  gif?: string
   coachId: string | null
 }
 
@@ -96,6 +98,81 @@ function blankExercise(order: number): DayExercise {
   return { exerciseId: '', sets: 4, repsScheme: '12-10-8-8', restSeconds: 90, setType: 'NORMAL', notes: '', order }
 }
 
+// ─── SwapModal ─────────────────────────────────────────────────────────────
+
+interface SwapTarget { dayIndex: number; exIndex: number; bodyPart: string }
+
+function SwapModal({
+  target,
+  exerciseLib,
+  onSwap,
+  onClose,
+}: {
+  target: SwapTarget
+  exerciseLib: ExerciseOption[]
+  onSwap: (exerciseId: string) => void
+  onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const candidates = exerciseLib.filter(
+    (ex) =>
+      ex.bodyPart.toLowerCase() === target.bodyPart.toLowerCase() &&
+      (q === '' ||
+        (ex.nameEs ?? ex.name).toLowerCase().includes(q.toLowerCase()))
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Cambiar ejercicio</p>
+            <p className="text-sm font-bold text-[#1e3a5f] mt-0.5">Misma zona: {target.bodyPart}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+          <input
+            type="text"
+            placeholder="Buscar..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+        </div>
+        <div className="overflow-y-auto divide-y divide-gray-50">
+          {candidates.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-8">Sin resultados</p>
+          )}
+          {candidates.map((ex) => (
+            <button
+              key={ex.id}
+              onClick={() => onSwap(ex.id)}
+              className="w-full text-left px-5 py-3 hover:bg-orange-50 transition-colors flex items-center gap-3"
+            >
+              {ex.gif ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ex.gif} alt={ex.nameEs ?? ex.name} className="w-12 h-12 rounded-lg object-contain bg-gray-50 shrink-0" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center text-gray-300 text-lg">💪</div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{ex.nameEs ?? ex.name}</p>
+                <p className="text-xs text-gray-400 truncate">{ex.target} · {ex.equipment}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 export default function EditRoutinePage() {
@@ -120,6 +197,9 @@ export default function EditRoutinePage() {
   const [exerciseLib, setExerciseLib] = useState<ExerciseOption[]>([])
   const [libLoading, setLibLoading] = useState(false)
   const [activeDay, setActiveDay] = useState(0)
+
+  // Quick swap
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null)
 
   // Submit
   const [loading, setLoading] = useState(false)
@@ -163,9 +243,9 @@ export default function EditRoutinePage() {
   useEffect(() => {
     if (step === 3 && exerciseLib.length === 0) {
       setLibLoading(true)
-      fetch('/api/coach/gym/exercises')
+      fetch('/api/coach/gym/exercises?limit=100')
         .then((r) => r.json())
-        .then((data) => setExerciseLib(Array.isArray(data) ? data : []))
+        .then((data) => setExerciseLib(Array.isArray(data?.exercises) ? data.exercises : []))
         .catch(() => {})
         .finally(() => setLibLoading(false))
     }
@@ -448,12 +528,36 @@ export default function EditRoutinePage() {
                         <button onClick={() => removeExercise(activeDay, exIndex)} className="w-6 h-6 rounded flex items-center justify-center text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
                       </div>
                     </div>
-                    <select value={ex.exerciseId} onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none text-gray-800 bg-white">
-                      <option value="">Seleccionar ejercicio...</option>
-                      {exerciseLib.map((lib) => (
-                        <option key={lib.id} value={lib.id}>{lib.name}{!lib.coachId ? '' : ' (tuyo)'}</option>
-                      ))}
-                    </select>
+                    {/* Exercise select + GIF preview + Quick Swap */}
+                    <div className="flex gap-3 items-start">
+                      <div className="flex-1 min-w-0">
+                        <select value={ex.exerciseId} onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none text-gray-800 bg-white">
+                          <option value="">Seleccionar ejercicio...</option>
+                          {exerciseLib.map((lib) => (
+                            <option key={lib.id} value={lib.id}>{lib.nameEs ?? lib.name}{!lib.coachId ? '' : ' (tuyo)'}</option>
+                          ))}
+                        </select>
+                        {ex.exerciseId && (() => {
+                          const sel = exerciseLib.find(e => e.id === ex.exerciseId)
+                          return sel ? (
+                            <button
+                              type="button"
+                              onClick={() => setSwapTarget({ dayIndex: activeDay, exIndex, bodyPart: sel.bodyPart })}
+                              className="mt-1.5 text-xs font-semibold text-[#ea580c] hover:underline"
+                            >
+                              🔄 Cambiar por similar
+                            </button>
+                          ) : null
+                        })()}
+                      </div>
+                      {(() => {
+                        const sel = exerciseLib.find(e => e.id === ex.exerciseId)
+                        return sel?.gif ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={sel.gif} alt={sel.nameEs ?? sel.name} title={sel.nameEs ?? sel.name} className="w-16 h-16 rounded-lg object-contain bg-gray-50 border border-gray-100 shrink-0" />
+                        ) : null
+                      })()}
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
                         <label className="block text-[11px] text-gray-500 mb-0.5">Series</label>
@@ -486,6 +590,19 @@ export default function EditRoutinePage() {
             <button onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#ea580c' }}>Revisar →</button>
           </div>
         </div>
+      )}
+
+      {/* ── QUICK SWAP MODAL ── */}
+      {swapTarget && (
+        <SwapModal
+          target={swapTarget}
+          exerciseLib={exerciseLib}
+          onSwap={(exerciseId) => {
+            updateExercise(swapTarget.dayIndex, swapTarget.exIndex, { exerciseId })
+            setSwapTarget(null)
+          }}
+          onClose={() => setSwapTarget(null)}
+        />
       )}
 
       {/* ── STEP 4 ── */}

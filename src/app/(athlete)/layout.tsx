@@ -10,14 +10,20 @@ export default async function AthleteLayout({ children }: { children: React.Reac
   if (!session?.user?.id) redirect('/login')
 
   // Leer columnas frescas desde DB (no JWT — pueden cambiar sin re-login)
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      name: true, role: true, onboardingCompleted: true,
-      featurePlan: true, featureCheckin: true, featureNutrition: true,
-      featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
-    },
-  })
+  const [dbUser, coachRelation] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        name: true, role: true, onboardingCompleted: true,
+        featurePlan: true, featureCheckin: true, featureNutrition: true,
+        featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
+      },
+    }),
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: session.user.id, status: 'ACTIVE' },
+      select: { id: true },
+    }),
+  ])
 
   if (!dbUser) redirect('/login')
 
@@ -45,7 +51,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <SidebarClient user={user} config={config} />
+      <SidebarClient user={user} config={config} hasCoach={!!coachRelation} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <main className="flex-1 overflow-auto pt-14 lg:pt-0 pb-nav-safe lg:pb-0 animate-fade-up">

@@ -20,7 +20,8 @@ describe('getDailyNutritionTarget — HIGH', () => {
     expect(r.kcal).toBe(2800)
     expect(r.proteinG).toBe(150)
     expect(r.carbsG).toBe(350)
-    expect(r.fatG).toBe(80)
+    // fat = (2800 - 150*4 - 350*4) / 9 = 800/9 ≈ 89
+    expect(r.fatG).toBe(Math.round((2800 - 150 * 4 - 350 * 4) / 9))
     expect(r.label).toBe('Día duro')
     expect(r.intensity).toBe('HIGH')
   })
@@ -53,10 +54,9 @@ describe('getDailyNutritionTarget — LOW', () => {
     expect(r.intensity).toBe('LOW')
   })
 
-  it('proteína y grasa no cambian respecto a otros días', () => {
+  it('proteína consistente', () => {
     const r = getDailyNutritionTarget('LOW', PLAN)
     expect(r.proteinG).toBe(150)
-    expect(r.fatG).toBe(80)
   })
 })
 
@@ -101,11 +101,19 @@ describe('getDailyNutritionTarget — invariantes', () => {
     })
   })
 
-  it('grasa igual en todos los tipos de día', () => {
-    const intensities = ['HIGH', 'MODERATE', 'LOW', 'REST', null]
+  it('macros suman las kcal del día (±9 kcal por redondeo)', () => {
+    const intensities = ['HIGH', 'MODERATE', 'LOW', 'REST', null, undefined] as const
     intensities.forEach(i => {
-      expect(getDailyNutritionTarget(i, PLAN).fatG).toBe(80)
+      const r = getDailyNutritionTarget(i, PLAN)
+      const sum = r.proteinG * 4 + r.carbsG * 4 + r.fatG * 9
+      expect(Math.abs(sum - r.kcal)).toBeLessThanOrEqual(9)
     })
+  })
+
+  it('grasa varía por tipo de día (mayor en HIGH, menor en REST)', () => {
+    const high = getDailyNutritionTarget('HIGH', PLAN).fatG
+    const rest = getDailyNutritionTarget('REST', PLAN).fatG
+    expect(high).toBeGreaterThan(rest)
   })
 
   it('kcal: HIGH > MODERATE > LOW > REST', () => {

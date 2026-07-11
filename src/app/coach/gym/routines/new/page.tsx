@@ -9,9 +9,11 @@ import Link from 'next/link'
 interface ExerciseOption {
   id: string
   name: string
+  nameEs?: string
   bodyPart: string
   target: string
   equipment: string
+  gif?: string
   coachId: string | null
 }
 
@@ -140,9 +142,9 @@ export default function NewRoutinePage() {
   useEffect(() => {
     if (step === 3 && exerciseLib.length === 0) {
       setLibLoading(true)
-      fetch('/api/coach/gym/exercises')
+      fetch('/api/coach/gym/exercises?limit=100')
         .then((r) => r.json())
-        .then((data) => setExerciseLib(Array.isArray(data) ? data : []))
+        .then((data) => setExerciseLib(Array.isArray(data?.exercises) ? data.exercises : []))
         .catch(() => {})
         .finally(() => setLibLoading(false))
     }
@@ -555,19 +557,33 @@ export default function NewRoutinePage() {
                       </div>
                     </div>
 
-                    {/* Exercise select */}
-                    <select
-                      value={ex.exerciseId}
-                      onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 bg-white"
-                    >
-                      <option value="">Seleccionar ejercicio...</option>
-                      {exerciseLib.map((lib) => (
-                        <option key={lib.id} value={lib.id}>
-                          {lib.name}{!lib.coachId ? '' : ' (tuyo)'}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Exercise select + EX-10 GIF preview */}
+                    <div className="flex gap-3 items-start">
+                      <select
+                        value={ex.exerciseId}
+                        onChange={(e) => updateExercise(activeDay, exIndex, { exerciseId: e.target.value })}
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 bg-white"
+                      >
+                        <option value="">Seleccionar ejercicio...</option>
+                        {exerciseLib.map((lib) => (
+                          <option key={lib.id} value={lib.id}>
+                            {lib.nameEs ?? lib.name}{!lib.coachId ? '' : ' (tuyo)'}
+                          </option>
+                        ))}
+                      </select>
+                      {(() => {
+                        const sel = exerciseLib.find(e => e.id === ex.exerciseId)
+                        return sel?.gif ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={sel.gif}
+                            alt={sel.nameEs ?? sel.name}
+                            title={sel.nameEs ?? sel.name}
+                            className="w-16 h-16 rounded-lg object-contain bg-gray-50 border border-gray-100 shrink-0"
+                          />
+                        ) : null
+                      })()}
+                    </div>
 
                     {/* Sets row */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

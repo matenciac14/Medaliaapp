@@ -29,6 +29,7 @@ export type CreateHealthProfile = {
   ftp?: number
   injuries?: string[]
   conditions?: string[]
+  sessionMinutes?: number
   sport?: string
   experienceLevel?: string
   sportDetails?: Record<string, unknown>

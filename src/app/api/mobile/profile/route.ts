@@ -15,13 +15,18 @@ function calcAge(dob: Date): number {
 }
 
 const profilePatchSchema = z.object({
-  dateOfBirth:    z.string().optional(),
-  weightKg:       z.number().min(10).max(500).optional(),
-  weightGoalKg:   z.number().min(10).max(500).optional(),
-  heightCm:       z.number().min(50).max(300).optional(),
-  hrResting:      z.number().min(0).max(250).optional(),
-  hrMax:          z.number().min(0).max(250).optional(),
-  sleepHoursAvg:  z.number().min(0).max(24).optional(),
+  dateOfBirth:     z.string().optional(),
+  weightKg:        z.number().min(10).max(500).optional(),
+  weightGoalKg:    z.number().min(10).max(500).optional(),
+  heightCm:        z.number().min(50).max(300).optional(),
+  hrResting:       z.number().min(0).max(250).optional(),
+  hrMax:           z.number().min(0).max(250).optional(),
+  sleepHoursAvg:   z.number().min(0).max(24).optional(),
+  gender:          z.enum(['male', 'female']).optional(),
+  sport:           z.enum(['RUNNING', 'STRENGTH', 'CYCLING', 'SWIMMING', 'TRIATHLON', 'FOOTBALL']).optional(),
+  experienceLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  injuries:        z.array(z.string().max(100)).max(20).optional(),
+  conditions:      z.array(z.string().max(100)).max(20).optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -39,6 +44,8 @@ export async function GET(req: NextRequest) {
         hrResting: true, hrMax: true,
         sleepHoursAvg: true,
         gender: true,
+        sport: true, experienceLevel: true,
+        injuries: true, conditions: true,
       },
     })
     return ok({ profile: profile ?? null })
@@ -69,9 +76,14 @@ export async function PATCH(req: NextRequest) {
   if (body.weightKg    !== undefined) data.weightKg    = body.weightKg
   if (body.weightGoalKg !== undefined) data.weightGoalKg = body.weightGoalKg
   if (body.heightCm    !== undefined) data.heightCm    = body.heightCm
-  if (body.hrResting   !== undefined) data.hrResting   = body.hrResting
-  if (body.hrMax       !== undefined) data.hrMax       = body.hrMax
-  if (body.sleepHoursAvg !== undefined) data.sleepHoursAvg = body.sleepHoursAvg
+  if (body.hrResting       !== undefined) data.hrResting       = body.hrResting
+  if (body.hrMax           !== undefined) data.hrMax           = body.hrMax
+  if (body.sleepHoursAvg   !== undefined) data.sleepHoursAvg   = body.sleepHoursAvg
+  if (body.gender          !== undefined) data.gender          = body.gender
+  if (body.sport           !== undefined) data.sport           = body.sport
+  if (body.experienceLevel !== undefined) data.experienceLevel = body.experienceLevel
+  if (body.injuries        !== undefined) data.injuries        = body.injuries
+  if (body.conditions      !== undefined) data.conditions      = body.conditions
 
   if (Object.keys(data).length === 0) return badRequest('Nada que actualizar.')
 
@@ -86,6 +98,8 @@ export async function PATCH(req: NextRequest) {
         hrResting: true, hrMax: true,
         sleepHoursAvg: true,
         gender: true,
+        sport: true, experienceLevel: true,
+        injuries: true, conditions: true,
       },
     })
     return ok({ profile })

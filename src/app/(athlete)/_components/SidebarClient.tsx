@@ -14,6 +14,7 @@ import {
   Dumbbell,
   UserCircle,
   MessageSquare,
+  Bell,
   MoreHorizontal,
   X,
 } from 'lucide-react'
@@ -25,14 +26,16 @@ import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 type Props = {
   user: { name: string; role: string }
   config: UserConfig
+  hasCoach?: boolean
 }
 
-export default function SidebarClient({ user, config }: Props) {
+export default function SidebarClient({ user, config, hasCoach = false }: Props) {
   const pathname = usePathname()
   const { features } = config
   const { t } = useLanguage()
   const s = t.app.sidebar
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifCount, setNotifCount] = useState(0)
   const [showMore, setShowMore] = useState(false)
 
   useEffect(() => { setShowMore(false) }, [pathname])
@@ -48,6 +51,17 @@ export default function SidebarClient({ user, config }: Props) {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const load = () =>
+      fetch('/api/notifications')
+        .then(r => r.json())
+        .then(d => setNotifCount(d.unreadCount ?? 0))
+        .catch(() => {})
+    load()
+    const interval = setInterval(load, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
   const allNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard, show: true },
     { href: '/plan',      label: s.plan,        icon: CalendarDays,    show: features.plan },
@@ -55,14 +69,14 @@ export default function SidebarClient({ user, config }: Props) {
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
-    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: true, badge: unreadCount },
+    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
   // Mobile: 4 tabs principales + "Más" para el resto
   const mobileNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard },
-    { href: '/plan',      label: s.plan,        icon: CalendarDays },
+    ...(features.plan ? [{ href: '/plan', label: s.plan, icon: CalendarDays }] : []),
     { href: '/nutrition', label: s.nutrition,   icon: Apple },
     { href: '/checkin',   label: s.checkin,     icon: ClipboardCheck },
   ]
@@ -70,7 +84,7 @@ export default function SidebarClient({ user, config }: Props) {
   const moreLinks = [
     { href: '/gym',      label: s.gym,      icon: Dumbbell },
     { href: '/progress', label: s.progress, icon: TrendingUp },
-    { href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount },
+    ...(hasCoach ? [{ href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount }] : []),
     { href: '/profile',  label: s.profile,  icon: UserCircle },
   ]
 
@@ -82,10 +96,18 @@ export default function SidebarClient({ user, config }: Props) {
     <>
       {/* ── Sidebar desktop ── */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
-        <div className="px-6 py-5 border-b border-white/10">
+        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#ea580c] flex items-center justify-center font-bold text-white text-sm">M</div>
             <span className="text-xl font-bold tracking-tight">Medaliq</span>
+          </Link>
+          <Link href="/notifications" className="relative flex items-center justify-center min-w-[32px] min-h-[32px] text-white/60 hover:text-white transition-colors">
+            <Bell size={18} />
+            {notifCount > 0 && (
+              <span className="absolute top-0 right-0 min-w-[14px] h-[14px] rounded-full bg-[#ea580c] text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
           </Link>
         </div>
 
@@ -150,6 +172,14 @@ export default function SidebarClient({ user, config }: Props) {
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />
+          <Link href="/notifications" className="relative flex items-center justify-center min-w-[44px] min-h-[44px] text-white/80 hover:text-white">
+            <Bell size={20} />
+            {notifCount > 0 && (
+              <span className="absolute top-2 right-2 min-w-[14px] h-[14px] rounded-full bg-[#ea580c] text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </Link>
           <button
             onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"

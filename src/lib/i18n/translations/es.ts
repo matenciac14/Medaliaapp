@@ -203,7 +203,7 @@ export const es: Translations = {
       nutrition: 'Nutrición',
       progress: 'Progreso',
       log: 'Registros',
-      gym: 'Ejercicios',
+      gym: 'Gym',
       aiCoach: 'Coach',
       coachPanel: 'Panel Coach',
       profile: 'Mi perfil',

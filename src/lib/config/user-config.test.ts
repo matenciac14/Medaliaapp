@@ -107,9 +107,9 @@ describe('getUserPlan', () => {
     expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'FREE')).toBe('PRO')
   })
 
-  it('devuelve TRIAL cuando BILLING_ENABLED=true y tier=TRIAL', () => {
+  it('devuelve FREE cuando BILLING_ENABLED=true y tier=TRIAL (TRIAL eliminado del modelo)', () => {
     process.env.BILLING_ENABLED = 'true'
-    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'TRIAL')).toBe('TRIAL')
+    expect(getUserPlan(DEFAULT_USER_CONFIG.features, 'TRIAL')).toBe('FREE')
   })
 
   it('devuelve PRO cuando BILLING_ENABLED=true y tier=PRO', () => {

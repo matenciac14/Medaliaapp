@@ -49,6 +49,7 @@ export class PrismaPlanRepository implements IPlanRepository {
       phase: weekData?.phase ?? 'BASE',
       startDate: plan.startDate,
       sessions,
+      source: plan.generatedBy as 'AI' | 'COACH' | 'AI_COACH_APPROVED',
     }
   }
 

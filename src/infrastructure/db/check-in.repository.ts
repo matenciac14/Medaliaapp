@@ -23,7 +23,7 @@ export class PrismaCheckInRepository implements ICheckInRepository {
     }
   }
 
-  async save(userId: string, data: SaveCheckInPayload): Promise<void> {
+  async save(userId: string, data: SaveCheckInPayload): Promise<{ id: string }> {
     const hasPain = (data.painLevel ?? 0) >= 5
     const record = {
       weightKg: data.weight ?? undefined,
@@ -61,10 +61,13 @@ export class PrismaCheckInRepository implements ICheckInRepository {
         where: { id: existing.id },
         data: record,
       })
+      return { id: existing.id }
     } else {
-      await this.db.weeklyCheckIn.create({
+      const created = await this.db.weeklyCheckIn.create({
         data: { userId, planId: data.planId ?? null, weekNumber: data.weekNumber, ...record },
+        select: { id: true },
       })
+      return { id: created.id }
     }
   }
 

@@ -146,6 +146,20 @@ export async function GET(req: NextRequest) {
 
   // ─── Plan-based path (no AssignedWorkout, but FUERZA sessions in plan) ──────
   if (!activePlan || weekNumber === null || weekNumber < 1) {
+    // Fallback: atleta sin plan activo pero con sesiones FUERZA libres registradas esta semana
+    const freeStrengthSessions = await prisma.sessionLog.findMany({
+      where: {
+        userId: athleteId,
+        freeSessionType: 'FUERZA',
+        plannedSessionId: null,
+        completedAt: { gte: monday, lte: sunday },
+      },
+      select: { id: true, completedAt: true, durationMin: true, rpe: true, notes: true },
+      orderBy: { completedAt: 'asc' },
+    })
+    if (freeStrengthSessions.length > 0) {
+      return NextResponse.json({ sessions: freeStrengthSessions, type: 'free', weekOffset, isCurrentWeek })
+    }
     return NextResponse.json({ error: 'Sin rutina asignada' }, { status: 404 })
   }
 

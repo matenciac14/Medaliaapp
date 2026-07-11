@@ -50,10 +50,15 @@ export default function NutritionAdjustmentCard({
         <div>
           <p className="text-sm font-semibold text-amber-900">Ajuste nutricional pendiente</p>
           <p className="text-xs text-amber-700 mt-0.5">
-            Tu sesión fue de intensidad{' '}
-            <span className="font-medium">{intensityLabel[actualIntensity] ?? actualIntensity}</span>
-            {' '}(planeada: {intensityLabel[plannedIntensity] ?? plannedIntensity}).
-            El sistema sugiere ajustar tus macros de hoy.
+            {actualIntensity === 'HIGH' && plannedIntensity !== 'HIGH'
+              ? 'Entrenaste más duro de lo planeado — '
+              : actualIntensity === 'REST' || actualIntensity === 'LOW'
+                ? 'Tu sesión fue más suave de lo planeado — '
+                : 'La intensidad de tu sesión cambió — '}
+            el sistema ajustó tus macros de{' '}
+            <span className="font-medium">{intensityLabel[plannedIntensity] ?? plannedIntensity}</span>
+            {' '}a{' '}
+            <span className="font-medium">{intensityLabel[actualIntensity] ?? actualIntensity}</span>.
           </p>
         </div>
       </div>

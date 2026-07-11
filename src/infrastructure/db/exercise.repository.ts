@@ -14,16 +14,26 @@ function resolveGif(gifStoredUrl: string | null, gifUrl: string | null): string 
 
 export class PrismaExerciseRepository implements IExerciseRepository {
   async findAll(filters: ExerciseFilters = {}): Promise<{ exercises: Exercise[]; total: number }> {
-    const { bodyPart, target, equipment, q, page = 1, limit = PAGE_SIZE_DEFAULT } = filters
+    const { bodyPart, target, equipment, q, page = 1, limit = PAGE_SIZE_DEFAULT, coachId } = filters
     const take = Math.min(limit, PAGE_SIZE_MAX)
     const skip = (page - 1) * take
 
-    const where = {
-      ...(bodyPart ? { bodyPart: { equals: bodyPart, mode: 'insensitive' as const } } : {}),
-      ...(target ? { target: { equals: target, mode: 'insensitive' as const } } : {}),
-      ...(equipment ? { equipment: { equals: equipment, mode: 'insensitive' as const } } : {}),
-      ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
+    // AND[] evita colisión de múltiples OR en el mismo objeto de Prisma
+    const conditions: object[] = [
+      coachId ? { OR: [{ coachId }, { coachId: null }] } : { coachId: null },
+    ]
+    if (bodyPart) conditions.push({ bodyPart: { equals: bodyPart, mode: 'insensitive' as const } })
+    if (target) conditions.push({ target: { equals: target, mode: 'insensitive' as const } })
+    if (equipment) conditions.push({ equipment: { equals: equipment, mode: 'insensitive' as const } })
+    if (q) {
+      conditions.push({
+        OR: [
+          { name: { contains: q, mode: 'insensitive' as const } },
+          { nameEs: { contains: q, mode: 'insensitive' as const } },
+        ],
+      })
     }
+    const where = { AND: conditions }
 
     const [rows, total] = await Promise.all([
       prisma.exercise.findMany({
@@ -67,62 +77,52 @@ export class PrismaExerciseRepository implements IExerciseRepository {
   }
 
   async upsertMany(exercises: UpsertExerciseData[]): Promise<{ synced: number }> {
+    const BATCH_SIZE = 50
     let synced = 0
-    for (const ex of exercises) {
-      await prisma.exercise.upsert({
-        where: { id: ex.id },
-        create: {
-          id: ex.id,
-          name: ex.name,
-          bodyPart: ex.bodyPart,
-          target: ex.target,
-          equipment: ex.equipment,
-          difficulty: ex.difficulty ?? null,
-          mechanic: ex.mechanic ?? null,
-          force: ex.force ?? null,
-          caloriesPerMinute: ex.caloriesPerMinute ?? null,
-          met: ex.met ?? null,
-          popularityRank: ex.popularityRank ?? null,
-          isUnilateral: ex.isUnilateral,
-          recommendedSets: ex.recommendedSets ?? null,
-          recommendedReps: ex.recommendedReps ?? null,
-          description: ex.description ?? null,
-          secondaryMuscles: ex.secondaryMuscles,
-          instructions: ex.instructions,
-          gifUrl: ex.gifUrl,
-          source: ex.source,
-          syncedAt: ex.syncedAt,
+
+    for (let i = 0; i < exercises.length; i += BATCH_SIZE) {
+      const batch = exercises.slice(i, i + BATCH_SIZE)
+      await prisma.$transaction(
+        async (tx) => {
+          for (const ex of batch) {
+            const data = {
+              name: ex.name,
+              nameEs: ex.nameEs ?? null,
+              bodyPart: ex.bodyPart,
+              target: ex.target,
+              equipment: ex.equipment,
+              difficulty: ex.difficulty ?? null,
+              mechanic: ex.mechanic ?? null,
+              force: ex.force ?? null,
+              caloriesPerMinute: ex.caloriesPerMinute ?? null,
+              met: ex.met ?? null,
+              popularityRank: ex.popularityRank ?? null,
+              isUnilateral: ex.isUnilateral,
+              recommendedSets: ex.recommendedSets ?? null,
+              recommendedReps: ex.recommendedReps ?? null,
+              description: ex.description ?? null,
+              secondaryMuscles: ex.secondaryMuscles,
+              instructions: ex.instructions,
+              instructionsEs: ex.instructionsEs ?? [],
+              gifUrl: ex.gifUrl,
+              source: ex.source,
+              syncedAt: ex.syncedAt,
+            }
+            await tx.exercise.upsert({ where: { id: ex.id }, create: { id: ex.id, ...data }, update: data })
+          }
         },
-        update: {
-          name: ex.name,
-          bodyPart: ex.bodyPart,
-          target: ex.target,
-          equipment: ex.equipment,
-          difficulty: ex.difficulty ?? null,
-          mechanic: ex.mechanic ?? null,
-          force: ex.force ?? null,
-          caloriesPerMinute: ex.caloriesPerMinute ?? null,
-          met: ex.met ?? null,
-          popularityRank: ex.popularityRank ?? null,
-          isUnilateral: ex.isUnilateral,
-          recommendedSets: ex.recommendedSets ?? null,
-          recommendedReps: ex.recommendedReps ?? null,
-          description: ex.description ?? null,
-          secondaryMuscles: ex.secondaryMuscles,
-          instructions: ex.instructions,
-          gifUrl: ex.gifUrl,
-          source: ex.source,
-          syncedAt: ex.syncedAt,
-        },
-      })
-      synced++
+        { timeout: 30_000 },
+      )
+      synced += batch.length
     }
+
     return { synced }
   }
 
   private toEntity(row: {
     id: string
     name: string
+    nameEs: string | null
     bodyPart: string
     target: string
     equipment: string
@@ -138,6 +138,7 @@ export class PrismaExerciseRepository implements IExerciseRepository {
     description: string | null
     secondaryMuscles: string[]
     instructions: string[]
+    instructionsEs: string[]
     gifUrl: string | null
     gifStoredUrl: string | null
     source: string
@@ -146,6 +147,7 @@ export class PrismaExerciseRepository implements IExerciseRepository {
     return {
       id: row.id,
       name: row.name,
+      nameEs: row.nameEs ?? undefined,
       bodyPart: row.bodyPart,
       target: row.target,
       equipment: row.equipment,
@@ -161,6 +163,7 @@ export class PrismaExerciseRepository implements IExerciseRepository {
       description: row.description ?? undefined,
       secondaryMuscles: row.secondaryMuscles,
       instructions: row.instructions,
+      instructionsEs: row.instructionsEs,
       gif: resolveGif(row.gifStoredUrl, row.gifUrl),
       source: row.source,
       syncedAt: row.syncedAt ?? undefined,

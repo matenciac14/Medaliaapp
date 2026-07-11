@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
             take: 1,
             include: {
               weeks: {
+                where: { startDate: { lte: now } },
                 orderBy: { weekNumber: 'asc' },
                 include: {
                   sessions: {

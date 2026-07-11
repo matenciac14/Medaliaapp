@@ -214,6 +214,104 @@ describe('evaluateCheckInRules — nutricion_baja', () => {
 })
 
 // ---------------------------------------------------------------------------
+// CI-B-04 — Déficit nutricional crítico
+// ---------------------------------------------------------------------------
+describe('evaluateCheckInRules — nutricion_deficit_critico (CI-B-04)', () => {
+  it('nutritionAdherence <= 2 AND energyLevel <= 3 → nutricion_deficit_critico + critical', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ nutritionAdherence: 2, energyLevel: 3 }),
+      baseCtx()
+    )
+    expect(r.triggers).toContain('nutricion_deficit_critico')
+    expect(r.severity).toBe('critical')
+  })
+
+  it('nutritionAdherence = 1 AND energyLevel = 1 → crítico', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ nutritionAdherence: 1, energyLevel: 1 }),
+      baseCtx()
+    )
+    expect(r.triggers).toContain('nutricion_deficit_critico')
+    expect(r.triggers).not.toContain('nutricion_baja') // no se duplica
+  })
+
+  it('nutritionAdherence = 2 AND energyLevel = 4 → solo nutricion_baja (energía no suficientemente baja)', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ nutritionAdherence: 2, energyLevel: 4 }),
+      baseCtx()
+    )
+    expect(r.triggers).not.toContain('nutricion_deficit_critico')
+    expect(r.triggers).toContain('nutricion_baja')
+  })
+
+  it('nutritionAdherence = 3 AND energyLevel = 2 → solo nutricion_baja (adherencia no <= 2)', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ nutritionAdherence: 3, energyLevel: 2 }),
+      baseCtx()
+    )
+    expect(r.triggers).not.toContain('nutricion_deficit_critico')
+    expect(r.triggers).toContain('nutricion_baja')
+  })
+
+  it('nutricion_deficit_critico y nutricion_baja son mutuamente excluyentes', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ nutritionAdherence: 1, energyLevel: 1 }),
+      baseCtx()
+    )
+    expect(r.triggers).toContain('nutricion_deficit_critico')
+    expect(r.triggers).not.toContain('nutricion_baja')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CI-B-03 — Sobrecarga gym
+// ---------------------------------------------------------------------------
+describe('evaluateCheckInRules — gym_sobrecarga (CI-B-03)', () => {
+  it('hasGymPlan=true + rpe >= 8 → gym_sobrecarga (cualquier fase)', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ rpe: 8 }),
+      baseCtx({ hasGymPlan: true, phase: 'DESARROLLO' })
+    )
+    expect(r.triggers).toContain('gym_sobrecarga')
+    expect(r.severity).toBe('warning')
+  })
+
+  it('hasGymPlan=true + rpe >= 8 en BASE → gym_sobrecarga, NO rpe_excesivo', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ rpe: 9 }),
+      baseCtx({ hasGymPlan: true, phase: 'BASE' })
+    )
+    expect(r.triggers).toContain('gym_sobrecarga')
+    expect(r.triggers).not.toContain('rpe_excesivo')
+  })
+
+  it('hasGymPlan=false + rpe >= 8 en BASE → rpe_excesivo (regla running, sin cambio)', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ rpe: 9 }),
+      baseCtx({ hasGymPlan: false, phase: 'BASE' })
+    )
+    expect(r.triggers).toContain('rpe_excesivo')
+    expect(r.triggers).not.toContain('gym_sobrecarga')
+  })
+
+  it('hasGymPlan=true + rpe = 7 → sin gym_sobrecarga (por debajo del umbral)', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ rpe: 7 }),
+      baseCtx({ hasGymPlan: true })
+    )
+    expect(r.triggers).not.toContain('gym_sobrecarga')
+  })
+
+  it('hasGymPlan=true + rpe undefined → sin gym_sobrecarga', () => {
+    const r = evaluateCheckInRules(
+      okCheckIn({ rpe: undefined }),
+      baseCtx({ hasGymPlan: true })
+    )
+    expect(r.triggers).not.toContain('gym_sobrecarga')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Pérdida de peso rápida
 // ---------------------------------------------------------------------------
 describe('evaluateCheckInRules — perdida_peso_rapida', () => {

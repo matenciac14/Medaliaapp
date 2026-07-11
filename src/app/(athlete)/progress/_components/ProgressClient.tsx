@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, Plus } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +57,29 @@ export type MeasurementPoint = {
   thighsCm: number | null
 }
 
+export type GymAdherencePoint = {
+  isoWeek: number
+  completed: number
+  total: number
+}
+
+export type MonthlyActivity = {
+  yearMonth: string   // "2026-07"
+  label: string       // "Jul 2026"
+  gymCount: number
+  runCount: number
+}
+
+export type DailyWeightPoint = {
+  date: string   // ISO string
+  kg: number
+}
+
+export type NutritionAdherencePoint = {
+  date: string        // YYYY-MM-DD
+  adherencePct: number  // 0..1.2+
+}
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -67,6 +90,11 @@ export type ProgressClientProps = {
   gymPRs: GymPR[]
   recentActivity: HistoryItem[]
   measurementCheckins: MeasurementPoint[]
+  gymAdherenceByWeek: GymAdherencePoint[]
+  monthlyActivity: MonthlyActivity[]
+  dailyWeightPoints: DailyWeightPoint[]
+  nutritionAdherence: NutritionAdherencePoint[]
+  nutritionTargetKcal: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -464,12 +492,310 @@ function MeasurementsChart({ data }: { data: MeasurementPoint[] }) {
 // ─── Periods ──────────────────────────────────────────────────────────────────
 
 const PERIODS = [
-  { label: '4 sem',  weeks: 4 },
-  { label: '8 sem',  weeks: 8 },
-  { label: '12 sem', weeks: 12 },
+  { label: '1M',  weeks: 4,  months: 1  },
+  { label: '3M',  weeks: 12, months: 3  },
+  { label: '6M',  weeks: 26, months: 6  },
+  { label: '1A',  weeks: 52, months: 12 },
 ] as const
 
-type Period = 4 | 8 | 12
+type Period = 4 | 12 | 26 | 52
+
+// ─── Monthly Activity Chart ───────────────────────────────────────────────────
+
+function MonthlyActivityChart({ data }: { data: MonthlyActivity[] }) {
+  if (data.length === 0) return (
+    <p className="text-sm text-gray-400 text-center py-4">Sin sesiones registradas en este período.</p>
+  )
+
+  const maxTotal = Math.max(...data.map(d => d.gymCount + d.runCount), 1)
+
+  return (
+    <div className="space-y-2">
+      {data.map(({ yearMonth, label, gymCount, runCount }) => {
+        const total = gymCount + runCount
+        const gymPct = Math.round((gymCount / maxTotal) * 100)
+        const runPct = Math.round((runCount / maxTotal) * 100)
+        return (
+          <div key={yearMonth} className="flex items-center gap-3">
+            <span className="text-[10px] text-gray-400 w-16 shrink-0">{label}</span>
+            <div className="flex-1 flex gap-0.5 h-5 rounded overflow-hidden bg-gray-100">
+              {gymCount > 0 && (
+                <div
+                  className="h-full flex items-center justify-center transition-all"
+                  style={{ width: `${gymPct}%`, minWidth: 20, backgroundColor: '#ea580c' }}
+                >
+                  <span className="text-[9px] font-bold text-white">{gymCount}</span>
+                </div>
+              )}
+              {runCount > 0 && (
+                <div
+                  className="h-full flex items-center justify-center transition-all"
+                  style={{ width: `${runPct}%`, minWidth: 20, backgroundColor: '#1e3a5f' }}
+                >
+                  <span className="text-[9px] font-bold text-white">{runCount}</span>
+                </div>
+              )}
+            </div>
+            <span className="text-xs font-semibold text-gray-700 w-10 text-right shrink-0">{total}</span>
+          </div>
+        )
+      })}
+      <div className="flex gap-4 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-[#ea580c]" />
+          <span className="text-[10px] text-gray-500">Gym</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-[#1e3a5f]" />
+          <span className="text-[10px] text-gray-500">Running</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Daily Weight Chart ───────────────────────────────────────────────────────
+
+function DailyWeightChart({ data, goalLine }: { data: DailyWeightPoint[]; goalLine?: number }) {
+  if (data.length === 0) return null
+
+  const values = data.map(d => d.kg)
+  const minVal = Math.min(...values) - 0.5
+  const maxVal = Math.max(...values) + 0.5
+
+  const W = 600
+  const H = 120
+  const PAD_X = 8
+  const PAD_Y = 12
+  const range = maxVal - minVal || 1
+  const n = data.length
+
+  function toX(i: number) { return n <= 1 ? W / 2 : PAD_X + (i / (n - 1)) * (W - PAD_X * 2) }
+  function toY(val: number) { return PAD_Y + (1 - (val - minVal) / range) * (H - PAD_Y * 2) }
+
+  const points = data.map((d, i) => ({ x: toX(i), y: toY(d.kg), kg: d.kg, date: d.date }))
+  const polyline = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  const area = n > 1
+    ? `M${points[0].x.toFixed(1)},${H} ` + points.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ` L${points[n-1].x.toFixed(1)},${H} Z`
+    : ''
+  const goalY = goalLine !== undefined ? toY(goalLine) : null
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 130 }} overflow="visible">
+        {area && <path d={area} fill="#1e3a5f" fillOpacity={0.06} />}
+        {goalY !== null && (
+          <g>
+            <line x1={PAD_X} y1={goalY} x2={W - PAD_X} y2={goalY} stroke="#16a34a" strokeWidth={1.5} strokeDasharray="5,4" opacity={0.7} />
+            <text x={W - PAD_X + 4} y={goalY + 4} fontSize={9} fill="#16a34a" fontWeight="600">Meta</text>
+          </g>
+        )}
+        {n > 1 && <polyline points={polyline} fill="none" stroke="#1e3a5f" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3.5} fill="white" stroke="#1e3a5f" strokeWidth={1.5} />
+            <title>{new Date(p.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}: {p.kg} kg</title>
+          </g>
+        ))}
+        {n > 0 && (
+          <>
+            <text x={points[0].x} y={points[0].y - 8} textAnchor="middle" fontSize={9} fill="#1e3a5f" fontWeight="700">{points[0].kg} kg</text>
+            {n > 1 && <text x={points[n-1].x} y={points[n-1].y - 8} textAnchor="middle" fontSize={9} fill="#1e3a5f" fontWeight="700">{points[n-1].kg} kg</text>}
+          </>
+        )}
+      </svg>
+      <div className="flex justify-between mt-1 px-1">
+        <span className="text-[9px] text-gray-400">{new Date(data[0].date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</span>
+        {n > 2 && <span className="text-[9px] text-gray-400">{new Date(data[Math.floor(n / 2)].date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</span>}
+        {n > 1 && <span className="text-[9px] text-gray-400">{new Date(data[n-1].date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Benchmark Form ───────────────────────────────────────────────────────────
+
+const SPORT_OPTIONS = [
+  { value: 'RUNNING', label: 'Running' },
+  { value: 'STRENGTH', label: 'Fuerza' },
+  { value: 'CYCLING', label: 'Ciclismo' },
+  { value: 'SWIMMING', label: 'Natación' },
+]
+
+const METRIC_OPTIONS: Record<string, { value: string; label: string; unit: string }[]> = {
+  RUNNING: [
+    { value: '5K_TIME', label: '5K', unit: 'seconds' },
+    { value: '10K_TIME', label: '10K', unit: 'seconds' },
+    { value: 'HALF_MARATHON_TIME', label: 'Media Maratón', unit: 'seconds' },
+    { value: 'MARATHON_TIME', label: 'Maratón', unit: 'seconds' },
+    { value: 'PACE_Z2', label: 'Ritmo Z2 (sec/km)', unit: 'seconds' },
+  ],
+  STRENGTH: [
+    { value: '1RM_SQUAT', label: '1RM Sentadilla', unit: 'kg' },
+    { value: '1RM_DEADLIFT', label: '1RM Peso Muerto', unit: 'kg' },
+    { value: '1RM_BENCH', label: '1RM Press Banca', unit: 'kg' },
+  ],
+  CYCLING: [
+    { value: 'FTP_WATTS', label: 'FTP (watts)', unit: 'watts' },
+  ],
+  SWIMMING: [
+    { value: 'CSS_PACE', label: 'CSS Pace (sec/100m)', unit: 'seconds' },
+  ],
+}
+
+function toSeconds(mm: string, ss: string): number {
+  return (parseInt(mm) || 0) * 60 + (parseInt(ss) || 0)
+}
+
+function AddBenchmarkForm({ onAdded }: { onAdded: (b: BenchmarkPoint) => void }) {
+  const [open, setOpen] = useState(false)
+  const [sport, setSport] = useState('RUNNING')
+  const [metric, setMetric] = useState('5K_TIME')
+  const [mm, setMm] = useState('')
+  const [ss, setSs] = useState('')
+  const [kgVal, setKgVal] = useState('')
+  const [testedAt, setTestedAt] = useState(new Date().toISOString().slice(0, 10))
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const metrics = METRIC_OPTIONS[sport] ?? []
+  const selectedMetric = metrics.find(m => m.value === metric) ?? metrics[0]
+  const isTime = selectedMetric?.unit === 'seconds'
+
+  function handleSportChange(s: string) {
+    setSport(s)
+    setMetric(METRIC_OPTIONS[s]?.[0]?.value ?? '')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const value = isTime ? toSeconds(mm, ss) : parseFloat(kgVal)
+    if (!value || value <= 0) { setError('Ingresa un valor válido'); return }
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/progress/benchmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport, metric: selectedMetric?.value ?? metric, value, unit: selectedMetric?.unit ?? 'kg', testedAt, notes: notes.trim() || undefined }),
+      })
+      const data = await res.json() as { benchmark?: BenchmarkPoint; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Error guardando')
+      if (data.benchmark) {
+        onAdded({ ...data.benchmark, testedAt: new Date(data.benchmark.testedAt).toISOString() })
+      }
+      setMm(''); setSs(''); setKgVal(''); setNotes('')
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-sm font-semibold text-[#ea580c] hover:text-[#c2410c] transition-colors"
+      >
+        <Plus size={15} />
+        {open ? 'Cancelar' : 'Agregar resultado'}
+      </button>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-50 rounded-xl space-y-3 border border-gray-200">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Deporte</label>
+              <select
+                value={sport}
+                onChange={e => handleSportChange(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+              >
+                {SPORT_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Métrica</label>
+              <select
+                value={metric}
+                onChange={e => setMetric(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+              >
+                {metrics.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {isTime ? (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Minutos</label>
+                  <input
+                    type="number" min="0" max="999" placeholder="00"
+                    value={mm} onChange={e => setMm(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Segundos</label>
+                  <input
+                    type="number" min="0" max="59" placeholder="00"
+                    value={ss} onChange={e => setSs(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-600 block mb-1">
+                  Valor ({selectedMetric?.unit ?? 'kg'})
+                </label>
+                <input
+                  type="number" min="0" step="0.5" placeholder="0"
+                  value={kgVal} onChange={e => setKgVal(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Fecha</label>
+              <input
+                type="date"
+                value={testedAt} onChange={e => setTestedAt(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Notas (opcional)</label>
+              <input
+                type="text" placeholder="Ej: pista cubierta, calor..."
+                value={notes} onChange={e => setNotes(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/30"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-xl bg-[#ea580c] text-white py-2.5 text-sm font-semibold hover:bg-[#c2410c] transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Guardando...' : 'Guardar resultado'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
 
 // ─── Main Client Component ────────────────────────────────────────────────────
 
@@ -483,14 +809,23 @@ export default function ProgressClient({
   gymPRs,
   recentActivity,
   measurementCheckins,
+  gymAdherenceByWeek,
+  monthlyActivity,
+  dailyWeightPoints,
+  nutritionAdherence,
 }: ProgressClientProps) {
   const [period, setPeriod] = useState<Period>(12)
+  const [localBenchmarks, setLocalBenchmarks] = useState<BenchmarkPoint[]>(benchmarks)
+
+  const selectedPeriod    = PERIODS.find(p => p.weeks === period) ?? PERIODS[1]
+  const months            = selectedPeriod.months
 
   const weightData        = weightCheckins.slice(-period)
   const hrData            = hrCheckins.slice(-period)
   const wellbeingSlice    = wellbeingData.slice(-period)
   const weekData          = weeks.slice(0, period)
   const measurementSlice  = measurementCheckins.slice(-period)
+  const monthlySlice      = monthlyActivity.slice(-months)
 
   // Guard: si no hay datos suficientes, mostrar mensaje
   if (weightData.length === 0 && hrData.length === 0) {
@@ -589,6 +924,33 @@ export default function ProgressClient({
           maxVal={weightMax}
         />
       </SectionCard>
+      )}
+
+      {/* Peso diario (DailyLog) — DAILY-03 */}
+      {dailyWeightPoints.length > 1 && (
+        <SectionCard title={`Peso Diario — últimos 90 días (${dailyWeightPoints.length} registros)`}>
+          <div className="flex items-center gap-5 mb-3 flex-wrap">
+            <div>
+              <p className="text-xl font-bold text-gray-900">{dailyWeightPoints[dailyWeightPoints.length - 1].kg} kg</p>
+              <p className="text-xs text-gray-400">Hoy</p>
+            </div>
+            {dailyWeightPoints.length > 1 && (
+              <TrendBadge
+                start={dailyWeightPoints[0].kg}
+                end={dailyWeightPoints[dailyWeightPoints.length - 1].kg}
+                lowerIsBetter
+                unit=" kg"
+              />
+            )}
+            {weightGoal && (
+              <div>
+                <p className="text-sm font-semibold text-[#16a34a]">{weightGoal} kg</p>
+                <p className="text-xs text-gray-400">Objetivo</p>
+              </div>
+            )}
+          </div>
+          <DailyWeightChart data={dailyWeightPoints} goalLine={weightGoal ?? undefined} />
+        </SectionCard>
       )}
 
       {/* FC Reposo */}
@@ -771,9 +1133,44 @@ export default function ProgressClient({
         </SectionCard>
       )}
 
+      {/* ── Adherencia gym por semana ────────────────────────────────────────── */}
+      {gymAdherenceByWeek.length > 1 && (
+        <SectionCard title="Adherencia Gym — por semana">
+          <div className="space-y-2">
+            {gymAdherenceByWeek.slice(-period).map(({ isoWeek, completed, total }) => {
+              const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+              return (
+                <div key={isoWeek} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 w-16 shrink-0">Sem {isoWeek}</span>
+                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626',
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-700 w-16 text-right shrink-0">
+                    {completed}/{total} · {pct}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Actividad mensual (EJ-05) ───────────────────────────────────────── */}
+      {monthlySlice.length > 0 && (
+        <SectionCard title={`Actividad Mensual — últimos ${months} ${months === 1 ? 'mes' : 'meses'}`}>
+          <MonthlyActivityChart data={monthlySlice} />
+        </SectionCard>
+      )}
+
       {/* ── Historial de actividad ──────────────────────────────────────────── */}
       {recentActivity.length > 0 && (
-        <SectionCard title={`Historial de actividad — últimas ${recentActivity.length} sesiones`}>
+        <SectionCard title={recentActivity.length === 1 ? 'Historial de actividad — última sesión' : `Historial de actividad — últimas ${recentActivity.length} sesiones`}>
           <div className="space-y-2">
             {recentActivity.map(item => (
               <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
@@ -801,10 +1198,52 @@ export default function ProgressClient({
         </SectionCard>
       )}
 
+      {/* ── Adherencia nutricional — últimos 30 días ────────────────────────── */}
+      {nutritionAdherence.length > 0 && (
+        <SectionCard title="Adherencia nutricional — 30 días">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">Días con registro vs meta calórica</p>
+              <span className="text-sm font-bold" style={{ color: '#ea580c' }}>
+                Promedio: {Math.round(
+                  (nutritionAdherence.reduce((s, d) => s + d.adherencePct, 0) / nutritionAdherence.length) * 100
+                )}%
+              </span>
+            </div>
+            <div className="flex items-end gap-0.5 h-12">
+              {nutritionAdherence.map((d) => {
+                const heightPct = Math.round((Math.min(d.adherencePct, 1.2) / 1.2) * 100)
+                const color = d.adherencePct >= 0.8 ? '#22c55e' : d.adherencePct >= 0.6 ? '#eab308' : '#ef4444'
+                return (
+                  <div
+                    key={d.date}
+                    className="flex-1 flex flex-col justify-end h-full"
+                    title={`${d.date}: ${Math.round(d.adherencePct * 100)}%`}
+                  >
+                    <div
+                      style={{
+                        height: `${heightPct}%`,
+                        backgroundColor: color,
+                        borderRadius: '2px 2px 0 0',
+                        minHeight: 2,
+                      }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>{nutritionAdherence[0]?.date?.slice(5)}</span>
+              <span>{nutritionAdherence[nutritionAdherence.length - 1]?.date?.slice(5)}</span>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
       {/* ── Tests de rendimiento (PerformanceBenchmarks) ───────────────────── */}
-      {benchmarks.length > 0 && (() => {
+      {(() => {
         const grouped: Record<string, BenchmarkPoint[]> = {}
-        for (const b of benchmarks) {
+        for (const b of localBenchmarks) {
           if (!grouped[b.sport]) grouped[b.sport] = []
           grouped[b.sport].push(b)
         }
@@ -834,6 +1273,12 @@ export default function ProgressClient({
                   </div>
                 </div>
               ))}
+              {localBenchmarks.length === 0 && (
+                <p className="text-sm text-gray-400">Aún no tienes tests registrados. Agrega tu primer resultado.</p>
+              )}
+              <div className="pt-3 border-t border-gray-100">
+                <AddBenchmarkForm onAdded={b => setLocalBenchmarks(prev => [b, ...prev])} />
+              </div>
             </div>
           </SectionCard>
         )

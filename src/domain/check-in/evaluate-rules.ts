@@ -7,11 +7,14 @@ import type { CheckInInput } from './check-in.types'
 import { CHECK_IN_THRESHOLDS } from './check-in.types'
 
 export type CheckInContext = {
-  hrRestingBaseline?: number   // FC reposo del check-in anterior (dynamic, not hardcoded 62)
-  phase: string                // e.g. 'BASE', 'DESARROLLO', 'AFINAMIENTO'
+  hrRestingBaseline?: number        // FC reposo del check-in anterior (dynamic, not hardcoded 62)
+  phase: string                     // e.g. 'BASE', 'DESARROLLO', 'AFINAMIENTO'
   currentWeek: number
   totalWeeks: number
-  previousWeight?: number      // kg — to detect rapid weight loss
+  previousWeight?: number           // kg — to detect rapid weight loss
+  sport?: string                    // 'RUNNING' | 'STRENGTH' | undefined
+  hasGymPlan?: boolean              // true if athlete has an active assigned workout
+  consecutiveLowEnergyWeeks?: number // for GYM_DELOAD suggestion
 }
 
 export type RuleEvaluation = {
@@ -47,15 +50,27 @@ export function evaluateCheckInRules(
     severity = 'warning'
   }
 
-  // RPE muy alto en fase BASE
+  // RPE muy alto en fase BASE (running)
   if (
     checkIn.rpe !== undefined &&
     checkIn.rpe >= CHECK_IN_THRESHOLDS.HIGH_RPE &&
-    context.phase === 'BASE'
+    context.phase === 'BASE' &&
+    !context.hasGymPlan
   ) {
     triggers.push('rpe_excesivo')
     adjustments.push('La intensidad está por encima del objetivo — mantener Z2 estricto')
     severity = 'warning'
+  }
+
+  // CI-B-03 — Sobrecarga en gym: RPE >= 8 para atletas con plan de gym (cualquier fase)
+  if (
+    context.hasGymPlan &&
+    checkIn.rpe !== undefined &&
+    checkIn.rpe >= CHECK_IN_THRESHOLDS.HIGH_RPE
+  ) {
+    triggers.push('gym_sobrecarga')
+    adjustments.push('RPE de gym elevado — considera reducir volumen o intensidad esta semana')
+    if (severity === 'ok') severity = 'warning'
   }
 
   // Dolor/lesión — critical
@@ -90,10 +105,25 @@ export function evaluateCheckInRules(
     if (severity === 'ok') severity = 'warning'
   }
 
-  // Adherencia nutricional baja
+  // CI-B-04 — Déficit nutricional crítico: adherencia muy baja + energía muy baja
   if (
     checkIn.nutritionAdherence !== undefined &&
-    checkIn.nutritionAdherence < 4
+    checkIn.nutritionAdherence <= 2 &&
+    checkIn.energyLevel !== undefined &&
+    checkIn.energyLevel <= CHECK_IN_THRESHOLDS.LOW_ENERGY
+  ) {
+    triggers.push('nutricion_deficit_critico')
+    adjustments.push(
+      'Adherencia nutricional crítica junto con energía muy baja — revisa tu ingesta calórica con urgencia'
+    )
+    severity = 'critical'
+  }
+
+  // Adherencia nutricional baja (regla general — no aplica si ya se detectó déficit crítico)
+  if (
+    checkIn.nutritionAdherence !== undefined &&
+    checkIn.nutritionAdherence < 4 &&
+    !triggers.includes('nutricion_deficit_critico')
   ) {
     triggers.push('nutricion_baja')
     adjustments.push(

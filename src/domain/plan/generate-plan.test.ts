@@ -28,7 +28,7 @@ import { estimateHRMax, calculateHRZones, calculateTDEE, calculateMacros } from 
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
-import { resolveWorkoutDayId, generatePlanUseCase } from './generate-plan.use-case'
+import { resolveWorkoutDayId, generatePlanUseCase, computePaceHints } from './generate-plan.use-case'
 
 // ── Fixtures de atleta — representan onboarding inputs ───────────────────────
 
@@ -373,5 +373,39 @@ describe('generatePlan — resolveSportConfig post-generation', () => {
       expect(validSportTypes.has(sportType)).toBe(true)
       expect(validSportGoals.has(sportGoal)).toBe(true)
     })
+  })
+})
+
+// ── Pace calibration (computePaceHints) ──────────────────────────────────────
+
+describe('computePaceHints', () => {
+  // 5K en 25:00 = 1500 segundos → pace base = 5:00/km
+  const hints = computePaceHints(1500)
+
+  it('easy pace is ~35% slower than race pace', () => {
+    // 5:00/km × 1.35 = 6:45/km
+    expect(hints.easy).toBe('6:45 min/km')
+  })
+
+  it('tempo pace is ~10% slower than race pace', () => {
+    // 5:00/km × 1.10 = 5:30/km
+    expect(hints.tempo).toBe('5:30 min/km')
+  })
+
+  it('interval pace equals race pace', () => {
+    // 5:00/km × 1.00 = 5:00/km
+    expect(hints.interval).toBe('5:00 min/km')
+  })
+
+  it('formats sub-10-second seconds correctly with zero padding', () => {
+    // 5K en 20:00 = 1200s → pace base = 4:00/km × 1.35 = 5:24/km
+    const h = computePaceHints(1200)
+    expect(h.easy).toBe('5:24 min/km')
+  })
+
+  it('handles slower runners (5K en 40:00)', () => {
+    // 40:00 = 2400s → pace base = 8:00/km × 1.35 = 10:48/km
+    const h = computePaceHints(2400)
+    expect(h.easy).toBe('10:48 min/km')
   })
 })

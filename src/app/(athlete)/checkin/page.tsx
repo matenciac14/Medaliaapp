@@ -11,9 +11,10 @@ export default async function CheckinPage() {
 
   const userId = session.user.id
   const hasNutrition = session.user.features?.nutrition ?? false
+  const hasGym = session.user.features?.gym ?? false
 
-  // Fetch en paralelo: plan activo + check-ins + timezone del usuario
-  const [activePlan, checkIns, userRecord] = await Promise.all([
+  // Fetch en paralelo: plan activo + check-ins + timezone + sugerencias pendientes + perfil
+  const [activePlan, checkIns, userRecord, pendingSuggestions, healthProfile] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
@@ -56,6 +57,15 @@ export default async function CheckinPage() {
       },
     }),
     prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    prisma.checkInSuggestion.findMany({
+      where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
+      select: { id: true, type: true, title: true, description: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.healthProfile.findUnique({
+      where: { userId },
+      select: { weightKg: true, hrResting: true },
+    }),
   ])
 
   const tz = userRecord?.timezone ?? 'America/Bogota'
@@ -73,14 +83,15 @@ export default async function CheckinPage() {
   // 'submitted' → ya envió esta semana
   // 'early'     → Lun-Jue, aún no envió → mostrar resumen semana pasada + banner
   // 'open'      → Vie-Dom, aún no envió → formulario directo
+  const hasPlan = session.user.features?.plan ?? false
   const checkInState: CheckInState =
-    thisWeekCheckIn ? 'submitted' :
-    isEarlyInWeek   ? 'early'     :
+    thisWeekCheckIn        ? 'submitted' :
+    isEarlyInWeek && hasPlan ? 'early'   :
     'open'
 
   // Sesiones de la semana actual
   let weekSessions: WeekSession[] = []
-  let weekLabel = '5 minutos para ajustar tu plan'
+  let weekLabel = activePlan ? '5 minutos para ajustar tu plan' : 'Registra tu semana'
   let weekAdherence = { completed: 0, total: 0 }
 
   if (activePlan) {
@@ -132,8 +143,8 @@ export default async function CheckinPage() {
     : null
 
   const prevMetrics: PrevMetrics = {
-    weightKg:          prevCheckIn?.weightKg ?? null,
-    hrResting:         prevCheckIn?.hrResting ?? null,
+    weightKg:          prevCheckIn?.weightKg ?? healthProfile?.weightKg ?? null,
+    hrResting:         prevCheckIn?.hrResting ?? healthProfile?.hrResting ?? null,
     sleepHours:        prevCheckIn?.sleepHours ?? null,
     energyLevel:       prevCheckIn?.energyLevel ?? null,
     hardestSessionRpe: prevCheckIn?.hardestSessionRpe ?? null,
@@ -163,11 +174,13 @@ export default async function CheckinPage() {
       prevMetrics={prevMetrics}
       weekLabel={weekLabel}
       hasNutrition={hasNutrition}
+      hasGym={hasGym}
       weekAdherence={weekAdherence}
       checkInState={checkInState}
       submittedAt={thisWeekCheckIn?.recordedAt ?? null}
       submittedTriggers={thisWeekCheckIn?.adjustmentsTriggered ?? []}
       lastWeekSummary={lastWeekSummary}
+      initialSuggestions={pendingSuggestions}
     />
   )
 }

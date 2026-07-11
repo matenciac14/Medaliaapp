@@ -98,7 +98,8 @@ describe('computeProgressionUpdates', () => {
     expect(updates[0].suggestedNextWeightKg).toBe(104.5) // 102 + 2.5
   })
 
-  it('returns empty when not all sets completed', () => {
+  it('suggests max+2.5 when >90% sets completed (2/3 = 66% — no change)', () => {
+    // 2/3 = 66% → between thresholds → no suggestion
     const sets: SetInput[] = [
       { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
       { workoutExerciseId: 'we-1', setNumber: 2, weightKg: 100, repsCompleted: 0, completed: false },
@@ -107,11 +108,36 @@ describe('computeProgressionUpdates', () => {
     expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
   })
 
+  it('suggests max-2.5 when <60% sets completed (1/3 = 33%)', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+      { workoutExerciseId: 'we-1', setNumber: 2, weightKg: 100, repsCompleted: 0, completed: false },
+      { workoutExerciseId: 'we-1', setNumber: 3, weightKg: 100, repsCompleted: 0, completed: false },
+    ]
+    const updates = computeProgressionUpdates(sets, weSetsCountMap)
+    expect(updates).toHaveLength(1)
+    expect(updates[0].suggestedNextWeightKg).toBe(97.5) // 100 - 2.5
+  })
+
+  it('floors suggested weight at 0 when decrement would go negative', () => {
+    const sets: SetInput[] = [
+      { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 2, repsCompleted: 0, completed: false },
+      { workoutExerciseId: 'we-1', setNumber: 2, weightKg: 2, repsCompleted: 0, completed: false },
+      { workoutExerciseId: 'we-1', setNumber: 3, weightKg: 2, repsCompleted: 0, completed: false },
+    ]
+    const updates = computeProgressionUpdates(sets, weSetsCountMap)
+    expect(updates).toHaveLength(1)
+    expect(updates[0].suggestedNextWeightKg).toBe(0)
+  })
+
   it('returns empty when fewer sets than planned', () => {
     const sets: SetInput[] = [
       { workoutExerciseId: 'we-1', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
     ]
-    expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
+    // 1/3 = 33% → down, but only 1 set submitted — still qualifies for down rule
+    const updates = computeProgressionUpdates(sets, weSetsCountMap)
+    expect(updates).toHaveLength(1)
+    expect(updates[0].suggestedNextWeightKg).toBe(97.5)
   })
 
   it('ignores sets without workoutExerciseId', () => {

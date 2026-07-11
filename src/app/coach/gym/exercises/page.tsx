@@ -3,174 +3,250 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import ExerciseForm from './_components/ExerciseForm'
-import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
+import ExercisesGrid from './_components/ExercisesGrid'
 
 interface Props {
-  searchParams: Promise<{ bodyPart?: string; equipment?: string; adding?: string }>
+  searchParams: Promise<{ bodyPart?: string; q?: string; adding?: string; page?: string }>
 }
+
+const PAGE_SIZE = 48
 
 export default async function ExercisesPage({ searchParams }: Props) {
   const session = await auth()
-
-  if (!session?.user?.id || session.user.role !== 'COACH') {
-    redirect('/dashboard')
-  }
+  if (!session?.user?.id || session.user.role !== 'COACH') redirect('/dashboard')
 
   const coachId = session.user.id
-  const params = await searchParams
-  const { bodyPart, equipment, adding } = params
+  const { bodyPart, q, adding, page: pageStr } = await searchParams
+  const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
+  const skip = (page - 1) * PAGE_SIZE
 
-  const exercises = await prisma.exercise.findMany({
-    where: {
-      AND: [
-        { OR: [{ coachId }, { coachId: null }] },
-        bodyPart ? { bodyPart: { contains: bodyPart, mode: 'insensitive' } } : {},
-        equipment ? { equipment: { contains: equipment, mode: 'insensitive' } } : {},
+  const conditions: object[] = [{ OR: [{ coachId }, { coachId: null }] }]
+  if (bodyPart) conditions.push({ bodyPart: { equals: bodyPart, mode: 'insensitive' as const } })
+  if (q) {
+    conditions.push({
+      OR: [
+        { name: { contains: q, mode: 'insensitive' as const } },
+        { nameEs: { contains: q, mode: 'insensitive' as const } },
       ],
-    },
-    orderBy: [{ bodyPart: 'asc' }, { name: 'asc' }],
-    select: {
-      id: true, name: true, bodyPart: true, target: true,
-      equipment: true, mechanic: true, description: true,
-      gifUrl: true, coachId: true, source: true,
-    },
-  })
+    })
+  }
+  const where = { AND: conditions }
+  const baseWhere = { AND: [{ OR: [{ coachId }, { coachId: null }] }] }
 
+  const [exercises, total, totalAll, customCount] = await Promise.all([
+    prisma.exercise.findMany({
+      where,
+      orderBy: [{ popularityRank: 'asc' }, { name: 'asc' }],
+      skip,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        name: true,
+        nameEs: true,
+        bodyPart: true,
+        target: true,
+        equipment: true,
+        gifUrl: true,
+        gifStoredUrl: true,
+        coachId: true,
+      },
+    }),
+    prisma.exercise.count({ where }),
+    prisma.exercise.count({ where: baseWhere }),
+    prisma.exercise.count({ where: { coachId } }),
+  ])
+
+  const bodyPartKeys = Object.keys(BODY_PART_LABELS)
   const showForm = adding === '1'
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  function paginationUrl(targetPage: number) {
+    const p = new URLSearchParams()
+    if (bodyPart) p.set('bodyPart', bodyPart)
+    if (q) p.set('q', q)
+    if (targetPage > 1) p.set('page', String(targetPage))
+    return `/coach/gym/exercises${p.toString() ? `?${p.toString()}` : ''}`
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div>
-          <Link
-            href="/coach/gym"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-2 transition-colors"
-          >
-            <span>←</span> Volver al gym
-          </Link>
-          <h1 className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>
-            Biblioteca de ejercicios
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {exercises.length} ejercicio{exercises.length !== 1 ? 's' : ''} disponibles
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <Link
+              href="/coach/gym"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-2 transition-colors"
+            >
+              ← Volver al gym
+            </Link>
+            <h1 className="text-2xl font-black" style={{ color: '#1e3a5f' }}>
+              Biblioteca de ejercicios
+            </h1>
+          </div>
+          {!showForm && (
+            <Link
+              href="/coach/gym/exercises?adding=1"
+              className="px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+              style={{ backgroundColor: '#ea580c' }}
+            >
+              + Agregar ejercicio
+            </Link>
+          )}
         </div>
-        {!showForm && (
-          <Link
-            href="/coach/gym/exercises?adding=1"
-            className="self-start sm:self-auto px-4 py-2 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#ea580c' }}
+
+        {/* Inline form */}
+        {showForm && (
+          <div className="mb-6">
+            <ExerciseForm />
+          </div>
+        )}
+
+        {/* Hero stats */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-3xl font-black" style={{ color: '#1e3a5f' }}>
+              {totalAll.toLocaleString('es-CO')}
+            </p>
+            <p className="text-xs text-gray-400 font-medium mt-0.5 uppercase tracking-wide">
+              ejercicios disponibles
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-3xl font-black" style={{ color: '#1e3a5f' }}>
+              {bodyPartKeys.length}
+            </p>
+            <p className="text-xs text-gray-400 font-medium mt-0.5 uppercase tracking-wide">
+              grupos musculares
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-3xl font-black" style={{ color: '#ea580c' }}>
+              {customCount}
+            </p>
+            <p className="text-xs text-gray-400 font-medium mt-0.5 uppercase tracking-wide">
+              ejercicios tuyos
+            </p>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <form method="GET" className="mb-4 flex gap-2">
+          {bodyPart && <input type="hidden" name="bodyPart" value={bodyPart} />}
+          <input
+            name="q"
+            defaultValue={q ?? ''}
+            placeholder="Buscar por nombre..."
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-800 placeholder-gray-300"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#1e3a5f' }}
           >
-            + Agregar ejercicio
+            Buscar
+          </button>
+          {(q || bodyPart) && (
+            <a
+              href="/coach/gym/exercises"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
+            >
+              Limpiar
+            </a>
+          )}
+        </form>
+
+        {/* Body part chips */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <Link
+            href={q ? `/coach/gym/exercises?q=${encodeURIComponent(q)}` : '/coach/gym/exercises'}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+              !bodyPart
+                ? 'border-transparent text-white'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+            }`}
+            style={!bodyPart ? { backgroundColor: '#1e3a5f' } : {}}
+          >
+            Todos
           </Link>
+          {bodyPartKeys.map(bp => {
+            const active = bodyPart === bp
+            const href = `/coach/gym/exercises?bodyPart=${encodeURIComponent(bp)}${q ? `&q=${encodeURIComponent(q)}` : ''}`
+            return (
+              <Link
+                key={bp}
+                href={href}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                  active
+                    ? 'border-transparent text-white'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}
+                style={active ? { backgroundColor: '#ea580c' } : {}}
+              >
+                {translateBodyPart(bp)}
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Results count */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-gray-500">
+            {total.toLocaleString('es-CO')} resultado{total !== 1 ? 's' : ''}
+            {bodyPart ? ` · ${translateBodyPart(bodyPart)}` : ''}
+            {q ? ` · "${q}"` : ''}
+          </p>
+          {totalPages > 1 && (
+            <p className="text-xs text-gray-400">
+              Pág. {page} / {totalPages}
+            </p>
+          )}
+        </div>
+
+        {/* Grid — client component handles click → modal (EX-09) */}
+        {exercises.length === 0 ? (
+          <div className="py-20 text-center text-gray-400">
+            <p className="text-5xl mb-4">🔍</p>
+            <p className="font-semibold text-gray-600">Sin resultados</p>
+            <p className="text-sm mt-1">
+              Intenta con otro filtro o{' '}
+              <a href="/coach/gym/exercises" className="text-orange-500 hover:underline">
+                ver todos
+              </a>
+            </p>
+          </div>
+        ) : (
+          <ExercisesGrid exercises={exercises} />
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-8">
+            {page > 1 && (
+              <Link
+                href={paginationUrl(page - 1)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                ← Anterior
+              </Link>
+            )}
+            <span className="text-sm text-gray-500 font-medium">
+              {page} / {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={paginationUrl(page + 1)}
+                className="px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Siguiente →
+              </Link>
+            )}
+          </div>
         )}
       </div>
-
-      {/* Inline form */}
-      {showForm && (
-        <div className="mb-6">
-          <ExerciseForm />
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-        <FilterForm bodyPart={bodyPart} equipment={equipment} />
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Ejercicio</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Parte del cuerpo</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Músculo</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Equipo</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Tipo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {exercises.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
-                  No hay ejercicios con esos filtros
-                </td>
-              </tr>
-            ) : (
-              exercises.map((ex) => (
-                <tr key={ex.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{ex.name}</p>
-                    {ex.description && (
-                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{ex.description}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
-                    {translateBodyPart(ex.bodyPart)}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-gray-600">
-                    {translateTarget(ex.target)}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-gray-600">
-                    {ex.equipment}
-                  </td>
-                  <td className="px-4 py-3">
-                    {!ex.coachId ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700">
-                        Global
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700">
-                        Tuyo
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
-  )
-}
-
-function FilterForm({ bodyPart, equipment }: { bodyPart?: string; equipment?: string }) {
-  return (
-    <form method="GET" className="flex flex-wrap gap-3">
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Parte del cuerpo:</label>
-        <input
-          name="bodyPart"
-          defaultValue={bodyPart ?? ''}
-          placeholder="ej. upper legs"
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 w-32"
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Equipo:</label>
-        <input
-          name="equipment"
-          defaultValue={equipment ?? ''}
-          placeholder="ej. barbell"
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 w-28"
-        />
-      </div>
-      <button
-        type="submit"
-        className="px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
-        style={{ backgroundColor: '#1e3a5f' }}
-      >
-        Filtrar
-      </button>
-      <a
-        href="/coach/gym/exercises"
-        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
-      >
-        Limpiar
-      </a>
-    </form>
   )
 }

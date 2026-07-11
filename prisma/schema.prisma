@@ -109,10 +109,11 @@ model User {
   // Rutina semanal self-directed (sin plan)
   weeklyRoutine      WeeklyRoutine?
 
-  // Constructor Visual de Nutrición (coach)
-  nutritionTemplates    NutritionTemplate[]    @relation("CoachNutritionTemplates")
-  assignedNutritionPlan AssignedNutritionPlan? @relation("AthleteNutritionPlan")
-  coachNutritionPlans   AssignedNutritionPlan[] @relation("CoachNutritionPlans")
+  // Constructor Visual de Nutrición (coach y atleta B2C)
+  nutritionTemplates        NutritionTemplate[]    @relation("CoachNutritionTemplates")
+  athleteNutritionTemplates NutritionTemplate[]    @relation("AthleteNutritionTemplates")
+  assignedNutritionPlan     AssignedNutritionPlan? @relation("AthleteNutritionPlan")
+  coachNutritionPlans       AssignedNutritionPlan[] @relation("CoachNutritionPlans")
 
   // Notificaciones in-app
   notifications  Notification[]
@@ -120,6 +121,27 @@ model User {
   // Propuestas de alimentos a la librería global
   proposedFoods      FoodProposal[] @relation("ProposedFoods")
   reviewedProposals  FoodProposal[] @relation("ReviewedProposals")
+
+  // Gamificación y wearables (DB-09 a DB-11)
+  activityStreak     ActivityStreak?
+  achievements       UserAchievement[]
+  wearableConnections WearableConnection[]
+
+  // Nutrición avanzada (DB-12, DB-17, DB-18, DB-19)
+  plannedMeals       PlannedMeal[]
+  waterLogs          WaterLog[]
+  recipes            Recipe[]
+  mealPlanVersionsAssigned MealPlanVersion[] @relation("MealPlanVersionAssigner")
+
+  // Progreso visual (DB-20)
+  progressPhotos     ProgressPhoto[]
+
+  // Sugerencias de ajuste del check-in (CI-DB-01)
+  checkInSuggestions CheckInSuggestion[]
+
+  // Propuestas nutricionales del coach al atleta
+  coachNutritionProposalsSent     CoachNutritionProposal[] @relation("CoachNutritionProposalsSent")
+  coachNutritionProposalsReceived CoachNutritionProposal[] @relation("CoachNutritionProposalsReceived")
 }
 
 enum UserRole {
@@ -238,6 +260,7 @@ model HealthProfile {
   sport          String?   // RUNNING | CYCLING | SWIMMING | TRIATHLON | FOOTBALL | STRENGTH
   sportGoal      String?   // RACE | BODY_RECOMPOSITION | GENERAL_FITNESS (migrado de config.sport.goal)
   experienceLevel String?  // BEGINNER | INTERMEDIATE | ADVANCED
+  sessionMinutes  Int?     // tiempo por sesión: 30, 45, 60, 90
   sportDetails   Json      @default("{}")  // campos específicos por deporte
   // Fuente de cada dato — preparado para integraciones con dispositivos
   dataSources    Json      @default("{}")  // { hrMax: {source:'garmin', updatedAt:''}, ftp: {...} }
@@ -298,6 +321,7 @@ enum PlanSource {
   AI
   COACH
   AI_COACH_APPROVED
+  ATHLETE
 }
 
 model PlanWeek {
@@ -477,7 +501,8 @@ model WeeklyCheckIn {
   notes                String?
   adjustmentsTriggered String[]
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestions CheckInSuggestion[]
 
   // Unicidad manejada por dos partial indexes en SQL (ver migration fix_checkin_plan_scope):
   //   WHERE planId IS NOT NULL → unique (userId, planId, weekNumber)
@@ -510,9 +535,12 @@ model Exercise {
   description       String?
   secondaryMuscles  String[]
   instructions      String[]
+  nameEs            String?   // nombre en español (WorkoutX lang=es)
+  instructionsEs    String[]  // instrucciones en español
 
   gifUrl            String?   // URL CDN WorkoutX — null para ejercicios custom del coach
   gifStoredUrl      String?   // URL S3 propia — null hasta Fase 4
+  videoUrl          String?   // YouTube URL o Vercel Blob URL
 
   source            String    @default("workoutx")  // "workoutx" | "custom" | "manual"
   syncedAt          DateTime?
@@ -632,6 +660,7 @@ model GymSession {
   date              DateTime
   durationMin       Int?
   rpe               Int?     // 1-10
+  caloriesBurned    Int?     // kcal estimadas (durationMin × avgCaloriesPerMinute de los ejercicios)
   notes             String?
   completed         Boolean  @default(false)
 
@@ -661,6 +690,7 @@ model SetLog {
   completed         Boolean @default(false)
   isPR              Boolean    @default(false)
   setLogType        SetLogType @default(WORK) // tipo de set — excluye WARMUP/DROPSET de volumen y PRs
+  rpe               Int?       // Rating of Perceived Exertion 1-10 para este set
   notes             String?
 
   session         GymSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -767,6 +797,7 @@ model NutritionPlan {
   carbsHardG     Int
   carbsEasyG     Int
   fatG           Int
+  waterMlTarget  Int?            @default(2000) // meta de hidratación diaria (ml) — DB-18
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -798,7 +829,8 @@ model MealPlan {
   generatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions MealPlanVersion[]
 }
 
 // ─── LIBRERÍA DE ALIMENTOS ──────────────────────────────────────────────────
@@ -837,6 +869,8 @@ model Food {
   mealTemplateItems     MealTemplateItem[]
   nutritionTemplateItems NutritionTemplateFoodItem[]
   proposals             FoodProposal[]
+  plannedMeals          PlannedMeal[]
+  recipeIngredients     RecipeIngredient[]
 
   @@index([category])
   @@index([isActive])
@@ -1065,21 +1099,24 @@ enum NutritionDayType {
   REST
 }
 
-// Plan nutricional reutilizable del coach — se asigna a atletas como un template
+// Plan nutricional reutilizable — del coach o del atleta B2C (coachId XOR athleteId)
 model NutritionTemplate {
   id          String   @id @default(cuid())
-  coachId     String
+  coachId     String?  // null si es template propio del atleta B2C
+  athleteId   String?  // null si es template del coach; FK → User
   name        String
   description String?
   goal        String?  // "RENDIMIENTO", "PÉRDIDA DE PESO", "GANANCIA MUSCULAR", "MANTENIMIENTO"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  coach       User                    @relation("CoachNutritionTemplates", fields: [coachId], references: [id], onDelete: Cascade)
+  coach       User?                   @relation("CoachNutritionTemplates",  fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete     User?                   @relation("AthleteNutritionTemplates", fields: [athleteId], references: [id], onDelete: Cascade)
   days        NutritionTemplateDay[]
   assignments AssignedNutritionPlan[]
 
   @@index([coachId])
+  @@index([athleteId])
 }
 
 // Un día por tipo (HARD/EASY/REST) dentro del template
@@ -1212,4 +1249,186 @@ model AdminAuditLog {
   @@index([adminId])
   @@index([targetUserId])
   @@index([createdAt(sort: Desc)])
+}
+
+// ─── GAMIFICACIÓN — DB-09, DB-10 ─────────────────────────────────────────────
+
+model ActivityStreak {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActivityAt DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+model UserAchievement {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // "STREAK_10" | "SESSIONS_50" | "MONTHS_3" | "PLAN_COMPLETE"
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
+// ─── WEARABLES — DB-11 ───────────────────────────────────────────────────────
+
+model WearableConnection {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String    // "strava" | "garmin" | "healthkit"
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  scopes       String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+// ─── NUTRICIÓN AVANZADA — DB-12, DB-17, DB-18, DB-19 ────────────────────────
+
+model PlannedMeal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  mealType  MealType
+  foodId    String
+  food      Food     @relation(fields: [foodId], references: [id])
+  grams     Float
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model Recipe {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  ingredients RecipeIngredient[]
+  createdAt   DateTime           @default(now())
+
+  @@index([userId])
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodId   String
+  food     Food   @relation(fields: [foodId], references: [id])
+  grams    Float
+
+  @@index([recipeId])
+}
+
+model WaterLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  mlLogged  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model MealPlanVersion {
+  id           String   @id @default(cuid())
+  userId       String
+  mealPlanId   String
+  mealPlan     MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  version      Int
+  planData     Json
+  assignedAt   DateTime @default(now())
+  assignedById String?
+  assignedBy   User?    @relation("MealPlanVersionAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, mealPlanId])
+}
+
+// ─── PROGRESO VISUAL — DB-20 ─────────────────────────────────────────────────
+
+model ProgressPhoto {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url         String   // Vercel Blob URL
+  takenAt     DateTime
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, takenAt])
+}
+
+// ─── CHECK-IN SUGERENCIAS (CI-DB-01) ────────────────────────────────────────
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum SuggestionType {
+  PLAN_ADJUSTMENT
+  RECOVERY_WEEK
+  NUTRITION_CHANGE
+  GYM_DELOAD
+}
+
+model CheckInSuggestion {
+  id          String           @id @default(cuid())
+  userId      String
+  checkInId   String
+  type        SuggestionType
+  status      SuggestionStatus @default(PENDING)
+  title       String
+  description String
+  payload     Json             // datos específicos del ajuste sugerido
+  expiresAt   DateTime         // checkIn.recordedAt + 7 días
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIn WeeklyCheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([checkInId])
+}
+
+model CoachNutritionProposal {
+  id           String                  @id @default(cuid())
+  coachId      String
+  athleteId    String
+  message      String
+  deltaKcal    Int                     @default(0)
+  deltaProtein Int                     @default(0)
+  deltaCarbs   Int                     @default(0)
+  deltaFat     Int                     @default(0)
+  status       CoachProposalStatus     @default(PENDING)
+  respondedAt  DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  coach   User @relation("CoachNutritionProposalsSent",     fields: [coachId],   references: [id], onDelete: Cascade)
+  athlete User @relation("CoachNutritionProposalsReceived", fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId, status])
+  @@index([coachId])
+}
+
+enum CoachProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

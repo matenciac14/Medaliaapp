@@ -18,6 +18,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import StreakShareButton from '../_components/StreakShareButton'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -117,9 +118,10 @@ function getGreeting() {
 }
 
 function formatDate() {
-  return new Date().toLocaleDateString('es-CO', {
+  const s = new Date().toLocaleDateString('es-CO', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 
@@ -131,7 +133,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const rawWeekOffset = parseInt(weekOffsetParam ?? '0') || 0
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -179,6 +181,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       take: 60,
       select: { date: true },
     }),
+    prisma.checkInSuggestion.count({
+      where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
+    }),
   ])
 
   if (!dbUser) redirect('/login')
@@ -194,7 +199,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   // ── Lifecycle: detectar plan expirado → RECOVERY / FREE ───────────────────
-  type DashboardMode = 'TRAINING' | 'RECOVERY' | 'FREE'
+  type DashboardMode = 'TRAINING' | 'RECOVERY' | 'FREE' | 'GYM'
   type CompletedPlanInfo = { endDate: Date; name: string; totalWeeks: number; sessionsLogged: number; sessionsTotal: number }
   let lastCompletedPlanInfo: CompletedPlanInfo | null = null
 
@@ -247,9 +252,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : null
   const dashboardMode: DashboardMode = activePlan
     ? 'TRAINING'
-    : lastCompletedPlanInfo && recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 14
-      ? 'RECOVERY'
-      : 'FREE'
+    : assignedWorkoutRaw
+      ? 'GYM'
+      : lastCompletedPlanInfo && recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 14
+        ? 'RECOVERY'
+        : 'FREE'
 
   const firstName = (dbUser.name ?? dbUser.email ?? 'Atleta').split(' ')[0]
 
@@ -540,7 +547,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     streakDays, formStatus, last4WeeksAdherencePct, planPhase: planData.phase, isCurrentWeek,
   }) : null
   const freeModeSummary = (dashboardMode === 'FREE' || dashboardMode === 'RECOVERY')
-    ? buildFreeModeSummary({ weekSessionCount, weekSessionTarget, todayRoutineDay, dashboardMode, recoveryDaysSinceEnd })
+    ? buildFreeModeSummary({ weekSessionCount, weekSessionTarget, todayRoutineDay, dashboardMode: dashboardMode as 'FREE' | 'RECOVERY', recoveryDaysSinceEnd })
+    : null
+  const gymModeSummary: string | null = dashboardMode === 'GYM'
+    ? weekSessionCount === 0
+      ? `Rutina activa: ${assignedWorkout?.template.name ?? 'Fuerza'}. ¡A entrenar!`
+      : `${weekSessionCount} de ${weekSessionTarget} sesiones esta semana. Sigue así.`
     : null
 
   return (
@@ -552,18 +564,38 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="px-4 lg:px-0 space-y-6">
+      {/* Banner sugerencias pendientes del check-in */}
+      {pendingSuggestionsCount > 0 && (
+        <Link href="/checkin" className="block rounded-2xl bg-blue-50 border border-blue-200 px-4 py-3 hover:bg-blue-100 transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">💡</span>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">
+                  {pendingSuggestionsCount === 1
+                    ? '1 sugerencia de ajuste pendiente'
+                    : `${pendingSuggestionsCount} sugerencias de ajuste pendientes`}
+                </p>
+                <p className="text-xs text-blue-600 mt-0.5">Tu coach propone cambios en tu plan basados en el check-in</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-blue-400 shrink-0" />
+          </div>
+        </Link>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
           {getGreeting()}, {firstName} 👋
         </h1>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <p className="text-sm text-gray-500 capitalize">{formatDate()}</p>
           {streakDays >= 2 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#ea580c]">
               🔥 {streakDays} días · racha activa
             </span>
           )}
+          <StreakShareButton streakDays={streakDays} />
           {last4WeeksAdherencePct !== null && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border
               ${last4WeeksAdherencePct >= 70
@@ -577,12 +609,42 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Hero cards — 3 stats enfocados en el atleta (ocultar para nuevo usuario sin historial de plan) */}
-      {!(dashboardMode === 'FREE' && !lastCompletedPlanInfo) && (
+      {/* Hero cards — 3 stats enfocados en el atleta */}
+      {(
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-        {/* Card 1: Tu Carrera (con raceDate) o Tu Objetivo (recomp) */}
-        {isRecomp ? (
+        {/* Card 1: Tu Rutina (GYM) · Tu Objetivo (recomp) · Tu Carrera (running) */}
+        {dashboardMode === 'GYM' ? (
+          /* GYM: rutina asignada activa */
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex h-full">
+              <div className="w-1 bg-[#ea580c] shrink-0" />
+              <div className="flex-1 px-4 py-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">💪 Tu Rutina</p>
+                <p className="text-base font-bold text-[#1e3a5f] leading-tight mb-1">
+                  {assignedWorkout?.template.name ?? 'Rutina activa'}
+                </p>
+                <p className="text-[11px] text-gray-500 mb-3">
+                  {weekSessionCount} de {weekSessionTarget} días esta semana
+                </p>
+                <div className="flex items-center gap-1 mb-2">
+                  {Array.from({ length: weekSessionTarget }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-3 h-3 rounded-full ${i < weekSessionCount ? 'bg-[#ea580c]' : 'bg-gray-100'}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] text-gray-400">
+                    {weekSessionCount >= weekSessionTarget ? 'Meta semanal cumplida' : `Faltan ${weekSessionTarget - weekSessionCount}`}
+                  </p>
+                  <Link href="/gym" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver rutina →</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : isRecomp ? (
           /* Recomposición corporal */
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="flex h-full">
@@ -810,8 +872,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 />
               )}
             </div>
-            {(weeklySummary ?? freeModeSummary) && (
-              <p className="text-sm text-gray-500 mb-3 leading-relaxed">{weeklySummary ?? freeModeSummary}</p>
+            {(weeklySummary ?? gymModeSummary ?? freeModeSummary) && (
+              <p className="text-sm text-gray-500 mb-3 leading-relaxed">{weeklySummary ?? gymModeSummary ?? freeModeSummary}</p>
             )}
 
             <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4">
@@ -879,7 +941,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <div className="flex-1 flex items-center justify-between px-4 py-3.5 gap-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Check-in semanal pendiente</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Tu plan se ajusta automáticamente según cómo te sientas</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{activePlan ? 'Tu plan se ajusta automáticamente según cómo te sientas' : 'Registrá cómo te sentís esta semana para ver tu evolución'}</p>
                   </div>
                   <ChevronRight size={16} className="text-gray-400 shrink-0" />
                 </div>

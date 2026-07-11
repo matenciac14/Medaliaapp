@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import AthleteFeatureToggles from './AthleteFeatureToggles'
 import NutritionConstructor from './NutritionConstructor'
 import { FoodLogsSection, type FoodLogEntry } from './FoodLogsSection'
+import NutritionAdherenceCard, { type DayAdherence } from './NutritionAdherenceCard'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -106,11 +107,41 @@ export type AthleteStatus = 'ACTIVE' | 'PAUSED'
 type GymExerciseLog = {
   exerciseId: string
   name: string
+  bodyPart: string
   muscleGroups: string[]
   logs: {
     date: string
-    sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null }[]
+    sets: {
+      setNumber: number
+      weightKg: number | null
+      repsCompleted: number | null
+      isPR: boolean
+      setLogType: string
+    }[]
   }[]
+}
+
+type GymPR = {
+  exerciseName: string
+  bodyPart: string
+  weightKg: number
+  repsCompleted: number
+  estimated1RM: number
+  achievedAt: string
+}
+
+type AdherenceWeek = {
+  weekStart: string
+  weekLabel: string
+  completed: number
+  planned: number | null
+  pct: number | null
+}
+
+/** Brzycki 1RM estimado — solo válido para sets WORK con reps < 37 */
+function estimated1RM(weightKg: number, reps: number): number {
+  if (reps <= 0 || reps >= 37 || weightKg <= 0) return weightKg
+  return Math.round((weightKg * 36) / (37 - reps) * 10) / 10
 }
 
 // ─── Day name map ─────────────────────────────────────────────────────────────
@@ -140,7 +171,7 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   OTRO: 'Otro',
 }
 
-const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Sesiones', 'Benchmarks', 'Ejercicios', 'Mensajes']
+const TABS = ['Resumen', 'Plan', 'Progreso', 'Nutrición', 'Ejercicios', 'Sesiones', 'Adherencia', 'Benchmarks', 'Mensajes']
 
 // ── Template preview info (feature C) ────────────────────────────────────────
 const TEMPLATE_PREVIEW: Record<string, { weeks: number; description: string; phases: string[] }> = {
@@ -498,16 +529,20 @@ export default function AthleteDetailClient({
   const [athleteFoods, setAthleteFoods] = useState<AthleteFoodItem[]>([])
   const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([])
   const [nutritionExtLoaded, setNutritionExtLoaded] = useState(false)
+  const [adherenceData, setAdherenceData] = useState<DayAdherence[]>([])
 
   useEffect(() => {
     if (activeTab !== 'Nutrición' || nutritionExtLoaded) return
-    fetch(`/api/coach/athlete/${athleteId}/nutrition`)
-      .then(r => r.json())
-      .then(d => {
+    Promise.all([
+      fetch(`/api/coach/athlete/${athleteId}/nutrition`).then(r => r.json()),
+      fetch(`/api/coach/athlete/${athleteId}/nutrition/adherence`).then(r => r.json()),
+    ])
+      .then(([d, adh]) => {
         setMealPlan(d.mealPlan ?? null)
         setFoodProfile(d.foodProfile ?? null)
         setAthleteFoods(d.athleteFoods ?? [])
         setFoodLogs(d.foodLogs ?? [])
+        setAdherenceData(adh.days ?? [])
         setNutritionExtLoaded(true)
       })
       .catch(() => setNutritionExtLoaded(true))
@@ -580,6 +615,62 @@ export default function AthleteDetailClient({
       .catch(() => setGymLogs([]))
       .finally(() => setGymLoading(false))
   }, [activeTab, gymLoaded, athleteId])
+
+  // ── PRs state ─────────────────────────────────────────────────────────────────
+  const [gymPRs, setGymPRs] = useState<GymPR[]>([])
+  const [gymPRsLoading, setGymPRsLoading] = useState(false)
+  const [gymPRsLoaded, setGymPRsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Sesiones' || gymPRsLoaded) return
+    setGymPRsLoading(true)
+    fetch(`/api/coach/gym/athlete/${athleteId}/prs`)
+      .then(r => r.json())
+      .then(data => { setGymPRs(data.prs ?? []); setGymPRsLoaded(true) })
+      .catch(() => setGymPRsLoaded(true))
+      .finally(() => setGymPRsLoading(false))
+  }, [activeTab, gymPRsLoaded, athleteId])
+
+  // ── DailyLog state (DAILY-04) ────────────────────────────────────────────────
+  type DailyLogEntry = { date: string; weightKg: number | null; energyLevel: number | null; hrResting: number | null; sleepHours: number | null }
+  const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>([])
+  const [dailyLogsLoaded, setDailyLogsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Resumen' || dailyLogsLoaded) return
+    fetch(`/api/coach/athlete/${athleteId}/dailylogs`)
+      .then(r => r.json())
+      .then((data: { logs?: DailyLogEntry[] }) => { setDailyLogs(data.logs ?? []); setDailyLogsLoaded(true) })
+      .catch(() => setDailyLogsLoaded(true))
+  }, [activeTab, dailyLogsLoaded, athleteId])
+
+  // ── Adherencia state ──────────────────────────────────────────────────────────
+  const [gymAdherence, setGymAdherence] = useState<AdherenceWeek[]>([])
+  const [gymAdherenceLoading, setGymAdherenceLoading] = useState(false)
+  const [gymAdherenceLoaded, setGymAdherenceLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Adherencia' || gymAdherenceLoaded) return
+    setGymAdherenceLoading(true)
+    fetch(`/api/coach/gym/athlete/${athleteId}/adherence`)
+      .then(r => r.json())
+      .then(data => { setGymAdherence(data.weeks ?? []); setGymAdherenceLoaded(true) })
+      .catch(() => setGymAdherenceLoaded(true))
+      .finally(() => setGymAdherenceLoading(false))
+  }, [activeTab, gymAdherenceLoaded, athleteId])
+
+  // ── Volumen semanal state ─────────────────────────────────────────────────────
+  type GymVolume = { thisWeekKg: number; lastWeekKg: number; deltaPct: number | null; alert: boolean }
+  const [gymVolume, setGymVolume] = useState<GymVolume | null>(null)
+  const [gymVolumeLoaded, setGymVolumeLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Adherencia' || gymVolumeLoaded) return
+    fetch(`/api/coach/gym/athlete/${athleteId}/volume`)
+      .then(r => r.json())
+      .then(data => { setGymVolume(data); setGymVolumeLoaded(true) })
+      .catch(() => setGymVolumeLoaded(true))
+  }, [activeTab, gymVolumeLoaded, athleteId])
 
   // ── Mensajes state ───────────────────────────────────────────────────────────
   type Msg = { id: string; fromId: string; toId: string; content: string; readAt: string | null; createdAt: string }
@@ -868,6 +959,41 @@ export default function AthleteDetailClient({
               )}
             </div>
           </div>
+
+          {/* DailyLog últimos 7 días — DAILY-04 */}
+          {dailyLogs.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-semibold text-gray-900 mb-4">Registros diarios — últimos 7 días</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {['Fecha', 'Peso', 'Energía', 'FC reposo', 'Sueño'].map(h => (
+                        <th key={h} className="text-left py-2 pr-4 last:pr-0 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {dailyLogs.map((log, i) => (
+                      <tr key={i}>
+                        <td className="py-2.5 pr-4 text-gray-700">{new Date(log.date).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                        <td className="py-2.5 pr-4 font-medium text-gray-900">{log.weightKg != null ? `${log.weightKg} kg` : '—'}</td>
+                        <td className="py-2.5 pr-4">
+                          {log.energyLevel != null ? (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${log.energyLevel >= 4 ? 'bg-green-100 text-green-700' : log.energyLevel >= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {log.energyLevel}/5
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="py-2.5 pr-4 text-gray-700">{log.hrResting != null ? `${log.hrResting} bpm` : '—'}</td>
+                        <td className="py-2.5 text-gray-700">{log.sleepHours != null ? `${log.sleepHours}h` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Activación */}
           {!activated && (
@@ -1890,6 +2016,14 @@ export default function AthleteDetailClient({
                 </div>
               )}
 
+              {/* Adherencia nutricional — últimas 4 semanas */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Adherencia nutricional</h2>
+                  <NutritionAdherenceCard data={adherenceData} loaded={nutritionExtLoaded} />
+                </div>
+              )}
+
               {/* Logs de alimentos — últimos 7 días */}
               {!editingNutrition && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -1898,6 +2032,7 @@ export default function AthleteDetailClient({
                     foodLogs={foodLogs}
                     nutritionPlan={nutritionPlan}
                     loaded={nutritionExtLoaded}
+                    athleteId={athleteId}
                   />
                 </div>
               )}
@@ -2025,6 +2160,243 @@ export default function AthleteDetailClient({
                 </div>
               )
             })}
+
+          {/* ── PRs del atleta ──────────────────────────────────────────────── */}
+          {gymPRsLoading && (
+            <div className="text-center py-8 text-gray-400 text-sm">Cargando récords...</div>
+          )}
+          {!gymPRsLoading && gymPRsLoaded && gymPRs.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-700">🏆 Récords Personales</span>
+                <span className="text-xs text-gray-400">{gymPRs.length} ejercicio{gymPRs.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {gymPRs.map((pr) => (
+                  <div key={pr.exerciseName} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{pr.exerciseName}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{pr.achievedAt} · {pr.bodyPart}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-[#ea580c]">{pr.weightKg} kg × {pr.repsCompleted}</p>
+                        <p className="text-xs text-gray-400">1RM est. {pr.estimated1RM} kg</p>
+                      </div>
+                      <span className="text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">PR</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Curva de fuerza 1RM (Brzycki) ─────────────────────────────── */}
+          {gymLoaded && gymLogs.length > 0 && (() => {
+            // Seleccionar ejercicios con al menos 3 sesiones y sets con peso
+            const withHistory = gymLogs
+              .map(ex => {
+                const points = ex.logs
+                  .map(log => {
+                    const workSets = log.sets.filter(s => s.setLogType === 'WORK' || !s.setLogType)
+                    const maxEst = workSets.reduce((best, s) => {
+                      if (!s.weightKg || !s.repsCompleted) return best
+                      const est = estimated1RM(s.weightKg, s.repsCompleted)
+                      return est > best ? est : best
+                    }, 0)
+                    return maxEst > 0 ? { date: log.date, est1RM: maxEst } : null
+                  })
+                  .filter((p): p is { date: string; est1RM: number } => p !== null)
+                return { name: ex.name, points }
+              })
+              .filter(ex => ex.points.length >= 2)
+              .slice(0, 4) // máx 4 ejercicios para no saturar
+
+            if (withHistory.length === 0) return null
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                <p className="text-sm font-semibold text-gray-700 mb-4">📈 Curva de fuerza (1RM estimado — Brzycki)</p>
+                <div className="space-y-5">
+                  {withHistory.map(ex => {
+                    const maxVal = Math.max(...ex.points.map(p => p.est1RM))
+                    const minVal = Math.min(...ex.points.map(p => p.est1RM))
+                    const range = maxVal - minVal || 1
+                    const trend = ex.points.length >= 2
+                      ? ex.points[ex.points.length - 1].est1RM - ex.points[0].est1RM
+                      : 0
+                    return (
+                      <div key={ex.name}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-medium text-gray-600">{ex.name}</p>
+                          <span className={`text-xs font-bold ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {trend >= 0 ? '+' : ''}{Math.round(trend * 10) / 10} kg
+                          </span>
+                        </div>
+                        <div className="flex items-end gap-1 h-12">
+                          {ex.points.map((p, i) => {
+                            const heightPct = ((p.est1RM - minVal) / range) * 75 + 25
+                            const isLast = i === ex.points.length - 1
+                            return (
+                              <div key={i} className="flex flex-col items-center gap-0.5 flex-1 min-w-0" title={`${p.date}: ${p.est1RM} kg`}>
+                                <div
+                                  className="w-full rounded-t-sm"
+                                  style={{
+                                    height: `${heightPct}%`,
+                                    backgroundColor: isLast ? '#ea580c' : '#1e3a5f',
+                                    opacity: isLast ? 1 : 0.4 + (i / ex.points.length) * 0.4,
+                                  }}
+                                />
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-[9px] text-gray-300">{ex.points[0].date.slice(5)}</span>
+                          <span className="text-[10px] font-bold text-[#ea580c]">{ex.points[ex.points.length - 1].est1RM} kg</span>
+                          <span className="text-[9px] text-gray-300">{ex.points[ex.points.length - 1].date.slice(5)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* ── Tab: Adherencia ───────────────────────────────────────────────────── */}
+      {activeTab === 'Adherencia' && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="font-semibold text-gray-900">Adherencia al gym</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Sesiones completadas vs planificadas — últimas 4 semanas</p>
+          </div>
+
+          {/* Carga semanal — volumen total kg */}
+          {gymVolume && (gymVolume.thisWeekKg > 0 || gymVolume.lastWeekKg > 0) && (
+            <div className={`rounded-xl border p-4 ${gymVolume.alert ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Carga esta semana</p>
+                  <p className={`text-2xl font-extrabold ${gymVolume.alert ? 'text-red-600' : 'text-gray-900'}`}>
+                    {gymVolume.thisWeekKg.toLocaleString('es-CO')} kg
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Semana anterior: {gymVolume.lastWeekKg.toLocaleString('es-CO')} kg
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  {gymVolume.deltaPct !== null && (
+                    <p className={`text-lg font-bold ${gymVolume.deltaPct > 0 ? (gymVolume.alert ? 'text-red-600' : 'text-green-600') : 'text-blue-600'}`}>
+                      {gymVolume.deltaPct > 0 ? '+' : ''}{gymVolume.deltaPct}%
+                    </p>
+                  )}
+                  {gymVolume.alert && (
+                    <p className="text-xs text-red-500 font-semibold mt-0.5">⚠ +20% vs sem. ant.</p>
+                  )}
+                  {!gymVolume.alert && gymVolume.deltaPct !== null && (
+                    <p className="text-xs text-gray-400 mt-0.5">vs sem. anterior</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {gymAdherenceLoading && (
+            <div className="text-center py-16 text-gray-400 text-sm">Cargando adherencia...</div>
+          )}
+
+          {!gymAdherenceLoading && gymAdherence.length === 0 && gymAdherenceLoaded && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center">
+              <div className="text-4xl mb-3">📊</div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-1">Sin datos de adherencia</h2>
+              <p className="text-gray-400 text-sm">El atleta necesita tener una rutina asignada o un plan activo</p>
+            </div>
+          )}
+
+          {!gymAdherenceLoading && gymAdherence.length > 0 && (
+            <>
+              {/* Semáforos por semana */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {gymAdherence.map((week) => {
+                  const pct = week.pct
+                  const color = pct === null ? 'gray'
+                    : pct >= 80 ? 'green'
+                    : pct >= 60 ? 'amber'
+                    : 'red'
+                  const colorMap = {
+                    green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', badge: 'bg-green-100 text-green-700' },
+                    amber: { bg: '#fffbeb', border: '#fde68a', text: '#d97706', badge: 'bg-amber-100 text-amber-700' },
+                    red:   { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', badge: 'bg-red-100 text-red-700' },
+                    gray:  { bg: '#f9fafb', border: '#e5e7eb', text: '#6b7280', badge: 'bg-gray-100 text-gray-500' },
+                  }
+                  const c = colorMap[color]
+                  return (
+                    <div
+                      key={week.weekStart}
+                      className="rounded-xl border p-4 flex flex-col gap-2"
+                      style={{ backgroundColor: c.bg, borderColor: c.border }}
+                    >
+                      <p className="text-xs font-medium text-gray-500 capitalize">{week.weekLabel}</p>
+                      <div className="flex items-end gap-1">
+                        <span className="text-2xl font-bold" style={{ color: c.text }}>
+                          {week.completed}
+                        </span>
+                        {week.planned != null && (
+                          <span className="text-sm text-gray-400 mb-0.5">/ {week.planned}</span>
+                        )}
+                      </div>
+                      {pct !== null ? (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit ${c.badge}`}>
+                          {pct}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Sin meta</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Barra de progreso acumulada */}
+              {(() => {
+                const totalCompleted = gymAdherence.reduce((s, w) => s + w.completed, 0)
+                const totalPlanned = gymAdherence.reduce((s, w) => s + (w.planned ?? 0), 0)
+                const avgPct = totalPlanned > 0 ? Math.round((totalCompleted / totalPlanned) * 100) : null
+                const overallColor = avgPct === null ? '#9ca3af' : avgPct >= 80 ? '#16a34a' : avgPct >= 60 ? '#d97706' : '#dc2626'
+                return (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-700">Últimas 4 semanas</p>
+                      <span className="text-sm font-bold" style={{ color: overallColor }}>
+                        {totalCompleted}{totalPlanned > 0 ? ` / ${totalPlanned}` : ''} sesiones
+                        {avgPct !== null && ` · ${avgPct}%`}
+                      </span>
+                    </div>
+                    {avgPct !== null && (
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(avgPct, 100)}%`, backgroundColor: overallColor }}
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400 mt-2">
+                      {avgPct === null
+                        ? 'Asigna una rutina o activa un plan para ver la adherencia'
+                        : avgPct >= 80
+                        ? '🟢 Consistencia excelente — mantener la carga'
+                        : avgPct >= 60
+                        ? '🟡 Consistencia media — revisar disponibilidad del atleta'
+                        : '🔴 Consistencia baja — considerar reducir días o ajustar el plan'}
+                    </p>
+                  </div>
+                )
+              })()}
+            </>
+          )}
         </div>
       )}
 

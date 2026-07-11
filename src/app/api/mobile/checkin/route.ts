@@ -67,10 +67,17 @@ export async function GET(req: NextRequest) {
       },
     })
 
+    const pendingSuggestions = await prisma.checkInSuggestion.findMany({
+      where: { userId: mobile.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+      select: { id: true, type: true, title: true, description: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    })
+
     return ok({
       submitted: !!existing,
       weekNumber,
       data: existing ?? null,
+      pendingSuggestions,
     })
   } catch (err) {
     console.error('[mobile/checkin GET]', err)
@@ -125,6 +132,15 @@ export async function POST(req: NextRequest) {
       }
     }).catch(() => {})
 
+    const suggestions = result.pendingSuggestions > 0
+      ? await prisma.checkInSuggestion.findMany({
+          where: { userId: mobile.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+          select: { id: true, type: true, title: true, description: true, expiresAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        })
+      : []
+
     return ok({
       ok: true,
       adjustment: {
@@ -133,6 +149,8 @@ export async function POST(req: NextRequest) {
         adjustments: result.adjustments,
         triggers: result.triggers,
       },
+      pendingSuggestions: result.pendingSuggestions,
+      suggestions,
     })
   } catch (err) {
     console.error('[mobile/checkin] processCheckIn error:', err)

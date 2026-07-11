@@ -12,7 +12,9 @@ import NutritionContent, { type MealPlanData } from './_components/NutritionCont
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
 import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
+import CoachNutritionProposalCard from './_components/CoachNutritionProposalCard'
 import NutritionInitClient from './_components/NutritionInitClient'
+import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -40,23 +42,41 @@ export default async function NutritionPage() {
   const tomorrow = new Date(todayDate)
   tomorrow.setDate(tomorrow.getDate() + 1)
   tomorrow.setHours(0, 0, 0, 0)
-  const pendingAdjustment = await prisma.pendingNutritionAdjustment.findFirst({
-    where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
-    select: {
-      id: true,
-      deltaKcal: true,
-      deltaCarbsG: true,
-      plannedKcal: true,
-      adjustedKcal: true,
-      plannedCarbsG: true,
-      adjustedCarbsG: true,
-      plannedIntensity: true,
-      actualIntensity: true,
-    },
-  })
+  const weekStart = new Date(todayDate)
+  weekStart.setDate(weekStart.getDate() - 6) // ultimos 7 dias
+  weekStart.setHours(0, 0, 0, 0)
 
-  // Cargar datos en paralelo
-  const [nutritionPlanRaw, mealPlan, foodProfile, todaySession, gymToday, healthProfile, allFoods] = await Promise.all([
+  const proposalRepo = new CoachNutritionProposalRepository(prisma)
+
+  // Cargar datos en paralelo — una sola ronda
+  const [
+    pendingAdjustment,
+    nutritionPlanRaw,
+    mealPlan,
+    foodProfile,
+    todaySession,
+    gymToday,
+    healthProfile,
+    allFoods,
+    weekFoodLogs,
+    coachProposals,
+    currentPlanWeek,
+    assignedNutritionPlan,
+  ] = await Promise.all([
+    prisma.pendingNutritionAdjustment.findFirst({
+      where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
+      select: {
+        id: true,
+        deltaKcal: true,
+        deltaCarbsG: true,
+        plannedKcal: true,
+        adjustedKcal: true,
+        plannedCarbsG: true,
+        adjustedCarbsG: true,
+        plannedIntensity: true,
+        actualIntensity: true,
+      },
+    }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     prisma.foodProfile.findUnique({ where: { userId } }),
@@ -89,12 +109,47 @@ export default async function NutritionPage() {
     prisma.food.findMany({
       where: { isActive: true },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      take: 100,
       select: {
         id: true, name: true, category: true,
         kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true,
         fiberPer100g: true, calciumMg: true, ironMg: true,
         potassiumMg: true, vitaminCMg: true, magnesiumMg: true,
         servingG: true, servingLabel: true,
+      },
+    }),
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: weekStart } },
+      select: { date: true, kcalLogged: true, grams: true, food: { select: { kcalPer100g: true } } },
+    }),
+    proposalRepo.findPendingForAthlete(userId),
+    activePlan && currentWeek
+      ? prisma.planWeek.findFirst({
+          where: { planId: activePlan.id, weekNumber: currentWeek },
+          select: { isRecoveryWeek: true, sessions: { select: { intensity: true } } },
+        })
+      : Promise.resolve(null),
+    prisma.assignedNutritionPlan.findUnique({
+      where: { athleteId: userId },
+      include: {
+        template: {
+          select: {
+            name: true,
+            days: {
+              include: {
+                meals: {
+                  orderBy: { order: 'asc' },
+                  include: {
+                    items: {
+                      orderBy: { order: 'asc' },
+                      include: { food: { select: { name: true } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }),
   ])
@@ -122,8 +177,73 @@ export default async function NutritionPage() {
   const badge = DAY_TYPE_LABELS[todayDayType]
 
   const parsedMealPlan = mealPlan ? parseMealPlanData(mealPlan.data) : null
-  const hasMealPlan = !!parsedMealPlan
+
+  // Transformar plantilla del coach al formato canónico MealPlanData
+  const MEAL_TYPE_LABELS: Record<string, string> = {
+    BREAKFAST: 'Desayuno', LUNCH: 'Almuerzo', DINNER: 'Cena', SNACK: 'Snack',
+  }
+  type TemplateDayShape = NonNullable<typeof assignedNutritionPlan>['template']['days'][number]
+  function templateDayToMeals(day: TemplateDayShape | undefined) {
+    if (!day) return []
+    return day.meals.map((m) => {
+      const totals = m.items.reduce(
+        (acc, i) => ({ kcal: acc.kcal + i.kcal, protein: acc.protein + i.proteinG, carbs: acc.carbs + i.carbsG, fat: acc.fat + i.fatG }),
+        { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+      )
+      return {
+        time: '',
+        label: MEAL_TYPE_LABELS[m.mealType] ?? m.mealType,
+        foods: m.items.map((i) => `${i.food.name} ${i.grams}g`).join(', '),
+        items: m.items.map((i) => ({ name: i.food.name, g: i.grams, kcal: i.kcal, protein: i.proteinG, carbs: i.carbsG, fat: i.fatG })),
+        ...totals,
+      }
+    })
+  }
+  const empty = { meals: [], supplements: [], hydrationL: 2, rules: [] }
+  const assignedMealPlan: MealPlanData | null = assignedNutritionPlan
+    ? {
+        hard: { ...empty, meals: templateDayToMeals(assignedNutritionPlan.template.days.find((d) => d.dayType === 'HARD')) },
+        easy: { ...empty, meals: templateDayToMeals(assignedNutritionPlan.template.days.find((d) => d.dayType === 'EASY')) },
+        rest: { ...empty, meals: templateDayToMeals(assignedNutritionPlan.template.days.find((d) => d.dayType === 'REST')) },
+      }
+    : null
+
+  const hasMealPlan = !!(assignedMealPlan ?? parsedMealPlan)
   const hasFoodProfile = !!foodProfile
+
+  // Adherencia semanal — días donde kcal loggeada >= target * 0.9
+  let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
+  if (nutritionPlanRaw && weekFoodLogs.length > 0) {
+    const targetKcal = nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0
+    if (targetKcal > 0) {
+      const kcalByDay: Record<string, number> = {}
+      for (const log of weekFoodLogs) {
+        const day = log.date.toISOString().slice(0, 10)
+        const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
+        kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
+      }
+      const loggedDays = Object.values(kcalByDay)
+      const daysHit = loggedDays.filter((k) => k >= targetKcal * 0.9).length
+      weeklyAdherence = { daysHit, totalDays: loggedDays.length }
+    }
+  }
+
+  // Contexto de fase del plan
+  let planPhaseText: string | null = null
+  if (currentPlanWeek) {
+    if (currentPlanWeek.isRecoveryWeek) {
+      planPhaseText = 'Semana de descarga — prioriza proteína y descanso'
+    } else {
+      const intensities = currentPlanWeek.sessions.map((s) => s.intensity)
+      const highCount = intensities.filter((i) => i === 'HIGH').length
+      const medCount  = intensities.filter((i) => i === 'MODERATE').length
+      if (highCount > intensities.length / 2) {
+        planPhaseText = 'Semana de carga alta — maximiza carbohidratos'
+      } else if (medCount >= intensities.length / 2) {
+        planPhaseText = 'Semana de carga moderada — equilibra macros'
+      }
+    }
+  }
 
   // Targets del día — fuente única de verdad: getDailyNutritionTarget
   const todayIntensity = (todaySession?.intensity as string | null)
@@ -151,6 +271,27 @@ export default async function NutritionPage() {
           {badge.emoji} {badge.label}
         </span>
       </div>
+
+      {/* Contexto de fase del plan */}
+      {planPhaseText && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 font-medium">
+          📅 {planPhaseText}
+        </div>
+      )}
+
+      {/* Propuestas de ajuste del coach */}
+      {coachProposals.map((p) => (
+        <CoachNutritionProposalCard
+          key={p.id}
+          id={p.id}
+          coachName={p.coach?.name ?? null}
+          message={p.message}
+          deltaKcal={p.deltaKcal}
+          deltaProtein={p.deltaProtein}
+          deltaCarbs={p.deltaCarbs}
+          deltaFat={p.deltaFat}
+        />
+      ))}
 
       {/* Ajuste nutricional pendiente */}
       {pendingAdjustment && (
@@ -180,13 +321,40 @@ export default async function NutritionPage() {
         />
       )}
 
-      {/* Contenido real — si hay meal plan completo */}
-      {hasMealPlan && parsedMealPlan && nutritionPlan && (
-        <NutritionContent
-          mealPlan={parsedMealPlan as unknown as MealPlanData}
-          nutritionPlan={nutritionPlan}
-          todayDayType={todayDayType}
-        />
+      {/* Adherencia semanal */}
+      {weeklyAdherence && weeklyAdherence.totalDays > 0 && (
+        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+          <span className="text-lg">📊</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800">
+              Esta semana cumpliste tu meta <span style={{ color: weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.7 ? '#16a34a' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.4 ? '#d97706' : '#dc2626' }}>{weeklyAdherence.daysHit} de {weeklyAdherence.totalDays} días</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.8 ? '¡Excelente consistencia!' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.5 ? 'Vas bien, sigue así.' : 'Registra más días para mejorar.'}
+            </p>
+          </div>
+          <div className="flex gap-1">
+            {Array.from({ length: weeklyAdherence.totalDays }, (_, i) => (
+              <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: i < weeklyAdherence!.daysHit ? '#22c55e' : '#e5e7eb' }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}
+      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && nutritionPlan && (
+        <>
+          {assignedNutritionPlan && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-800 font-medium">
+              Plan de tu coach: {assignedNutritionPlan.template.name}
+            </div>
+          )}
+          <NutritionContent
+            mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
+            nutritionPlan={nutritionPlan}
+            todayDayType={todayDayType}
+          />
+        </>
       )}
 
       {/* Plan en DB pero datos inválidos — mostrar aviso con CTA a regenerar */}
@@ -208,7 +376,7 @@ export default async function NutritionPage() {
                 { label: 'Calorías', value: todayKcal, unit: 'kcal', color: 'text-[#ea580c]' },
                 { label: 'Proteína', value: nutritionPlan.proteinG, unit: 'g', color: 'text-blue-600' },
                 { label: 'Carbohidratos', value: todayCarbs, unit: 'g', color: 'text-yellow-600' },
-                { label: 'Grasas', value: nutritionPlan.fatG, unit: 'g', color: 'text-green-600' },
+                { label: 'Grasas', value: todayFat, unit: 'g', color: 'text-green-600' },
               ].map((m) => (
                 <div key={m.label} className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500 mb-1">{m.label}</p>
@@ -228,8 +396,8 @@ export default async function NutritionPage() {
         </div>
       )}
 
-      {/* Sin plan nutricional base */}
-      {!hasMealPlan && !nutritionPlan && (
+      {/* Sin plan nutricional base — solo cuando onboarding está incompleto (no hay healthProfile) */}
+      {!hasMealPlan && !nutritionPlan && !needsNutritionInit && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
           Completa el onboarding para activar tu plan nutricional base.
         </div>
@@ -237,9 +405,14 @@ export default async function NutritionPage() {
       {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
-      {/* Guía de alimentos — siempre visible si hay alimentos en la librería */}
-      {allFoods.length > 0 && (
+      {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
+      {allFoods.length > 0 && nutritionPlan && (
         <div className="pt-2">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Guía de alimentos</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
           <FoodGuide
             foods={allFoods}
             proteinTarget={todayProtein}

@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { prisma } from '@/lib/db/prisma'
 import { WorkoutXClient } from '@/infrastructure/exercise-sync/workoutx.client'
-import { ExerciseSyncUseCase } from '@/infrastructure/exercise-sync/exercise-sync.use-case'
+import { ExerciseSyncUseCase } from '@/domain/exercise/exercise-sync.use-case'
 import { PrismaExerciseRepository } from '@/infrastructure/db/exercise.repository'
 
+// EX-22: role ya está en el JWT — sin query extra a DB
 async function requireAdmin() {
   const session = await auth()
-  if (!session?.user?.id) return null
-  const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } })
-  return u?.role === 'ADMIN' ? session : null
+  return session?.user?.role === 'ADMIN' ? session : null
 }
 
 // POST /api/admin/exercises/sync — re-seed desde WorkoutX (usa free plan, ~14 req)

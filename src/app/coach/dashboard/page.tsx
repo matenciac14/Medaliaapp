@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { mapRelation } from '../athletes/_lib/map-athlete'
 import { KpiCard } from '@/app/_components/kpi-card'
+import { getCoachLimits } from '@/domain/subscription/tier-features'
 
 const SPORT_LABELS: Record<string, string> = {
   RUNNING:   '🏃 Running',
@@ -35,6 +36,10 @@ export default async function CoachDashboardPage() {
     lastMonthTotal,
     recentActivity,
     sportRows,
+    overduePayments,
+    pendingOnboarding,
+    paidThisMonthAgg,
+    coachSubscription,
   ] = await Promise.all([
     // Todos los atletas para calcular alertas, adherencia y deporte
     prisma.coachAthlete.findMany({
@@ -96,9 +101,45 @@ export default async function CoachDashboardPage() {
       where: { user: { coachedBy: { some: { coachId } } } },
       select: { sport: true },
     }),
+    // Pagos vencidos del coach
+    prisma.payment.findMany({
+      where: { coachId, status: 'PENDING', dueDate: { lt: now } },
+      orderBy: { dueDate: 'asc' },
+      take: 5,
+      select: {
+        id: true,
+        amount: true,
+        dueDate: true,
+        athleteId: true,
+        athlete: { select: { name: true } },
+      },
+    }),
+    // Atletas pendientes de onboarding (B2B sin completar)
+    prisma.coachAthlete.findMany({
+      where: { coachId, status: 'ACTIVE', athlete: { onboardingCompleted: false } },
+      select: {
+        athleteId: true,
+        createdAt: true,
+        athlete: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 5,
+    }),
+    // Ingresos reales del mes (pagos PAID con paidAt en el mes actual)
+    prisma.payment.aggregate({
+      where: { coachId, status: 'PAID', paidAt: { gte: startOfMonth } },
+      _sum: { amount: true },
+    }),
+    // Suscripción del coach para conocer su tier y límite de atletas
+    prisma.userSubscription.findUnique({
+      where: { userId: coachId },
+      select: { coachTier: true },
+    }),
   ])
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
+
+  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === 'SIN PLAN')
 
   const totalAlerts = athletes.reduce((acc, a) => {
     const f = a.alertFlags
@@ -112,7 +153,10 @@ export default async function CoachDashboardPage() {
       : null
 
   const checkInsPct = totalCount > 0 ? Math.round((checkInsWeekCount / totalCount) * 100) : 0
-  const ingresosMes = totalCount * 6
+  const ingresosMes = Number(paidThisMonthAgg._sum.amount ?? 0)
+  const coachTier = coachSubscription?.coachTier ?? 'STARTER'
+  const { maxAthletes } = getCoachLimits(coachTier)
+  const athletesDisplay = maxAthletes === Infinity ? `${totalCount}` : `${totalCount}/${maxAthletes}`
 
   // Distribución por deporte
   const sportCounts: Record<string, number> = {}
@@ -151,13 +195,21 @@ export default async function CoachDashboardPage() {
             Vista general de tu negocio · {now.toLocaleDateString('es', { month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <a
-          href="/coach/clients/new"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#1e3a5f' }}
-        >
-          + Nuevo asesorado
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/coach/invite"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors"
+          >
+            Compartir link
+          </a>
+          <a
+            href="/coach/clients/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            + Nuevo asesorado
+          </a>
+        </div>
       </div>
 
       {/* First-time experience — solo cuando no hay atletas */}
@@ -195,13 +247,13 @@ export default async function CoachDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard
           label="Ingresos / mes"
-          value={`$${ingresosMes}`}
-          sub={`${totalCount} × $6 USD`}
+          value={ingresosMes > 0 ? `$${ingresosMes.toFixed(0)} USD` : '—'}
+          sub={ingresosMes > 0 ? 'pagos registrados este mes' : 'sin pagos este mes'}
           color="#16a34a"
         />
         <KpiCard
           label="Atletas activos"
-          value={`${totalCount}`}
+          value={athletesDisplay}
           sub={thisMonthCount > 0 ? `+${thisMonthCount} este mes` : 'sin nuevos este mes'}
           color="#1e3a5f"
         />
@@ -244,9 +296,27 @@ export default async function CoachDashboardPage() {
           ) : (
             <ul className="divide-y divide-gray-50">
               {athletesWithAlerts.slice(0, 5).map((a) => {
+                const TRIGGER_LABEL: Record<string, { msg: string; color: string }> = {
+                  rpe_excesivo:   { msg: 'RPE alto',       color: '#ea580c' },
+                  dolor_activo:   { msg: 'Dolor activo',   color: '#dc2626' },
+                  sueno_bajo:     { msg: 'Sueño bajo',     color: '#7c3aed' },
+                  energia_baja:   { msg: 'Energía baja',   color: '#d97706' },
+                  estres_alto:    { msg: 'Estrés alto',    color: '#b45309' },
+                  motivacion_baja:{ msg: 'Motivación baja',color: '#6b7280' },
+                  fc_alta:        { msg: 'FC elevada',     color: '#dc2626' },
+                  perdida_peso_rapida: { msg: 'Baja peso rápido', color: '#eab308' },
+                }
                 const alerts: { msg: string; color: string }[] = []
                 if (a.alertFlags.noCheckin) alerts.push({ msg: 'Sin check-in +7d', color: '#dc2626' })
-                if (a.alertFlags.highRpe) alerts.push({ msg: 'Carga alta', color: '#ea580c' })
+                // Use adjustments from check-in for differentiated labels
+                const triggerAlerts = (a.alertFlags.adjustments ?? [])
+                  .map((t: string) => TRIGGER_LABEL[t])
+                  .filter(Boolean) as { msg: string; color: string }[]
+                if (triggerAlerts.length > 0) {
+                  alerts.push(...triggerAlerts)
+                } else if (a.alertFlags.highRpe) {
+                  alerts.push({ msg: 'Carga alta', color: '#ea580c' })
+                }
                 if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#eab308' })
                 return (
                   <li key={a.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
@@ -320,13 +390,115 @@ export default async function CoachDashboardPage() {
                 <span className="font-semibold text-gray-700">{lastMonthTotal}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Proyección ingresos</span>
-                <span className="font-semibold" style={{ color: '#16a34a' }}>${totalCount * 6} USD</span>
+                <span className="text-gray-500">Atletas totales</span>
+                <span className="font-semibold text-gray-700">{totalCount}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Pagos vencidos */}
+      {overduePayments.length > 0 && (
+        <div className="mb-6 bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-red-100 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <h2 className="font-semibold text-gray-900 text-sm">Pagos vencidos</h2>
+            <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+              {overduePayments.length} pendiente{overduePayments.length !== 1 ? 's' : ''}
+            </span>
+            <a href="/coach/finanzas" className="text-xs text-blue-600 hover:underline ml-2">
+              Ver finanzas →
+            </a>
+          </div>
+          <ul className="divide-y divide-gray-50">
+            {overduePayments.map((p) => {
+              const daysOverdue = Math.floor((now.getTime() - p.dueDate.getTime()) / 86_400_000)
+              return (
+                <li key={p.id} className="px-5 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{p.athlete?.name ?? 'Asesorado eliminado'}</p>
+                    <p className="text-xs text-red-600">{daysOverdue}d vencido · ${Number(p.amount)} USD</p>
+                  </div>
+                  {p.athleteId && (
+                    <a
+                      href={`/coach/athlete/${p.athleteId}`}
+                      className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
+                      style={{ backgroundColor: '#dc2626' }}
+                    >
+                      Cobrar →
+                    </a>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Atletas sin plan / pendientes de onboarding */}
+      {(athletesWithoutPlan.length > 0 || pendingOnboarding.length > 0) && (
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {pendingOnboarding.length > 0 && (
+            <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-amber-100 flex items-center gap-2">
+                <span className="text-amber-500">⏳</span>
+                <h2 className="font-semibold text-gray-900 text-sm">Pendientes de onboarding</h2>
+                <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                  {pendingOnboarding.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {pendingOnboarding.map((rel) => {
+                  const daysAgo = Math.floor((now.getTime() - rel.createdAt.getTime()) / 86_400_000)
+                  return (
+                    <li key={rel.athleteId} className="px-5 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{rel.athlete.name ?? rel.athlete.email}</p>
+                        <p className="text-xs text-gray-400">Invitado hace {daysAgo}d</p>
+                      </div>
+                      <a
+                        href={`/coach/athlete/${rel.athleteId}`}
+                        className="text-xs text-amber-700 font-semibold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Ver →
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          {athletesWithoutPlan.length > 0 && (
+            <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-blue-100 flex items-center gap-2">
+                <span className="text-blue-500">📋</span>
+                <h2 className="font-semibold text-gray-900 text-sm">Sin plan asignado</h2>
+                <span className="ml-auto text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  {athletesWithoutPlan.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-gray-50">
+                {athletesWithoutPlan.slice(0, 5).map((a) => (
+                  <li key={a.id} className="px-5 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
+                      <p className="text-xs text-gray-400">{a.sport ? a.sport : 'Sin deporte'}</p>
+                    </div>
+                    <a
+                      href={`/coach/athlete/${a.id}`}
+                      className="text-xs text-blue-700 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Asignar →
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actividad reciente */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
