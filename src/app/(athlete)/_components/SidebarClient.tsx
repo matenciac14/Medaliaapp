@@ -69,9 +69,8 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/nutrition', label: s.nutrition,   icon: Apple,           show: true },
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
-    { href: '/messages',       label: 'Mensajes',       icon: MessageSquare, show: hasCoach, badge: unreadCount },
-    { href: '/notifications',  label: 'Notificaciones', icon: Bell,          show: true,    badge: notifCount },
-    { href: '/profile',        label: s.profile,        icon: UserCircle,    show: true },
+    { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
+    { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
   // Mobile: 4 tabs principales + "Más" para el resto
@@ -83,11 +82,10 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
   ]
 
   const moreLinks = [
-    { href: '/gym',           label: s.gym,            icon: Dumbbell },
-    { href: '/progress',      label: s.progress,       icon: TrendingUp },
+    { href: '/gym',      label: s.gym,      icon: Dumbbell },
+    { href: '/progress', label: s.progress, icon: TrendingUp },
     ...(hasCoach ? [{ href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount }] : []),
-    { href: '/notifications', label: 'Notificaciones', icon: Bell,         badge: notifCount },
-    { href: '/profile',       label: s.profile,        icon: UserCircle },
+    { href: '/profile',  label: s.profile,  icon: UserCircle },
   ]
 
   function isActive(href: string) {
@@ -98,10 +96,18 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     <>
       {/* ── Sidebar desktop ── */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
-        <div className="px-6 py-5 border-b border-white/10">
+        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#ea580c] flex items-center justify-center font-bold text-white text-sm">M</div>
             <span className="text-xl font-bold tracking-tight">Medaliq</span>
+          </Link>
+          <Link href="/notifications" className="relative flex items-center justify-center min-w-[32px] min-h-[32px] text-white/60 hover:text-white transition-colors">
+            <Bell size={18} />
+            {notifCount > 0 && (
+              <span className="absolute top-0 right-0 min-w-[14px] h-[14px] rounded-full bg-[#ea580c] text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
           </Link>
         </div>
 
