@@ -308,21 +308,45 @@ export default async function ProgressPage() {
   if (weightCheckins.length === 0 && hrCheckins.length === 0 && weeks.length === 0) {
     const hasGymSessions = gymSessionsCount > 0
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-4">
-        <span className="text-5xl">{hasGymSessions ? '💪' : '📈'}</span>
-        <h2 className="text-xl font-bold text-[#1e3a5f]">
-          {hasGymSessions ? `${gymSessionsCount} sesiones de ejercicios completadas` : 'Aún no hay datos de progreso'}
-        </h2>
-        <p className="text-gray-500 text-sm max-w-xs">
-          {hasGymSessions
-            ? 'Haz tu primer check-in semanal para empezar a ver tu evolución de peso y FC aquí.'
-            : 'Haz tu primer check-in semanal y completa sesiones para ver tu evolución aquí.'}
-        </p>
-        <div className="flex gap-3 mt-2 flex-wrap justify-center">
-          <a href="/checkin" className="inline-block rounded-xl bg-[#ea580c] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
-          <a href="/gym" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">
-            {hasGymSessions ? 'Ver historial ejercicios' : 'Ir a ejercicios'}
-          </a>
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+        {/* Estado vacío con contexto */}
+        <div className="text-center space-y-3 py-4">
+          <span className="text-5xl">{hasGymSessions ? '💪' : '📈'}</span>
+          <h2 className="text-xl font-bold text-[#1e3a5f]">
+            {hasGymSessions ? `${gymSessionsCount} sesiones completadas` : 'Aquí verás tu evolución'}
+          </h2>
+          <p className="text-gray-500 text-sm max-w-xs mx-auto">
+            {hasGymSessions
+              ? 'Haz tu primer check-in semanal para ver tu evolución de peso y FC.'
+              : 'Registra check-ins semanales y sesiones para ver tus gráficas aquí.'}
+          </p>
+          <div className="flex gap-3 mt-2 flex-wrap justify-center">
+            <a href="/checkin" className="inline-block rounded-xl bg-[#ea580c] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#ea6c0a] transition-colors">Hacer check-in →</a>
+            <a href="/gym" className="inline-block rounded-xl border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors">
+              {hasGymSessions ? 'Ver historial' : 'Ir a ejercicios'}
+            </a>
+          </div>
+        </div>
+
+        {/* Preview de las métricas que se acumularán */}
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-center">Lo que vas a ver aquí</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { icon: '⚖️', label: 'Evolución de peso', desc: 'Curva semana a semana vs tu meta' },
+              { icon: '❤️', label: 'FC reposo', desc: 'Tendencia de recuperación cardiovascular' },
+              { icon: '💪', label: 'PRs de gym', desc: 'Tus mejores levantamientos por ejercicio' },
+              { icon: '📊', label: 'Adherencia', desc: 'Porcentaje de sesiones completadas' },
+              { icon: '😴', label: 'Bienestar', desc: 'Energía, estrés y motivación semanal' },
+              { icon: '🏃', label: 'Actividad mensual', desc: 'Sesiones de gym y running por mes' },
+            ].map((item) => (
+              <div key={item.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <p className="text-2xl mb-2">{item.icon}</p>
+                <p className="text-xs font-semibold text-[#1e3a5f] leading-tight mb-1">{item.label}</p>
+                <p className="text-[11px] text-gray-400 leading-snug">{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

@@ -263,11 +263,17 @@ export default async function PlanPage() {
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <a
-              href="/log"
+              href="/gym/builder"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#1e3a5f' }}
             >
-              Registrar sesión libre →
+              Crear mi rutina →
+            </a>
+            <a
+              href="/log"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Sesión libre
             </a>
             {!isB2B && (
               <a
