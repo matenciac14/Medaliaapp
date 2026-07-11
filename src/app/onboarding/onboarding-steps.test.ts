@@ -18,21 +18,26 @@ describe('getSteps — estado inicial', () => {
 // getSteps — flujos por activityType
 // ---------------------------------------------------------------------------
 describe('getSteps — activityType FREE', () => {
-  it('goal → physical → generating', () => {
+  it('goal → profile → generating', () => {
     const data = make({ activityType: 'FREE', age: 30, heightCm: 170, weightKg: 70, gender: 'male' })
-    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+    expect(getSteps(data)).toEqual(['goal', 'profile', 'generating'])
   })
 
-  it('se detiene en physical si faltan datos físicos', () => {
+  it('se detiene en profile si faltan datos físicos', () => {
     const data = make({ activityType: 'FREE' })
-    expect(getSteps(data)).toEqual(['goal', 'physical'])
+    expect(getSteps(data)).toEqual(['goal', 'profile'])
   })
 })
 
 describe('getSteps — activityType RUNNING', () => {
-  it('goal → physical → generating cuando datos completos', () => {
-    const data = make({ activityType: 'RUNNING', age: 28, heightCm: 175, weightKg: 68, gender: 'female' })
-    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+  it('se detiene en goal si falta runningGoal', () => {
+    const data = make({ activityType: 'RUNNING' })
+    expect(getSteps(data)).toEqual(['goal'])
+  })
+
+  it('goal → profile → generating con runningGoal y datos completos', () => {
+    const data = make({ activityType: 'RUNNING', runningGoal: 'GENERAL_FITNESS', age: 28, heightCm: 175, weightKg: 68, gender: 'female' })
+    expect(getSteps(data)).toEqual(['goal', 'profile', 'generating'])
   })
 })
 
@@ -42,9 +47,9 @@ describe('getSteps — activityType GYM', () => {
     expect(getSteps(data)).toEqual(['goal'])
   })
 
-  it('goal → physical → generating con gymGoal y datos completos', () => {
+  it('goal → profile → generating con gymGoal y datos completos', () => {
     const data = make({ activityType: 'GYM', gymGoal: 'MUSCLE_GAIN', age: 25, heightCm: 180, weightKg: 80, gender: 'male' })
-    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+    expect(getSteps(data)).toEqual(['goal', 'profile', 'generating'])
   })
 })
 
@@ -54,9 +59,14 @@ describe('getSteps — activityType BOTH', () => {
     expect(getSteps(data)).toEqual(['goal'])
   })
 
-  it('goal → physical → generating con gymGoal y datos completos', () => {
-    const data = make({ activityType: 'BOTH', gymGoal: 'RECOMPOSITION', age: 30, heightCm: 165, weightKg: 60, gender: 'female' })
-    expect(getSteps(data)).toEqual(['goal', 'physical', 'generating'])
+  it('se detiene en goal si falta runningGoal', () => {
+    const data = make({ activityType: 'BOTH', gymGoal: 'RECOMPOSITION' })
+    expect(getSteps(data)).toEqual(['goal'])
+  })
+
+  it('goal → profile → generating con gymGoal + runningGoal y datos completos', () => {
+    const data = make({ activityType: 'BOTH', gymGoal: 'RECOMPOSITION', runningGoal: 'RACE_5K', age: 30, heightCm: 165, weightKg: 60, gender: 'female' })
+    expect(getSteps(data)).toEqual(['goal', 'profile', 'generating'])
   })
 })
 
@@ -68,7 +78,7 @@ describe('getSteps — invariantes', () => {
     const cases = [
       INITIAL_DATA,
       make({ activityType: 'FREE' }),
-      make({ activityType: 'RUNNING', age: 25, heightCm: 170, weightKg: 65, gender: 'male' }),
+      make({ activityType: 'RUNNING', runningGoal: 'GENERAL_FITNESS', age: 25, heightCm: 170, weightKg: 65, gender: 'male' }),
       make({ activityType: 'GYM', gymGoal: 'FAT_LOSS', age: 25, heightCm: 170, weightKg: 65, gender: 'male' }),
     ]
     cases.forEach((data) => {
@@ -79,9 +89,9 @@ describe('getSteps — invariantes', () => {
   it('generating siempre es el último cuando los datos están completos', () => {
     const cases = [
       make({ activityType: 'FREE',    age: 30, heightCm: 170, weightKg: 70, gender: 'male' }),
-      make({ activityType: 'RUNNING', age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
+      make({ activityType: 'RUNNING', runningGoal: 'RACE_10K', age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
       make({ activityType: 'GYM',  gymGoal: 'MUSCLE_GAIN', age: 30, heightCm: 170, weightKg: 70, gender: 'male' }),
-      make({ activityType: 'BOTH', gymGoal: 'FAT_LOSS',    age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
+      make({ activityType: 'BOTH', gymGoal: 'FAT_LOSS', runningGoal: 'GENERAL_FITNESS', age: 30, heightCm: 170, weightKg: 70, gender: 'female' }),
     ]
     cases.forEach((data) => {
       const steps = getSteps(data)
@@ -90,7 +100,7 @@ describe('getSteps — invariantes', () => {
   })
 
   it('siempre tiene exactamente 3 pasos cuando está completo', () => {
-    const data = make({ activityType: 'RUNNING', age: 25, heightCm: 170, weightKg: 65, gender: 'male' })
+    const data = make({ activityType: 'RUNNING', runningGoal: 'GENERAL_FITNESS', age: 25, heightCm: 170, weightKg: 65, gender: 'male' })
     expect(getSteps(data)).toHaveLength(3)
   })
 })
@@ -108,9 +118,16 @@ describe('isStepValid — goal', () => {
     expect(isStepValid('goal', make({ activityType: 'BOTH' }))).toBe(false)
   })
 
-  it('true si FREE o RUNNING', () => {
+  it('false si RUNNING sin runningGoal', () => {
+    expect(isStepValid('goal', make({ activityType: 'RUNNING' }))).toBe(false)
+  })
+
+  it('true si FREE', () => {
     expect(isStepValid('goal', make({ activityType: 'FREE' }))).toBe(true)
-    expect(isStepValid('goal', make({ activityType: 'RUNNING' }))).toBe(true)
+  })
+
+  it('true si RUNNING con runningGoal', () => {
+    expect(isStepValid('goal', make({ activityType: 'RUNNING', runningGoal: 'GENERAL_FITNESS' }))).toBe(true)
   })
 
   it('true si GYM con gymGoal', () => {
@@ -118,18 +135,18 @@ describe('isStepValid — goal', () => {
   })
 })
 
-describe('isStepValid — physical', () => {
+describe('isStepValid — profile', () => {
   it('false si faltan datos obligatorios', () => {
-    expect(isStepValid('physical', make({ age: 30, heightCm: 170, weightKg: 70 }))).toBe(false) // falta gender
-    expect(isStepValid('physical', make({ age: 30, heightCm: 170, gender: 'male' }))).toBe(false) // falta weightKg
+    expect(isStepValid('profile', make({ age: 30, heightCm: 170, weightKg: 70 }))).toBe(false) // falta gender
+    expect(isStepValid('profile', make({ age: 30, heightCm: 170, gender: 'male' }))).toBe(false) // falta weightKg
   })
 
   it('true si todos los datos obligatorios están', () => {
-    expect(isStepValid('physical', make({ age: 25, heightCm: 170, weightKg: 65, gender: 'female' }))).toBe(true)
+    expect(isStepValid('profile', make({ age: 25, heightCm: 170, weightKg: 65, gender: 'female' }))).toBe(true)
   })
 
   it('true aunque weightGoalKg y experienceLevel sean null', () => {
     const data = make({ age: 25, heightCm: 170, weightKg: 65, gender: 'male', weightGoalKg: null, experienceLevel: null })
-    expect(isStepValid('physical', data)).toBe(true)
+    expect(isStepValid('profile', data)).toBe(true)
   })
 })

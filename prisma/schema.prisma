@@ -260,6 +260,7 @@ model HealthProfile {
   sport          String?   // RUNNING | CYCLING | SWIMMING | TRIATHLON | FOOTBALL | STRENGTH
   sportGoal      String?   // RACE | BODY_RECOMPOSITION | GENERAL_FITNESS (migrado de config.sport.goal)
   experienceLevel String?  // BEGINNER | INTERMEDIATE | ADVANCED
+  sessionMinutes  Int?     // tiempo por sesión: 30, 45, 60, 90
   sportDetails   Json      @default("{}")  // campos específicos por deporte
   // Fuente de cada dato — preparado para integraciones con dispositivos
   dataSources    Json      @default("{}")  // { hrMax: {source:'garmin', updatedAt:''}, ftp: {...} }
