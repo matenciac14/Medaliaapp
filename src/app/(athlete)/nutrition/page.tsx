@@ -408,6 +408,11 @@ export default async function NutritionPage() {
       {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
       {allFoods.length > 0 && nutritionPlan && (
         <div className="pt-2">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Guía de alimentos</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
           <FoodGuide
             foods={allFoods}
             proteinTarget={todayProtein}

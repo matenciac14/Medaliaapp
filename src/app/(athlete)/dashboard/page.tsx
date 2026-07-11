@@ -590,7 +590,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {getGreeting()}, {firstName} 👋
         </h1>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <p className="text-sm text-gray-500">{formatDate()}</p>
           {streakDays >= 2 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#ea580c]">
               🔥 {streakDays} días · racha activa
@@ -610,8 +609,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Hero cards — 3 stats enfocados en el atleta (ocultar para nuevo usuario sin historial de plan) */}
-      {!(dashboardMode === 'FREE' && !lastCompletedPlanInfo) && (
+      {/* Hero cards — 3 stats enfocados en el atleta */}
+      {(
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
         {/* Card 1: Tu Rutina (GYM) · Tu Objetivo (recomp) · Tu Carrera (running) */}

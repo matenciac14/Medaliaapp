@@ -287,7 +287,7 @@ export default function CheckInClient({
                 <MetricInput label="Horas de sueño (prom.)" value={sleepHours} onChange={setSleepHours} unit="h" step="0.5" inputMode="decimal" placeholder="ej. 7.5" prevValue={prevMetrics.sleepHours} />
                 <MetricInput label="FC reposo" value={hrResting} onChange={setHrResting} unit="bpm" placeholder="ej. 58" prevValue={prevMetrics.hrResting} invertDelta />
                 <MetricSlider label="Energía percibida" value={energyLevel} onChange={setEnergyLevel} color="#ea580c" lowLabel="Sin energía" highLabel="Al 100%" prevValue={prevMetrics.energyLevel} />
-                <MetricSlider label="RPE sesión más dura (running)" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
+                <MetricSlider label="RPE sesión más dura" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
                 {hasGym && (
                   <MetricSlider label="RPE sesión de gym" value={gymRpe} onChange={setGymRpe} color="#7c3aed" lowLabel="Fácil" highLabel="Al límite" />
                 )}

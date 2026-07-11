@@ -91,7 +91,7 @@ export default async function CheckinPage() {
 
   // Sesiones de la semana actual
   let weekSessions: WeekSession[] = []
-  let weekLabel = '5 minutos para ajustar tu plan'
+  let weekLabel = activePlan ? '5 minutos para ajustar tu plan' : 'Registra tu semana'
   let weekAdherence = { completed: 0, total: 0 }
 
   if (activePlan) {
