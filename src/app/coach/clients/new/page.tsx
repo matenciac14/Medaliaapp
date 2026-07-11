@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-
 // ─── Options ──────────────────────────────────────────────────────────────────
 
 const SPORTS = [
@@ -90,6 +89,7 @@ export default function CreateAthletePage() {
   const [goal, setGoal] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [profileIncomplete, setProfileIncomplete] = useState(false)
 
   // Optional physical data
   const [showPhysical, setShowPhysical] = useState(false)
@@ -173,7 +173,11 @@ export default function CreateAthletePage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setCreateError(data.error ?? 'Error al crear el atleta.'); return }
+      if (!res.ok) {
+        if (data.code === 'PROFILE_INCOMPLETE') { setProfileIncomplete(true); return }
+        setCreateError(data.error ?? 'Error al crear el atleta.')
+        return
+      }
       setCreated({ email: data.email, resetLink: data.resetLink, athleteId: data.athleteId, athleteName: data.athleteName })
       setStep('done')
     } catch {
@@ -525,6 +529,19 @@ export default function CreateAthletePage() {
             </div>
           )}
         </div>
+
+        {profileIncomplete && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 text-sm text-amber-800">
+            <p className="font-semibold mb-0.5">Perfil incompleto</p>
+            <p className="text-xs mb-2">Debes registrar tu cédula y WhatsApp antes de invitar asesorados.</p>
+            <Link
+              href="/coach/profile?returnTo=/coach/clients/new"
+              className="text-xs font-semibold underline hover:no-underline"
+            >
+              Completar perfil →
+            </Link>
+          </div>
+        )}
 
         {createError && (
           <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">

@@ -8,7 +8,7 @@ import MetricInput from './MetricInput'
 import SessionsPanel, { type WeekSession } from './SessionsPanel'
 import SubmittedCheckInView from './SubmittedCheckInView'
 import EarlyCheckInScreen from './EarlyCheckInScreen'
-import CheckInResultScreen from './CheckInResultScreen'
+import CheckInResultScreen, { type CheckInSuggestion } from './CheckInResultScreen'
 import type { PrevMetrics, LastWeekSummary, CheckInState } from './checkin.types'
 
 export type { PrevMetrics, CheckInState }
@@ -18,11 +18,13 @@ interface CheckInClientProps {
   prevMetrics: PrevMetrics
   weekLabel: string
   hasNutrition: boolean
+  hasGym: boolean
   weekAdherence: { completed: number; total: number }
   checkInState: CheckInState
   submittedAt: Date | null
   submittedTriggers: string[]
   lastWeekSummary: LastWeekSummary | null
+  initialSuggestions?: CheckInSuggestion[]
 }
 
 function evaluateAlerts(data: {
@@ -50,18 +52,20 @@ export default function CheckInClient({
   prevMetrics,
   weekLabel,
   hasNutrition,
+  hasGym,
   weekAdherence,
   checkInState,
   submittedAt,
   submittedTriggers,
   lastWeekSummary,
+  initialSuggestions = [],
 }: CheckInClientProps) {
   const router = useRouter()
   const [openForm, setOpenForm] = useState(false)
 
-  const [weightKg, setWeightKg] = useState('')
-  const [sleepHours, setSleepHours] = useState('')
-  const [hrResting, setHrResting] = useState('')
+  const [weightKg, setWeightKg] = useState(prevMetrics.weightKg?.toString() ?? '')
+  const [sleepHours, setSleepHours] = useState(prevMetrics.sleepHours?.toString() ?? '')
+  const [hrResting, setHrResting] = useState(prevMetrics.hrResting?.toString() ?? '')
   const [energyLevel, setEnergyLevel] = useState(0)
   const [hardestRpe, setHardestRpe] = useState(0)
   const [sleepQuality, setSleepQuality] = useState(0)
@@ -86,20 +90,27 @@ export default function CheckInClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [gymRpe, setGymRpe] = useState(0)
+
   const [adjustment, setAdjustment] = useState<{
     severity: 'ok' | 'warning' | 'critical'
     recommendation: string
     adjustments: string[]
     triggers: string[]
   } | null>(null)
+  const [suggestions, setSuggestions] = useState<CheckInSuggestion[]>(initialSuggestions)
 
   function buildBody() {
+    // When athlete has gym, use gymRpe as the hardestRpe if it's higher
+    const effectiveRpe = hasGym && gymRpe > 0
+      ? Math.max(hardestRpe || 0, gymRpe)
+      : (hardestRpe || 5)
     return {
       weightKg: weightKg ? Number(weightKg) : undefined,
       hrResting: hrResting ? Number(hrResting) : undefined,
       sleepHours: sleepHours ? Number(sleepHours) : undefined,
       sleepScore: sleepQuality > 0 ? sleepQuality * 10 : undefined,
-      hardestRpe: hardestRpe || 5,
+      hardestRpe: effectiveRpe || 5,
       painLevel: painLevel > 0 ? painLevel : undefined,
       energyLevel: energyLevel || 5,
       stressLevel: stressLevel || undefined,
@@ -170,14 +181,23 @@ export default function CheckInClient({
         const err = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(err?.error ?? `Error ${res.status} — intenta de nuevo`)
       }
-      const json = await res.json() as { adjustment?: { severity: 'ok' | 'warning' | 'critical'; recommendation: string; adjustments: string[]; triggers: string[] } }
+      const json = await res.json() as {
+        adjustment?: { severity: 'ok' | 'warning' | 'critical'; recommendation: string; adjustments: string[]; triggers: string[] }
+        suggestions?: CheckInSuggestion[]
+      }
       if (json.adjustment) setAdjustment(json.adjustment)
+      if (json.suggestions) setSuggestions(json.suggestions)
       setSaved(true)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'No se pudo guardar el check-in. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setSaving(false)
     }
+  }
+
+  async function respondToSuggestion(id: string, action: 'accept' | 'reject') {
+    await fetch(`/api/checkin/suggestions/${id}/${action}`, { method: 'POST' })
+    setSuggestions(prev => prev.filter(s => s.id !== id))
   }
 
   // ——— Estado: ya enviaste esta semana ———
@@ -189,6 +209,8 @@ export default function CheckInClient({
         submittedAt={submittedAt}
         submittedTriggers={submittedTriggers}
         lastWeekSummary={lastWeekSummary}
+        suggestions={suggestions}
+        onRespond={respondToSuggestion}
         onUpdate={() => setOpenForm(true)}
         onBack={() => router.push('/dashboard')}
       />
@@ -214,6 +236,7 @@ export default function CheckInClient({
         triggers={adjustment?.triggers ?? []}
         adjustments={adjustment?.adjustments ?? []}
         severity={adjustment?.severity ?? 'ok'}
+        suggestions={suggestions}
         onBack={() => router.push('/dashboard')}
       />
     )
@@ -264,7 +287,10 @@ export default function CheckInClient({
                 <MetricInput label="Horas de sueño (prom.)" value={sleepHours} onChange={setSleepHours} unit="h" step="0.5" inputMode="decimal" placeholder="ej. 7.5" prevValue={prevMetrics.sleepHours} />
                 <MetricInput label="FC reposo" value={hrResting} onChange={setHrResting} unit="bpm" placeholder="ej. 58" prevValue={prevMetrics.hrResting} invertDelta />
                 <MetricSlider label="Energía percibida" value={energyLevel} onChange={setEnergyLevel} color="#ea580c" lowLabel="Sin energía" highLabel="Al 100%" prevValue={prevMetrics.energyLevel} />
-                <MetricSlider label="RPE sesión más dura" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
+                <MetricSlider label="RPE sesión más dura (running)" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
+                {hasGym && (
+                  <MetricSlider label="RPE sesión de gym" value={gymRpe} onChange={setGymRpe} color="#7c3aed" lowLabel="Fácil" highLabel="Al límite" />
+                )}
               </div>
             </section>
 

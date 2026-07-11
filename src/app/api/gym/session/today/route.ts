@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const todayDow = jsToOurDow(new Date(new Date().toLocaleString('en-US', { timeZone: tz })).getDay())
 
   // Parallel: fetch active plan + assigned workout + coach relation
-  const [activePlan, assigned, coachRelation] = await Promise.all([
+  const [activePlan, assigned, coachRelation, plannedRunTodayRaw] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId: athleteId, status: 'ACTIVE' },
       select: { id: true, startDate: true },
@@ -50,7 +50,26 @@ export async function GET(req: NextRequest) {
       where: { athleteId, status: 'ACTIVE' },
       select: { coachId: true },
     }),
+    prisma.trainingPlan.findFirst({
+      where: { userId: athleteId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        weeks: {
+          select: {
+            sessions: {
+              where: { dayOfWeek: todayDow, type: { notIn: ['FUERZA', 'DESCANSO'] } },
+              select: { type: true, durationMin: true, zoneTarget: true, intensity: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    }),
   ])
+
+  const plannedRunToday = plannedRunTodayRaw?.weeks
+    .flatMap(w => w.sessions)
+    .find(Boolean) ?? null
 
   const hasCoach = !!coachRelation
   const todayDay = assigned?.template?.days[0] ?? null
@@ -69,6 +88,7 @@ export async function GET(req: NextRequest) {
         exercises: [],
         previousLogs: [],
         plannedSession: null,
+      plannedRunToday: plannedRunToday ? { type: plannedRunToday.type, durationMin: plannedRunToday.durationMin, zoneTarget: plannedRunToday.zoneTarget ?? null } : null,
       })
     }
 
@@ -122,6 +142,7 @@ export async function GET(req: NextRequest) {
       })),
       previousLogs: previousSession?.setLogs ?? [],
       plannedSession: null,
+      plannedRunToday: plannedRunToday ? { type: plannedRunToday.type, durationMin: plannedRunToday.durationMin, zoneTarget: plannedRunToday.zoneTarget ?? null } : null,
     })
   }
 
@@ -213,6 +234,7 @@ export async function GET(req: NextRequest) {
           })),
           previousLogs: previousSession?.setLogs ?? [],
           plannedSession: null,
+      plannedRunToday: plannedRunToday ? { type: plannedRunToday.type, durationMin: plannedRunToday.durationMin, zoneTarget: plannedRunToday.zoneTarget ?? null } : null,
         })
       }
     }

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import AthleteFeatureToggles from './AthleteFeatureToggles'
 import NutritionConstructor from './NutritionConstructor'
 import { FoodLogsSection, type FoodLogEntry } from './FoodLogsSection'
+import NutritionAdherenceCard, { type DayAdherence } from './NutritionAdherenceCard'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -528,16 +529,20 @@ export default function AthleteDetailClient({
   const [athleteFoods, setAthleteFoods] = useState<AthleteFoodItem[]>([])
   const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([])
   const [nutritionExtLoaded, setNutritionExtLoaded] = useState(false)
+  const [adherenceData, setAdherenceData] = useState<DayAdherence[]>([])
 
   useEffect(() => {
     if (activeTab !== 'Nutrición' || nutritionExtLoaded) return
-    fetch(`/api/coach/athlete/${athleteId}/nutrition`)
-      .then(r => r.json())
-      .then(d => {
+    Promise.all([
+      fetch(`/api/coach/athlete/${athleteId}/nutrition`).then(r => r.json()),
+      fetch(`/api/coach/athlete/${athleteId}/nutrition/adherence`).then(r => r.json()),
+    ])
+      .then(([d, adh]) => {
         setMealPlan(d.mealPlan ?? null)
         setFoodProfile(d.foodProfile ?? null)
         setAthleteFoods(d.athleteFoods ?? [])
         setFoodLogs(d.foodLogs ?? [])
+        setAdherenceData(adh.days ?? [])
         setNutritionExtLoaded(true)
       })
       .catch(() => setNutritionExtLoaded(true))
@@ -626,6 +631,19 @@ export default function AthleteDetailClient({
       .finally(() => setGymPRsLoading(false))
   }, [activeTab, gymPRsLoaded, athleteId])
 
+  // ── DailyLog state (DAILY-04) ────────────────────────────────────────────────
+  type DailyLogEntry = { date: string; weightKg: number | null; energyLevel: number | null; hrResting: number | null; sleepHours: number | null }
+  const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>([])
+  const [dailyLogsLoaded, setDailyLogsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Resumen' || dailyLogsLoaded) return
+    fetch(`/api/coach/athlete/${athleteId}/dailylogs`)
+      .then(r => r.json())
+      .then((data: { logs?: DailyLogEntry[] }) => { setDailyLogs(data.logs ?? []); setDailyLogsLoaded(true) })
+      .catch(() => setDailyLogsLoaded(true))
+  }, [activeTab, dailyLogsLoaded, athleteId])
+
   // ── Adherencia state ──────────────────────────────────────────────────────────
   const [gymAdherence, setGymAdherence] = useState<AdherenceWeek[]>([])
   const [gymAdherenceLoading, setGymAdherenceLoading] = useState(false)
@@ -640,6 +658,19 @@ export default function AthleteDetailClient({
       .catch(() => setGymAdherenceLoaded(true))
       .finally(() => setGymAdherenceLoading(false))
   }, [activeTab, gymAdherenceLoaded, athleteId])
+
+  // ── Volumen semanal state ─────────────────────────────────────────────────────
+  type GymVolume = { thisWeekKg: number; lastWeekKg: number; deltaPct: number | null; alert: boolean }
+  const [gymVolume, setGymVolume] = useState<GymVolume | null>(null)
+  const [gymVolumeLoaded, setGymVolumeLoaded] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'Adherencia' || gymVolumeLoaded) return
+    fetch(`/api/coach/gym/athlete/${athleteId}/volume`)
+      .then(r => r.json())
+      .then(data => { setGymVolume(data); setGymVolumeLoaded(true) })
+      .catch(() => setGymVolumeLoaded(true))
+  }, [activeTab, gymVolumeLoaded, athleteId])
 
   // ── Mensajes state ───────────────────────────────────────────────────────────
   type Msg = { id: string; fromId: string; toId: string; content: string; readAt: string | null; createdAt: string }
@@ -928,6 +959,41 @@ export default function AthleteDetailClient({
               )}
             </div>
           </div>
+
+          {/* DailyLog últimos 7 días — DAILY-04 */}
+          {dailyLogs.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-semibold text-gray-900 mb-4">Registros diarios — últimos 7 días</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {['Fecha', 'Peso', 'Energía', 'FC reposo', 'Sueño'].map(h => (
+                        <th key={h} className="text-left py-2 pr-4 last:pr-0 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {dailyLogs.map((log, i) => (
+                      <tr key={i}>
+                        <td className="py-2.5 pr-4 text-gray-700">{new Date(log.date).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                        <td className="py-2.5 pr-4 font-medium text-gray-900">{log.weightKg != null ? `${log.weightKg} kg` : '—'}</td>
+                        <td className="py-2.5 pr-4">
+                          {log.energyLevel != null ? (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${log.energyLevel >= 4 ? 'bg-green-100 text-green-700' : log.energyLevel >= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {log.energyLevel}/5
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="py-2.5 pr-4 text-gray-700">{log.hrResting != null ? `${log.hrResting} bpm` : '—'}</td>
+                        <td className="py-2.5 text-gray-700">{log.sleepHours != null ? `${log.sleepHours}h` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Activación */}
           {!activated && (
@@ -1950,6 +2016,14 @@ export default function AthleteDetailClient({
                 </div>
               )}
 
+              {/* Adherencia nutricional — últimas 4 semanas */}
+              {!editingNutrition && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h2 className="font-semibold text-gray-900 mb-4">Adherencia nutricional</h2>
+                  <NutritionAdherenceCard data={adherenceData} loaded={nutritionExtLoaded} />
+                </div>
+              )}
+
               {/* Logs de alimentos — últimos 7 días */}
               {!editingNutrition && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -1958,6 +2032,7 @@ export default function AthleteDetailClient({
                     foodLogs={foodLogs}
                     nutritionPlan={nutritionPlan}
                     loaded={nutritionExtLoaded}
+                    athleteId={athleteId}
                   />
                 </div>
               )}
@@ -2198,6 +2273,36 @@ export default function AthleteDetailClient({
             <h2 className="font-semibold text-gray-900">Adherencia al gym</h2>
             <p className="text-xs text-gray-400 mt-0.5">Sesiones completadas vs planificadas — últimas 4 semanas</p>
           </div>
+
+          {/* Carga semanal — volumen total kg */}
+          {gymVolume && (gymVolume.thisWeekKg > 0 || gymVolume.lastWeekKg > 0) && (
+            <div className={`rounded-xl border p-4 ${gymVolume.alert ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Carga esta semana</p>
+                  <p className={`text-2xl font-extrabold ${gymVolume.alert ? 'text-red-600' : 'text-gray-900'}`}>
+                    {gymVolume.thisWeekKg.toLocaleString('es-CO')} kg
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Semana anterior: {gymVolume.lastWeekKg.toLocaleString('es-CO')} kg
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  {gymVolume.deltaPct !== null && (
+                    <p className={`text-lg font-bold ${gymVolume.deltaPct > 0 ? (gymVolume.alert ? 'text-red-600' : 'text-green-600') : 'text-blue-600'}`}>
+                      {gymVolume.deltaPct > 0 ? '+' : ''}{gymVolume.deltaPct}%
+                    </p>
+                  )}
+                  {gymVolume.alert && (
+                    <p className="text-xs text-red-500 font-semibold mt-0.5">⚠ +20% vs sem. ant.</p>
+                  )}
+                  {!gymVolume.alert && gymVolume.deltaPct !== null && (
+                    <p className="text-xs text-gray-400 mt-0.5">vs sem. anterior</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {gymAdherenceLoading && (
             <div className="text-center py-16 text-gray-400 text-sm">Cargando adherencia...</div>

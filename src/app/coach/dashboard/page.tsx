@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { mapRelation } from '../athletes/_lib/map-athlete'
 import { KpiCard } from '@/app/_components/kpi-card'
+import { getCoachLimits } from '@/domain/subscription/tier-features'
 
 const SPORT_LABELS: Record<string, string> = {
   RUNNING:   '🏃 Running',
@@ -37,6 +38,8 @@ export default async function CoachDashboardPage() {
     sportRows,
     overduePayments,
     pendingOnboarding,
+    paidThisMonthAgg,
+    coachSubscription,
   ] = await Promise.all([
     // Todos los atletas para calcular alertas, adherencia y deporte
     prisma.coachAthlete.findMany({
@@ -122,6 +125,16 @@ export default async function CoachDashboardPage() {
       orderBy: { createdAt: 'asc' },
       take: 5,
     }),
+    // Ingresos reales del mes (pagos PAID con paidAt en el mes actual)
+    prisma.payment.aggregate({
+      where: { coachId, status: 'PAID', paidAt: { gte: startOfMonth } },
+      _sum: { amount: true },
+    }),
+    // Suscripción del coach para conocer su tier y límite de atletas
+    prisma.userSubscription.findUnique({
+      where: { userId: coachId },
+      select: { coachTier: true },
+    }),
   ])
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
@@ -140,7 +153,10 @@ export default async function CoachDashboardPage() {
       : null
 
   const checkInsPct = totalCount > 0 ? Math.round((checkInsWeekCount / totalCount) * 100) : 0
-  const ingresosMes = totalCount * 6
+  const ingresosMes = Number(paidThisMonthAgg._sum.amount ?? 0)
+  const coachTier = coachSubscription?.coachTier ?? 'STARTER'
+  const { maxAthletes } = getCoachLimits(coachTier)
+  const athletesDisplay = maxAthletes === Infinity ? `${totalCount}` : `${totalCount}/${maxAthletes}`
 
   // Distribución por deporte
   const sportCounts: Record<string, number> = {}
@@ -231,13 +247,13 @@ export default async function CoachDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard
           label="Ingresos / mes"
-          value={`$${ingresosMes}`}
-          sub={`${totalCount} × $6 USD`}
+          value={ingresosMes > 0 ? `$${ingresosMes.toFixed(0)} USD` : '—'}
+          sub={ingresosMes > 0 ? 'pagos registrados este mes' : 'sin pagos este mes'}
           color="#16a34a"
         />
         <KpiCard
           label="Atletas activos"
-          value={`${totalCount}`}
+          value={athletesDisplay}
           sub={thisMonthCount > 0 ? `+${thisMonthCount} este mes` : 'sin nuevos este mes'}
           color="#1e3a5f"
         />
@@ -374,8 +390,8 @@ export default async function CoachDashboardPage() {
                 <span className="font-semibold text-gray-700">{lastMonthTotal}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Proyección ingresos</span>
-                <span className="font-semibold" style={{ color: '#16a34a' }}>${totalCount * 6} USD</span>
+                <span className="text-gray-500">Atletas totales</span>
+                <span className="font-semibold text-gray-700">{totalCount}</span>
               </div>
             </div>
           </div>

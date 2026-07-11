@@ -63,6 +63,57 @@ export function resolveWorkoutDayId(
   return FUERZA_CORREDOR_DAY[phase] ?? null
 }
 
+// ── Pace calibration ──────────────────────────────────────────────────────────
+
+/** Converts seconds-per-km to "M:SS" string. */
+function formatPace(secPerKm: number): string {
+  const m = Math.floor(secPerKm / 60)
+  const s = Math.round(secPerKm % 60)
+  return `${m}:${String(s).padStart(2, '0')} min/km`
+}
+
+export type PaceHints = {
+  easy: string    // Z2 / rodaje / tirada larga
+  tempo: string   // umbral / tempo
+  interval: string // intervalos / VO2max
+}
+
+/**
+ * Derives training pace targets from a recent 5K time using Riegel formula.
+ * Easy: ~35% slower than race pace (Z2 aerobic).
+ * Tempo: ~10% slower than race pace (lactate threshold).
+ * Interval: race pace (VO2max effort).
+ */
+export function computePaceHints(fiveKTimeSecs: number): PaceHints {
+  const racePaceSecPerKm = fiveKTimeSecs / 5
+  return {
+    easy:     formatPace(racePaceSecPerKm * 1.35),
+    tempo:    formatPace(racePaceSecPerKm * 1.10),
+    interval: formatPace(racePaceSecPerKm),
+  }
+}
+
+const RUNNING_SESSION_TYPES = new Set([
+  'RODAJE_Z2', 'FARTLEK', 'TEMPO', 'INTERVALOS',
+  'TIRADA_LARGA', 'TEST', 'SIMULACRO',
+])
+
+/** Appends benchmark pace hint to session detailText if relevant. */
+function withPaceHint(
+  type: string,
+  existing: string | null | undefined,
+  hints: PaceHints,
+): string | null {
+  if (!RUNNING_SESSION_TYPES.has(type)) return existing ?? null
+  let hint: string | null = null
+  if (type === 'RODAJE_Z2' || type === 'TIRADA_LARGA') hint = `Ritmo fácil: ~${hints.easy}`
+  else if (type === 'TEMPO') hint = `Ritmo umbral: ~${hints.tempo}`
+  else if (type === 'INTERVALOS') hint = `Ritmo objetivo: ~${hints.interval}`
+  else if (type === 'TEST' || type === 'SIMULACRO') hint = `Ritmo carrera: ~${hints.interval}`
+  if (!hint) return existing ?? null
+  return existing ? `${existing}\n${hint}` : hint
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type GeneratePlanInput = {
@@ -84,6 +135,8 @@ export type GeneratePlanInput = {
   nutritionCommitment: string
   generatedBy?: 'AI' | 'COACH'
   experienceLevel?: string
+  /** Recent 5K time in seconds — used to calibrate pace hints in running sessions. */
+  recentBenchmark5KSecs?: number
 }
 
 export type GeneratePlanResult = {
@@ -120,6 +173,11 @@ export async function generatePlanUseCase(
   const totalWeeks = template.totalWeeks
   const planEnd = new Date(planStart)
   planEnd.setDate(planEnd.getDate() + totalWeeks * 7)
+
+  // Compute benchmark-based pace hints for running plans if 5K time available
+  const paceHints = input.recentBenchmark5KSecs
+    ? computePaceHints(input.recentBenchmark5KSecs)
+    : null
 
   const isB2C = input.generatedBy !== 'COACH'
 
@@ -174,6 +232,11 @@ export async function generatePlanUseCase(
           // gym tracker can load exercises automatically without coach assignment.
           const workoutDayId = resolveWorkoutDayId(input.goalType, session.type, week.phase)
 
+          const baseDetail = session.structure ?? ''
+          const detailText = paceHints
+            ? (withPaceHint(session.type, baseDetail || null, paceHints) ?? '')
+            : baseDetail
+
           return {
             weekId: planWeek.id,
             dayOfWeek: session.dayOfWeek,
@@ -181,7 +244,7 @@ export async function generatePlanUseCase(
             intensity: getSessionIntensity(session.type),
             durationMin: session.durationMin,
             zoneTarget: session.zoneTarget,
-            detailText: session.structure,
+            detailText,
             date: sessionDate(planStart, idx, session.dayOfWeek),
             workoutDayId,
           }

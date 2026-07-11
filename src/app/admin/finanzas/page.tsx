@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
-import { coachFeeRate, feeLabel, mrrAthletes as calcMrrAthletes, mrrCoaches as calcMrrCoaches, ATHLETE_PRO_PRICE_USD } from '@/domain/admin/finanzas'
+import { coachTierFee, coachTierFeeLabel, mrrAthletes as calcMrrAthletes, mrrCoaches as calcMrrCoaches, ATHLETE_PRO_PRICE_USD } from '@/domain/admin/finanzas'
+import type { CoachTier } from '@/domain/subscription/tier-features'
 
 function fmt(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
@@ -8,11 +9,13 @@ function fmt(amount: number, currency = 'USD'): string {
 export default async function AdminFinanzasPage() {
   const now = new Date()
 
-  const [proAthletes, coaches, paymentGroups] = await Promise.all([
-    // Atletas con plan activo (Pro)
-    prisma.user.count({ where: { role: 'ATHLETE', featurePlan: true } }),
+  const [proAthletes, coaches, paymentGroups, churnAthletes, paidCoaches] = await Promise.all([
+    // Atletas con tier PRO en UserSubscription
+    prisma.userSubscription.count({
+      where: { tier: 'PRO', user: { role: 'ATHLETE', status: 'ACTIVE' } },
+    }),
 
-    // Coaches con sus atletas activos
+    // Coaches con sus atletas activos y tier de suscripción
     prisma.user.findMany({
       where: { role: 'COACH' },
       orderBy: { createdAt: 'asc' },
@@ -22,6 +25,7 @@ export default async function AdminFinanzasPage() {
           where: { status: 'ACTIVE' },
           select: { id: true },
         },
+        subscription: { select: { coachTier: true } },
       },
     }),
 
@@ -29,17 +33,32 @@ export default async function AdminFinanzasPage() {
     prisma.payment.findMany({
       select: { amount: true, currency: true, status: true, dueDate: true },
     }),
+
+    // Atletas Pro con cancelación activa (churn en curso)
+    prisma.userSubscription.count({
+      where: { cancelAtPeriodEnd: true, user: { role: 'ATHLETE' } },
+    }),
+
+    // Coaches con tier de pago (Growth, Pro, Scale)
+    prisma.userSubscription.count({
+      where: { coachTier: { not: 'STARTER' }, user: { role: 'COACH', status: 'ACTIVE' } },
+    }),
   ])
 
   // MRR atletas
   const athletesMrr = calcMrrAthletes(proAthletes)
 
   // MRR fees coaches (lo que deben pagar a Medaliq)
-  const coachesWithFee = coaches.map((c) => ({
-    ...c,
-    athleteCount: c.coachOf.length,
-    fee: coachFeeRate(c.coachOf.length),
-  }))
+  const coachesWithFee = coaches.map((c) => {
+    const tier = (c.subscription?.coachTier ?? 'STARTER') as CoachTier
+    const athleteCount = c.coachOf.length
+    return {
+      ...c,
+      athleteCount,
+      tier,
+      fee: coachTierFee(tier, athleteCount),
+    }
+  })
   const coachesMrr = calcMrrCoaches(coachesWithFee.map((c) => c.fee))
   const mrrTotal = athletesMrr + coachesMrr
 
@@ -52,9 +71,9 @@ export default async function AdminFinanzasPage() {
 
   const kpis = [
     {
-      label: 'MRR atletas Pro',
+      label: 'MRR atletas Pro (est.)',
       value: fmt(athletesMrr),
-      sub: `${proAthletes} atletas × $${ATHLETE_PRO_PRICE_USD}/mes`,
+      sub: `${proAthletes} atletas con tier PRO en DB`,
       color: '#7c3aed',
     },
     {
@@ -69,6 +88,18 @@ export default async function AdminFinanzasPage() {
       sub: 'Atletas Pro + fees de coaches',
       color: '#1e3a5f',
     },
+    {
+      label: 'Churn en curso',
+      value: String(churnAthletes),
+      sub: 'atletas con cancelación activa',
+      color: '#ef4444',
+    },
+    {
+      label: 'Coaches de pago',
+      value: String(paidCoaches),
+      sub: 'Growth + Pro + Scale activos',
+      color: '#7c3aed',
+    },
   ]
 
   return (
@@ -81,7 +112,7 @@ export default async function AdminFinanzasPage() {
       </div>
 
       {/* MRR Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         {kpis.map((k) => (
           <div key={k.label} className="bg-white border border-gray-200 rounded-xl p-6">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">{k.label}</p>
@@ -116,8 +147,8 @@ export default async function AdminFinanzasPage() {
             <p className="text-xs text-gray-400 mt-0.5">Lo que cada coach debe pagar a Medaliq mensualmente</p>
           </div>
           <div className="text-right text-xs text-gray-400">
-            <p className="font-medium text-gray-600">1–50 asesorados: $6/c</p>
-            <p>51–100: $5/c · +100: $3/c</p>
+            <p className="font-medium text-gray-600">Starter $0 · Growth $39 · Pro $79</p>
+            <p>Scale $129/mes · Scale+ $129 + $1.50/atleta &gt;100</p>
           </div>
         </div>
 
@@ -147,7 +178,7 @@ export default async function AdminFinanzasPage() {
                           {c.athleteCount}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-xs text-gray-500">{feeLabel(c.athleteCount)}</td>
+                      <td className="px-5 py-3 text-xs text-gray-500">{coachTierFeeLabel(c.tier, c.athleteCount)}</td>
                       <td className="px-5 py-3 text-right">
                         {c.fee > 0 ? (
                           <span className="font-semibold text-orange-600">{fmt(c.fee)}</span>

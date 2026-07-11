@@ -36,14 +36,16 @@ export async function GET(req: NextRequest) {
   ])
 
   if (!planMeta) {
-    // GYM user: return recurring weekly schedule from assignedWorkout
     const gymSessions = Array.from({ length: 7 }, (_, i) => ({
       dayIndex: i, type: null as string | null, done: false,
       isToday: weekOffset === 0 && i + 1 === todayDow,
       id: null as string | null, durationMin: null as number | null, zoneTarget: null as string | null,
     }))
     let gymTotal = 0
+    let weekLabel: string | null = null
+
     if (assignedWorkout) {
+      // GYM user: show recurring weekly schedule from assignedWorkout template
       for (const day of assignedWorkout.template.days) {
         const idx = day.dayOfWeek - 1
         if (idx >= 0 && idx < 7 && !day.isRestDay) {
@@ -52,12 +54,47 @@ export async function GET(req: NextRequest) {
           gymTotal++
         }
       }
+    } else {
+      // B2C Free: no plan, no gym — show free SessionLogs for the requested week
+      const now = new Date()
+      const dow = now.getDay()
+      const mondayOffset = dow === 0 ? -6 : 1 - dow
+      const weekStart = new Date(now)
+      weekStart.setHours(0, 0, 0, 0)
+      weekStart.setDate(weekStart.getDate() + mondayOffset + weekOffset * 7)
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+
+      const freeLogs = await prisma.sessionLog.findMany({
+        where: { userId, completedAt: { gte: weekStart, lte: weekEnd } },
+        select: {
+          completedAt: true,
+          freeSessionType: true,
+          durationMin: true,
+          plannedSession: { select: { type: true } },
+        },
+      })
+
+      for (const log of freeLogs) {
+        if (!log.completedAt) continue
+        const logDow = jsToOurDow(log.completedAt.getDay())
+        const idx = logDow - 1
+        if (idx >= 0 && idx < 7) {
+          gymSessions[idx].type = log.freeSessionType ?? log.plannedSession?.type ?? 'OTRO'
+          gymSessions[idx].done = true
+          gymTotal++
+        }
+      }
+
+      weekLabel = formatWeekLabel(weekStart, weekEnd)
     }
+
     return NextResponse.json({
       weekSessions: gymSessions,
-      completedCount: 0,
+      completedCount: gymTotal,
       totalTraining: gymTotal,
-      weekLabel: null,
+      weekLabel,
       weekOffset,
       isCurrentWeek: weekOffset === 0,
     })
@@ -114,6 +151,35 @@ export async function GET(req: NextRequest) {
       }
     }
     weekLabel = formatWeekLabel(selectedWeek.startDate, selectedWeek.endDate)
+  } else {
+    // Plan activo pero sin PlanWeek para esta semana — mostrar SessionLogs libres
+    const now = new Date()
+    const dow = now.getDay()
+    const mondayOffset = dow === 0 ? -6 : 1 - dow
+    const weekStart = new Date(now)
+    weekStart.setHours(0, 0, 0, 0)
+    weekStart.setDate(weekStart.getDate() + mondayOffset + weekOffset * 7)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+
+    const freeLogs = await prisma.sessionLog.findMany({
+      where: { userId, completedAt: { gte: weekStart, lte: weekEnd }, plannedSessionId: null },
+      select: { completedAt: true, freeSessionType: true, durationMin: true },
+    })
+
+    for (const log of freeLogs) {
+      if (!log.completedAt) continue
+      const idx = jsToOurDow(log.completedAt.getDay()) - 1
+      if (idx >= 0 && idx < 7) {
+        weekSessions[idx].type = log.freeSessionType ?? 'OTRO'
+        weekSessions[idx].done = true
+        weekSessions[idx].durationMin = log.durationMin
+        completedCount++
+        totalTraining++
+      }
+    }
+    weekLabel = formatWeekLabel(weekStart, weekEnd)
   }
 
   return NextResponse.json({

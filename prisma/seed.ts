@@ -779,7 +779,7 @@ async function main() {
     await prisma.exercise.upsert({
       where: { id: ex.id },
       update: { name: ex.name, nameEs: ex.nameEs, bodyPart: ex.bodyPart, target: ex.target, equipment: ex.equipment, mechanic: ex.mechanic },
-      create: { id: ex.id, coachId: null, name: ex.name, nameEs: ex.nameEs, bodyPart: ex.bodyPart, target: ex.target, equipment: ex.equipment, mechanic: ex.mechanic, source: 'manual' },
+      create: { id: ex.id, coachId: null, name: ex.name, nameEs: ex.nameEs, bodyPart: ex.bodyPart, target: ex.target, equipment: ex.equipment, mechanic: ex.mechanic, source: 'manual', instructions: [], secondaryMuscles: [], instructionsEs: [] },
     })
   }
 

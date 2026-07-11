@@ -61,4 +61,7 @@ export type PlanContext = {
   weekNumber: number          // plan-relative week number
   hrRestingBaseline?: number  // from previous check-in
   previousWeight?: number     // from previous check-in, kg
+  sport?: string              // 'RUNNING' | 'STRENGTH' | undefined
+  hasGymPlan?: boolean        // true if athlete has an active assigned workout
+  consecutiveLowEnergyWeeks?: number  // consecutive weeks with energyLevel <= 3
 }

@@ -22,6 +22,15 @@ export type NutritionPlanTargets = {
 }
 
 /**
+ * Calcula la grasa como calorías restantes tras proteína y carbos.
+ * Garantiza que macros × calorías siempre sumen al target de kcal.
+ */
+function deriveFatG(kcal: number, proteinG: number, carbsG: number): number {
+  const remaining = kcal - proteinG * 4 - carbsG * 4
+  return Math.max(Math.round(remaining / 9), 0)
+}
+
+/**
  * Dado el intensity de la sesión del día y el plan nutricional del atleta,
  * devuelve el target de kcal y macros para ese día.
  */
@@ -31,54 +40,50 @@ export function getDailyNutritionTarget(
 ): DailyNutritionTarget {
   switch (intensity) {
     case 'HIGH': {
-      const proteinG = plan.proteinG
+      const kcal = plan.targetKcalHard
       const carbsG = plan.carbsHardG
-      const fatG = plan.fatG
       return {
-        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
-        proteinG,
+        kcal,
+        proteinG: plan.proteinG,
         carbsG,
-        fatG,
+        fatG: deriveFatG(kcal, plan.proteinG, carbsG),
         label: 'Día duro',
         intensity: 'HIGH',
       }
     }
     case 'MODERATE': {
-      const proteinG = plan.proteinG
+      const kcal = plan.targetKcalEasy
       const carbsG = plan.carbsEasyG
-      const fatG = plan.fatG
       return {
-        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
-        proteinG,
+        kcal,
+        proteinG: plan.proteinG,
         carbsG,
-        fatG,
+        fatG: deriveFatG(kcal, plan.proteinG, carbsG),
         label: 'Día moderado',
         intensity: 'MODERATE',
       }
     }
     case 'LOW': {
-      const proteinG = plan.proteinG
+      const kcal = Math.round(plan.targetKcalEasy * 0.88)
       const carbsG = Math.round(plan.carbsEasyG * 0.75)
-      const fatG = plan.fatG
       return {
-        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
-        proteinG,
+        kcal,
+        proteinG: plan.proteinG,
         carbsG,
-        fatG,
+        fatG: deriveFatG(kcal, plan.proteinG, carbsG),
         label: 'Día suave',
         intensity: 'LOW',
       }
     }
     case 'REST':
     default: {
-      const proteinG = plan.proteinG
+      const kcal = plan.targetKcalRest
       const carbsG = Math.round(plan.carbsEasyG * 0.7)
-      const fatG = plan.fatG
       return {
-        kcal: Math.round(proteinG * 4 + carbsG * 4 + fatG * 9),
-        proteinG,
+        kcal,
+        proteinG: plan.proteinG,
         carbsG,
-        fatG,
+        fatG: deriveFatG(kcal, plan.proteinG, carbsG),
         label: 'Día descanso',
         intensity: intensity ?? 'REST',
       }

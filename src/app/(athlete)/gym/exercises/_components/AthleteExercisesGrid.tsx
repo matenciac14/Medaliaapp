@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
 import type { Exercise } from '@/domain/exercise/exercise.types'
 
@@ -18,6 +19,13 @@ type GridExercise = {
 export default function AthleteExercisesGrid({ exercises }: { exercises: GridExercise[] }) {
   const [detail, setDetail] = useState<Exercise | null>(null)
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (openId) openModal(openId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function openModal(id: string) {
     setLoading(true)

@@ -18,6 +18,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { selectActivePlan } from '@/lib/plan/active-plan'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import StreakShareButton from '../_components/StreakShareButton'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -132,7 +133,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const rawWeekOffset = parseInt(weekOffsetParam ?? '0') || 0
 
   // ── Fetch completo ─────────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -179,6 +180,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       orderBy: { date: 'desc' },
       take: 60,
       select: { date: true },
+    }),
+    prisma.checkInSuggestion.count({
+      where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
     }),
   ])
 
@@ -560,6 +564,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="px-4 lg:px-0 space-y-6">
+      {/* Banner sugerencias pendientes del check-in */}
+      {pendingSuggestionsCount > 0 && (
+        <Link href="/checkin" className="block rounded-2xl bg-blue-50 border border-blue-200 px-4 py-3 hover:bg-blue-100 transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">💡</span>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">
+                  {pendingSuggestionsCount === 1
+                    ? '1 sugerencia de ajuste pendiente'
+                    : `${pendingSuggestionsCount} sugerencias de ajuste pendientes`}
+                </p>
+                <p className="text-xs text-blue-600 mt-0.5">Tu coach propone cambios en tu plan basados en el check-in</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-blue-400 shrink-0" />
+          </div>
+        </Link>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
@@ -572,6 +596,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               🔥 {streakDays} días · racha activa
             </span>
           )}
+          <StreakShareButton streakDays={streakDays} />
           {last4WeeksAdherencePct !== null && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border
               ${last4WeeksAdherencePct >= 70

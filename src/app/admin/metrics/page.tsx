@@ -5,6 +5,32 @@ import { KpiCard } from '@/app/_components/kpi-card'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const TZ_COUNTRY: Record<string, string> = {
+  'America/Bogota':                    'Colombia 🇨🇴',
+  'America/Mexico_City':               'México 🇲🇽',
+  'America/Lima':                      'Perú 🇵🇪',
+  'America/Argentina/Buenos_Aires':    'Argentina 🇦🇷',
+  'America/Santiago':                  'Chile 🇨🇱',
+  'America/Caracas':                   'Venezuela 🇻🇪',
+  'America/Guayaquil':                 'Ecuador 🇪🇨',
+  'America/La_Paz':                    'Bolivia 🇧🇴',
+  'America/Asuncion':                  'Paraguay 🇵🇾',
+  'America/Montevideo':                'Uruguay 🇺🇾',
+  'America/Panama':                    'Panamá 🇵🇦',
+  'America/Costa_Rica':                'Costa Rica 🇨🇷',
+  'America/Tegucigalpa':               'Honduras 🇭🇳',
+  'America/Managua':                   'Nicaragua 🇳🇮',
+  'America/El_Salvador':               'El Salvador 🇸🇻',
+  'America/Guatemala':                 'Guatemala 🇬🇹',
+  'America/Havana':                    'Cuba 🇨🇺',
+  'America/Santo_Domingo':             'Rep. Dominicana 🇩🇴',
+  'America/New_York':                  'EE.UU. (Eastern) 🇺🇸',
+  'America/Chicago':                   'EE.UU. (Central) 🇺🇸',
+  'America/Los_Angeles':               'EE.UU. (Pacific) 🇺🇸',
+  'America/Denver':                    'EE.UU. (Mountain) 🇺🇸',
+  'Europe/Madrid':                     'España 🇪🇸',
+}
+
 export default async function AdminMetricsPage() {
   const sevenDaysAgo  = new Date(Date.now() - 7  * DAY_MS)
   const fiftyFiveDays = new Date(Date.now() - 55 * DAY_MS) // ~8 semanas
@@ -22,6 +48,9 @@ export default async function AdminMetricsPage() {
     proAthletes,         // base para retención (featurePlan: true)
     sessionEvents,
     checkInEvents,
+    usersGeo,
+    totalAthletes,
+    b2bAthletes,
   ] = await Promise.all([
     prisma.weeklyCheckIn.count(),
     prisma.weeklyCheckIn.count({ where: { recordedAt: { gte: sevenDaysAgo } } }),
@@ -44,9 +73,33 @@ export default async function AdminMetricsPage() {
       where: { recordedAt: { gte: fiftyFiveDays } },
       select: { userId: true, recordedAt: true },
     }),
+    // PLT-02: distribución geográfica por timezone
+    prisma.user.findMany({ select: { timezone: true, role: true } }),
+    // PLT-03: segmentación B2C vs B2B
+    prisma.user.count({ where: { role: 'ATHLETE' } }),
+    prisma.user.count({
+      where: { role: 'ATHLETE', coachedBy: { some: { status: 'ACTIVE' } } },
+    }),
   ])
 
   const onboardingRate = totalUsers > 0 ? Math.round((onboardingCompleted / totalUsers) * 100) : 0
+
+  // PLT-02: agrupar por timezone → país
+  const geoMap: Record<string, { country: string; total: number; coaches: number; athletes: number }> = {}
+  for (const u of usersGeo) {
+    const tz      = u.timezone ?? 'America/Bogota'
+    const country = TZ_COUNTRY[tz] ?? `Otro (${tz})`
+    if (!geoMap[country]) geoMap[country] = { country, total: 0, coaches: 0, athletes: 0 }
+    geoMap[country].total++
+    if (u.role === 'COACH')   geoMap[country].coaches++
+    if (u.role === 'ATHLETE') geoMap[country].athletes++
+  }
+  const geoRows = Object.values(geoMap).sort((a, b) => b.total - a.total)
+
+  // PLT-03: B2C vs B2B
+  const b2cAthletes  = totalAthletes - b2bAthletes
+  const b2bPct       = totalAthletes > 0 ? Math.round((b2bAthletes / totalAthletes) * 100) : 0
+  const b2cPct       = totalAthletes > 0 ? Math.round((b2cAthletes / totalAthletes) * 100) : 0
 
   // Eventos unificados (SessionLog + CheckIn)
   const allEvents = [
@@ -181,22 +234,98 @@ export default async function AdminMetricsPage() {
         </div>
       </div>
 
-      {/* Planes por estado */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="font-semibold text-gray-800 mb-4">Planes por estado</h2>
-        <div className="space-y-2">
-          {plansByStatus.map((row) => (
-            <div key={row.status} className="flex justify-between text-sm">
-              <span className="text-gray-600">
-                {({ ACTIVE: 'Activo', INACTIVE: 'Inactivo', COMPLETED: 'Completado', ABANDONED: 'Abandonado' } as Record<string, string>)[row.status] ?? row.status}
-              </span>
-              <span className="font-semibold text-gray-900">{row._count._all}</span>
+      {/* Planes por estado + Segmentación B2C/B2B — side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Planes por estado */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-gray-800 mb-4">Planes por estado</h2>
+          <div className="space-y-2">
+            {plansByStatus.map((row) => (
+              <div key={row.status} className="flex justify-between text-sm">
+                <span className="text-gray-600">
+                  {({ ACTIVE: 'Activo', INACTIVE: 'Inactivo', COMPLETED: 'Completado', ABANDONED: 'Abandonado' } as Record<string, string>)[row.status] ?? row.status}
+                </span>
+                <span className="font-semibold text-gray-900">{row._count._all}</span>
+              </div>
+            ))}
+            {plansByStatus.length === 0 && (
+              <p className="text-sm text-gray-400">Sin datos aún.</p>
+            )}
+          </div>
+        </div>
+
+        {/* PLT-03: B2C vs B2B */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-gray-800 mb-1">Atletas B2C vs B2B</h2>
+          <p className="text-xs text-gray-400 mb-4">Tracker autónomo vs guiados por coach</p>
+          {totalAthletes === 0 ? (
+            <p className="text-sm text-gray-400">Sin atletas aún.</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-[#1e3a5f] shrink-0" />
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">B2B — con coach</span>
+                    <span className="font-semibold text-gray-900">{b2bAthletes} <span className="text-gray-400 font-normal">({b2bPct}%)</span></span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-[#1e3a5f]" style={{ width: `${b2bPct}%` }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-[#7c3aed] shrink-0" />
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">B2C — autónomo</span>
+                    <span className="font-semibold text-gray-900">{b2cAthletes} <span className="text-gray-400 font-normal">({b2cPct}%)</span></span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-[#7c3aed]" style={{ width: `${b2cPct}%` }} />
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 pt-1">{totalAthletes} atletas en total</p>
             </div>
-          ))}
-          {plansByStatus.length === 0 && (
-            <p className="text-sm text-gray-400">Sin datos aún.</p>
           )}
         </div>
+      </div>
+
+      {/* PLT-02: Distribución geográfica */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <h2 className="font-semibold text-gray-800 mb-1">Distribución geográfica</h2>
+        <p className="text-xs text-gray-400 mb-4">Por timezone del usuario — {totalUsers} usuarios en total</p>
+        {geoRows.length === 0 ? (
+          <p className="text-sm text-gray-400">Sin datos aún.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-400 border-b border-gray-100">
+                  <th className="text-left pb-2 font-medium">País / Región</th>
+                  <th className="text-right pb-2 font-medium">Usuarios</th>
+                  <th className="text-right pb-2 font-medium">Coaches</th>
+                  <th className="text-right pb-2 font-medium">Atletas</th>
+                  <th className="text-right pb-2 font-medium">%</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {geoRows.map((row) => (
+                  <tr key={row.country}>
+                    <td className="py-2 text-gray-700">{row.country}</td>
+                    <td className="py-2 text-right font-semibold text-gray-900">{row.total}</td>
+                    <td className="py-2 text-right text-gray-500">{row.coaches}</td>
+                    <td className="py-2 text-right text-gray-500">{row.athletes}</td>
+                    <td className="py-2 text-right text-gray-400">
+                      {totalUsers > 0 ? Math.round((row.total / totalUsers) * 100) : 0}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

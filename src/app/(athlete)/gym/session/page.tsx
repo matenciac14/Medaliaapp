@@ -13,6 +13,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react'
+import ShareMilestoneButton from '@/app/(athlete)/_components/ShareMilestoneButton'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ type ExerciseData = {
   category: string
   description: string | null
   tips: string | null
+  gif: string | null
 }
 
 type WorkoutExercise = {
@@ -656,6 +658,16 @@ export default function GymSessionPage() {
               {/* Expanded content */}
               {isExpanded && (
                 <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                  {/* GIF demo */}
+                  {we.exercise.gif && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={we.exercise.gif}
+                      alt={we.exercise.name}
+                      className="w-full max-h-48 object-contain rounded-lg bg-gray-50"
+                    />
+                  )}
+
                   {/* Description/tips */}
                   {(we.exercise.description || we.exercise.tips) && (
                     <div className="bg-gray-50 rounded-lg px-3 py-2.5 text-xs text-gray-600 space-y-1">
@@ -925,6 +937,15 @@ export default function GymSessionPage() {
                   )}
                 </div>
               ))}
+            </div>
+            <div className="flex justify-center mb-4">
+              <ShareMilestoneButton
+                type="PR"
+                context={{
+                  exerciseName: newPRs[0]?.exerciseName,
+                  weightKg: newPRs[0]?.weightKg,
+                }}
+              />
             </div>
             <p className="text-xs text-gray-400">Redirigiendo...</p>
           </div>

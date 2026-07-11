@@ -69,9 +69,15 @@ export type ProgressionUpdate = {
   suggestedNextWeightKg: number
 }
 
+const PROGRESSION_UP_THRESHOLD   = 0.9  // >90% sets → +2.5 kg
+const PROGRESSION_DOWN_THRESHOLD = 0.6  // <60% sets → −2.5 kg
+const PROGRESSION_STEP_KG        = 2.5
+
 /**
- * Computes weight progression suggestions for exercises where all planned sets were completed.
- * Suggestion = max weight lifted + 2.5 kg.
+ * Computes weight progression suggestions per exercise.
+ *   completedRatio > 90% → max weight + 2.5 kg
+ *   completedRatio < 60% → max weight − 2.5 kg (floor 0)
+ *   otherwise             → no suggestion
  */
 export function computeProgressionUpdates(
   sets: SetInput[],
@@ -87,12 +93,18 @@ export function computeProgressionUpdates(
 
   const updates: ProgressionUpdate[] = []
   for (const [weId, weSets] of byWeId) {
-    const targetSets = weSetsCountMap.get(weId) ?? weSets.length
-    const allDone = weSets.length >= targetSets && weSets.every(s => s.completed)
-    if (!allDone) continue
-    const weights = weSets.map(s => s.weightKg ?? 0).filter(w => w > 0)
+    const targetSets    = weSetsCountMap.get(weId) ?? weSets.length
+    const completedCount = weSets.filter(s => s.completed).length
+    const ratio          = targetSets > 0 ? completedCount / targetSets : 0
+    const weights        = weSets.map(s => s.weightKg ?? 0).filter(w => w > 0)
     if (weights.length === 0) continue
-    updates.push({ workoutExerciseId: weId, suggestedNextWeightKg: Math.max(...weights) + 2.5 })
+    const maxWeight = Math.max(...weights)
+
+    if (ratio > PROGRESSION_UP_THRESHOLD) {
+      updates.push({ workoutExerciseId: weId, suggestedNextWeightKg: maxWeight + PROGRESSION_STEP_KG })
+    } else if (ratio < PROGRESSION_DOWN_THRESHOLD) {
+      updates.push({ workoutExerciseId: weId, suggestedNextWeightKg: Math.max(maxWeight - PROGRESSION_STEP_KG, 0) })
+    }
   }
 
   return updates

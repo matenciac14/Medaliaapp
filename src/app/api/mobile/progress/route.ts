@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [checkIns, plan, profile, gymCount] = await Promise.all([
+  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs] = await Promise.all([
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
@@ -57,6 +57,28 @@ export async function GET(req: NextRequest) {
       select: { weightGoalKg: true },
     }),
     prisma.gymSession.count({ where: { athleteId: userId, completed: true } }),
+    prisma.gymSession.findMany({
+      where: { athleteId: userId, completed: true },
+      select: { date: true },
+      orderBy: { date: 'asc' },
+    }),
+    prisma.performanceBenchmark.findMany({
+      where: { userId },
+      orderBy: { testedAt: 'desc' },
+      select: { id: true, sport: true, metric: true, value: true, unit: true, testedAt: true, notes: true },
+    }),
+    prisma.setLog.findMany({
+      where: { isPR: true, session: { athleteId: userId, completed: true } },
+      orderBy: { session: { date: 'desc' } },
+      take: 20,
+      select: {
+        id: true,
+        exerciseName: true,
+        weightKg: true,
+        repsCompleted: true,
+        session: { select: { date: true } },
+      },
+    }),
   ])
 
   const weightPoints = checkIns
@@ -99,6 +121,35 @@ export async function GET(req: NextRequest) {
     }
   }) ?? []
 
+  // Gym adherence by ISO week (last 8 weeks with activity)
+  const gymByWeek = new Map<string, number>()
+  for (const s of rawGymSessions) {
+    if (!s.date) continue
+    const d = s.date
+    const dow = d.getUTCDay() === 0 ? 7 : d.getUTCDay()
+    const monday = new Date(d)
+    monday.setUTCDate(d.getUTCDate() - dow + 1)
+    const key = monday.toISOString().split('T')[0]
+    gymByWeek.set(key, (gymByWeek.get(key) ?? 0) + 1)
+  }
+  const benchmarks = rawBenchmarks.map(b => ({
+    ...b,
+    testedAt: b.testedAt.toISOString(),
+  }))
+
+  const gymPRs = rawGymPRs.map(r => ({
+    id: r.id,
+    exerciseName: r.exerciseName ?? 'Ejercicio',
+    weightKg: r.weightKg,
+    repsCompleted: r.repsCompleted,
+    date: r.session.date.toISOString(),
+  }))
+
+  const gymAdherenceByWeek = [...gymByWeek.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-8)
+    .map(([weekLabel, sessions]) => ({ weekLabel, sessions }))
+
   const totalSessions = checkIns.length
   // Solo promediar semanas con sesiones pasadas — semanas futuras (0 sesiones) no deben arrastrar el promedio
   const weeksWithPastSessions = plan?.weeks.filter(w => w.sessions.length > 0) ?? []
@@ -114,6 +165,9 @@ export async function GET(req: NextRequest) {
     weeks,
     weightGoal: profile?.weightGoalKg ?? null,
     gymSessionsCompleted: gymCount,
+    gymAdherenceByWeek,
+    benchmarks,
+    gymPRs,
     totalCheckIns: totalSessions,
     overallAdherencePct: overallAdherence,
   })

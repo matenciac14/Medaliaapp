@@ -68,6 +68,7 @@ export class PrismaHealthProfileRepository implements IHealthProfileRepository {
       ...(data.ftp !== undefined && { ftp: data.ftp }),
       ...(data.injuries !== undefined && { injuries: data.injuries }),
       ...(data.conditions !== undefined && { conditions: data.conditions }),
+      ...(data.sessionMinutes !== undefined && { sessionMinutes: data.sessionMinutes }),
       ...(data.sport !== undefined && { sport: data.sport }),
       ...(data.experienceLevel !== undefined && { experienceLevel: data.experienceLevel }),
       ...(data.sportDetails !== undefined && { sportDetails: data.sportDetails as object }),

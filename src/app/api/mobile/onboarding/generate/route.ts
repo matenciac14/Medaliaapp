@@ -8,7 +8,100 @@ import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profil
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { sendAthleteReadyEmail } from '@/infrastructure/email/resend'
 import { sendPushNotification } from '@/lib/push'
-import type { WizardData } from '@/app/onboarding/_types'
+import type { WizardData, ActivityType, GymGoal, RunningGoal } from '@/app/onboarding/_types'
+
+// ── Mobile payload → WizardData mapper ────────────────────────────────────────
+// Mobile sends: mainGoal, sport, raceDistance, hoursPerSession
+// Backend expects: activityType, gymGoal, runningGoal, sessionMinutes
+
+type MobilePayload = {
+  mainGoal?: string | null
+  sport?: string | null
+  raceDistance?: string | null
+  hrMax?: number
+  hrSource?: string
+  gender?: string
+  age?: number
+  weightKg?: number
+  heightCm?: number
+  daysPerWeek?: number
+  hoursPerSession?: number
+  injuries?: string[]
+  conditions?: string[]
+  experienceLevel?: string | null
+  // Fields from web format (forward-compatible)
+  activityType?: string | null
+  gymGoal?: string | null
+  runningGoal?: string | null
+  sessionMinutes?: number
+}
+
+function mapMobilePayload(p: MobilePayload): WizardData {
+  // If already in web format, pass through
+  if (p.activityType) {
+    return {
+      activityType: p.activityType as ActivityType,
+      gymGoal: (p.gymGoal as GymGoal) ?? null,
+      runningGoal: (p.runningGoal as RunningGoal) ?? null,
+      age: p.age ?? null,
+      heightCm: p.heightCm ?? null,
+      weightKg: p.weightKg ?? null,
+      gender: (p.gender as 'male' | 'female') ?? null,
+      weightGoalKg: null,
+      daysPerWeek: p.daysPerWeek ?? 4,
+      sessionMinutes: p.sessionMinutes ?? 60,
+      experienceLevel: (p.experienceLevel as WizardData['experienceLevel']) ?? null,
+      injuries: Array.isArray(p.injuries) ? p.injuries.join(', ') : '',
+      conditions: Array.isArray(p.conditions) ? p.conditions.join(', ') : '',
+    }
+  }
+
+  // Map mobile format → WizardData
+  const activityType = deriveActivityType(p.mainGoal, p.sport)
+  const gymGoal = deriveGymGoal(p.mainGoal)
+  const runningGoal = deriveRunningGoal(p.raceDistance)
+  const sessionMinutes = Math.round((p.hoursPerSession ?? 1) * 60)
+
+  return {
+    activityType,
+    gymGoal,
+    runningGoal,
+    age: p.age ?? null,
+    heightCm: p.heightCm ?? null,
+    weightKg: p.weightKg ?? null,
+    gender: (p.gender as 'male' | 'female') ?? null,
+    weightGoalKg: null,
+    daysPerWeek: p.daysPerWeek ?? 4,
+    sessionMinutes,
+    experienceLevel: (p.experienceLevel as WizardData['experienceLevel']) ?? null,
+    injuries: Array.isArray(p.injuries) ? p.injuries.filter(i => i !== 'Ninguna').join(', ') : '',
+    conditions: Array.isArray(p.conditions) ? p.conditions.filter(c => c !== 'Ninguna').join(', ') : '',
+  }
+}
+
+function deriveActivityType(mainGoal?: string | null, sport?: string | null): ActivityType {
+  if (mainGoal === 'SPORT' && sport === 'RUNNING') return 'RUNNING'
+  if (mainGoal === 'SPORT' && sport === 'STRENGTH') return 'GYM'
+  if (mainGoal === 'GYM') return 'GYM'
+  if (mainGoal === 'BODY') return 'GYM'
+  return 'FREE'
+}
+
+function deriveGymGoal(mainGoal?: string | null): GymGoal | null {
+  if (mainGoal === 'GYM') return 'MUSCLE_GAIN'
+  if (mainGoal === 'BODY') return 'RECOMPOSITION'
+  return null
+}
+
+function deriveRunningGoal(raceDistance?: string | null): RunningGoal | null {
+  if (raceDistance === 'RACE_5K') return 'RACE_5K'
+  if (raceDistance === 'RACE_10K') return 'RACE_10K'
+  if (raceDistance === 'RACE_HALF_MARATHON') return 'GENERAL_FITNESS'
+  if (raceDistance === 'RACE_MARATHON') return 'GENERAL_FITNESS'
+  return 'GENERAL_FITNESS'
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -19,7 +112,8 @@ export async function POST(req: NextRequest) {
   if (!allowed) return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
 
   try {
-    const data: WizardData = await req.json()
+    const raw: MobilePayload = await req.json()
+    const data = mapMobilePayload(raw)
 
     if (!data.age || !data.weightKg || !data.heightCm) {
       return NextResponse.json({ error: 'Faltan datos del perfil (edad, peso o talla).' }, { status: 400 })

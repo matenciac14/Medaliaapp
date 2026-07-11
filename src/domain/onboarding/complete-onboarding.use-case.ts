@@ -84,7 +84,10 @@ export async function completeOnboardingUseCase(
       gender: data.gender ?? 'male',
       sport: sportType,
       experienceLevel: data.experienceLevel ?? undefined,
-      sportDetails: data.gymGoal ? { gymGoal: data.gymGoal } : {},
+      sessionMinutes: data.sessionMinutes ?? undefined,
+      injuries: parseListField(data.injuries),
+      conditions: parseListField(data.conditions),
+      sportDetails: buildSportDetails(data),
       dataSources: {},
     })
 
@@ -139,4 +142,17 @@ function activityToSportGoal(activityType: WizardData['activityType'], hasGymGoa
   if (activityType === 'GYM' || (activityType === 'BOTH' && hasGymGoal)) return 'BODY_RECOMPOSITION'
   if (activityType === 'RUNNING' || activityType === 'BOTH') return 'GENERAL_FITNESS'
   return 'GENERAL_FITNESS'
+}
+
+function buildSportDetails(data: WizardData): Record<string, unknown> {
+  const details: Record<string, unknown> = {}
+  if (data.gymGoal) details.gymGoal = data.gymGoal
+  if (data.runningGoal) details.runningGoal = data.runningGoal
+  return details
+}
+
+function parseListField(value: string | string[] | undefined | null): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  return value.split(',').map(s => s.trim()).filter(Boolean)
 }

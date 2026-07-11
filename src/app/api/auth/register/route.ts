@@ -68,10 +68,8 @@ export async function POST(req: NextRequest) {
       await tx.userSubscription.create({
         data: {
           userId:   user.id,
-          tier:     isCoach ? 'PRO' : 'TRIAL',
-          ...(isCoach
-            ? { coachTier: 'STARTER' }
-            : { trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }),
+          tier:     'PRO',  // Beta: todos PRO. Post-beta: isCoach ? 'PRO' : 'FREE'
+          ...(isCoach ? { coachTier: 'STARTER' } : {}),
         },
       })
       if (isCoach) {
