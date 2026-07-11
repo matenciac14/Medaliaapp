@@ -2542,4 +2542,73 @@ export const GROUPS: RoadmapGroup[] = [
 
     ],
   },
+
+  // ─── DEUDA TÉCNICA ────────────────────────────────────────────────────────────
+
+  {
+    id: 'tech-debt',
+    label: 'Deuda Técnica',
+    color: '#9333ea',
+    bgColor: '#faf5ff',
+    borderColor: '#c084fc',
+    liveList: true,
+    phases: [
+      {
+        id: 'debt-architecture',
+        label: 'Arquitectura',
+        period: 'Backlog',
+        items: [
+          {
+            title: 'DEBT-01 — completeOnboardingUseCase importa infrastructure directamente (viola hexagonal)',
+            done: false,
+            priority: 'P2',
+            note: 'domain/onboarding/complete-onboarding.use-case.ts importa PrismaHealthProfileRepository, PrismaUserRepository, PrismaPlanRepository desde infrastructure/db/. El use case ya recibe repos por DI en deps, pero dentro del $transaction instancia nuevos repos con el tx client. Fix: pasar factory de repos al use case o mover $transaction al caller (route). Requiere refactor del caller + tests.',
+          },
+          {
+            title: 'DEBT-02 — WeeklyRoutine upsert fuera del $transaction en onboarding use case',
+            done: false,
+            priority: 'P2',
+            note: 'domain/onboarding/complete-onboarding.use-case.ts L110-116: el upsert de WeeklyRoutine ejecuta después del $transaction. Si falla, el atleta queda con onboardingCompleted=true pero sin WeeklyRoutine — no puede re-correr onboarding. Mover dentro del $transaction existente.',
+          },
+          {
+            title: 'DEBT-03 — Onboarding prefilled .catch(() => {}) silencia errores de prefill B2B',
+            done: false,
+            priority: 'P3',
+            note: 'onboarding/page.tsx: fetch a /api/onboarding/prefilled tiene .catch(() => {}). Si falla, atleta B2B no ve datos pre-poblados por el coach y los reingresa sin aviso. Agregar console.error mínimo o toast de warning.',
+          },
+        ],
+      },
+      {
+        id: 'debt-auth',
+        label: 'Auth & Seguridad',
+        period: 'Backlog',
+        items: [
+          {
+            title: 'DEBT-04 — Botón "Continuar con Google" en register mobile es no-op (sin onPress)',
+            done: false,
+            priority: 'P1',
+            note: 'MEDALIQ-MOBILE/app/(auth)/register.tsx: el botón Google se renderiza pero no tiene handler. El usuario lo toca y no pasa nada. Opciones: (a) implementar Google OAuth como en login.tsx, (b) agregar disabled + label "Próximamente".',
+          },
+          {
+            title: 'DEBT-05 — Tests faltantes: set-role endpoint sin unit tests',
+            done: false,
+            priority: 'P2',
+            note: 'src/app/api/auth/set-role/route.ts no tiene tests. Cubre el flujo post-registro donde el usuario elige rol (ATHLETE/COACH). Crear route.test.ts con casos: rol válido, rol inválido, usuario no autenticado.',
+          },
+          {
+            title: 'DEBT-06 — Mobile JWT auth: sin tests unitarios para login/refresh/logout',
+            done: false,
+            priority: 'P2',
+            note: 'Endpoints /api/mobile/auth/login, /api/mobile/auth/refresh no tienen tests unitarios. Crear tests para: login con credenciales válidas/inválidas, refresh con token válido/expirado, features actualizadas en refresh.',
+          },
+          {
+            title: 'DEBT-07 — B2B post-onboarding mobile redirige a /login en vez de /pending',
+            done: false,
+            priority: 'P2',
+            note: 'MEDALIQ-MOBILE/app/(auth)/onboarding.tsx L183-188: cuando res.isB2B === true, Alert redirige a /(auth)/login. El usuario ya está autenticado. Debería ir a /(app)/pending o pantalla de espera B2B.',
+          },
+        ],
+      },
+    ],
+  },
 ]
