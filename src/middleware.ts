@@ -11,6 +11,22 @@ export default auth((req) => {
   const isLoggedIn = !!session?.user
   const pathname = nextUrl.pathname
 
+  // Cookie de sesión inválida (JWT expirado o secret rotado) → limpiar en /login para romper el loop
+  // Sin esto: Auth.js reintenta verificar el token cada vez → redirect a /api/auth/error → /login → loop
+  if (!isLoggedIn && pathname === '/login') {
+    const hasStaleCookie =
+      req.cookies.has('next-auth.session-token') ||
+      req.cookies.has('__Secure-next-auth.session-token')
+    if (hasStaleCookie) {
+      const res = NextResponse.next()
+      res.cookies.delete('next-auth.session-token')
+      res.cookies.delete('__Secure-next-auth.session-token')
+      res.cookies.delete('next-auth.csrf-token')
+      res.cookies.delete('__Secure-next-auth.csrf-token')
+      return res
+    }
+  }
+
   const isPublicRoute =
     PUBLIC_ROUTES.includes(pathname) ||
     pathname.startsWith('/api/') ||
