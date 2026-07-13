@@ -111,6 +111,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, trigger, account }) {
+      // Invalidación masiva sin rotar el secret.
+      // Para invalidar JWTs emitidos antes de una fecha: setear AUTH_MIN_ISSUED_AT
+      // en Vercel con el timestamp Unix del corte (date +%s) → Redeploy.
+      // Solo afecta usuarios con sesiones antiguas — los activos recientes no sienten nada.
+      const minIat = parseInt(process.env.AUTH_MIN_ISSUED_AT ?? '0')
+      if (!user && minIat > 0 && typeof token.iat === 'number' && token.iat < minIat) {
+        return { ...token, exp: 0 }
+      }
+
       if (user) {
         token.id = user.id
         token.role = user.role
