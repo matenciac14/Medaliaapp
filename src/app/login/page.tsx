@@ -90,15 +90,15 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center bg-white lg:bg-gray-50 px-6">
         <div className="w-full max-w-[448px] lg:bg-white lg:rounded-2xl lg:shadow-lg lg:shadow-black/5 lg:p-10 lg:border lg:border-gray-100">
           {/* Logo */}
-          <div className="mb-8 lg:mb-10">
-            <div className="flex items-center gap-0.5">
+          <div className="mb-8 lg:mb-10 text-center">
+            <div className="flex items-center justify-center gap-0.5">
               <span className="text-2xl font-bold text-[#1e3a5f]">Medal</span>
               <span className="text-2xl font-bold text-[#ea580c]">iq</span>
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-[#1e3a5f] mb-1">Bienvenido de vuelta</h1>
-          <p className="text-sm text-gray-500 mb-8">Ingresa tus datos para continuar</p>
+          <h1 className="text-2xl font-bold text-[#1e3a5f] mb-1 text-center">Bienvenido de vuelta</h1>
+          <p className="text-sm text-gray-500 mb-8 text-center">Ingresa tus datos para continuar</p>
 
           {error && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">

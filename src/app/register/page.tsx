@@ -173,9 +173,9 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={loading || !role}
-              className="w-full rounded-xl bg-[#1e3a5f] text-white py-3 text-sm font-semibold hover:bg-[#16304f] transition-colors disabled:opacity-50"
+              className="w-full rounded-xl bg-[#ea580c] text-white py-3 text-sm font-semibold hover:bg-[#d4520b] transition-colors disabled:opacity-50"
             >
-              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+              {loading ? 'Creando cuenta...' : 'Crear cuenta gratis'}
             </button>
           </form>
 
