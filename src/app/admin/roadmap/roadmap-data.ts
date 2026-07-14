@@ -389,7 +389,7 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'B2C-03 — Constructor de nutrición consolidado: pasar de macros calculados a comidas reales con contexto del plan',
-            done: false,
+            done: true,
             priority: 'P1',
             note: 'Paso 3 del plan. Hoy NutritionPlan = solo TDEE + macros (números). El constructor B2C (NUT-F-01 a NUT-F-05 en nutricion-atleta-autonomo) ya tiene la base. Consolidar: (1) NUT-B-06 (resumen día planificado vs realizado), (2) NUT-F-02 (vista semanal menú), (3) NUT-F-03 (gráfica adherencia 7 días), (4) NUT-F-04 (desglose por comida). Si tiene TrainingPlan activo → intensidad del día (HARD/EASY/REST) alimenta automáticamente el tipo de día en la plantilla de nutrición → loop de personalización sin IA.',
           },
@@ -1040,7 +1040,7 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'NUT-B-06 — GET /api/athlete/nutrition/planned-summary — resumen del día planificado vs realizado',
-            done: false,
+            done: true,
             priority: 'P2',
             note: '?date=YYYY-MM-DD. Retorna: { plannedMeals: PlannedMeal[], loggedFoods: FoodLog[], totals: { plannedKcal, loggedKcal, plannedProtein, loggedProtein, ... } }. Para mostrar la comparativa en /nutrition del día. Sin lógica de negocio — solo agrupación de datos del día.',
           },
@@ -1052,13 +1052,13 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'NUT-F-02 — Vista semanal de comidas planificadas en /nutrition',
-            done: false,
+            done: true,
             priority: 'P1',
             note: 'Sección en /nutrition: "Menú de esta semana" — 7 días con mealType y alimentos planificados por día. Badge de intensidad (Duro/Fácil/Descanso) según el plan. CTA "Aplicar mi menú" → POST /api/athlete/nutrition/templates/[id]/apply. Depende de NUT-B-03. Reemplaza el estado vacío actual de PlannedMeal en /nutrition.',
           },
           {
             title: 'NUT-F-03 — Gráfica adherencia calórica diaria en /nutrition (barras 7 días)',
-            done: false,
+            done: true,
             priority: 'P2',
             note: 'Sección en /nutrition: "Adherencia de la semana" — mini bar chart con 7 barras (Lun-Dom): altura = % de meta calórica cubierta. Color: verde >90%, naranja 70-90%, rojo <70%. Si no hay PlannedMeal para ese día → barra gris "Sin plan". Sin dependencias externas — reutilizar el patrón de SVG/div nativo del resto de gráficas.',
           },
