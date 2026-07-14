@@ -12,6 +12,7 @@ import CoachCard from '../_components/CoachCard'
 import WeeklySummaryCard from '../_components/WeeklySummaryCard'
 import DailySessionCard from '../_components/DailySessionCard'
 import FreeDashboard from '../_components/FreeDashboard'
+import GeneratePlanCard from '../_components/GeneratePlanCard'
 import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
@@ -261,6 +262,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const firstName = (dbUser.name ?? dbUser.email ?? 'Atleta').split(' ')[0]
 
   const profile = dbUser.profile
+
+  const SPORT_GOAL_LABELS: Record<string, string> = {
+    STRENGTH_TRAINING: 'Fuerza',
+    BODY_RECOMPOSITION: 'Recomposición',
+    RACE_5K: '5K',
+    RACE_10K: '10K',
+    RACE_HALF_MARATHON: 'Media Maratón',
+    RACE_MARATHON: 'Maratón',
+    GENERAL_FITNESS: 'Condición Física',
+  }
+  const goalLabel = SPORT_GOAL_LABELS[profile?.sportGoal ?? ''] ?? 'Entrenamiento'
+
+  // B2C Pro = activated (featurePlan=true) + no coach (not B2B)
+  const isB2CPro = (session.user.activated ?? false) && !(session.user.isB2B ?? false)
   const lastCheckIn = dbUser.checkIns[0] ?? null
   const coachRelation = coachRelationRaw ?? null
   const assignedWorkout = assignedWorkoutRaw ?? null
@@ -892,16 +907,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
-              {/* FREE: bienvenida prominente */}
+              {/* FREE mode: B2C Pro → CTA para generar plan | B2C Free → tracking */}
               {dashboardMode === 'FREE' && (
                 <div className="mb-4">
-                  <FreeDashboard
-                    firstName={firstName}
-                    isNewUser={!lastCompletedPlanInfo}
-                    completedPlanName={lastCompletedPlanInfo?.name ?? null}
-                    streakDays={streakDays}
-                    weekSessionCount={weekSessionCount}
-                  />
+                  {isB2CPro ? (
+                    <GeneratePlanCard
+                      firstName={firstName}
+                      completedPlanName={lastCompletedPlanInfo?.name ?? null}
+                      streakDays={streakDays}
+                      goalLabel={goalLabel}
+                    />
+                  ) : (
+                    <FreeDashboard
+                      firstName={firstName}
+                      isNewUser={!lastCompletedPlanInfo}
+                      completedPlanName={lastCompletedPlanInfo?.name ?? null}
+                      streakDays={streakDays}
+                      weekSessionCount={weekSessionCount}
+                    />
+                  )}
                 </div>
               )}
 

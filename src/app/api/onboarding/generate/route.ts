@@ -52,6 +52,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
     console.error('[onboarding/generate] Error:', error)
-    return NextResponse.json({ error: 'Error generando el plan. Intenta de nuevo.' }, { status: 500 })
+    return NextResponse.json({ error: 'Error configurando la cuenta. Intenta de nuevo.' }, { status: 500 })
   }
 }
