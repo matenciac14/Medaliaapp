@@ -2,12 +2,12 @@
 
 import { usePathname } from 'next/navigation'
 
-const PUBLIC_PREFIXES = ['/', '/coaches', '/login', '/register', '/p/']
+const PUBLIC_EXACT = ['/', '/coaches', '/login', '/register']
+const PUBLIC_STARTS = ['/p/']
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some((prefix) =>
-    prefix.endsWith('/') ? pathname === prefix || pathname.startsWith(prefix) : pathname === prefix
-  )
+  if (PUBLIC_EXACT.includes(pathname)) return true
+  return PUBLIC_STARTS.some((prefix) => pathname.startsWith(prefix))
 }
 
 export function WhatsAppButton() {

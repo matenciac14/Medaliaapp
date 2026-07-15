@@ -17,6 +17,7 @@ import {
   Bell,
   MoreHorizontal,
   X,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -70,6 +71,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/progress',  label: s.progress,    icon: TrendingUp,      show: true },
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
     { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
+    { href: '/coaches',   label: 'Buscar coach', icon: Users,           show: !hasCoach },
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
@@ -85,6 +87,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/gym',      label: s.gym,      icon: Dumbbell },
     { href: '/progress', label: s.progress, icon: TrendingUp },
     ...(hasCoach ? [{ href: '/messages', label: 'Mensajes', icon: MessageSquare, badge: unreadCount }] : []),
+    ...(!hasCoach ? [{ href: '/coaches', label: 'Buscar coach', icon: Users, badge: undefined }] : []),
     { href: '/profile',  label: s.profile,  icon: UserCircle },
   ]
 

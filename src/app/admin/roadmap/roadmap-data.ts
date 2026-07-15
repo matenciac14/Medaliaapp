@@ -207,6 +207,10 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'UX-11 (Mobile) — Nav tabs adaptativos por deporte del atleta', done: false, priority: 'P2', note: 'Problema (MEDALIQ-MOBILE): tabs principales son Dashboard/Plan/Nutrition/Check-in. Para atleta STRENGTH el tab Plan siempre vacío y Gym queda en "Más". Solución: leer sport del JWT (ya disponible en mobile) y adaptar tabs. RUNNING → Dashboard/Plan/Nutrition/Check-in (actual). STRENGTH|GYM → Dashboard/Gym/Nutrition/Check-in. BOTH → Dashboard/Plan/Gym/Nutrition (Check-in en Más). Archivo: MEDALIQ-MOBILE — tab navigator principal.' },
           { title: 'UX-ONBOARD-01 — Post-onboarding B2C sin coach: pantalla de orientación "¿por dónde empezar?"', done: false, priority: 'P2', note: 'Atleta B2C termina onboarding y llega al dashboard vacío sin instrucción. Fix: si !coachRelation && sessionCount === 0 → mostrar hero con 3 CTAs claros: (1) "Registra tu primera sesión" → /log/run, (2) "Explora ejercicios" → /gym/exercises, (3) "Ve tu plan nutricional" → /nutrition. Condicional: desaparece tras la primera sesión registrada. Reduce la tasa de abandono post-onboarding — mayor punto de fuga B2C.' },
           { title: 'Auditoría UX atleta B2C sin coach — Sprint 1-3 implementado', done: true, priority: 'P1', note: 'DONE (2026-07-10). Sprint 1: UX-07 weekLabel default "Registra tu semana" (vs "5 min para ajustar tu plan" cuando no hay plan). UX-NEW-02 RPE label genérico (quitado "(running)"). Sprint 2: UX-04 CTA "Crear mi rutina →" en /plan vacío. UX-05 Hero cards mostradas para FREE users (ya tenían datos: peso actual 100kg, meta 85kg, form status). Sprint 3: UX-06 separador "Guía de alimentos" en /nutrition. UX-08 Notificaciones movidas a icono bell en sidebar header (desktop) y top bar (mobile). UX-03 /progress estado vacío mejorado con 6 preview cards de métricas futuras. Sprint 4: UX-NEW-03 tag "Strength" → "Fuerza" en perfil. UX-10 fecha literal eliminada del header dashboard.' },
+          { title: 'GYM-BUG-01 — Comenzar sesion visible aunque la sesion del dia ya este completada', done: true, priority: 'P1', note: 'gym/page.tsx: el boton "Comenzar sesion de hoy" y el panel de detalle del dia no verifican si el dia ya tiene GymSession.completed=true. completedDows se calcula (linea 282) pero no se usa en esos botones. Fix: ocultar boton e indicador "Iniciar sesion" cuando completedDows.has(todayDow). Reemplazar con indicador "Sesion completada". Archivos: src/app/(athlete)/gym/page.tsx.' },
+          { title: 'PLAN-BUG-01 — /plan muestra estado vacio aunque atleta tenga rutina de gym asignada', done: true, priority: 'P1', note: '/plan/page.tsx: check de gymRoutine para redirigir a /gym esta dentro del bloque if (!features?.plan). Como onboarding setea featurePlan=true para todos, la redireccion nunca dispara. Fix: mover el check assignedWorkout FUERA del bloque de features.plan. Archivos: src/app/(athlete)/plan/page.tsx.' },
+          { title: 'UX-GYM-01 — /gym sin selectedDow: llegada sin contexto del dia activo', done: true, priority: 'P2', note: 'Cuando el atleta hace click en "Ver rutina" o "Comenzar sesion" desde el dashboard, llega a /gym sin ?selectedDow=N. El panel de detalle del dia no se muestra. Fix: todos los links internos a /gym deben incluir el DOW del dia actual como queryParam. Archivos: dashboard/page.tsx, gym/page.tsx.' },
+          { title: 'GYM-FEAT-01 — Sin boton Cambiar rutina cuando hay rutina activa asignada', done: true, priority: 'P2', note: 'gym/page.tsx: cuando el atleta tiene assignedWorkout activo, no hay forma de cambiar o desvincular la rutina. Fix: boton "Cambiar rutina" en el header de /gym cuando routine != null. Click → modal de confirmacion → POST /api/gym/assign con otro templateId. POST /api/gym/assign ya desactiva la anterior. Archivos: src/app/(athlete)/gym/page.tsx.' },
         ],
       },
       {
@@ -231,6 +235,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Nutrición: pantalla principal — barra de progreso diaria como elemento hero', done: true, priority: 'P1', note: 'TrackingSection.tsx rediseñado: kcal en text-3xl font-black naranja, % color-coded (rojo≥100%/naranja≥80%/gris), barra h-3, botón "+ Registrar" inline en hero. Movida a primer lugar en nutrition/page.tsx (antes de NutritionContent). Mobile: TrackingSection movida al inicio en nutrition.tsx. worktree at-01-athlete-ux item 7.' },
           { title: 'Nutrición: coach propone ajuste nutricional en tiempo real — atleta acepta/rechaza', done: true, priority: 'P1', note: 'DONE. Modelo CoachNutritionProposal + migración 20260712000002. Port ICoachNutritionProposalRepository + infra repo. API coach POST /api/coach/athlete/[id]/nutrition/propose. API atleta GET /api/athlete/nutrition/proposals + PATCH /[id]. UI coach: ProposeModal + botón en FoodLogsSection. UI atleta: CoachNutritionProposalCard (azul) en nutrition/page antes del ajuste del sistema.' },
           { title: 'UX-NUTRICION-01 — NutritionAdjustmentCard muestra delta sin contexto: atleta no sabe por qué cambió su plan', done: true, priority: 'P2', note: 'La card de ajuste nutricional (BUG-038 ya implementó Aceptar/Rechazar) muestra "+15g carbs" pero el atleta no sabe la causa. Fix: leer el campo reason o trigger del PendingNutritionAdjustment (verificar si existe en el modelo — si no, usar el weeklyCheckIn.adjustments relacionado). Mostrar texto contextual: "Tu check-in del lunes indicó esfuerzo alto. Ajustamos tus carbos +15g para la recuperación." Si no hay razón disponible en DB, mostrar causa genérica por trigger (RPE alto → "esfuerzo detectado", peso bajó → "pérdida de peso detectada"). Archivo: src/app/(athlete)/nutrition/_components/NutritionAdjustmentCard.tsx.' },
+          { title: 'NUT-BUG-01 — FAT_LOSS sin weightGoalKg: no se aplica deficit calorico en el onboarding', done: true, priority: 'P1', note: 'complete-onboarding.use-case.ts usa hasWeightGoal = !!data.weightGoalKg. Si el atleta selecciona FAT_LOSS pero no ingresa weightGoalKg (campo opcional y oculto para RUNNING), deficit = 0. Fix: (1) onboarding/page.tsx — mostrar weightGoalKg para todos los activityType cuando gymGoal=FAT_LOSS o gymGoal=RECOMPOSITION. (2) complete-onboarding.use-case.ts — hasDeficit = !!data.weightGoalKg || data.gymGoal === "FAT_LOSS" || data.gymGoal === "RECOMPOSITION". Archivos: src/app/onboarding/page.tsx, src/domain/onboarding/complete-onboarding.use-case.ts.' },
         ],
       },
       {
@@ -247,6 +252,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Dashboard sin plan: mostrar logs reales de la semana (web + mobile)', done: true, note: 'Fix: dashboard query enriquecida con freeSessionType (SessionLog) + assignedWorkout.template.name (GymSession). weekActivities[] con {dateStr, label, emoji} pasado a DailySessionCard. FREE/RECOVERY mode: "Lo que hiciste esta semana" lista los días con actividad.' },
           { title: 'Historial unificado: plan + libre juntos en /progress cronológico', done: true, note: 'progress/page.tsx: queries paralelas SessionLog + GymSession (últimas 30 c/u) → HistoryItem[] fusionado y ordenado por fecha desc. ProgressClient.tsx: sección "Historial de actividad" con emoji run/gym, label, duración, distancia, RPE.' },
           { title: 'Comparativa sesión actual vs anterior: Δ distancia, Δ ritmo, Δ RPE en pantalla de log', done: true, priority: 'P2', note: 'GET /api/log/last-session?type= devuelve la última sesión libre del mismo tipo. LogRunPage: useEffect por runType → fetch prev → card azul "Última vez — {fecha}" con duración/distancia/RPE previos. Ayuda al atleta a ver progreso sin queries extra.' },
+          { title: 'GAP-02 — sessionMinutes no afecta TDEE: mismo multiplicador para 30 min/sesión que para 90 min/sesión', done: false, priority: 'P3', note: 'Detectado en análisis de flujo B2C 2026-07-14. calculateTDEE() usa solo daysPerWeek para el factor de actividad. sessionMinutes se guarda en HealthProfile como metadata pero no influye en el cálculo energético. Delta real: 4d×30min vs 4d×90min deberían tener multiplicadores distintos. Sugerencia: calcular volumen semanal total (daysPerWeek×sessionMinutes) y ajustar el factor entre bandas (< 120min/sem = sedentario, 120-300 = moderado, etc). No urgente — mejora de precisión TDEE para usuarios con sesiones muy cortas o muy largas.' },
           { title: 'Carga de entrenamiento acumulada: TSS semanal y tendencia ATL/CTL (forma física estimada)', done: false, priority: 'P3', note: 'TSS = (durationH × avgHR/hrMax)² × 100. ATL = promedio 7d, CTL = promedio 42d. Gráfica en /progress. Requiere hrMax y FC registrada en SessionLog.' },
           { title: 'Proyección al objetivo: "A este ritmo llegas a tu meta el DD/MM"', done: false, priority: 'P3', note: 'Basado en adherencia últimas 4 semanas y TrainingPlan.totalWeeks. Cálculo lineal. Si adherencia < 70% → proyección en rojo con sugerencia de ajuste.' },
           { title: 'Editar sesión ya registrada (edit post-log): corregir RPE, distancia o notas después de guardar', done: true, priority: 'P2', note: 'EditRunButton.tsx (client island) embebido en cada RunCard del historial. Muestra "✏️ Editar" footer → inline form (duración, distancia, RPE grid 1-10, notas) → PATCH /api/log/session/[logId] → router.refresh(). src/app/(athlete)/log/history/_components/EditRunButton.tsx.' },
@@ -286,6 +292,12 @@ export const GROUPS: RoadmapGroup[] = [
             done: true,
             priority: 'P2',
             note: 'DONE: GET /api/coach/athlete/[id]/dailylogs — verifica coachRelation, devuelve últimos 7 días de DailyLog (peso, energía, FC, sueño). AthleteDetailClient: dailyLogs state + useEffect lazy en tab Resumen. Tabla con badge semafórico de energía (verde ≥4 / amarillo 3 / rojo <3).',
+          },
+          {
+            title: 'DAILY-BUG-01 — Perfil: boton Registrar no cambia a Editar cuando ya hay log del dia',
+            done: true,
+            priority: 'P2',
+            note: 'ProfileClient.tsx: todayLog se computa correctamente pero el texto del boton esta hardcodeado a "Registrar" y el form no pre-rellena los valores existentes. Fix: (1) texto dinamico: todayLog ? "Editar registro de hoy" : "Registrar". (2) pre-rellenar weightKg/energyLevel/hrResting/sleepHours/notes desde todayLog si existe. El upsert del endpoint ya maneja actualización. Archivo: src/app/(athlete)/profile/_components/ProfileClient.tsx.',
           },
         ],
       },
@@ -365,6 +377,38 @@ export const GROUPS: RoadmapGroup[] = [
             done: false,
             priority: 'P1',
             note: 'El result screen actual (CI-F-01) muestra tarjetas de sugerencias con Aceptar/Rechazar. Lo que falta: sección "Lo que cambió en tu plan" con los números exactos post-check-in — nueva zona Z2 en bpm (ej: "Z2: 142-158 bpm"), delta de volumen semanal (ej: "Volumen: -12% esta semana"), nuevo target calórico (ej: "Calorías: 2,100 kcal mañana"). Datos disponibles en processCheckIn() response — solo falta la UI. Es el momento de arraigo más importante del producto: el atleta ve que el sistema reaccionó a su feedback. Sin esto el check-in se siente como llenar un formulario que nadie lee.',
+          },
+        ],
+      },
+      // ── B2C PRO — GENERADOR DE PLAN & CONSOLIDACIÓN ──────────────────────────
+      {
+        id: 'b2c-pro-plan',
+        label: 'B2C Pro — Generador de TrainingPlan & Dashboard Consolidado',
+        period: 'Próximo — ejecutar en orden 1→2→3→4',
+        items: [
+          {
+            title: 'B2C-01 — Fix GAP-01: activityToSportGoal() preserva MUSCLE_GAIN/FAT_LOSS — desbloqueante para generador de plan',
+            done: true,
+            priority: 'P1',
+            note: 'DONE. activityToSportGoal() ahora recibe gymGoal+runningGoal reales. MUSCLE_GAIN→STRENGTH_TRAINING, FAT_LOSS/RECOMPOSITION→BODY_RECOMPOSITION, RACE_5K/10K conservados. sportGoal en HealthProfile ya distingue estrategia de volumen vs déficit. 0 errores TS.',
+          },
+          {
+            title: 'B2C-02 — Builder hub: autogestión de rutinas desde dashboard y sidebar (gym/builder + nutrition/builder). GeneratePlanCard y /api/plan/generate eliminados — modelo correcto: atletas crean sus propias rutinas',
+            done: true,
+            priority: 'P1',
+            note: 'Paso 2 del plan. El B2C Pro puede generar un TrainingPlan estructurado sin necesidad de coach ni IA. Flujo: wizard simplificado (objetivo + duración semanas + daysPerWeek + sessionMinutes + experienceLevel → ya disponibles en HealthProfile) → selección de template por goalType + semanas → TrainingPlan creado con PlanWeek + PlannedSession. Templates a parametrizar: STRENGTH_TRAINING (MUSCLE_GAIN/FAT_LOSS/RECOMPOSITION), GENERAL_FITNESS (RUNNING). Con TrainingPlan activo el check-in tiene algo sobre qué operar → sistema se siente vivo para B2C Pro. La IA después personaliza sobre esta base sin cambio de arquitectura. Rutas: GET /api/plan/templates (listado), POST /api/plan/generate (crea plan desde template). UI: /new-plan wizard o CTA desde dashboard vacío.',
+          },
+          {
+            title: 'B2C-03 — Constructor de nutrición consolidado: pasar de macros calculados a comidas reales con contexto del plan',
+            done: true,
+            priority: 'P1',
+            note: 'Paso 3 del plan. Hoy NutritionPlan = solo TDEE + macros (números). El constructor B2C (NUT-F-01 a NUT-F-05 en nutricion-atleta-autonomo) ya tiene la base. Consolidar: (1) NUT-B-06 (resumen día planificado vs realizado), (2) NUT-F-02 (vista semanal menú), (3) NUT-F-03 (gráfica adherencia 7 días), (4) NUT-F-04 (desglose por comida). Si tiene TrainingPlan activo → intensidad del día (HARD/EASY/REST) alimenta automáticamente el tipo de día en la plantilla de nutrición → loop de personalización sin IA.',
+          },
+          {
+            title: 'B2C-04 — Dashboard adaptativo: FREE mode con FreeDashboard + BuilderHubCard. Coach discovery banner. Sidebar Buscar coach vs Mensajes segun hasCoach',
+            done: true,
+            priority: 'P1',
+            note: 'Paso 4 del plan. El dashboard hoy es estático — muestra el mismo layout para todos los estados. Consolidar en 4 modos contextuales: (1) B2C Free → tracking básico + CTA upgrade destacado. (2) B2C Pro sin TrainingPlan → CTA "Generar tu plan" prominente (→ B2C-02). (3) B2C Pro con plan activo → plan de la semana + check-in + métricas + nutrición contextual. (4) B2B activado → plan del coach + check-in + comunicación coach. La lógica de selección ya existe parcialmente en FreeDashboard.tsx — unificar en un switch por contexto en dashboard/page.tsx. Cierra el loop: B2C Free → upgrade → plan → check-in → ajuste automático → progreso visible.',
           },
         ],
       },
@@ -825,6 +869,9 @@ export const GROUPS: RoadmapGroup[] = [
       { title: 'UserSubscription model en DB + /upgrade placeholder', done: true, note: 'UserSubscription model en DB (TRIAL|FREE|PRO). Botón temporal mailto: hasta integrar pasarela. NOTA: Trial fue eliminado del modelo de negocio (2026-07-03) — el enum DB existe pero se ignora en lógica nueva.' },
       { title: 'Feature flags: derivación por tier + límites de asesorados para coaches', done: true, note: 'computeAthleteFeatures(tier) + getCoachLimits(CoachTier) en domain/subscription/tier-features.ts. Enforcement en POST /api/coach/clients/create: 402 si activeCount >= maxAthletes.' },
 
+      // ── DEUDA TÉCNICA MAPEADA — activar al implementar billing ─────────────
+      { title: 'GAP-03 — Email verification no bloquea acceso al producto (deuda pre-billing)', done: false, priority: 'P2', note: 'Detectado en análisis de flujo B2C 2026-07-14. /api/auth/register envía email de verificación pero authorize() en auth.ts nunca chequea emailVerified antes de crear el JWT. El usuario puede hacer login y usar el producto sin verificar. Irrelevante en beta (acceso controlado). Al activar billing: el gate de verificación debe estar antes de crear la suscripción de pago — usuario no verificado no puede pagar. Fix: en authorize(), si !user.emailVerified → throw new Error("email_not_verified"). Manejar en /login con mensaje de reenvío. Evaluar si bloquear onboarding también.' },
+
       // ── P0 — PRERREQUISITOS: ejecutar en este orden antes de conectar Wompi ─
       {
         title: 'FIX — coachFeeRate() → coachTierFee() tier plano en domain/admin/finanzas.ts',
@@ -1004,7 +1051,7 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'NUT-B-06 — GET /api/athlete/nutrition/planned-summary — resumen del día planificado vs realizado',
-            done: false,
+            done: true,
             priority: 'P2',
             note: '?date=YYYY-MM-DD. Retorna: { plannedMeals: PlannedMeal[], loggedFoods: FoodLog[], totals: { plannedKcal, loggedKcal, plannedProtein, loggedProtein, ... } }. Para mostrar la comparativa en /nutrition del día. Sin lógica de negocio — solo agrupación de datos del día.',
           },
@@ -1016,13 +1063,13 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'NUT-F-02 — Vista semanal de comidas planificadas en /nutrition',
-            done: false,
+            done: true,
             priority: 'P1',
             note: 'Sección en /nutrition: "Menú de esta semana" — 7 días con mealType y alimentos planificados por día. Badge de intensidad (Duro/Fácil/Descanso) según el plan. CTA "Aplicar mi menú" → POST /api/athlete/nutrition/templates/[id]/apply. Depende de NUT-B-03. Reemplaza el estado vacío actual de PlannedMeal en /nutrition.',
           },
           {
             title: 'NUT-F-03 — Gráfica adherencia calórica diaria en /nutrition (barras 7 días)',
-            done: false,
+            done: true,
             priority: 'P2',
             note: 'Sección en /nutrition: "Adherencia de la semana" — mini bar chart con 7 barras (Lun-Dom): altura = % de meta calórica cubierta. Color: verde >90%, naranja 70-90%, rojo <70%. Si no hay PlannedMeal para ese día → barra gris "Sin plan". Sin dependencias externas — reutilizar el patrón de SVG/div nativo del resto de gráficas.',
           },
@@ -1443,6 +1490,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'EDGE-06 — /api/checkin y /api/mobile/checkin: validar min/max en todos los campos numéricos', done: true, priority: 'P2', note: 'Fix: weightKg con min(10).max(500) en ambas rutas. Todos los campos numéricos ya tenían min/max en Zod. Web: api/checkin/route.ts, Mobile: api/mobile/checkin/route.ts.' },
           { title: 'BUG-022 — HealthProfile.age almacenado, no calculado — se vuelve stale después del onboarding', done: true, priority: 'P1', note: 'Fix: calcAge(dob) en src/lib/utils/calc-age.ts calcula edad en runtime desde dateOfBirth. health-profile.repository.ts ahora incluye dateOfBirth en find(). process-check-in.use-case.ts usa runtimeAge = calcAge(profile.dateOfBirth) con fallback a profile.age. Tests en calc-age.test.ts (8 casos).' },
           { title: 'BUG-023 — InviteCode.usedBy es String? sin FK — referencia huérfana si el usuario se elimina', done: true, priority: 'P2', note: 'Fix: usedByUser User? @relation("UsedInvites", onDelete: SetNull) en schema.prisma. Migración 20260630000001 aplica FK a prod. Admin page /admin/invite-codes ahora usa include: { usedByUser } en lugar de lookup manual + join manual — elimina segunda query y el Map.' },
+          { title: 'GAP-01 — gymGoal granularidad perdida: activityToSportGoal() mapea MUSCLE_GAIN/FAT_LOSS/RECOMPOSITION todos a BODY_RECOMPOSITION', done: false, priority: 'P1', note: 'Detectado en análisis de flujo B2C 2026-07-14. activityToSportGoal() en complete-onboarding.use-case.ts mapea los 3 gym goals al mismo valor BODY_RECOMPOSITION en HealthProfile.sportGoal. La distinción real sobrevive solo en sportDetails.gymGoal (JSON). Fix: MUSCLE_GAIN → STRENGTH_TRAINING, FAT_LOSS → BODY_RECOMPOSITION, RECOMPOSITION → BODY_RECOMPOSITION. Correr migración para reclasificar registros existentes. Bloqueante para generador de plan B2C — sin esto el sistema no puede diferenciar estrategia de superávit vs déficit.' },
         ],
       },
 

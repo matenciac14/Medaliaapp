@@ -36,6 +36,7 @@ type Props = {
   todaySession: TodaySession | null
   hasActivePlan: boolean
   hasGymToday: boolean
+  gymDoneToday?: boolean
   todayGymDay: GymDay | null
   planPhase: string
   phaseDisplay: string
@@ -69,7 +70,7 @@ const SPLIT_LABELS: Record<string, string> = {
 
 export default function DailySessionCard({
   dashboardMode, isCurrentWeek, todaySession, hasActivePlan,
-  hasGymToday, todayGymDay, planPhase, phaseDisplay, phaseColors,
+  hasGymToday, gymDoneToday = false, todayGymDay, planPhase, phaseDisplay, phaseColors,
   selectedWeekNum, totalWeeks, completedCount, totalTraining,
   todayRoutineDay, weekSessionCount = 0, weekSessionTarget = 4,
   weekActivities = [],
@@ -139,9 +140,15 @@ export default function DailySessionCard({
               <p className="text-xs text-gray-500">{todayGymDay.exercises.length} ejercicios</p>
             </div>
           </div>
-          <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg">
-            Empezar
-          </Link>
+          {gymDoneToday ? (
+            <span className="flex items-center gap-1 text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+              <CheckCircle2 size={13} /> Completada
+            </span>
+          ) : (
+            <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg">
+              Empezar
+            </Link>
+          )}
         </div>
       )}
 
@@ -204,9 +211,15 @@ export default function DailySessionCard({
                 </div>
               </div>
               {todayRoutineDay.activity === 'GYM' ? (
-                <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
-                  Empezar
-                </Link>
+                gymDoneToday ? (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                    <CheckCircle2 size={13} /> Completada
+                  </span>
+                ) : (
+                  <Link href="/gym/session" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
+                    Empezar
+                  </Link>
+                )
               ) : (
                 <Link href="/log/run" className="text-xs font-semibold bg-[#ea580c] text-white px-3 py-1.5 rounded-lg whitespace-nowrap">
                   Registrar

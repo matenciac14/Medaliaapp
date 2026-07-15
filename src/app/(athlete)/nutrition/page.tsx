@@ -14,6 +14,8 @@ import TrackingSection from './_components/TrackingSection'
 import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
 import CoachNutritionProposalCard from './_components/CoachNutritionProposalCard'
 import NutritionInitClient from './_components/NutritionInitClient'
+import WeeklyNutritionBars from './_components/WeeklyNutritionBars'
+import WeeklyMenuStrip from './_components/WeeklyMenuStrip'
 import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
 
 export default async function NutritionPage() {
@@ -62,6 +64,7 @@ export default async function NutritionPage() {
     coachProposals,
     currentPlanWeek,
     assignedNutritionPlan,
+    weekSessions,
   ] = await Promise.all([
     prisma.pendingNutritionAdjustment.findFirst({
       where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
@@ -152,6 +155,13 @@ export default async function NutritionPage() {
         },
       },
     }),
+    // NUT-F-02: sesiones de la semana actual (para mapear dayType por día)
+    activePlan && currentWeek
+      ? prisma.plannedSession.findMany({
+          where: { week: { planId: activePlan.id, weekNumber: currentWeek } },
+          select: { dayOfWeek: true, intensity: true, type: true },
+        })
+      : Promise.resolve([]),
   ])
 
   // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
@@ -213,10 +223,10 @@ export default async function NutritionPage() {
 
   // Adherencia semanal — días donde kcal loggeada >= target * 0.9
   let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
+  const kcalByDay: Record<string, number> = {}
   if (nutritionPlanRaw && weekFoodLogs.length > 0) {
     const targetKcal = nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0
     if (targetKcal > 0) {
-      const kcalByDay: Record<string, number> = {}
       for (const log of weekFoodLogs) {
         const day = log.date.toISOString().slice(0, 10)
         const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
@@ -227,6 +237,49 @@ export default async function NutritionPage() {
       weeklyAdherence = { daysHit, totalDays: loggedDays.length }
     }
   }
+
+  // NUT-F-03: datos de barras de adherencia para los últimos 7 días
+  const DOW_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const targetKcalForBars = nutritionPlanRaw
+    ? (nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0)
+    : 0
+  const weekBars = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(todayDate)
+    d.setDate(d.getDate() - 6 + i)
+    const key = d.toISOString().slice(0, 10)
+    const kcal = kcalByDay[key] ?? null
+    const pct = (kcal !== null && targetKcalForBars > 0)
+      ? Math.round((kcal / targetKcalForBars) * 100)
+      : null
+    return {
+      label: DOW_LABELS[d.getDay()],
+      pct,
+      isToday: key === todayDate.toISOString().slice(0, 10),
+    }
+  })
+
+  // NUT-F-02: datos del menú semanal (días de la semana con dayType del plan)
+  const weekMenuDays = Array.from({ length: 7 }, (_, i) => {
+    const dow = i  // 0=Lun..6=Dom (nuestro sistema: jsToOurDow offset)
+    const session = weekSessions.find(s => s.dayOfWeek === dow)
+    const dayType = session && session.type !== 'DESCANSO'
+      ? intensityToDayType(session.intensity)
+      : 'rest'
+    // Fecha real del día
+    const todayMonday = new Date(todayDate)
+    const todayDowNum = todayDate.getDay() === 0 ? 7 : todayDate.getDay()  // 1=Lun
+    todayMonday.setDate(todayDate.getDate() - (todayDowNum - 1))
+    const dayDate = new Date(todayMonday)
+    dayDate.setDate(todayMonday.getDate() + i)
+    const MONTH_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    return {
+      label: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][i],
+      date: `${dayDate.getDate()} ${MONTH_SHORT[dayDate.getMonth()]}`,
+      dayType: (weekSessions.length > 0 ? dayType : null) as 'hard' | 'easy' | 'rest' | null,
+      isToday: dow === todayDow,
+      hasSession: !!session && session.type !== 'DESCANSO',
+    }
+  })
 
   // Contexto de fase del plan
   let planPhaseText: string | null = null
@@ -321,24 +374,17 @@ export default async function NutritionPage() {
         />
       )}
 
-      {/* Adherencia semanal */}
-      {weeklyAdherence && weeklyAdherence.totalDays > 0 && (
-        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
-          <span className="text-lg">📊</span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-800">
-              Esta semana cumpliste tu meta <span style={{ color: weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.7 ? '#16a34a' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.4 ? '#d97706' : '#dc2626' }}>{weeklyAdherence.daysHit} de {weeklyAdherence.totalDays} días</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.8 ? '¡Excelente consistencia!' : weeklyAdherence.daysHit >= weeklyAdherence.totalDays * 0.5 ? 'Vas bien, sigue así.' : 'Registra más días para mejorar.'}
-            </p>
-          </div>
-          <div className="flex gap-1">
-            {Array.from({ length: weeklyAdherence.totalDays }, (_, i) => (
-              <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: i < weeklyAdherence!.daysHit ? '#22c55e' : '#e5e7eb' }} />
-            ))}
-          </div>
-        </div>
+      {/* NUT-F-03 — Adherencia calórica semanal (barras) */}
+      {nutritionPlan && (
+        <WeeklyNutritionBars days={weekBars} />
+      )}
+
+      {/* NUT-F-02 — Menú semanal (solo si hay plan activo + meal plan) */}
+      {activePlan && hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && (
+        <WeeklyMenuStrip
+          days={weekMenuDays}
+          mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as Parameters<typeof WeeklyMenuStrip>[0]['mealPlan']}
+        />
       )}
 
       {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}

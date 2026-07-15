@@ -329,8 +329,8 @@ function StepProfile({ data, update, prefilled }: { data: WizardData; update: (d
             </div>
           </div>
 
-          {/* Peso objetivo — solo si aplica */}
-          {(hasGym || data.activityType === 'FREE') && (
+          {/* Peso objetivo — visible cuando el objetivo implica déficit calórico */}
+          {(hasGym || data.activityType === 'FREE' || data.gymGoal === 'FAT_LOSS' || data.gymGoal === 'RECOMPOSITION') && (
             <div>
               <FieldLabel optional>Peso objetivo (kg)</FieldLabel>
               <FieldInput

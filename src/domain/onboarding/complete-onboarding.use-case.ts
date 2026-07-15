@@ -51,11 +51,12 @@ export async function completeOnboardingUseCase(
     data.gender ?? 'male',
     data.daysPerWeek
   )
-  const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
+  const hasDeficit = !!data.weightGoalKg || data.gymGoal === 'FAT_LOSS' || data.gymGoal === 'RECOMPOSITION'
+  const macros = calculateMacros(tdee, data.weightKg!, hasDeficit)
 
   // ── Derive sport fields from activityType ─────────────────────────────────
   const sportType = activityToSport(data.activityType)
-  const sportGoal = activityToSportGoal(data.activityType, !!data.gymGoal)
+  const sportGoal = activityToSportGoal(data.activityType, data.gymGoal, data.runningGoal)
 
   const nutritionTargets = {
     tdee,
@@ -138,9 +139,20 @@ function activityToSport(activityType: WizardData['activityType']): string {
   }
 }
 
-function activityToSportGoal(activityType: WizardData['activityType'], hasGymGoal: boolean): string {
-  if (activityType === 'GYM' || (activityType === 'BOTH' && hasGymGoal)) return 'BODY_RECOMPOSITION'
-  if (activityType === 'RUNNING' || activityType === 'BOTH') return 'GENERAL_FITNESS'
+function activityToSportGoal(
+  activityType: WizardData['activityType'],
+  gymGoal: WizardData['gymGoal'],
+  runningGoal: WizardData['runningGoal'],
+): string {
+  if (activityType === 'GYM' || activityType === 'BOTH') {
+    // Preserve gym goal granularity — MUSCLE_GAIN is a distinct goal from body recomposition
+    if (gymGoal === 'MUSCLE_GAIN') return 'STRENGTH_TRAINING'
+    return 'BODY_RECOMPOSITION'  // FAT_LOSS | RECOMPOSITION
+  }
+  if (activityType === 'RUNNING') {
+    if (runningGoal === 'RACE_5K') return 'RACE_5K'
+    if (runningGoal === 'RACE_10K') return 'RACE_10K'
+  }
   return 'GENERAL_FITNESS'
 }
 
