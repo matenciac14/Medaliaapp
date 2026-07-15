@@ -111,8 +111,11 @@ function buildFreeModeSummary({
   return lines.join(' ') || null
 }
 
-function getGreeting() {
-  const h = new Date().getHours()
+function getGreeting(tz: string) {
+  const h = parseInt(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: tz }).format(new Date()),
+    10,
+  )
   if (h < 12) return 'Buenos días'
   if (h < 18) return 'Buenas tardes'
   return 'Buenas noches'
@@ -591,7 +594,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* Header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-          {getGreeting()}, {firstName} 👋
+          {getGreeting(dbUser.timezone ?? 'America/Bogota')}, {firstName} 👋
         </h1>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {streakDays >= 2 && (
