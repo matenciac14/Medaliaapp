@@ -111,11 +111,23 @@ function buildFreeModeSummary({
   return lines.join(' ') || null
 }
 
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Buenos días'
-  if (h < 18) return 'Buenas tardes'
-  return 'Buenas noches'
+function getGreeting(tz: string) {
+  try {
+    // hourCycle h23 garantiza rango 0–23 (evita "24" en medianoche con hour12: false)
+    const h = parseInt(
+      new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(new Date()),
+      10,
+    )
+    if (h < 12) return 'Buenos días'
+    if (h < 18) return 'Buenas tardes'
+    return 'Buenas noches'
+  } catch {
+    // Timezone inválido → fallback a UTC offset +0 (conservador)
+    const h = new Date().getUTCHours()
+    if (h < 12) return 'Buenos días'
+    if (h < 18) return 'Buenas tardes'
+    return 'Buenas noches'
+  }
 }
 
 function formatDate() {
@@ -591,7 +603,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* Header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-          {getGreeting()}, {firstName} 👋
+          {getGreeting(dbUser.timezone ?? 'America/Bogota')}, {firstName} 👋
         </h1>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {streakDays >= 2 && (
