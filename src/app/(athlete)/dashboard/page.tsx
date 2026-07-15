@@ -12,7 +12,7 @@ import CoachCard from '../_components/CoachCard'
 import WeeklySummaryCard from '../_components/WeeklySummaryCard'
 import DailySessionCard from '../_components/DailySessionCard'
 import FreeDashboard from '../_components/FreeDashboard'
-import GeneratePlanCard from '../_components/GeneratePlanCard'
+import BuilderHubCard from '../_components/BuilderHubCard'
 import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import { jsToOurDow } from '@/lib/core/date-utils'
@@ -263,25 +263,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const profile = dbUser.profile
 
-  const SPORT_GOAL_LABELS: Record<string, string> = {
-    STRENGTH_TRAINING: 'Fuerza',
-    BODY_RECOMPOSITION: 'Recomposición',
-    RACE_5K: '5K',
-    RACE_10K: '10K',
-    RACE_HALF_MARATHON: 'Media Maratón',
-    RACE_MARATHON: 'Maratón',
-    GENERAL_FITNESS: 'Condición Física',
-  }
-  const goalLabel = SPORT_GOAL_LABELS[profile?.sportGoal ?? ''] ?? 'Entrenamiento'
-
-  // B2C Pro = activated (featurePlan=true) + no coach (not B2B)
-  const isB2CPro = (session.user.activated ?? false) && !(session.user.isB2B ?? false)
   const lastCheckIn = dbUser.checkIns[0] ?? null
   const coachRelation = coachRelationRaw ?? null
   const assignedWorkout = assignedWorkoutRaw ?? null
   const todayDow = jsToOurDow(new Date().getDay())
   const todayGymDay = assignedWorkout?.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
   const hasGymToday = !!(todayGymDay && !todayGymDay.isRestDay)
+  const todayDateStr = new Date().toDateString()
+  const gymDoneToday = recentGymSessions.some((gs) => new Date(gs.date).toDateString() === todayDateStr)
 
   // ── Self-directed: today's routine day + weekly session count ─────────────
   type RoutineDayConfig = { dow: number; activity: 'GYM' | 'RUN' | 'REST'; split?: string; runType?: string }
@@ -654,7 +643,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <p className="text-[10px] text-gray-400">
                     {weekSessionCount >= weekSessionTarget ? 'Meta semanal cumplida' : `Faltan ${weekSessionTarget - weekSessionCount}`}
                   </p>
-                  <Link href="/gym" className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver rutina →</Link>
+                  <Link href={`/gym?selectedDow=${todayDow}`} className="text-[10px] font-semibold text-[#ea580c] py-2 -my-2 inline-block">Ver rutina →</Link>
                 </div>
               </div>
             </div>
@@ -907,25 +896,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
-              {/* FREE mode: B2C Pro → CTA para generar plan | B2C Free → tracking */}
+              {/* FREE mode — tracking + constructor */}
               {dashboardMode === 'FREE' && (
-                <div className="mb-4">
-                  {isB2CPro ? (
-                    <GeneratePlanCard
-                      firstName={firstName}
-                      completedPlanName={lastCompletedPlanInfo?.name ?? null}
-                      streakDays={streakDays}
-                      goalLabel={goalLabel}
-                    />
-                  ) : (
-                    <FreeDashboard
-                      firstName={firstName}
-                      isNewUser={!lastCompletedPlanInfo}
-                      completedPlanName={lastCompletedPlanInfo?.name ?? null}
-                      streakDays={streakDays}
-                      weekSessionCount={weekSessionCount}
-                    />
-                  )}
+                <div className="mb-4 space-y-3">
+                  <FreeDashboard
+                    firstName={firstName}
+                    isNewUser={!lastCompletedPlanInfo}
+                    completedPlanName={lastCompletedPlanInfo?.name ?? null}
+                    streakDays={streakDays}
+                    weekSessionCount={weekSessionCount}
+                  />
+                  <BuilderHubCard />
                 </div>
               )}
 
@@ -941,6 +922,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 todaySession={todaySession}
                 hasActivePlan={!!activePlan}
                 hasGymToday={hasGymToday}
+                gymDoneToday={gymDoneToday}
                 todayGymDay={todayGymDay}
                 planPhase={planData.phase}
                 phaseDisplay={phaseDisplay}
@@ -975,12 +957,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
 
           {/* Card coach real — solo si tiene coach asignado */}
-          {coachRelation && (
+          {coachRelation ? (
             <CoachCard
               name={coachRelation.coach.name ?? null}
               headline={coachRelation.coach.coachProfile?.headline ?? coachRelation.coach.coachProfile?.specialties?.[0] ?? null}
               slug={coachRelation.coach.coachProfile?.slug ?? null}
             />
+          ) : !(session.user.isB2B) && (
+            <Link
+              href="/coaches"
+              className="block rounded-2xl border border-[#1e3a5f]/20 bg-[#1e3a5f]/5 px-4 py-3 hover:bg-[#1e3a5f]/10 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#1e3a5f]">¿Quieres un entrenador?</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Conecta con un coach que potencie tu rendimiento.</p>
+                </div>
+                <ChevronRight size={16} className="text-[#1e3a5f] shrink-0" />
+              </div>
+            </Link>
           )}
 
           {/* Resumen Rápido */}

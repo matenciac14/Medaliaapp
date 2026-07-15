@@ -476,11 +476,17 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
               <p className="text-sm text-white/70">Nivel: {assigned.template.level}</p>
             )}
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-right shrink-0 flex flex-col items-end gap-2">
             <div className="flex items-center gap-1.5 text-white/70 text-sm">
               <Calendar size={14} />
               <span>{assigned.template.daysPerWeek} días/sem</span>
             </div>
+            <Link
+              href="/gym/builder"
+              className="text-[10px] font-semibold text-white/60 hover:text-white transition-colors underline underline-offset-2"
+            >
+              Cambiar rutina
+            </Link>
           </div>
         </div>
       </div>
@@ -521,13 +527,20 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
               </div>
             </div>
             <div className="px-5 py-4 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/gym/session"
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-cta hover:opacity-90 active:opacity-80 text-white font-semibold text-sm px-4 py-3 rounded-lg transition-opacity"
-              >
-                <Clock size={16} />
-                Comenzar sesión de hoy
-              </Link>
+              {completedDows.has(todayDow) ? (
+                <div className="flex-1 inline-flex items-center justify-center gap-2 bg-green-50 text-green-700 border border-green-200 font-semibold text-sm px-4 py-3 rounded-lg">
+                  <CheckCircle2 size={16} />
+                  Sesión completada hoy
+                </div>
+              ) : (
+                <Link
+                  href="/gym/session"
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-cta hover:opacity-90 active:opacity-80 text-white font-semibold text-sm px-4 py-3 rounded-lg transition-opacity"
+                >
+                  <Clock size={16} />
+                  Comenzar sesión de hoy
+                </Link>
+              )}
               <Link
                 href="/gym/history"
                 className="flex-1 inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-3 rounded-lg transition-colors"
@@ -714,13 +727,20 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                     <p className="font-bold text-[#1e3a5f] mt-0.5">{dayLabel}</p>
                   </div>
                   {isSelectedToday && (
-                    <Link
-                      href="/gym/session"
-                      className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#ea580c' }}
-                    >
-                      Iniciar sesión →
-                    </Link>
+                    completedDows.has(todayDow) ? (
+                      <span className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-semibold">
+                        <CheckCircle2 size={14} />
+                        Completada
+                      </span>
+                    ) : (
+                      <Link
+                        href="/gym/session"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: '#ea580c' }}
+                      >
+                        Iniciar sesión →
+                      </Link>
+                    )
                   )}
                 </div>
                 <div className="divide-y divide-gray-50">

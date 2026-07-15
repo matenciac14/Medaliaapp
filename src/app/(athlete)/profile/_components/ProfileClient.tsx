@@ -389,6 +389,11 @@ export default function ProfileClient({ user }: Props) {
           <div className="flex items-center gap-2">
             <Target size={16} className="text-[#ea580c]" />
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Registro diario</h2>
+            {todayLog && (
+              <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">
+                Registrado hoy
+              </span>
+            )}
           </div>
           <a href="/checkin" className="text-xs text-gray-400 hover:text-[#ea580c] transition-colors py-2 -my-2 inline-block">
             Check-in semanal →
@@ -479,7 +484,7 @@ export default function ProfileClient({ user }: Props) {
           className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           style={{ backgroundColor: saved ? '#22c55e' : '#ea580c' }}
         >
-          {saved ? <><Check size={16} /> Guardado</> : saving ? 'Guardando...' : 'Guardar métricas'}
+          {saved ? <><Check size={16} /> Guardado</> : saving ? 'Guardando...' : todayLog ? 'Actualizar registro de hoy' : 'Guardar métricas'}
         </button>
       </div>
 

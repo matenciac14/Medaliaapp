@@ -51,7 +51,8 @@ export async function completeOnboardingUseCase(
     data.gender ?? 'male',
     data.daysPerWeek
   )
-  const macros = calculateMacros(tdee, data.weightKg!, !!data.weightGoalKg)
+  const hasDeficit = !!data.weightGoalKg || data.gymGoal === 'FAT_LOSS' || data.gymGoal === 'RECOMPOSITION'
+  const macros = calculateMacros(tdee, data.weightKg!, hasDeficit)
 
   // ── Derive sport fields from activityType ─────────────────────────────────
   const sportType = activityToSport(data.activityType)
