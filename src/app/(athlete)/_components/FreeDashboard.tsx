@@ -81,7 +81,7 @@ export default function FreeDashboard({
           </div>
         </Link>
 
-        <Link href="/coaches" className="group block">
+        <Link href="/find-coach" className="group block">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#3b6fdd]/40 transition-all p-5 h-full">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-[#3b6fdd]/10 flex items-center justify-center text-2xl shrink-0">
