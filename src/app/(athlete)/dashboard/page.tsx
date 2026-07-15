@@ -112,13 +112,22 @@ function buildFreeModeSummary({
 }
 
 function getGreeting(tz: string) {
-  const h = parseInt(
-    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: tz }).format(new Date()),
-    10,
-  )
-  if (h < 12) return 'Buenos días'
-  if (h < 18) return 'Buenas tardes'
-  return 'Buenas noches'
+  try {
+    // hourCycle h23 garantiza rango 0–23 (evita "24" en medianoche con hour12: false)
+    const h = parseInt(
+      new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(new Date()),
+      10,
+    )
+    if (h < 12) return 'Buenos días'
+    if (h < 18) return 'Buenas tardes'
+    return 'Buenas noches'
+  } catch {
+    // Timezone inválido → fallback a UTC offset +0 (conservador)
+    const h = new Date().getUTCHours()
+    if (h < 12) return 'Buenos días'
+    if (h < 18) return 'Buenas tardes'
+    return 'Buenas noches'
+  }
 }
 
 function formatDate() {
