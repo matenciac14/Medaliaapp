@@ -68,7 +68,7 @@ export default async function PlanPage() {
           </div>
           <div className="flex flex-col gap-3">
             <a
-              href="/coaches"
+              href="/find-coach"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#1e3a5f' }}
             >
@@ -276,7 +276,7 @@ export default async function PlanPage() {
             </a>
             {!isB2B && (
               <a
-                href="/coaches"
+                href="/find-coach"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Buscar entrenador

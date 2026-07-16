@@ -977,7 +977,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             />
           ) : !(session.user.isB2B) && (
             <Link
-              href="/coaches"
+              href="/find-coach"
               className="block rounded-2xl border border-[#1e3a5f]/20 bg-[#1e3a5f]/5 px-4 py-3 hover:bg-[#1e3a5f]/10 transition-colors"
             >
               <div className="flex items-center justify-between gap-3">
