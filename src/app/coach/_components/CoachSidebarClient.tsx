@@ -102,7 +102,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
               <p className="text-white text-sm font-medium truncate">{coachName}</p>
               <p className="text-white/50 text-xs">Coach</p>
             </div>
-            <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg" title={s.logout} aria-label={s.logout}>
+            <button onClick={() => signOut({ callbackUrl: '/login?from=signout' })} className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg" title={s.logout} aria-label={s.logout}>
               <LogOut size={16} />
             </button>
           </div>
@@ -117,7 +117,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />
-          <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors">
+          <button onClick={() => signOut({ callbackUrl: '/login?from=signout' })} className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors">
             <LogOut size={16} />
             <span>{s.logout}</span>
           </button>

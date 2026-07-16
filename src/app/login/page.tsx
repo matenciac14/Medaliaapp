@@ -11,11 +11,14 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const { status } = useSession()
 
+  // No redirigir si venimos de un signOut — la sesión puede estar en memoria
+  // brevemente antes de que el servidor confirme que la cookie fue eliminada.
+  const isSignOut = searchParams.get('from') === 'signout'
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && !isSignOut) {
       router.replace('/dashboard')
     }
-  }, [status, router])
+  }, [status, router, isSignOut])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

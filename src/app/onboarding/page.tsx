@@ -563,7 +563,7 @@ export default function OnboardingPage() {
             Paso {stepIndex + 1} de {totalSteps} — {STEP_LABELS[currentStepId]}
           </span>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut({ callbackUrl: '/login?from=signout' })}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >
             Salir

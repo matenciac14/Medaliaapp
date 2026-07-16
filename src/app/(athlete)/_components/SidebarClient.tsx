@@ -156,7 +156,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
               <p className="text-xs text-white/50 capitalize">{user.role.toLowerCase()}</p>
             </div>
             <button
-              onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
+              onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login?from=signout' }) }}
               className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-1.5 text-white/50 hover:text-white transition-colors rounded-lg"
               aria-label={s.logout}
               title={s.logout}
@@ -184,7 +184,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
             )}
           </Link>
           <button
-            onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login' }) }}
+            onClick={() => { document.cookie = 'locale=es;path=/;max-age=31536000'; signOut({ callbackUrl: '/login?from=signout' }) }}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
           >
             <LogOut size={16} />
