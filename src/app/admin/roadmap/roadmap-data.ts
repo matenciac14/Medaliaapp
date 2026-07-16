@@ -374,9 +374,9 @@ export const GROUPS: RoadmapGroup[] = [
           },
           {
             title: 'CI-F-05 — Check-in result: mostrar cambios aplicados al plan con valores exactos (zonas, volumen, nutrición)',
-            done: false,
+            done: true,
             priority: 'P1',
-            note: 'El result screen actual (CI-F-01) muestra tarjetas de sugerencias con Aceptar/Rechazar. Lo que falta: sección "Lo que cambió en tu plan" con los números exactos post-check-in — nueva zona Z2 en bpm (ej: "Z2: 142-158 bpm"), delta de volumen semanal (ej: "Volumen: -12% esta semana"), nuevo target calórico (ej: "Calorías: 2,100 kcal mañana"). Datos disponibles en processCheckIn() response — solo falta la UI. Es el momento de arraigo más importante del producto: el atleta ve que el sistema reaccionó a su feedback. Sin esto el check-in se siente como llenar un formulario que nadie lee.',
+            note: 'ProcessCheckInResult extendido con planChanges.volumeDeltaPct y nutritionChanges.{newKcalHard, newKcalEasy}. syncWeight() ahora retorna kcal calculadas. CheckInResultScreen muestra sección Valores aplicados con delta % y kcal. Mobile checkin.tsx idem. Web y mobile en sync.',
           },
         ],
       },
