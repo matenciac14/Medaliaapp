@@ -25,12 +25,23 @@ export type CheckInSuggestion = {
   expiresAt: string | Date
 }
 
+type PlanChanges = {
+  volumeDeltaPct?: number
+}
+
+type NutritionChanges = {
+  newKcalHard?: number
+  newKcalEasy?: number
+}
+
 type Props = {
   weekLabel: string
   triggers: string[]
   adjustments: string[]
   severity: 'ok' | 'warning' | 'critical'
   suggestions?: CheckInSuggestion[]
+  planChanges?: PlanChanges
+  nutritionChanges?: NutritionChanges
   onBack: () => void
 }
 
@@ -40,7 +51,7 @@ const SEVERITY_STYLES = {
   critical: { banner: 'bg-red-50 border-red-200',       icon: '🚨', text: 'text-red-800'   },
 }
 
-export default function CheckInResultScreen({ weekLabel, triggers, adjustments, severity, suggestions = [], onBack }: Props) {
+export default function CheckInResultScreen({ weekLabel, triggers, adjustments, severity, suggestions = [], planChanges, nutritionChanges, onBack }: Props) {
   const s = SEVERITY_STYLES[severity]
   const hasIssues = triggers.length > 0
   const detectedLabels = triggers
@@ -114,6 +125,35 @@ export default function CheckInResultScreen({ weekLabel, triggers, adjustments, 
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* Cambios numéricos exactos */}
+        {(planChanges?.volumeDeltaPct !== undefined || nutritionChanges?.newKcalHard !== undefined) && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Valores aplicados
+            </p>
+            {planChanges?.volumeDeltaPct !== undefined && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Volumen próxima semana</span>
+                <span className={`font-semibold ${planChanges.volumeDeltaPct < 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                  {planChanges.volumeDeltaPct > 0 ? '+' : ''}{planChanges.volumeDeltaPct}%
+                </span>
+              </div>
+            )}
+            {nutritionChanges?.newKcalHard !== undefined && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Kcal día intenso</span>
+                <span className="font-semibold text-[#1e3a5f]">{Math.round(nutritionChanges.newKcalHard)} kcal</span>
+              </div>
+            )}
+            {nutritionChanges?.newKcalEasy !== undefined && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Kcal día suave</span>
+                <span className="font-semibold text-[#1e3a5f]">{Math.round(nutritionChanges.newKcalEasy)} kcal</span>
+              </div>
+            )}
           </div>
         )}
 

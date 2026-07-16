@@ -133,6 +133,8 @@ export async function POST(req: NextRequest) {
         recommendation: result.recommendation,
         adjustments: result.adjustments,
         triggers: result.triggers,
+        planChanges: result.planChanges,
+        nutritionChanges: result.nutritionChanges,
       },
       pendingSuggestions: result.pendingSuggestions,
       suggestions,
