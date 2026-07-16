@@ -73,7 +73,7 @@ export default async function FindCoachPage({
       : allCoaches.filter((c) => c.specialties.includes(SPORT_MAP[activeSport] ?? activeSport))
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
 
       {/* Header */}
       <div>
@@ -99,7 +99,7 @@ export default async function FindCoachPage({
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {filtered.map((coach) => {
           const price = minPrice(coach.programs)
           const athletes = athleteCounts[coach.id] ?? 0
