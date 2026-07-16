@@ -73,15 +73,12 @@ export default async function FindCoachPage({
       : allCoaches.filter((c) => c.specialties.includes(SPORT_MAP[activeSport] ?? activeSport))
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
+
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f2240] rounded-2xl text-white px-6 py-8">
-        <h1 className="text-2xl font-extrabold leading-tight tracking-tight mb-1">
-          Encuentra tu coach ideal
-        </h1>
-        <p className="text-blue-100 text-sm">
-          Coaches especializados en running y gym para acompañarte en tu proceso.
-        </p>
+      <div>
+        <h1 className="text-2xl font-bold text-[#0f1e30]">Buscar entrenador</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Coaches especializados en running y gym para LatAm</p>
       </div>
 
       {/* Filter bar */}
@@ -167,9 +164,9 @@ export default async function FindCoachPage({
         })}
 
         {filtered.length === 0 && (
-          <div className="col-span-full py-16 text-center text-gray-400">
-            <p className="text-base font-medium mb-2">No hay coaches en esta categoría aún.</p>
-            <p className="text-sm">Pronto habrá coaches disponibles en esta categoría.</p>
+          <div className="col-span-full py-20 text-center text-gray-400">
+            <p className="text-base font-medium mb-1">No hay coaches en esta categoría aún.</p>
+            <p className="text-sm">Pronto habrá coaches disponibles aquí.</p>
           </div>
         )}
       </div>
