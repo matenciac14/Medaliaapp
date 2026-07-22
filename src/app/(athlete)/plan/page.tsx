@@ -45,7 +45,7 @@ export default async function PlanPage() {
           <div className="text-5xl">{isRunner ? '🏃' : '🎯'}</div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Todavía no tenés un plan activo
+              Todavía no tienes un plan activo
             </h2>
             <p className="text-gray-500 text-sm max-w-sm mx-auto">
               {isRunner
@@ -90,9 +90,10 @@ export default async function PlanPage() {
   let weeks: PlanClientWeek[] = []
   let nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null = null
   let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
+  let profileData: { weightKg: number | null; weightGoalKg: number | null; sport: string | null } | null = null
 
   try {
-    const [activePlansData, nutritionPlanData, profileData, checkIns, oldestCheckIn] = await Promise.all([
+    const [activePlansData, nutritionPlanData, profileDataRaw, checkIns, oldestCheckIn] = await Promise.all([
       prisma.trainingPlan.findMany({
         where: { userId, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
@@ -111,7 +112,7 @@ export default async function PlanPage() {
       prisma.nutritionPlan.findUnique({ where: { userId } }),
       prisma.healthProfile.findUnique({
         where: { userId },
-        select: { weightKg: true, weightGoalKg: true },
+        select: { weightKg: true, weightGoalKg: true, sport: true },
       }),
       prisma.weeklyCheckIn.findMany({
         where: { userId },
@@ -125,6 +126,8 @@ export default async function PlanPage() {
         select: { weightKg: true },
       }),
     ])
+
+    profileData = profileDataRaw ?? null
 
     // Seleccionar el plan con más logs; desactivar duplicados en background
     const { winner: activePlanData, loserIds: _planLoserIds } = selectActivePlan(activePlansData)
@@ -219,6 +222,7 @@ export default async function PlanPage() {
 
   if (!plan) {
     const isB2B = session.user.isB2B ?? false
+    const planPageIsRunner = profileData?.sport === 'RUNNING' || profileData?.sport === 'BOTH'
 
     // Buscar último plan completado para mostrar celebración en lugar de pantalla vacía
     const lastCompleted = await prisma.trainingPlan.findFirst({
@@ -261,13 +265,23 @@ export default async function PlanPage() {
               : 'Empieza a entrenar o consigue un plan personalizado con un entrenador.'}
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <a
-              href="/gym/builder"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1e3a5f' }}
-            >
-              Crear mi rutina →
-            </a>
+            {planPageIsRunner ? (
+              <a
+                href="/log"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Registrar sesión →
+              </a>
+            ) : (
+              <a
+                href="/gym/builder"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Crear mi rutina →
+              </a>
+            )}
             <a
               href="/log"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"

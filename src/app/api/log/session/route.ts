@@ -5,6 +5,7 @@ import { sendPushNotification } from '@/lib/push'
 import { z } from 'zod'
 import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-adjustment'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { createNotification } from '@/infrastructure/db/notification'
 
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 
@@ -135,6 +136,14 @@ export async function POST(req: NextRequest) {
                 adjustedCarbsG: adj.adjustedCarbsG,
               },
             })
+            // PLT-11: notificar al atleta del ajuste nutricional
+            const sign = adj.deltaKcal > 0 ? '+' : ''
+            createNotification(
+              userId,
+              'AJUSTE_NUTRICIONAL',
+              'Ajuste nutricional disponible',
+              `Tu sesión fue más ${adj.deltaKcal > 0 ? 'intensa' : 'suave'} de lo planificado. Ajuste sugerido: ${sign}${adj.deltaKcal} kcal.`,
+            ).catch(() => {})
           }
         }
       }

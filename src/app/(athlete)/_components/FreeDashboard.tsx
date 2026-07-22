@@ -6,6 +6,7 @@ type Props = {
   completedPlanName: string | null
   streakDays: number
   weekSessionCount: number
+  sport?: string | null
 }
 
 export default function FreeDashboard({
@@ -14,7 +15,10 @@ export default function FreeDashboard({
   completedPlanName,
   streakDays,
   weekSessionCount,
+  sport,
 }: Props) {
+  const isRunner = sport === 'RUNNING' || sport === 'BOTH'
+  const isGym = sport === 'STRENGTH'
   return (
     <div className="space-y-5">
 
@@ -22,12 +26,16 @@ export default function FreeDashboard({
       <div className="text-center py-4">
         {isNewUser ? (
           <>
-            <div className="text-4xl mb-3">💪</div>
+            <div className="text-4xl mb-3">{isRunner ? '🏃' : isGym ? '🏋️' : '💪'}</div>
             <h2 className="text-xl font-bold text-[#1e3a5f] mb-2">
               Tu espacio de entrenamiento está listo, {firstName}
             </h2>
             <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed">
-              Registra tu actividad deportiva y nutrición. Empieza solo o conéctate con un entrenador.
+              {isRunner
+                ? 'Registra tus sesiones de running, nutrición y evolución semana a semana.'
+                : isGym
+                ? 'Registra tus sesiones de gym, pesos y PRs. El sistema lleva el historial por ti.'
+                : 'Registra tu actividad deportiva y nutrición. Empieza solo o conéctate con un entrenador.'}
             </p>
           </>
         ) : (
@@ -61,25 +69,67 @@ export default function FreeDashboard({
       {/* CTAs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        <Link href="/log" className="group block">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#ea580c]/40 transition-all p-5 h-full">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#ea580c]/10 flex items-center justify-center text-2xl shrink-0">
-                🏃
+        {isRunner ? (
+          <Link href="/log" className="group block">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#ea580c]/40 transition-all p-5 h-full">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#ea580c]/10 flex items-center justify-center text-2xl shrink-0">
+                  🏃
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-bold text-[#1e3a5f] mb-1">Registrar sesión</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Rodaje, fartlek, tirada larga — lleva el control de cada salida
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-[#1e3a5f] mb-1">Empieza a entrenar</p>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  Registra tu actividad de hoy: running, gym, o lo que estés haciendo
-                </p>
+              <div className="mt-4 flex items-center gap-1 text-[#ea580c] text-sm font-semibold">
+                Registrar ahora{' '}
+                <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-1 text-[#ea580c] text-sm font-semibold">
-              Registrar sesión{' '}
-              <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+          </Link>
+        ) : isGym ? (
+          <Link href="/gym" className="group block">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#ea580c]/40 transition-all p-5 h-full">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#ea580c]/10 flex items-center justify-center text-2xl shrink-0">
+                  🏋️
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-bold text-[#1e3a5f] mb-1">Ir al gym</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Registra pesos, series y PRs. El sistema lleva la progresión por ti
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-1 text-[#ea580c] text-sm font-semibold">
+                Empezar sesión{' '}
+                <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        ) : (
+          <Link href="/log" className="group block">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#ea580c]/40 transition-all p-5 h-full">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#ea580c]/10 flex items-center justify-center text-2xl shrink-0">
+                  🏃
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-bold text-[#1e3a5f] mb-1">Empieza a entrenar</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Registra tu actividad de hoy: running, gym, o lo que estés haciendo
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-1 text-[#ea580c] text-sm font-semibold">
+                Registrar sesión{' '}
+                <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+              </div>
+            </div>
+          </Link>
+        )}
 
         <Link href="/find-coach" className="group block">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#3b6fdd]/40 transition-all p-5 h-full">
@@ -90,7 +140,9 @@ export default function FreeDashboard({
               <div className="flex-1 min-w-0">
                 <p className="text-base font-bold text-[#1e3a5f] mb-1">Busca un entrenador</p>
                 <p className="text-sm text-gray-500 leading-relaxed">
-                  Un coach diseña tu plan personalizado y hace seguimiento semanal
+                  {isRunner
+                    ? 'Un coach te diseña un plan periodizado y hace seguimiento de tu rendimiento'
+                    : 'Un coach diseña tu rutina personalizada y hace seguimiento semanal'}
                 </p>
               </div>
             </div>

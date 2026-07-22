@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
         suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
         exercise: {
           id: we.exercise.id,
-          name: we.exercise.name,
+          name: we.exercise.nameEs ?? we.exercise.name,
           bodyPart: we.exercise.bodyPart,
           target: we.exercise.target,
           equipment: we.exercise.equipment,
@@ -216,7 +216,7 @@ export async function GET(req: NextRequest) {
             suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
             exercise: {
               id: we.exercise.id,
-              name: we.exercise.name,
+              name: we.exercise.nameEs ?? we.exercise.name,
               bodyPart: we.exercise.bodyPart,
               target: we.exercise.target,
               equipment: we.exercise.equipment,

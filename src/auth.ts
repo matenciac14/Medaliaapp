@@ -17,6 +17,7 @@ const USER_SELECT = {
   role: true,
   status: true,
   password: true,
+  emailVerified: true,
   featurePlan: true,
   featureCheckin: true,
   featureNutrition: true,
@@ -83,6 +84,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.password
         )
         if (!isValid) return null
+
+        // GAP-03: gate de verificación de email — activo solo cuando EMAIL_GATE_ENABLED=true
+        if (process.env.EMAIL_GATE_ENABLED === 'true' && !user.emailVerified) return null
 
         const features = buildFeaturesFromUser(user)
 

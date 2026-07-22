@@ -54,6 +54,7 @@ export type ProcessCheckInResult = {
   /** Numeric plan changes when auto-apply fired (AI/template plans only). */
   planChanges?: {
     volumeDeltaPct?: number  // negative = reduction (e.g. -20 = 20% less volume)
+    zonesAdjusted?: boolean  // true when session zones were lowered due to high RPE
   }
   /** Recalculated nutrition targets when weight synced and profile has nutrition plan. */
   nutritionChanges?: {
@@ -144,11 +145,12 @@ export async function processCheckIn(
     ? adjustments.join('. ')
     : RECOMMENDATION_FALLBACK
 
-  // Pre-compute volume delta for result — pure, no DB needed
-  const { hasVolumeTrigger, volumeReduction, hasPain } = buildSessionAdjustments(triggers)
+  // Pre-compute volume and zone deltas for result — pure, no DB needed
+  const { hasVolumeTrigger, volumeReduction, hasPain, hasRpe } = buildSessionAdjustments(triggers)
   const volumeDeltaPct = hasVolumeTrigger && !hasPain
     ? Math.round((volumeReduction - 1) * 100)  // e.g. 0.8 → -20
     : undefined
+  const zonesAdjusted = hasRpe && !hasPain
 
   // ─────────────────────────────────────────────────────────
   // PHASE 3 — All DB writes in ONE atomic $transaction
@@ -235,8 +237,8 @@ export async function processCheckIn(
     }
   }, { timeout: 30_000 })
 
-  const planChanges: ProcessCheckInResult['planChanges'] = sessionsAdjusted > 0 && volumeDeltaPct !== undefined
-    ? { volumeDeltaPct }
+  const planChanges: ProcessCheckInResult['planChanges'] = sessionsAdjusted > 0
+    ? { volumeDeltaPct, zonesAdjusted: zonesAdjusted || undefined }
     : undefined
 
   return { weekNumber, triggers, adjustments, recommendation, severity, sessionsAdjusted, pendingSuggestions, planChanges, nutritionChanges }

@@ -28,6 +28,8 @@ type ExerciseData = {
   gif: string | null
 }
 
+type PickerExercise = { id: string; name: string; bodyPart: string; gif: string | null }
+
 type WorkoutExercise = {
   id: string
   order: number
@@ -277,6 +279,27 @@ export default function GymSessionPage() {
   const [freeExercises, setFreeExercises] = useState<FreeExercise[]>([])
   const [newExerciseName, setNewExerciseName] = useState('')
 
+  // exercise picker
+  const [showPicker, setShowPicker] = useState(false)
+  const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerResults, setPickerResults] = useState<PickerExercise[]>([])
+  const [pickerLoading, setPickerLoading] = useState(false)
+
+  useEffect(() => {
+    if (pickerQuery.length < 2) { setPickerResults([]); return }
+    setPickerLoading(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/gym/exercises/search?q=${encodeURIComponent(pickerQuery)}`)
+        const data = await res.json()
+        setPickerResults(data.exercises ?? [])
+      } finally {
+        setPickerLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [pickerQuery])
+
   // Fetch session data on mount
   useEffect(() => {
     async function fetchSession() {
@@ -358,6 +381,16 @@ export default function GymSessionPage() {
     setExpanded((prev) => { const n = new Set(prev); n.add(id); return n })
     setNewExerciseName('')
   }, [newExerciseName])
+
+  const selectPickerExercise = useCallback((ex: PickerExercise) => {
+    const id = `free-${Date.now()}`
+    setFreeExercises((prev) => [...prev, { id, name: ex.name }])
+    setSetsMap((prev) => ({ ...prev, [id]: [{ weightKg: '', repsCompleted: '', completed: false }] }))
+    setExpanded((prev) => { const n = new Set(prev); n.add(id); return n })
+    setShowPicker(false)
+    setPickerQuery('')
+    setPickerResults([])
+  }, [])
 
   const addFreeSet = useCallback((feId: string) => {
     setSetsMap((prev) => ({
@@ -790,23 +823,65 @@ export default function GymSessionPage() {
       {/* Free session — exercise adder */}
       {sessionData.freeSession && (
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nombre del ejercicio (ej: Press banca)"
-              value={newExerciseName}
-              onChange={(e) => setNewExerciseName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') addFreeExercise() }}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
-            />
-            <button
-              onClick={addFreeExercise}
-              disabled={!newExerciseName.trim()}
-              className="bg-[#1e3a5f] disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors shrink-0"
-            >
-              + Agregar
-            </button>
-          </div>
+          <button
+            onClick={() => setShowPicker(true)}
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-[#1e3a5f]/30 hover:border-[#1e3a5f]/60 text-[#1e3a5f] font-semibold text-sm py-3.5 rounded-xl transition-colors"
+          >
+            + Agregar ejercicio
+          </button>
+
+          {/* Picker modal */}
+          {showPicker && createPortal(
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
+                <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex items-center gap-3">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Buscar ejercicio (ej: sentadilla, press...)"
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
+                  />
+                  <button onClick={() => { setShowPicker(false); setPickerQuery(''); setPickerResults([]) }} className="text-gray-400 hover:text-gray-700 transition-colors shrink-0">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex-1 py-2">
+                  {pickerLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={20} className="animate-spin text-gray-400" />
+                    </div>
+                  )}
+                  {!pickerLoading && pickerQuery.length >= 2 && pickerResults.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-8">Sin resultados para &ldquo;{pickerQuery}&rdquo;</p>
+                  )}
+                  {!pickerLoading && pickerQuery.length < 2 && (
+                    <p className="text-xs text-gray-400 text-center py-6">Escribe al menos 2 letras para buscar</p>
+                  )}
+                  {pickerResults.map((ex) => (
+                    <button
+                      key={ex.id}
+                      onClick={() => selectPickerExercise(ex)}
+                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      {ex.gif ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={ex.gif} alt={ex.name} className="w-10 h-10 rounded-lg object-contain bg-gray-100 shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{ex.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{ex.bodyPart}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
 
           {freeExercises.map((fe, feIdx) => {
             const feSets = setsMap[fe.id] ?? []

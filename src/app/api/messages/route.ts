@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendPushNotification } from '@/lib/push'
 import { rateLimitAsync } from '@/lib/rate-limit'
+import { createNotification } from '@/infrastructure/db/notification'
 
 // GET /api/messages?with=[userId] — conversación paginada (más recientes primero)
 export async function GET(req: NextRequest) {
@@ -66,6 +67,15 @@ export async function POST(req: NextRequest) {
 
   const senderName = session.user.name ?? 'Tu coach'
   sendPushNotification(recipient.pushToken, `Mensaje de ${senderName}`, content.trim(), { screen: 'messages' }).catch(() => {})
+
+  // PLT-11: crear registro de notificación in-app (push ya enviado arriba)
+  createNotification(
+    toId,
+    'MENSAJE_COACH',
+    `Mensaje de ${senderName}`,
+    content.trim().slice(0, 120),
+    { push: false, metadata: { fromId } },
+  ).catch(() => {})
 
   return NextResponse.json({ message }, { status: 201 })
 }

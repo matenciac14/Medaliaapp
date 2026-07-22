@@ -121,5 +121,6 @@ export async function GET(req: NextRequest) {
     ...summary,
     weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null,
     todayLog: todayLog ?? null,
+    hasEverLogged: recentLogs.length > 0,
   })
 }

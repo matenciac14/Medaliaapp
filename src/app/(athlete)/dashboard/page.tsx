@@ -917,6 +917,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     completedPlanName={lastCompletedPlanInfo?.name ?? null}
                     streakDays={streakDays}
                     weekSessionCount={weekSessionCount}
+                    sport={profile?.sport ?? null}
                   />
                   <BuilderHubCard />
                 </div>

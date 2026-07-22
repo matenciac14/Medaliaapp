@@ -221,6 +221,38 @@ export default async function NutritionPage() {
   const hasMealPlan = !!(assignedMealPlan ?? parsedMealPlan)
   const hasFoodProfile = !!foodProfile
 
+  // UX-NUT-01: cuando el atleta B2B tiene plan del coach pero no tiene NutritionPlan,
+  // calcular targets desde los ítems de la plantilla para evitar macros en 0.
+  function sumTemplateDayMacros(plan: NonNullable<typeof assignedNutritionPlan>, dbDayType: 'HARD' | 'EASY' | 'REST') {
+    const day = plan.template.days.find((d) => d.dayType === dbDayType)
+    if (!day) return { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+    let kcal = 0, proteinG = 0, carbsG = 0, fatG = 0
+    for (const m of day.meals) {
+      for (const i of m.items) {
+        kcal += i.kcal; proteinG += i.proteinG; carbsG += i.carbsG; fatG += i.fatG
+      }
+    }
+    return { kcal, proteinG, carbsG, fatG }
+  }
+  const syntheticNutritionPlan = !nutritionPlan && assignedNutritionPlan
+    ? (() => {
+        const hard = sumTemplateDayMacros(assignedNutritionPlan, 'HARD')
+        const easy = sumTemplateDayMacros(assignedNutritionPlan, 'EASY')
+        const rest = sumTemplateDayMacros(assignedNutritionPlan, 'REST')
+        return {
+          tdee: easy.kcal,
+          targetKcalHard: hard.kcal,
+          targetKcalEasy: easy.kcal,
+          targetKcalRest: rest.kcal,
+          proteinG: easy.proteinG,
+          carbsHardG: hard.carbsG,
+          carbsEasyG: easy.carbsG,
+          fatG: easy.fatG,
+        }
+      })()
+    : null
+  const effectiveNutritionPlan = nutritionPlan ?? syntheticNutritionPlan
+
   // Adherencia semanal — días donde kcal loggeada >= target * 0.9
   let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
   const kcalByDay: Record<string, number> = {}
@@ -242,7 +274,7 @@ export default async function NutritionPage() {
   const DOW_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const targetKcalForBars = nutritionPlanRaw
     ? (nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0)
-    : 0
+    : (syntheticNutritionPlan?.targetKcalEasy ?? 0)
   const weekBars = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayDate)
     d.setDate(d.getDate() - 6 + i)
@@ -301,7 +333,7 @@ export default async function NutritionPage() {
   // Targets del día — fuente única de verdad: getDailyNutritionTarget
   const todayIntensity = (todaySession?.intensity as string | null)
     ?? (hasGymSessionToday ? 'MODERATE' : null)
-  const nt = nutritionPlan ? getDailyNutritionTarget(todayIntensity, nutritionPlan) : null
+  const nt = effectiveNutritionPlan ? getDailyNutritionTarget(todayIntensity, effectiveNutritionPlan) : null
   const todayKcal    = nt?.kcal ?? 0
   const todayCarbs   = nt?.carbsG ?? 0
   const todayProtein = nt?.proteinG ?? 0
@@ -362,7 +394,7 @@ export default async function NutritionPage() {
       )}
 
       {/* Tracking hero — Lo que comí hoy (primer elemento visible) */}
-      {nutritionPlan && allFoods.length > 0 && (
+      {effectiveNutritionPlan && allFoods.length > 0 && (
         <TrackingSection
           target={{
             kcal:     todayKcal,
@@ -375,7 +407,7 @@ export default async function NutritionPage() {
       )}
 
       {/* NUT-F-03 — Adherencia calórica semanal (barras) */}
-      {nutritionPlan && (
+      {effectiveNutritionPlan && (
         <WeeklyNutritionBars days={weekBars} />
       )}
 
@@ -388,7 +420,7 @@ export default async function NutritionPage() {
       )}
 
       {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}
-      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && nutritionPlan && (
+      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan && (
         <>
           {assignedNutritionPlan && (
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-800 font-medium">
@@ -397,7 +429,7 @@ export default async function NutritionPage() {
           )}
           <NutritionContent
             mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
-            nutritionPlan={nutritionPlan}
+            nutritionPlan={effectiveNutritionPlan}
             todayDayType={todayDayType}
           />
         </>
@@ -442,6 +474,23 @@ export default async function NutritionPage() {
         </div>
       )}
 
+      {/* UX-NUT-02: CTA al builder cuando hay macros pero no meal plan (B2C sin coach) */}
+      {!hasMealPlan && effectiveNutritionPlan && !assignedNutritionPlan && (
+        <div className="bg-[#1e3a5f]/4 border border-[#1e3a5f]/15 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#1e3a5f]">Crea tu plan de comidas</p>
+            <p className="text-xs text-gray-500 mt-0.5">Diseña tu menú semanal con alimentos reales ajustados a tus macros</p>
+          </div>
+          <a
+            href="/nutrition/builder"
+            className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            Crear plan →
+          </a>
+        </div>
+      )}
+
       {/* Sin plan nutricional base — solo cuando onboarding está incompleto (no hay healthProfile) */}
       {!hasMealPlan && !nutritionPlan && !needsNutritionInit && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
@@ -451,8 +500,8 @@ export default async function NutritionPage() {
       {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
-      {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
-      {allFoods.length > 0 && nutritionPlan && (
+      {/* Guía de alimentos — solo cuando hay effectiveNutritionPlan (evita mostrar targets en 0) */}
+      {allFoods.length > 0 && effectiveNutritionPlan && (
         <div className="pt-2">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-gray-200" />

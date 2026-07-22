@@ -13,6 +13,7 @@ import {
   collectPRsByWeId,
   collectPRsByName,
 } from '@/domain/gym/complete-gym-session.use-case'
+import { createNotification } from '@/infrastructure/db/notification'
 
 const SetPayloadSchema = z.object({
   workoutExerciseId: z.string().min(1).optional(),
@@ -262,6 +263,17 @@ export async function POST(req: NextRequest) {
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
     notifyCoach(athleteId, userRecord.name, 'Sesión de fuerza completada 💪').catch(() => {})
+
+    // PLT-11: notificar al atleta si logró PRs
+    if (newPRs.length > 0) {
+      createNotification(
+        athleteId,
+        'LOGRO',
+        '¡Nuevo récord personal!',
+        `Lograste ${newPRs.length} PR${newPRs.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+      ).catch(() => {})
+    }
+
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
@@ -298,6 +310,17 @@ export async function POST(req: NextRequest) {
     })
     const newPRsFree = collectPRsByName(sets, maxPerFreeExerciseName)
     notifyCoach(athleteId, userRecord.name, 'Sesión libre de gym completada 💪').catch(() => {})
+
+    // PLT-11: notificar al atleta si logró PRs en sesión libre
+    if (newPRsFree.length > 0) {
+      createNotification(
+        athleteId,
+        'LOGRO',
+        '¡Nuevo récord personal!',
+        `Lograste ${newPRsFree.length} PR${newPRsFree.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+      ).catch(() => {})
+    }
+
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs: newPRsFree }, { status: 201 })
   }
@@ -360,6 +383,17 @@ export async function POST(req: NextRequest) {
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)
   notifyCoach(athleteId, userRecord.name, 'Sesión de gym completada 💪').catch(() => {})
+
+  // PLT-11: notificar al atleta si logró PRs en sesión de rutina asignada
+  if (newPRs.length > 0) {
+    createNotification(
+      athleteId,
+      'LOGRO',
+      '¡Nuevo récord personal!',
+      `Lograste ${newPRs.length} PR${newPRs.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+    ).catch(() => {})
+  }
+
   revalidatePath('/dashboard')
 
   return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })

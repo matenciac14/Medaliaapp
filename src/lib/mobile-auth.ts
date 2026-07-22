@@ -11,6 +11,7 @@ export type MobileTokenPayload = {
   onboardingCompleted: boolean
   userPlan: 'FREE' | 'PRO'
   features: UserConfig['features']
+  sport?: string
 }
 
 function getSecret() {

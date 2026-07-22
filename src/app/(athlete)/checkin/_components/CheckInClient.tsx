@@ -94,7 +94,7 @@ export default function CheckInClient({
 
   const [adjustment, setAdjustment] = useState<{
     severity: 'ok' | 'warning' | 'critical'
-    planChanges?: { volumeDeltaPct?: number }
+    planChanges?: { volumeDeltaPct?: number; zonesAdjusted?: boolean }
     nutritionChanges?: { newKcalHard?: number; newKcalEasy?: number }
     recommendation: string
     adjustments: string[]
@@ -184,7 +184,7 @@ export default function CheckInClient({
         throw new Error(err?.error ?? `Error ${res.status} — intenta de nuevo`)
       }
       const json = await res.json() as {
-        adjustment?: { severity: 'ok' | 'warning' | 'critical'; recommendation: string; adjustments: string[]; triggers: string[]; planChanges?: { volumeDeltaPct?: number }; nutritionChanges?: { newKcalHard?: number; newKcalEasy?: number } }
+        adjustment?: { severity: 'ok' | 'warning' | 'critical'; recommendation: string; adjustments: string[]; triggers: string[]; planChanges?: { volumeDeltaPct?: number; zonesAdjusted?: boolean }; nutritionChanges?: { newKcalHard?: number; newKcalEasy?: number } }
         suggestions?: CheckInSuggestion[]
       }
       if (json.adjustment) setAdjustment(json.adjustment)

@@ -15,6 +15,7 @@ import ProgressClient, {
   type MonthlyActivity,
   type DailyWeightPoint,
   type NutritionAdherencePoint,
+  type GymPRHistorySeries,
 } from './_components/ProgressClient'
 
 
@@ -102,7 +103,7 @@ export default async function ProgressPage() {
 
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const [profile, gymSessionsCount, rawBenchmarks, rawGymPRs, rawSessionLogs, rawGymSessions, rawDailyWeights, nutritionPlanProg, foodLogs30d] = await Promise.all([
+  const [profile, gymSessionsCount, rawBenchmarks, rawGymPRs, rawSessionLogs, rawGymSessions, rawDailyWeights, nutritionPlanProg, foodLogs30d, rawSetHistory] = await Promise.all([
     prisma.healthProfile.findUnique({
       where: { userId: session.user.id },
       select: { weightGoalKg: true },
@@ -169,6 +170,26 @@ export default async function ProgressPage() {
       where: { userId: session.user.id, date: { gte: thirtyDaysAgo } },
       select: { date: true, kcalLogged: true, grams: true, food: { select: { kcalPer100g: true } } },
       orderBy: { date: 'asc' },
+    }),
+    // FUERZA-PROG-01: historial 1RM — últimas 24 semanas, completadas
+    prisma.setLog.findMany({
+      where: {
+        session: { athleteId: session.user.id, completed: true },
+        completed: true,
+        weightKg: { not: null },
+        repsCompleted: { gte: 1, lte: 15 },
+      },
+      orderBy: { session: { date: 'asc' } },
+      take: 600,
+      select: {
+        exerciseName: true,
+        weightKg: true,
+        repsCompleted: true,
+        session: { select: { date: true } },
+        workoutExercise: {
+          select: { exercise: { select: { name: true, nameEs: true } } },
+        },
+      },
     }),
   ])
 
@@ -352,6 +373,44 @@ export default async function ProgressPage() {
     )
   }
 
+  // ── 1RM history by exercise (FUERZA-PROG-01) ────────────────────────────
+  const epley = (kg: number, reps: number) => Math.round(kg * (1 + reps / 30) * 10) / 10
+  const byExerciseKey = new Map<string, { displayName: string; points: { date: string; oneRmKg: number }[] }>()
+
+  for (const log of rawSetHistory) {
+    if (log.weightKg === null || log.repsCompleted === null) continue
+    const displayName = log.workoutExercise?.exercise?.nameEs
+      ?? log.workoutExercise?.exercise?.name
+      ?? log.exerciseName
+      ?? 'Ejercicio'
+    const key = log.exerciseName ?? log.workoutExercise?.exercise?.name ?? displayName
+    if (!byExerciseKey.has(key)) byExerciseKey.set(key, { displayName, points: [] })
+    byExerciseKey.get(key)!.points.push({
+      date: log.session.date.toISOString().slice(0, 10),
+      oneRmKg: epley(log.weightKg, log.repsCompleted),
+    })
+  }
+
+  // Keep best 1RM per day per exercise, then top 5 exercises by data points
+  const gymPRHistory: GymPRHistorySeries[] = [...byExerciseKey.values()]
+    .map(({ displayName, points }) => {
+      const byDay = new Map<string, number>()
+      for (const p of points) {
+        if (!byDay.has(p.date) || p.oneRmKg > byDay.get(p.date)!) {
+          byDay.set(p.date, p.oneRmKg)
+        }
+      }
+      return {
+        exerciseName: displayName,
+        points: [...byDay.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, oneRmKg]) => ({ date, oneRmKg })),
+      }
+    })
+    .filter((s) => s.points.length >= 2)
+    .sort((a, b) => b.points.length - a.points.length)
+    .slice(0, 5)
+
   // ── Gym adherence by week (GYM-03) ─────────────────────────────────────
   const gymSessionsByWeek = new Map<number, number>()
   const gymExpectedPerWeek = rawGymSessions[0]?.assignedWorkout?.template.daysPerWeek ?? 0
@@ -374,6 +433,7 @@ export default async function ProgressPage() {
       weightGoal={weightGoal}
       benchmarks={benchmarks}
       gymPRs={gymPRs}
+      gymPRHistory={gymPRHistory}
       recentActivity={recentActivity}
       measurementCheckins={measurementCheckins}
       gymAdherenceByWeek={gymAdherenceByWeek}

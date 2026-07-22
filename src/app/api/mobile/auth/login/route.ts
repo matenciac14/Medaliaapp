@@ -10,6 +10,7 @@ const LoginSchema = z.object({ email: emailSchema, password: passwordSchema })
 
 const USER_SELECT = {
   id: true, email: true, name: true, password: true, role: true, status: true,
+  emailVerified: true,
   featurePlan: true, featureCheckin: true, featureNutrition: true,
   featureProgress: true, featureLog: true, featureCoach: true, featureGym: true,
   onboardingCompleted: true,
@@ -42,6 +43,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Credenciales incorrectas.' }, { status: 401 })
     }
 
+    // GAP-03: gate de verificación de email — activo solo cuando EMAIL_GATE_ENABLED=true
+    if (process.env.EMAIL_GATE_ENABLED === 'true' && !user.emailVerified) {
+      return NextResponse.json({ error: 'Debes verificar tu correo antes de iniciar sesión.' }, { status: 403 })
+    }
+
     if (user.status !== 'ACTIVE') {
       const message = user.status === 'BLOCKED' ? 'Tu cuenta ha sido bloqueada.' : 'Tu cuenta está suspendida.'
       return NextResponse.json({ error: message }, { status: 403 })
@@ -57,6 +63,15 @@ export async function POST(req: NextRequest) {
       gym:       user.featureGym,
     }
 
+    // UX-11: derivar deporte del perfil para adaptar tabs en mobile
+    const healthProfile = await prisma.healthProfile.findUnique({
+      where: { userId: user.id },
+      select: { sportGoal: true },
+    })
+    const sport = healthProfile?.sportGoal === 'STRENGTH_TRAINING' ? 'STRENGTH'
+      : healthProfile?.sportGoal === 'BODY_RECOMPOSITION' ? 'BOTH'
+      : 'RUNNING'
+
     const token = await signMobileToken({
       id: user.id,
       email: user.email,
@@ -66,6 +81,7 @@ export async function POST(req: NextRequest) {
       onboardingCompleted: user.onboardingCompleted,
       userPlan: 'PRO',
       features,
+      sport,
     })
 
     return NextResponse.json({
@@ -78,6 +94,7 @@ export async function POST(req: NextRequest) {
         onboardingCompleted: user.onboardingCompleted,
         userPlan: 'PRO',
         features,
+        sport,
       },
     })
   } catch (err) {

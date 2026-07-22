@@ -27,6 +27,7 @@ export type CheckInSuggestion = {
 
 type PlanChanges = {
   volumeDeltaPct?: number
+  zonesAdjusted?: boolean
 }
 
 type NutritionChanges = {
@@ -59,7 +60,7 @@ export default function CheckInResultScreen({ weekLabel, triggers, adjustments, 
     .map(t => TRIGGER_LABELS[t] ?? t)
 
   const hasFatiga = triggers.includes('fatiga_acumulada')
-  const hasNumericChanges = planChanges?.volumeDeltaPct !== undefined || nutritionChanges?.newKcalHard !== undefined
+  const hasNumericChanges = planChanges?.volumeDeltaPct !== undefined || planChanges?.zonesAdjusted || nutritionChanges?.newKcalHard !== undefined
 
   const [respondedIds, setRespondedIds] = useState<Record<string, 'accepted' | 'rejected'>>({})
   const [responding, setResponding] = useState<string | null>(null)
@@ -170,6 +171,15 @@ export default function CheckInResultScreen({ weekLabel, triggers, adjustments, 
                       <span className="text-sm text-gray-700 font-medium">Kcal día suave / descanso</span>
                     </div>
                     <span className="text-base font-black text-[#1e3a5f]">{Math.round(nutritionChanges.newKcalEasy)}</span>
+                  </div>
+                )}
+                {planChanges?.zonesAdjusted && (
+                  <div className="flex items-center justify-between bg-[#1e3a5f]/5 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-lg">🎯</span>
+                      <span className="text-sm text-gray-700 font-medium">Intensidad de sesiones</span>
+                    </div>
+                    <span className="text-base font-black text-amber-600">Reducida</span>
                   </div>
                 )}
               </div>

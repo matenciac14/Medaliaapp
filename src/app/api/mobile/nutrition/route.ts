@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile, gymSessionToday] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile, gymSessionToday, currentPlanWeek] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -70,6 +70,13 @@ export async function GET(req: NextRequest) {
       select: { caloriesBurned: true },
       orderBy: { createdAt: 'desc' },
     }),
+    // MOB-NUT-01: contexto de fase del plan para banner en mobile
+    activePlan && currentWeek
+      ? prisma.planWeek.findFirst({
+          where: { planId: activePlan.id, weekNumber: currentWeek },
+          select: { isRecoveryWeek: true, sessions: { select: { intensity: true } } },
+        })
+      : Promise.resolve(null),
   ])
 
   // PERSIST-09: GET no hace writes. El lazy-init fue eliminado para no violar REST
@@ -81,10 +88,19 @@ export async function GET(req: NextRequest) {
   const sessionIntensity = todaySession?.intensity ?? (hasGymToday ? 'HIGH' : null)
   const dayType = intensityToDayType(sessionIntensity)
 
+  // MOB-NUT-01: computar contexto de fase del plan
+  const planPhaseContext = currentPlanWeek?.isRecoveryWeek
+    ? 'Semana de descarga'
+    : currentPlanWeek?.sessions.some(s => s.intensity === 'HIGH')
+      ? 'Semana de carga alta'
+      : currentPlanWeek?.sessions.some(s => s.intensity === 'MODERATE')
+        ? 'Semana de carga media'
+        : null
+
   const gymKcalBurned = gymSessionToday?.caloriesBurned ?? null
 
   if (!nutritionPlan) {
-    return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null, gymKcalBurned })
+    return NextResponse.json({ hasNutritionPlan: false, dayType, macros: null, mealPlan: null, gymKcalBurned, planPhaseContext })
   }
 
   const dailyTarget = getDailyNutritionTarget(sessionIntensity, nutritionPlan)
@@ -100,5 +116,6 @@ export async function GET(req: NextRequest) {
     pendingAdjustment,
     gymKcalBurned,
     waterMlTarget: nutritionPlan.waterMlTarget ?? 2000,
+    planPhaseContext,
   })
 }
