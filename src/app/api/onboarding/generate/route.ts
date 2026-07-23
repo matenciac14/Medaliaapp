@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
       planRepo: new PrismaPlanRepository(),
       healthProfileRepo: new PrismaHealthProfileRepository(),
       userRepo: new PrismaUserRepository(),
+      txRepoFactory: (tx) => ({
+        healthProfileRepo: new PrismaHealthProfileRepository(tx),
+        userRepo: new PrismaUserRepository(tx),
+        planRepo: new PrismaPlanRepository(tx),
+      }),
     })
 
     if (result.isB2B) {

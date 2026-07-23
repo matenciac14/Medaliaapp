@@ -469,7 +469,8 @@ export default function OnboardingPage() {
     if (!isB2B) return
     fetch('/api/onboarding/prefilled')
       .then((r) => r.json())
-      .then(({ prefilled }) => {
+      .catch((err) => { console.error('[onboarding] prefill fetch failed:', err) })
+      .then(({ prefilled } = {}) => {
         if (!prefilled) return
         setHasPrefilled(true)
         const dob = prefilled.dateOfBirth ? new Date(prefilled.dateOfBirth) : null
