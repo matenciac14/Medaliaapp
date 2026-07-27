@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs] = await Promise.all([
+  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory] = await Promise.all([
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
@@ -79,6 +79,22 @@ export async function GET(req: NextRequest) {
         session: { select: { date: true } },
       },
     }),
+    // MOB-PROG-01: histórico de sets para curva 1RM por ejercicio (Epley)
+    prisma.setLog.findMany({
+      where: {
+        session: { athleteId: userId, completed: true },
+        weightKg: { not: null },
+        repsCompleted: { gte: 1, lte: 15 },
+      },
+      select: {
+        exerciseName: true,
+        weightKg: true,
+        repsCompleted: true,
+        session: { select: { date: true } },
+      },
+      orderBy: { session: { date: 'desc' } },
+      take: 600,
+    }),
   ])
 
   const weightPoints = checkIns
@@ -137,6 +153,28 @@ export async function GET(req: NextRequest) {
     testedAt: b.testedAt.toISOString(),
   }))
 
+  // MOB-PROG-01: curva histórica 1RM — Epley formula, mejor por día, top 5 ejercicios
+  const epley = (kg: number, reps: number) => Math.round(kg * (1 + reps / 30) * 10) / 10
+  const historyMap = new Map<string, Map<string, number>>()
+  for (const sl of rawSetHistory) {
+    if (!sl.exerciseName || !sl.weightKg || !sl.repsCompleted) continue
+    const dateKey = sl.session.date.toISOString().split('T')[0]
+    const oneRm = epley(sl.weightKg, sl.repsCompleted)
+    const exMap = historyMap.get(sl.exerciseName) ?? new Map<string, number>()
+    if ((exMap.get(dateKey) ?? 0) < oneRm) exMap.set(dateKey, oneRm)
+    historyMap.set(sl.exerciseName, exMap)
+  }
+  const gymPRHistory = [...historyMap.entries()]
+    .map(([exerciseName, dateMap]) => ({
+      exerciseName,
+      points: [...dateMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, oneRmKg]) => ({ date, oneRmKg })),
+    }))
+    .filter(s => s.points.length >= 2)
+    .sort((a, b) => b.points.length - a.points.length)
+    .slice(0, 5)
+
   const gymPRs = rawGymPRs.map(r => ({
     id: r.id,
     exerciseName: r.exerciseName ?? 'Ejercicio',
@@ -168,6 +206,7 @@ export async function GET(req: NextRequest) {
     gymAdherenceByWeek,
     benchmarks,
     gymPRs,
+    gymPRHistory,
     totalCheckIns: totalSessions,
     overallAdherencePct: overallAdherence,
   })

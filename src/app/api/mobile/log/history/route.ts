@@ -1,0 +1,89 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getMobileUser } from '@/lib/mobile-auth'
+import { rateLimitAsync } from '@/lib/rate-limit'
+import { prisma } from '@/lib/db/prisma'
+
+export async function GET(req: NextRequest) {
+  const mobile = await getMobileUser(req)
+  if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:log-history`, { limit: 300, windowMs: 60_000 })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
+
+  const userId = mobile.id
+
+  const [runLogs, gymSessions] = await Promise.all([
+    prisma.sessionLog.findMany({
+      where: { userId },
+      orderBy: { completedAt: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        freeSessionType: true,
+        completedAt: true,
+        durationMin: true,
+        distanceKm: true,
+        rpe: true,
+        hrAvg: true,
+        notes: true,
+      },
+    }),
+    prisma.gymSession.findMany({
+      where: { athleteId: userId, completed: true },
+      orderBy: { date: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        date: true,
+        durationMin: true,
+        rpe: true,
+        notes: true,
+        assignedWorkout: {
+          select: { template: { select: { name: true } } },
+        },
+        setLogs: {
+          select: { exerciseName: true, workoutExercise: { select: { exercise: { select: { nameEs: true, name: true } } } } },
+          take: 3,
+          orderBy: { setNumber: 'asc' },
+        },
+      },
+    }),
+  ])
+
+  type FeedEntry =
+    | { kind: 'run'; id: string; date: string; sessionType: string; durationMin: number | null; distanceKm: number | null; rpe: number | null; hrAvg: number | null; notes: string | null }
+    | { kind: 'gym'; id: string; date: string; templateName: string | null; exercises: string[]; durationMin: number | null; rpe: number | null; notes: string | null }
+
+  const feed: FeedEntry[] = [
+    ...runLogs.map(l => ({
+      kind: 'run' as const,
+      id: l.id,
+      date: (l.completedAt ?? new Date()).toISOString(),
+      sessionType: l.freeSessionType ?? 'OTRO',
+      durationMin: l.durationMin,
+      distanceKm: l.distanceKm ? Number(l.distanceKm) : null,
+      rpe: l.rpe,
+      hrAvg: l.hrAvg,
+      notes: l.notes,
+    })),
+    ...gymSessions.map(s => {
+      const exerciseNames = [...new Set(
+        s.setLogs.map(sl => sl.workoutExercise?.exercise?.nameEs ?? sl.workoutExercise?.exercise?.name ?? sl.exerciseName).filter(Boolean)
+      )] as string[]
+      return {
+        kind: 'gym' as const,
+        id: s.id,
+        date: s.date.toISOString(),
+        templateName: s.assignedWorkout?.template?.name ?? null,
+        exercises: exerciseNames,
+        durationMin: s.durationMin,
+        rpe: s.rpe,
+        notes: s.notes,
+      }
+    }),
+  ]
+
+  feed.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  return NextResponse.json({ sessions: feed.slice(0, 40) })
+}
