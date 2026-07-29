@@ -11,8 +11,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const { status } = useSession()
 
-  // No redirigir si venimos de un signOut — la sesión puede estar en memoria
-  // brevemente antes de que el servidor confirme que la cookie fue eliminada.
   const isSignOut = searchParams.get('from') === 'signout'
   useEffect(() => {
     if (status === 'authenticated' && !isSignOut) {
@@ -56,17 +54,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left — Brand panel */}
-      <div className="hidden lg:flex w-[55%] relative overflow-hidden bg-[#0f1e30]">
-        <Image
-          src="/hero-auth.jpg"
-          alt=""
-          fill
-          className="object-cover opacity-60"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0f1e30] via-[#0f1e30]/60 to-[#0f1e30]/30" />
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Mobile hero */}
+      <div className="lg:hidden relative h-[40vh] min-h-[280px] shrink-0 overflow-hidden bg-[#162B45]">
+        <Image src="/hero-auth.jpg" alt="" fill className="object-cover opacity-60" priority />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#162B45]/30 via-[#162B45]/60 to-[#162B45]/80" />
+        <div className="relative z-10 flex flex-col items-center justify-center h-full">
+          <div className="flex items-center gap-0.5">
+            <span className="text-[32px] font-extrabold text-white">Medal</span>
+            <span className="text-[32px] font-extrabold text-[#ea580c]">iq</span>
+          </div>
+          <p className="text-[13px] text-white/70 mt-2">Tu progreso continúa.</p>
+        </div>
+      </div>
+
+      {/* Desktop hero panel */}
+      <div className="hidden lg:flex w-[55%] relative overflow-hidden bg-[#162B45]">
+        <Image src="/hero-auth.jpg" alt="" fill className="object-cover opacity-60" priority />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#162B45] via-[#162B45]/60 to-[#162B45]/30" />
         <div className="relative z-10 flex flex-col justify-between p-12 h-full">
           <div className="flex items-center gap-1">
             <span className="text-2xl font-bold text-white">Medal</span>
@@ -89,19 +94,24 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right — Form */}
-      <div className="flex-1 flex items-center justify-center bg-white lg:bg-gray-50 px-6">
-        <div className="w-full max-w-[448px] lg:bg-white lg:rounded-2xl lg:shadow-lg lg:shadow-black/5 lg:p-10 lg:border lg:border-gray-100">
-          {/* Logo */}
-          <div className="mb-8 lg:mb-10 text-center">
+      {/* Form — bottom sheet on mobile, card on desktop */}
+      <div className="-mt-7 relative z-10 bg-white rounded-t-[28px] shadow-[0px_-8px_24px_rgba(15,30,48,0.2)] flex-1 px-7 pb-8 lg:mt-0 lg:rounded-none lg:shadow-none lg:bg-gray-50 lg:flex lg:items-center lg:justify-center lg:px-6">
+        <div className="w-full max-w-[448px] mx-auto lg:bg-white lg:rounded-xl lg:shadow-sm lg:shadow-black/5 lg:p-10 lg:border lg:border-gray-100">
+          {/* Drag handle — mobile only */}
+          <div className="flex justify-center pt-3 pb-5 lg:hidden">
+            <div className="w-10 h-1 bg-[#d1d4d6] rounded-full" />
+          </div>
+
+          {/* Logo — desktop only (mobile logo is on hero) */}
+          <div className="hidden lg:block mb-10 text-center">
             <div className="flex items-center justify-center gap-0.5">
               <span className="text-2xl font-bold text-[#1e3a5f]">Medal</span>
               <span className="text-2xl font-bold text-[#ea580c]">iq</span>
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-[#1e3a5f] mb-1 text-center">Bienvenido de vuelta</h1>
-          <p className="text-sm text-gray-500 mb-8 text-center">Ingresa tus datos para continuar</p>
+          <h1 className="text-[22px] lg:text-2xl font-bold text-[#1e3a5f] mb-1 text-center">Bienvenido de vuelta</h1>
+          <p className="text-[13px] lg:text-sm text-gray-500 mb-6 lg:mb-8 text-center">Ingresa tus datos para continuar</p>
 
           {error && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
@@ -111,22 +121,23 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Correo electrónico</label>
+              <label className="block text-xs lg:text-sm font-medium text-[#545c66] lg:text-gray-700 mb-1.5">Correo electrónico</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@correo.com"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition-colors"
+                className="w-full h-12 lg:h-auto rounded-xl lg:rounded-lg border-0 lg:border-[1.5px] lg:border-gray-200 bg-[#f6f7f8] lg:bg-white px-4 py-3 text-[15px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition-colors"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+                <label className="block text-xs lg:text-sm font-medium text-[#545c66] lg:text-gray-700">Contraseña</label>
                 <Link href="/forgot-password" className="text-xs text-[#ea580c] hover:underline font-medium">
-                  ¿Olvidaste tu contraseña?
+                  <span className="lg:hidden">¿Olvidaste?</span>
+                  <span className="hidden lg:inline">¿Olvidaste tu contraseña?</span>
                 </Link>
               </div>
               <input
@@ -135,14 +146,14 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition-colors"
+                className="w-full h-12 lg:h-auto rounded-xl lg:rounded-lg border-0 lg:border-[1.5px] lg:border-gray-200 bg-[#f6f7f8] lg:bg-white px-4 py-3 text-[15px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#1e3a5f] text-white py-3 text-sm font-semibold hover:bg-[#16304f] transition-colors disabled:opacity-60"
+              className="w-full h-[52px] lg:h-auto rounded-xl lg:rounded-lg bg-[#1e3a5f] text-white py-3 text-base lg:text-sm font-semibold hover:bg-[#16304f] transition-colors disabled:opacity-60"
             >
               {loading ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
@@ -156,7 +167,7 @@ export default function LoginPage() {
 
           <button
             onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full h-12 lg:h-auto flex items-center justify-center gap-3 rounded-xl lg:rounded-lg border border-[#e0e5ed] lg:border-gray-200 bg-white py-3 text-[15px] lg:text-sm font-medium text-[#1e3a5f] lg:text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <svg className="size-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -167,7 +178,7 @@ export default function LoginPage() {
             Continuar con Google
           </button>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-[13px] lg:text-sm text-gray-500">
             ¿No tienes cuenta?{' '}
             <Link href="/register" className="text-[#ea580c] font-semibold hover:underline">
               Regístrate gratis →
