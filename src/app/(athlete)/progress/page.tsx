@@ -326,7 +326,8 @@ export default async function ProgressPage() {
     })
 
   // ── Sin datos: estado vacío honesto ─────────────────────────────────────
-  if (weightCheckins.length === 0 && hrCheckins.length === 0 && weeks.length === 0) {
+  // UX-PROG-03: solo mostrar empty state si no hay absolutamente ningún dato (ni gym)
+  if (weightCheckins.length === 0 && hrCheckins.length === 0 && weeks.length === 0 && gymSessionsCount === 0) {
     const hasGymSessions = gymSessionsCount > 0
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
@@ -411,18 +412,41 @@ export default async function ProgressPage() {
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 5)
 
-  // ── Gym adherence by week (GYM-03) ─────────────────────────────────────
-  const gymSessionsByWeek = new Map<number, number>()
-  const gymExpectedPerWeek = rawGymSessions[0]?.assignedWorkout?.template.daysPerWeek ?? 0
+  // ── Gym adherence by week (UX-PROG-02 fix) ──────────────────────────────
+  // UX-PROG-02: el bug anterior tomaba daysPerWeek solo de rawGymSessions[0] (más reciente)
+  // y si ese no tenía assignedWorkout devolvía 0 → chart vacío.
+  // Fix: por semana, tomar daysPerWeek de cualquier sesión de esa semana.
+  // Fallback global: moda de daysPerWeek entre todas las sesiones.
+  // Si no hay ningún target, total = 0 → ProgressClient muestra "X ses." sin %.
+  const dpwFreq = new Map<number, number>()
+  for (const gs of rawGymSessions) {
+    const dpw = gs.assignedWorkout?.template.daysPerWeek
+    if (dpw) dpwFreq.set(dpw, (dpwFreq.get(dpw) ?? 0) + 1)
+  }
+  const globalDpw = dpwFreq.size > 0
+    ? [...dpwFreq.entries()].sort(([, a], [, b]) => b - a)[0][0]
+    : 0
+
+  const gymSessionsByWeek = new Map<number, { count: number; daysPerWeek: number }>()
   for (const gs of rawGymSessions) {
     const week = getISOWeekNumber(new Date(gs.date))
-    gymSessionsByWeek.set(week, (gymSessionsByWeek.get(week) ?? 0) + 1)
+    const dpw = gs.assignedWorkout?.template.daysPerWeek ?? 0
+    const existing = gymSessionsByWeek.get(week)
+    if (existing) {
+      existing.count += 1
+      if (existing.daysPerWeek === 0 && dpw > 0) existing.daysPerWeek = dpw
+    } else {
+      gymSessionsByWeek.set(week, { count: 1, daysPerWeek: dpw })
+    }
   }
-  const gymAdherenceByWeek: GymAdherencePoint[] = gymExpectedPerWeek > 0
-    ? [...gymSessionsByWeek.entries()]
-        .sort(([a], [b]) => a - b)
-        .map(([isoWeek, completed]) => ({ isoWeek, completed, total: gymExpectedPerWeek }))
-    : []
+
+  const gymAdherenceByWeek: GymAdherencePoint[] = [...gymSessionsByWeek.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([isoWeek, { count, daysPerWeek }]) => ({
+      isoWeek,
+      completed: count,
+      total: daysPerWeek > 0 ? daysPerWeek : globalDpw,
+    }))
 
   return (
     <ProgressClient

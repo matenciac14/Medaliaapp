@@ -51,7 +51,7 @@ export async function completeOnboardingUseCase(
     data.weightKg!,
     data.heightCm!,
     data.age!,
-    data.gender ?? 'male',
+    (data.gender === 'female' ? 'female' : 'male'),
     data.daysPerWeek
   )
   const hasDeficit = !!data.weightGoalKg || data.gymGoal === 'FAT_LOSS' || data.gymGoal === 'RECOMPOSITION'
@@ -83,7 +83,7 @@ export async function completeOnboardingUseCase(
       heightCm: data.heightCm!,
       weightKg: data.weightKg!,
       weightGoalKg: data.weightGoalKg ?? undefined,
-      gender: data.gender ?? 'male',
+      gender: data.gender ?? undefined,
       sport: sportType,
       experienceLevel: data.experienceLevel ?? undefined,
       sessionMinutes: data.sessionMinutes ?? undefined,

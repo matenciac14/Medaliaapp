@@ -1209,21 +1209,21 @@ export default function ProgressClient({
         <SectionCard title="Adherencia Gym — por semana">
           <div className="space-y-2">
             {gymAdherenceByWeek.slice(-period).map(({ isoWeek, completed, total }) => {
-              const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+              const hasTarget = total > 0
+              const pct = hasTarget ? Math.round((completed / total) * 100) : null
+              const barWidth = pct != null ? `${pct}%` : `${Math.min(completed * 25, 100)}%`
+              const barColor = pct == null ? '#9ca3af' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626'
               return (
                 <div key={isoWeek} className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 w-16 shrink-0">Sem {isoWeek}</span>
                   <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626',
-                      }}
+                      style={{ width: barWidth, backgroundColor: barColor }}
                     />
                   </div>
                   <span className="text-xs font-semibold text-gray-700 w-16 text-right shrink-0">
-                    {completed}/{total} · {pct}%
+                    {pct != null ? `${completed}/${total} · ${pct}%` : `${completed} ses.`}
                   </span>
                 </div>
               )

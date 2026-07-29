@@ -21,24 +21,26 @@ export default async function AthleteNutritionBuilderPage({
   })
   if (coachRelation) redirect('/nutrition')
 
-  const template = await prisma.nutritionTemplate.findFirst({
-    where: { id, athleteId: userId },
-    include: {
-      days: {
-        orderBy: { dayType: 'asc' },
-        include: {
-          meals: {
-            orderBy: { order: 'asc' },
-            include: {
-              items: {
-                orderBy: { order: 'asc' },
-                include: {
-                  food: {
-                    select: {
-                      id: true, name: true, category: true,
-                      kcalPer100g: true, proteinPer100g: true,
-                      carbsPer100g: true, fatPer100g: true,
-                      servingG: true, servingLabel: true,
+  const [template, nutritionPlan] = await Promise.all([
+    prisma.nutritionTemplate.findFirst({
+      where: { id, athleteId: userId },
+      include: {
+        days: {
+          orderBy: { dayType: 'asc' },
+          include: {
+            meals: {
+              orderBy: { order: 'asc' },
+              include: {
+                items: {
+                  orderBy: { order: 'asc' },
+                  include: {
+                    food: {
+                      select: {
+                        id: true, name: true, category: true,
+                        kcalPer100g: true, proteinPer100g: true,
+                        carbsPer100g: true, fatPer100g: true,
+                        servingG: true, servingLabel: true,
+                      },
                     },
                   },
                 },
@@ -47,10 +49,17 @@ export default async function AthleteNutritionBuilderPage({
           },
         },
       },
-    },
-  })
+    }),
+    prisma.nutritionPlan.findUnique({
+      where: { userId },
+      select: {
+        targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true,
+        proteinG: true, carbsHardG: true, carbsEasyG: true, fatG: true,
+      },
+    }),
+  ])
 
   if (!template) notFound()
 
-  return <AthleteNutritionBuilderClient template={template} />
+  return <AthleteNutritionBuilderClient template={template} nutritionPlan={nutritionPlan} />
 }

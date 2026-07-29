@@ -25,7 +25,7 @@ export async function POST(_req: Request) {
   const profile = user.profile
 
   // Calcular TDEE con fórmulas
-  const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender ?? 'male') as 'male' | 'female', 5)
+  const tdee = calculateTDEE(profile.weightKg, profile.heightCm, profile.age, (profile.gender === 'female' ? 'female' : 'male') as 'male' | 'female', 5)
   const macros = calculateMacros(tdee, profile.weightKg, !!profile.weightGoalKg)
 
   // PERSIST-04: upsert + enableFeatures en una sola tx — si enableFeatures falla,

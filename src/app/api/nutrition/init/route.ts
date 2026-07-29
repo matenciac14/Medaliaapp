@@ -25,7 +25,7 @@ export async function POST(_req: NextRequest) {
     healthProfile.weightKg,
     healthProfile.heightCm,
     healthProfile.age,
-    (healthProfile.gender ?? 'male') as 'male' | 'female',
+    (healthProfile.gender === 'female' ? 'female' : 'male') as 'male' | 'female',
     5,
   )
   const macros = calculateMacros(tdee, healthProfile.weightKg, !!healthProfile.weightGoalKg)

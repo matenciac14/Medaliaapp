@@ -1277,19 +1277,22 @@ model UserAchievement {
 // ─── WEARABLES — DB-11 ───────────────────────────────────────────────────────
 
 model WearableConnection {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider     String    // "strava" | "garmin" | "healthkit"
-  accessToken  String
-  refreshToken String?
-  expiresAt    DateTime?
-  scopes       String[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String    // "strava" | "garmin" | "healthkit"
+  accessToken       String
+  refreshToken      String?
+  expiresAt         DateTime?
+  scopes            String[]
+  /** ID del atleta/cuenta en el proveedor — para mapear webhooks (ej. Strava owner_id) */
+  providerAccountId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([userId, provider])
   @@index([userId])
+  @@index([provider, providerAccountId])
 }
 
 // ─── NUTRICIÓN AVANZADA — DB-12, DB-17, DB-18, DB-19 ────────────────────────

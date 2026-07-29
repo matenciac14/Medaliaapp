@@ -154,6 +154,29 @@ export default function FreeDashboard({
         </Link>
 
       </div>
+
+      {/* Explora tu espacio — visible al usuario nuevo para descubrir los módulos */}
+      {isNewUser && (
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Explora tu espacio</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([
+              { href: '/nutrition', emoji: '🥗', label: 'Nutrición', desc: 'Registra calorías y macros del día' },
+              { href: '/progress', emoji: '📊', label: 'Progreso', desc: 'Evolución de peso, FC y PRs' },
+              { href: '/checkin', emoji: '✅', label: 'Check-in', desc: 'Balance semanal de tu entrenamiento' },
+              { href: isGym ? '/gym' : '/log', emoji: isGym ? '🏋️' : '🏃', label: isGym ? 'Gym' : 'Mis sesiones', desc: isGym ? 'Tus rutinas y PRs' : 'Historial de salidas' },
+            ] as const).map(({ href, emoji, label, desc }) => (
+              <Link key={href} href={href} className="group block">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all p-3 text-center">
+                  <div className="text-2xl mb-1.5">{emoji}</div>
+                  <p className="text-xs font-semibold text-[#1e3a5f] mb-0.5">{label}</p>
+                  <p className="text-[10px] text-gray-400 leading-snug hidden sm:block">{desc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

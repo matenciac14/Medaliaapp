@@ -10,6 +10,8 @@ import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 const DISCIPLINES = ['RUNNING', 'STRENGTH', 'CYCLING', 'SWIMMING', 'OTHER'] as const
 
+const DATA_SOURCES = ['MANUAL', 'STRAVA', 'GARMIN', 'HEALTHKIT'] as const
+
 const LogSessionSchema = z.object({
   sessionId: z.string().min(1).optional(),
   sessionType: z.string().max(50).optional(),
@@ -22,7 +24,12 @@ const LogSessionSchema = z.object({
   notes: z.string().max(2000).optional(),
   actualIntensity: z.enum(INTENSITIES).optional(),
   discipline: z.enum(DISCIPLINES).optional(),
-  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // fecha real de la sesión (YYYY-MM-DD)
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // Wearable fields — opcionales, solo cuando dataSource != MANUAL
+  dataSource: z.enum(DATA_SOURCES).optional(),
+  externalId: z.string().max(200).optional(),
+  caloriesBurned: z.number().int().min(0).max(10000).optional(),
+  avgPaceSecPerKm: z.number().int().min(0).max(3600).optional(),
 }).refine(d => d.sessionId || d.sessionType, { message: 'sessionId o sessionType requerido' })
 
 export async function POST(req: NextRequest) {
@@ -36,8 +43,21 @@ export async function POST(req: NextRequest) {
   const userId = mobile.id
   const parsed = LogSessionSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
-  const { sessionId, sessionType, completed, actualDurationMin, rpe, hrAvg, hrMax, distanceKm, notes, actualIntensity, discipline, sessionDate: sessionDateStr } = parsed.data
+  const {
+    sessionId, sessionType, completed, actualDurationMin, rpe,
+    hrAvg, hrMax, distanceKm, notes, actualIntensity, discipline,
+    sessionDate: sessionDateStr, dataSource, externalId, caloriesBurned, avgPaceSecPerKm,
+  } = parsed.data
   const sessionDate = sessionDateStr ? new Date(`${sessionDateStr}T00:00:00.000Z`) : null
+
+  // ── Deduplicación wearable: si ya existe un log con este externalId, saltar ──
+  if (externalId) {
+    const dup = await prisma.sessionLog.findFirst({
+      where: { userId, externalId },
+      select: { id: true },
+    })
+    if (dup) return NextResponse.json({ ok: true, id: dup.id, alreadyLogged: true })
+  }
 
   // ── Log libre (sin plan) ──────────────────────────────────────────────────
   if (!sessionId) {
@@ -56,6 +76,10 @@ export async function POST(req: NextRequest) {
         distanceKm: distanceKm ?? null,
         notes: notes ?? null,
         discipline: discipline ?? null,
+        dataSource: dataSource ?? null,
+        externalId: externalId ?? null,
+        caloriesBurned: caloriesBurned ?? null,
+        avgPaceSecPerKm: avgPaceSecPerKm ?? null,
       },
     })
     return NextResponse.json({ ok: true, id: log.id })

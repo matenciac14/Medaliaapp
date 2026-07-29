@@ -8,6 +8,7 @@ import AthleteFeatureToggles from './AthleteFeatureToggles'
 import NutritionConstructor from './NutritionConstructor'
 import { FoodLogsSection, type FoodLogEntry } from './FoodLogsSection'
 import NutritionAdherenceCard, { type DayAdherence } from './NutritionAdherenceCard'
+import CoachPlannedMealPlanner from './CoachPlannedMealPlanner'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1826,11 +1827,12 @@ export default function AthleteDetailClient({
       {/* ── Tab: Nutrición ────────────────────────────────────────────────────── */}
       {activeTab === 'Nutrición' && (
         <div className="space-y-6">
+          {/* Planner semanal — siempre visible, con o sin NutritionPlan */}
+          <CoachPlannedMealPlanner athleteId={athleteId} />
+
           {!nutritionPlan ? (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center">
-              <div className="text-4xl mb-4">🥗</div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-2">Sin plan nutricional</h2>
-              <p className="text-gray-400 text-sm">El atleta aún no tiene un plan nutricional generado</p>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center">
+              <p className="text-sm text-gray-400">El atleta aún no tiene targets calóricos generados. Completa el onboarding para calcular TDEE y macros.</p>
             </div>
           ) : (
             <>

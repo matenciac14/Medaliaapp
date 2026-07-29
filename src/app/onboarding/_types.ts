@@ -23,7 +23,7 @@ export type WizardData = {
   age: number | null
   heightCm: number | null
   weightKg: number | null
-  gender: 'male' | 'female' | null
+  gender: 'male' | 'female' | 'other' | null
   weightGoalKg: number | null      // opcional
   daysPerWeek: number
   sessionMinutes: number           // 30, 45, 60, 90

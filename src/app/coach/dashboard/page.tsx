@@ -41,10 +41,12 @@ export default async function CoachDashboardPage() {
     paidThisMonthAgg,
     coachSubscription,
   ] = await Promise.all([
-    // Todos los atletas para calcular alertas, adherencia y deporte
+    // UX-COACH-01: limitado a 25 más recientes para evitar query O(n) con joins profundos
+    // Los totales y conteos usan queries separadas (count) más abajo
     prisma.coachAthlete.findMany({
       where: { coachId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
       include: {
         athlete: {
           include: {

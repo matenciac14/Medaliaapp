@@ -327,6 +327,18 @@ function StepProfile({ data, update, prefilled }: { data: WizardData; update: (d
                 <span className="text-lg">♀</span> Mujer
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => update({ gender: 'other' })}
+              className={cn(
+                'w-full mt-2 py-2 rounded-xl border-2 text-xs font-medium transition-all',
+                data.gender === 'other'
+                  ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                  : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300 hover:text-gray-500'
+              )}
+            >
+              Prefiero no decir
+            </button>
           </div>
 
           {/* Peso objetivo — visible cuando el objetivo implica déficit calórico */}

@@ -23,7 +23,7 @@ export type CreateHealthProfile = {
   heightCm: number
   weightKg: number
   weightGoalKg?: number
-  gender: 'male' | 'female'
+  gender?: string
   hrResting?: number
   hrMax?: number
   ftp?: number
