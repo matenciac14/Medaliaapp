@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory] = await Promise.all([
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory, rawFoodLogs, nutritionPlan] = await Promise.all([
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
@@ -94,6 +97,16 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { session: { date: 'desc' } },
       take: 600,
+    }),
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: thirtyDaysAgo } },
+      select: { date: true, kcalLogged: true, grams: true, food: { select: { kcalPer100g: true } } },
+      orderBy: { date: 'asc' },
+    }),
+    prisma.nutritionPlan.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      select: { targetKcalEasy: true },
     }),
   ])
 
@@ -175,6 +188,26 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 5)
 
+  const nutTarget = nutritionPlan?.targetKcalEasy ?? null
+  const nutritionAdherence = nutTarget
+    ? (() => {
+        const byDate = new Map<string, number>()
+        for (const fl of rawFoodLogs) {
+          const dateKey = (fl.date as Date).toISOString().split('T')[0]
+          const kcal = fl.kcalLogged ?? (fl.food.kcalPer100g * fl.grams / 100)
+          byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + kcal)
+        }
+        return [...byDate.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, kcalLogged]) => ({
+            date,
+            kcalLogged: Math.round(kcalLogged),
+            targetKcal: nutTarget,
+            pct: Math.min(100, Math.round((kcalLogged / nutTarget) * 100)),
+          }))
+      })()
+    : []
+
   const gymPRs = rawGymPRs.map(r => ({
     id: r.id,
     exerciseName: r.exerciseName ?? 'Ejercicio',
@@ -204,6 +237,7 @@ export async function GET(req: NextRequest) {
     weightGoal: profile?.weightGoalKg ?? null,
     gymSessionsCompleted: gymCount,
     gymAdherenceByWeek,
+    nutritionAdherence,
     benchmarks,
     gymPRs,
     gymPRHistory,
