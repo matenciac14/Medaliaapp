@@ -2685,6 +2685,43 @@ export const GROUPS: RoadmapGroup[] = [
           },
         ],
       },
+      {
+        id: 'debt-clean-code',
+        label: 'Clean Code & i18n Groundwork',
+        period: 'Backlog',
+        items: [
+          {
+            title: 'DEBT-08 — SESSION_ICONS/DAY_LABELS duplicados en 4+ pantallas mobile',
+            done: true,
+            priority: 'P3',
+            note: 'DONE (2026-07-29). Creados src/constants/sessions.ts (SESSION_ICONS, SESSION_LABELS) y src/constants/calendar.ts (DAY_LETTERS, DAY_SHORT, DAY_FULL, MONTHS). Constantes centralizadas con TODO(i18n) para futura localización es/en/pt. Eliminadas copias locales en plan.tsx, dashboard.tsx, log.tsx, edit-session.tsx, routine-edit.tsx, nutrition-apply-template.tsx.',
+          },
+          {
+            title: 'DEBT-09 — WizardData definido en app/ layer, importado por domain use case (viola hexagonal)',
+            done: true,
+            priority: 'P2',
+            note: 'DONE (2026-07-29). Creado src/domain/onboarding/onboarding.types.ts con ActivityType, GymGoal, RunningGoal, ExperienceLevel, WizardData. app/onboarding/_types.ts re-exporta desde dominio — cero breaking changes para capa de presentación. complete-onboarding.use-case.ts ahora importa solo desde su propia capa de dominio.',
+          },
+          {
+            title: 'DEBT-10 — approve route PATCH+POST con 25 líneas de lógica duplicada',
+            done: true,
+            priority: 'P3',
+            note: 'DONE (2026-07-29). src/app/api/coach/plan/[planId]/approve/route.ts: extraída función helper approvePlan(planId, coachId). Eliminado branch muerto "request_adjustment" sin respaldo en DB. Ambos handlers (PATCH + POST) reducidos a ~5 líneas cada uno.',
+          },
+          {
+            title: 'DEBT-11 — getExerciseAlternatives usando raw fetch() en lugar de apiFetch()',
+            done: true,
+            priority: 'P2',
+            note: 'DONE (2026-07-29). gym-session.tsx usaba raw fetch() con token manual para obtener alternativas. Extraída función getExerciseAlternatives(exerciseId) en src/api/gym.ts usando apiFetch<ExerciseSearchResult[]>. Consistente con el resto del cliente mobile.',
+          },
+          {
+            title: 'DEBT-12 — Múltiples .catch(() => {}) silenciando errores en producción',
+            done: true,
+            priority: 'P2',
+            note: 'DONE (2026-07-29). Reemplazados en: _layout.tsx (push token + healthkit sync), gym-session.tsx (offline sync crítico), api/coach/clients/create/route.ts (email de bienvenida), src/lib/mobile-auth.ts (token verification). Todos loguean con contexto para Vercel/Expo logs.',
+          },
+        ],
+      },
     ],
   },
   // ─── INTEGRACIONES — Wearables & Plataformas ─────────────────────────────
