@@ -43,6 +43,75 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   )
 }
 
+// NUT-DASH-05 — Donut SVG: distribución calórica de macros (P×4 / C×4 / G×9)
+function MacroDonut({ protein, carbs, fat }: { protein: number; carbs: number; fat: number }) {
+  const proteinKcal = protein * 4
+  const carbsKcal   = carbs   * 4
+  const fatKcal     = fat     * 9
+  const total = proteinKcal + carbsKcal + fatKcal
+  if (total === 0) return null
+
+  const r = 36
+  const cx = 50
+  const cy = 50
+  const strokeW = 13
+  const circ = 2 * Math.PI * r
+
+  const segments = [
+    { kcal: proteinKcal, color: '#3b82f6', label: 'Proteína' },
+    { kcal: carbsKcal,   color: '#eab308', label: 'Carbos'   },
+    { kcal: fatKcal,     color: '#22c55e', label: 'Grasas'   },
+  ]
+
+  let cumulative = 0
+  const arcs = segments.map((s) => {
+    const pct   = s.kcal / total
+    const dash  = pct * circ
+    const rot   = cumulative * 360 - 90
+    cumulative += pct
+    return { ...s, dash, rot, pct }
+  })
+
+  return (
+    <div className="flex items-center gap-4">
+      <svg width="100" height="100" viewBox="0 0 100 100">
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3f4f6" strokeWidth={strokeW} />
+        {arcs.map(({ dash, rot, color }, i) => (
+          <circle
+            key={i}
+            cx={cx} cy={cy} r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeW}
+            strokeDasharray={`${dash} ${circ}`}
+            strokeDashoffset={0}
+            strokeLinecap="butt"
+            transform={`rotate(${rot}, ${cx}, ${cy})`}
+          />
+        ))}
+        {/* Total kcal al centro */}
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="800" fill="#111827">
+          {Math.round(total)}
+        </text>
+        <text x={cx} y={cy + 7} textAnchor="middle" fontSize="7" fill="#9ca3af">
+          kcal
+        </text>
+      </svg>
+      <div className="flex flex-col gap-1.5">
+        {arcs.map(({ label, color, pct, kcal }) => (
+          <div key={label} className="flex items-center gap-1.5 text-xs">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-gray-600 w-16">{label}</span>
+            <span className="font-semibold text-gray-800">{Math.round(pct * 100)}%</span>
+            <span className="text-gray-400">({Math.round(kcal)} kcal)</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TrackingSection({ target, foods, date }: Props) {
   const [expanded, setExpanded]       = useState(false)
   const [showModal, setShowModal]     = useState(false)
@@ -133,18 +202,48 @@ export default function TrackingSection({ target, foods, date }: Props) {
               />
             </div>
           )}
+          {/* NUT-DASH-03 — Macro pills siempre visibles (Proteína / Carbos / Grasas) */}
+          {target && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                { label: 'Proteína', key: 'proteinG' as const, color: '#3b82f6', unit: 'g' },
+                { label: 'Carbos',   key: 'carbsG'   as const, color: '#eab308', unit: 'g' },
+                { label: 'Grasas',   key: 'fatG'     as const, color: '#22c55e', unit: 'g' },
+              ].map(({ label, key, color, unit }) => {
+                const val = totals[key] ?? 0
+                const tgt = target[key] ?? 0
+                const p   = tgt > 0 ? Math.min((val / tgt) * 100, 100) : 0
+                return (
+                  <div key={key} className="bg-gray-50 rounded-lg px-2.5 py-2">
+                    <span className="text-[10px] font-medium text-gray-400 block mb-1">{label}</span>
+                    <span className="text-xs font-bold" style={{ color }}>
+                      {val}<span className="font-normal text-gray-400">/{tgt}{unit}</span>
+                    </span>
+                    <div className="mt-1.5 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${p}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           {/* Botón expandir detalles */}
           <button
             onClick={() => setExpanded(e => !e)}
             className="mt-3 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
           >
-            {expanded ? '▲ Ocultar macros' : '▼ Ver macros y registros'}
+            {expanded ? '▲ Ocultar registros' : '▼ Ver registros'}
           </button>
         </div>
 
         {/* Expanded */}
         {expanded && (
           <div className="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
+
+            {/* NUT-DASH-05 — Donut distribución de macros (proteinG*4 / carbsG*4 / fatG*9) */}
+            {target && (totals.proteinG > 0 || totals.carbsG > 0 || totals.fatG > 0) && (
+              <MacroDonut protein={totals.proteinG} carbs={totals.carbsG} fat={totals.fatG} />
+            )}
 
             {/* 4 barras de macros */}
             <div className="space-y-3">
