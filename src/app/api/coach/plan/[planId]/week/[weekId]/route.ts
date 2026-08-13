@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { Phase } from '@/generated/prisma/enums'
+
+const VALID_PHASES = new Set<string>(Object.values(Phase))
 
 export async function PATCH(
   req: NextRequest,
@@ -25,6 +28,9 @@ export async function PATCH(
   if (!relation) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { phase, focusDescription, isRecoveryWeek, volumeKm } = await req.json()
+
+  if (phase !== undefined && !VALID_PHASES.has(phase))
+    return NextResponse.json({ error: `Fase inválida. Válidas: ${[...VALID_PHASES].join(', ')}` }, { status: 400 })
 
   const updated = await prisma.planWeek.update({
     where: { id: weekId },

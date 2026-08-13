@@ -4,13 +4,14 @@
  */
 import type { IPaymentGateway } from '@/domain/ports/payment-gateway.port'
 import { StubPaymentGateway } from './stub-payment-gateway'
+import { WompiPaymentGateway } from './wompi-payment-gateway'
 
 export function getPaymentGateway(): IPaymentGateway {
   const provider = process.env.PAYMENT_GATEWAY ?? 'stub'
 
   switch (provider) {
-    // case 'wompi':  return new WompiPaymentGateway()   // implementar al elegir Wompi
-    // case 'stripe': return new StripePaymentGateway()  // implementar al elegir Stripe
+    case 'wompi':  return new WompiPaymentGateway()
+    // case 'stripe': return new StripePaymentGateway()  // futuro
     default:
       return new StubPaymentGateway()
   }

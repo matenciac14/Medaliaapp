@@ -141,7 +141,7 @@ export default async function CoachDashboardPage() {
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
 
-  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === 'SIN PLAN')
+  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === null)
 
   const totalAlerts = athletes.reduce((acc, a) => {
     const f = a.alertFlags

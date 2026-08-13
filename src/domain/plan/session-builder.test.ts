@@ -107,8 +107,9 @@ describe('getSetsRepsScheme', () => {
     expect(getSetsRepsScheme('ESPECIFICO')).toBe('4×8-10')
   })
 
-  it('ESPECÍFICO → 4×8-10 (con tilde — normalización)', () => {
-    expect(getSetsRepsScheme('ESPECÍFICO')).toBe('4×8-10')
+  it('ESPECÍFICO (con tilde, valor inválido en DB) → default 3×10-12', () => {
+    // Phase enum solo almacena ESPECIFICO (sin tilde). Este valor nunca llega del DB.
+    expect(getSetsRepsScheme('ESPECÍFICO')).toBe('3×10-12')
   })
 
   it('AFINAMIENTO → 3×10-12 (default)', () => {

@@ -49,29 +49,30 @@ export async function GET(req: NextRequest) {
       ? getPlanWeekNumber(plan.startDate, plan.totalWeeks)
       : getCurrentISOWeek()
 
-    const existing = await prisma.weeklyCheckIn.findFirst({
-      where: { userId: mobile.id, weekNumber },
-      select: {
-        id: true,
-        weightKg: true,
-        hrResting: true,
-        sleepHours: true,
-        sleepScore: true,
-        energyLevel: true,
-        stressLevel: true,
-        motivationLevel: true,
-        hardestSessionRpe: true,
-        painLevel: true,
-        notes: true,
-        recordedAt: true,
-      },
-    })
-
-    const pendingSuggestions = await prisma.checkInSuggestion.findMany({
-      where: { userId: mobile.id, status: 'PENDING', expiresAt: { gt: new Date() } },
-      select: { id: true, type: true, title: true, description: true, expiresAt: true },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [existing, pendingSuggestions] = await Promise.all([
+      prisma.weeklyCheckIn.findFirst({
+        where: { userId: mobile.id, weekNumber },
+        select: {
+          id: true,
+          weightKg: true,
+          hrResting: true,
+          sleepHours: true,
+          sleepScore: true,
+          energyLevel: true,
+          stressLevel: true,
+          motivationLevel: true,
+          hardestSessionRpe: true,
+          painLevel: true,
+          notes: true,
+          recordedAt: true,
+        },
+      }),
+      prisma.checkInSuggestion.findMany({
+        where: { userId: mobile.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+        select: { id: true, type: true, title: true, description: true, expiresAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
 
     return ok({
       submitted: !!existing,

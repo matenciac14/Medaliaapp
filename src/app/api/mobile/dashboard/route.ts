@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   // PERF-01 Phase 1: plan metadata sin sesiones
   const todayUtc = new Date(); todayUtc.setHours(0, 0, 0, 0)
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog] = await Promise.all([
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
-      select: { template: { select: { days: { select: { dayOfWeek: true, isRestDay: true } } } } },
+      select: { template: { select: { name: true, days: { select: { dayOfWeek: true, isRestDay: true } } } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
@@ -58,12 +58,23 @@ export async function GET(req: NextRequest) {
       where: { athleteId: userId, completed: true },
       orderBy: { date: 'desc' },
       take: 60,
-      select: { date: true },
+      select: { date: true, durationMin: true, assignedWorkout: { select: { template: { select: { name: true } } } } },
     }),
     // DAILY-02: registro de hoy para widget en dashboard
     prisma.dailyLog.findUnique({
       where: { userId_date: { userId, date: todayUtc } },
       select: { weightKg: true, energyLevel: true },
+    }),
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: userId },
+      select: {
+        coach: {
+          select: {
+            name: true,
+            coachProfile: { select: { headline: true } },
+          },
+        },
+      },
     }),
   ])
 
@@ -109,6 +120,11 @@ export async function GET(req: NextRequest) {
     user, activePlanRaw: activePlan, lastCompletedPlan, checkIns, recentLogs, nutritionPlan,
     assignedWorkout: assignedWorkoutRaw ?? null,
     gymCompletionDates: recentGymSessions.map(gs => gs.date),
+    recentGymSessions: recentGymSessions.map(gs => ({
+      date: gs.date,
+      durationMin: gs.durationMin ?? null,
+      templateName: gs.assignedWorkout?.template.name ?? null,
+    })),
   })
 
   if (planIdToComplete) {
@@ -121,6 +137,13 @@ export async function GET(req: NextRequest) {
     ...summary,
     weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null,
     todayLog: todayLog ?? null,
-    hasEverLogged: recentLogs.length > 0,
+    hasEverLogged: summary.hasEverLogged,
+    coach: coachRelation ? {
+      name: coachRelation.coach.name ?? 'Tu coach',
+      headline: coachRelation.coach.coachProfile?.headline ?? null,
+      initial: (coachRelation.coach.name ?? 'C').charAt(0).toUpperCase(),
+    } : null,
+    isB2B: !!coachRelation,
+    workoutName: assignedWorkoutRaw?.template.name ?? null,
   })
 }

@@ -15,7 +15,11 @@ export async function GET(req: NextRequest) {
   if (featureGuard) return featureGuard
 
   const userId = mobile.id
-  const dateParam = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
+  const rawDate = req.nextUrl.searchParams.get('date')
+  if (rawDate && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return NextResponse.json({ error: 'Formato de fecha inválido. Usa YYYY-MM-DD.' }, { status: 400 })
+  }
+  const dateParam = rawDate ?? new Date().toISOString().split('T')[0]
   const dayStart = new Date(`${dateParam}T00:00:00.000Z`)
   const dayEnd   = new Date(`${dateParam}T23:59:59.999Z`)
 

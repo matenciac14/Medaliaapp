@@ -128,11 +128,16 @@ const TEMPLATE_META = [
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-const PHASES = ['BASE', 'DESARROLLO', 'ESPECÍFICO', 'AFINAMIENTO', 'COMPETICIÓN', 'RECUPERACIÓN']
+// Values must match the Phase enum in schema.prisma
+// COMPETICIÓN / RECUPERACIÓN are not yet valid Phase enum values — do not add them until the migration is run
+const PHASES = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
+
+const PHASE_LABELS: Record<string, string> = {
+  BASE: 'BASE', DESARROLLO: 'DESARROLLO', ESPECIFICO: 'ESPECÍFICO', AFINAMIENTO: 'AFINAMIENTO',
+}
 
 const PHASE_COLORS: Record<string, string> = {
-  BASE: '#1e3a5f', DESARROLLO: '#ea580c', 'ESPECÍFICO': '#dc2626',
-  AFINAMIENTO: '#7c3aed', 'COMPETICIÓN': '#0891b2', 'RECUPERACIÓN': '#16a34a',
+  BASE: '#1e3a5f', DESARROLLO: '#ea580c', ESPECIFICO: '#dc2626', AFINAMIENTO: '#7c3aed',
 }
 
 export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates }: Props) {
@@ -674,7 +679,7 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
               className="text-xs font-semibold uppercase tracking-wider"
               style={{ color: PHASE_COLORS[week!.phase] ?? '#1e3a5f' }}
             >
-              {week!.phase}
+              {PHASE_LABELS[week!.phase] ?? week!.phase}
             </span>
             {week!.focusDescription && (
               <span className="text-xs text-gray-400">· {week!.focusDescription}</span>
@@ -1156,7 +1161,7 @@ function WeekEditModal({
                       : { backgroundColor: '#f9fafb', color: '#6b7280' }
                   }
                 >
-                  {p}
+                  {PHASE_LABELS[p] ?? p}
                 </button>
               ))}
             </div>

@@ -25,13 +25,8 @@ export async function POST(
     },
   })
 
-  if (!source) {
+  if (!source || source.coachId !== coachId) {
     return NextResponse.json({ error: 'Rutina no encontrada.' }, { status: 404 })
-  }
-
-  // Solo el coach propietario puede copiar
-  if (source.coachId !== coachId) {
-    return NextResponse.json({ error: 'No tienes permiso sobre esta rutina.' }, { status: 403 })
   }
 
   // Fase 2: deep copy en una sola transacción

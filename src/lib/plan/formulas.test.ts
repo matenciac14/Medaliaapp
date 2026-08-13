@@ -97,6 +97,40 @@ describe('calculateTDEE', () => {
     const female = calculateTDEE(70, 175, 30, 'female', 4)
     expect(female).toBeLessThan(male)
   })
+
+  // GAP-02: sessionMinutes modifica el factor de actividad por volumen semanal
+  describe('con sessionMinutes (GAP-02)', () => {
+    // BMR hombre 70/175/30 = 1648.75
+    it('4d × 30min = 120 min/sem → factor 1.55 (límite inferior moderado)', () => {
+      // 120 min/sem → < 300 → factor 1.55
+      expect(calculateTDEE(70, 175, 30, 'male', 4, 30)).toBe(Math.round(1648.75 * 1.55))
+    })
+
+    it('4d × 25min = 100 min/sem → factor 1.375 (ligeramente activo)', () => {
+      // 100 min/sem → < 120 → factor 1.375
+      expect(calculateTDEE(70, 175, 30, 'male', 4, 25)).toBe(Math.round(1648.75 * 1.375))
+    })
+
+    it('4d × 90min = 360 min/sem → factor 1.725 (muy activo)', () => {
+      // 360 min/sem → 300–600 → factor 1.725
+      expect(calculateTDEE(70, 175, 30, 'male', 4, 90)).toBe(Math.round(1648.75 * 1.725))
+    })
+
+    it('5d × 130min = 650 min/sem → factor 1.9 (extremadamente activo)', () => {
+      // 650 min/sem → > 600 → factor 1.9
+      expect(calculateTDEE(70, 175, 30, 'male', 5, 130)).toBe(Math.round(1648.75 * 1.9))
+    })
+
+    it('sessionMinutes=null → comportamiento sin sessionMinutes (compat. hacia atrás)', () => {
+      expect(calculateTDEE(70, 175, 30, 'male', 4, null)).toBe(calculateTDEE(70, 175, 30, 'male', 4))
+    })
+
+    it('4d × 90min (muy activo) > 4d sin sessionMinutes (moderado)', () => {
+      const withMinutes = calculateTDEE(70, 175, 30, 'male', 4, 90)
+      const withoutMinutes = calculateTDEE(70, 175, 30, 'male', 4)
+      expect(withMinutes).toBeGreaterThan(withoutMinutes)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

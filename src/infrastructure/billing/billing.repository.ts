@@ -30,20 +30,20 @@ export class BillingRepository implements IBillingRepository {
     }
   }
 
-  async upgradeCoach(userId: string, data: UpgradeCoachData): Promise<void> {
+  async upgradeCoach(userId: string, data: UpgradeCoachData, gateway?: string): Promise<void> {
     await prisma.userSubscription.upsert({
       where:  { userId },
-      create: { userId, coachTier: data.coachTier as any, currentPeriodEnd: data.currentPeriodEnd },
-      update: { coachTier: data.coachTier as any, currentPeriodEnd: data.currentPeriodEnd },
+      create: { userId, coachTier: data.coachTier as any, currentPeriodEnd: data.currentPeriodEnd, gateway: gateway ?? null },
+      update: { coachTier: data.coachTier as any, currentPeriodEnd: data.currentPeriodEnd, ...(gateway ? { gateway } : {}) },
     })
   }
 
-  async upgradeAthlete(userId: string, data: UpgradeAthleteData): Promise<void> {
+  async upgradeAthlete(userId: string, data: UpgradeAthleteData, gateway?: string): Promise<void> {
     await prisma.$transaction([
       prisma.userSubscription.upsert({
         where:  { userId },
-        create: { userId, tier: 'PRO', currentPeriodEnd: data.currentPeriodEnd },
-        update: { tier: 'PRO', currentPeriodEnd: data.currentPeriodEnd },
+        create: { userId, tier: 'PRO', currentPeriodEnd: data.currentPeriodEnd, gateway: gateway ?? null },
+        update: { tier: 'PRO', currentPeriodEnd: data.currentPeriodEnd, ...(gateway ? { gateway } : {}) },
       }),
       // Activa las features de pago: plan adaptativo, check-in y progreso
       prisma.user.update({
@@ -99,5 +99,28 @@ export class BillingRepository implements IBillingRepository {
       coachTier: s.coachTier as CoachTier,
       currentPeriodEnd: s.currentPeriodEnd!,
     }))
+  }
+
+  async saveWebhookEventId(userId: string, eventId: string): Promise<void> {
+    // updateMany en lugar de update para no lanzar P2025 si no existe registro
+    await prisma.userSubscription.updateMany({
+      where: { userId },
+      data:  { lastWebhookEventId: eventId },
+    })
+  }
+
+  async getLastWebhookEventId(userId: string): Promise<string | null> {
+    const sub = await prisma.userSubscription.findUnique({
+      where:  { userId },
+      select: { lastWebhookEventId: true },
+    })
+    return sub?.lastWebhookEventId ?? null
+  }
+
+  async saveGateway(userId: string, gateway: string): Promise<void> {
+    await prisma.userSubscription.update({
+      where: { userId },
+      data:  { gateway },
+    })
   }
 }

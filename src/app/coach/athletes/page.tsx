@@ -3,7 +3,9 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import AthleteTabs from './_components/AthleteTabs'
 import PendingAthletesSection from './_components/PendingAthletesSection'
-import { TAKE, mapRelation } from './_lib/map-athlete'
+import { mapRelation } from './_lib/map-athlete'
+
+const TAKE = 20
 
 export default async function CoachAthletesPage() {
   const session = await auth()

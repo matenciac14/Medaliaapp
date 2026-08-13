@@ -293,12 +293,17 @@ describe('resolveWorkoutDayId — planes de running', () => {
     expect(resolveWorkoutDayId(goalType, 'FUERZA', 'DESARROLLO')).toBe('system-fuerza-corredor-especifico')
   })
 
-  it.each(['ESPECIFICO', 'ESPECÍFICO', 'AFINAMIENTO'])(
+  it.each(['ESPECIFICO', 'AFINAMIENTO'])(
     'running + FUERZA + %s → system-fuerza-corredor-especifico',
     (phase) => {
       expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'FUERZA', phase)).toBe('system-fuerza-corredor-especifico')
     }
   )
+
+  it('running + FUERZA + ESPECÍFICO (tilde, inválido en DB) → null', () => {
+    // Phase enum solo almacena ESPECIFICO (sin tilde). Este valor nunca llega del DB.
+    expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'FUERZA', 'ESPECÍFICO')).toBeNull()
+  })
 
   it('running + sesión que NO es FUERZA → null (no link al gym tracker)', () => {
     expect(resolveWorkoutDayId('RACE_HALF_MARATHON', 'RODAJE_Z2', 'BASE')).toBeNull()

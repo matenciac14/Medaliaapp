@@ -10,7 +10,6 @@ import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
-import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
 import CoachNutritionProposalCard from './_components/CoachNutritionProposalCard'
 import NutritionInitClient from './_components/NutritionInitClient'
 import WeeklyNutritionBars from './_components/WeeklyNutritionBars'
@@ -65,7 +64,6 @@ export default async function NutritionPage() {
 
   // Cargar datos en paralelo — una sola ronda
   const [
-    pendingAdjustment,
     nutritionPlanRaw,
     mealPlan,
     todaySession,
@@ -80,20 +78,6 @@ export default async function NutritionPage() {
     athleteTemplate,
     plannedMealsThisWeek,
   ] = await Promise.all([
-    prisma.pendingNutritionAdjustment.findFirst({
-      where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
-      select: {
-        id: true,
-        deltaKcal: true,
-        deltaCarbsG: true,
-        plannedKcal: true,
-        adjustedKcal: true,
-        plannedCarbsG: true,
-        adjustedCarbsG: true,
-        plannedIntensity: true,
-        actualIntensity: true,
-      },
-    }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -217,6 +201,7 @@ export default async function NutritionPage() {
   }
   const badge = DAY_TYPE_LABELS[todayDayType]
 
+  // MealPlan (parsedMealPlan) is deprecated fallback — NutritionTemplate is the primary source
   const parsedMealPlan = mealPlan ? parseMealPlanData(mealPlan.data) : null
 
   // Transformar plantilla del coach al formato canónico MealPlanData
@@ -291,35 +276,74 @@ export default async function NutritionPage() {
     return d.toISOString().split('T')[0] === todayStr
   })
 
-  // Adherencia semanal — días donde kcal loggeada >= target * 0.9
+  // Adherencia semanal — días donde kcal loggeada >= target * 0.9 (target POR DÍA según intensidad)
   let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
   const kcalByDay: Record<string, number> = {}
-  if (nutritionPlanRaw && weekFoodLogs.length > 0) {
-    const targetKcal = nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0
-    if (targetKcal > 0) {
-      for (const log of weekFoodLogs) {
-        const day = log.date.toISOString().slice(0, 10)
-        const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
-        kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
-      }
-      const loggedDays = Object.values(kcalByDay)
-      const daysHit = loggedDays.filter((k) => k >= targetKcal * 0.9).length
-      weeklyAdherence = { daysHit, totalDays: loggedDays.length }
+  if (effectiveNutritionPlan && weekFoodLogs.length > 0) {
+    for (const log of weekFoodLogs) {
+      const day = log.date.toISOString().slice(0, 10)
+      const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
+      kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
     }
+
+    // Mapear intensidad por fecha usando las sesiones de la semana
+    const intensityByDateKey = new Map<string, string>()
+    if (activePlan && currentWeek) {
+      // weekSessions ya tiene dayOfWeek + intensity para la semana actual
+      // Mapear dayOfWeek a fecha real
+      const mondayRef = new Date(todayDate)
+      const todayDowForRef = todayDate.getDay() === 0 ? 7 : todayDate.getDay()
+      mondayRef.setDate(todayDate.getDate() - (todayDowForRef - 1))
+      mondayRef.setHours(0, 0, 0, 0)
+      for (const s of weekSessions) {
+        const sessionDate = new Date(mondayRef)
+        sessionDate.setDate(mondayRef.getDate() + s.dayOfWeek)
+        const key = sessionDate.toISOString().slice(0, 10)
+        intensityByDateKey.set(key, s.intensity ?? 'REST')
+      }
+    }
+
+    let daysHit = 0
+    let totalDays = 0
+    for (const [day, kcal] of Object.entries(kcalByDay)) {
+      const intensity = intensityByDateKey.get(day) ?? 'REST'
+      const target = getDailyNutritionTarget(intensity, effectiveNutritionPlan)
+      if (target.kcal > 0) {
+        totalDays++
+        if (kcal >= target.kcal * 0.9) daysHit++
+      }
+    }
+    if (totalDays > 0) weeklyAdherence = { daysHit, totalDays }
   }
 
-  // NUT-F-03: datos de barras de adherencia para los últimos 7 días
+  // NUT-F-03: datos de barras de adherencia para los últimos 7 días (target POR DÍA)
+  // Construir mapa de intensidad por fecha para los últimos 7 días
+  const intensityMapForBars = new Map<string, string>()
+  if (activePlan && currentWeek) {
+    const mondayRef = new Date(todayDate)
+    const todayDowForBars = todayDate.getDay() === 0 ? 7 : todayDate.getDay()
+    mondayRef.setDate(todayDate.getDate() - (todayDowForBars - 1))
+    mondayRef.setHours(0, 0, 0, 0)
+    for (const s of weekSessions) {
+      const sessionDate = new Date(mondayRef)
+      sessionDate.setDate(mondayRef.getDate() + s.dayOfWeek)
+      const key = sessionDate.toISOString().slice(0, 10)
+      intensityMapForBars.set(key, s.intensity ?? 'REST')
+    }
+  }
   const DOW_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  const targetKcalForBars = nutritionPlanRaw
-    ? (nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0)
-    : (syntheticNutritionPlan?.targetKcalEasy ?? 0)
   const weekBars = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayDate)
     d.setDate(d.getDate() - 6 + i)
     const key = d.toISOString().slice(0, 10)
     const kcal = kcalByDay[key] ?? null
-    const pct = (kcal !== null && targetKcalForBars > 0)
-      ? Math.round((kcal / targetKcalForBars) * 100)
+    const intensity = intensityMapForBars.get(key) ?? 'REST'
+    const dayTarget = effectiveNutritionPlan
+      ? getDailyNutritionTarget(intensity, effectiveNutritionPlan)
+      : null
+    const effectiveTargetKcal = dayTarget?.kcal ?? 0
+    const pct = (kcal !== null && effectiveTargetKcal > 0)
+      ? Math.round((kcal / effectiveTargetKcal) * 100)
       : null
     return {
       label: DOW_LABELS[d.getDay()],
@@ -416,20 +440,7 @@ export default async function NutritionPage() {
         />
       ))}
 
-      {/* Ajuste nutricional pendiente */}
-      {pendingAdjustment && (
-        <NutritionAdjustmentCard
-          id={pendingAdjustment.id}
-          deltaKcal={pendingAdjustment.deltaKcal}
-          deltaCarbsG={pendingAdjustment.deltaCarbsG}
-          plannedKcal={pendingAdjustment.plannedKcal}
-          adjustedKcal={pendingAdjustment.adjustedKcal}
-          plannedCarbsG={pendingAdjustment.plannedCarbsG}
-          adjustedCarbsG={pendingAdjustment.adjustedCarbsG}
-          plannedIntensity={pendingAdjustment.plannedIntensity}
-          actualIntensity={pendingAdjustment.actualIntensity}
-        />
-      )}
+      {/* DEPRECATED: NutritionAdjustmentCard removida — ajustes automáticos reemplazados por notificaciones informativas */}
 
       {/* NUT-DASH-01 — Sesión del día */}
       {(todaySession || hasGymSessionToday) && (

@@ -46,15 +46,24 @@ export function estimateHRMax(age: number): number {
 
 /**
  * Calcula TDEE con Mifflin-St Jeor.
- * Factor de actividad basado en días de entrenamiento por semana.
- * 3 días = 1.375 | 4 días = 1.55 | 5 días = 1.725 | ≥6 días = 1.9
+ * Factor de actividad basado en volumen semanal (daysPerWeek × sessionMinutes) cuando se provee,
+ * o solo en daysPerWeek cuando sessionMinutes no está disponible (compatibilidad hacia atrás).
+ *
+ * Bandas por volumen semanal:
+ *   < 120 min/sem  → 1.375 (ligeramente activo)
+ *   120–300 min/sem → 1.55 (moderadamente activo)
+ *   300–600 min/sem → 1.725 (muy activo)
+ *   > 600 min/sem  → 1.9  (extremadamente activo)
+ *
+ * Sin sessionMinutes: 3 días = 1.375 | 4 días = 1.55 | 5 días = 1.725 | ≥6 días = 1.9
  */
 export function calculateTDEE(
   weightKg: number,
   heightCm: number,
   age: number,
   gender: 'male' | 'female',
-  daysPerWeek: number
+  daysPerWeek: number,
+  sessionMinutes?: number | null,
 ): number {
   const bmr =
     gender === 'male'
@@ -62,10 +71,19 @@ export function calculateTDEE(
       : 10 * weightKg + 6.25 * heightCm - 5 * age - 161
 
   let factor: number
-  if (daysPerWeek <= 3) factor = 1.375
-  else if (daysPerWeek === 4) factor = 1.55
-  else if (daysPerWeek === 5) factor = 1.725
-  else factor = 1.9
+  if (sessionMinutes != null && sessionMinutes > 0) {
+    // GAP-02: factor por volumen semanal real
+    const weeklyMinutes = daysPerWeek * sessionMinutes
+    if (weeklyMinutes < 120)       factor = 1.375
+    else if (weeklyMinutes < 300)  factor = 1.55
+    else if (weeklyMinutes <= 600) factor = 1.725
+    else                           factor = 1.9
+  } else {
+    if (daysPerWeek <= 3) factor = 1.375
+    else if (daysPerWeek === 4) factor = 1.55
+    else if (daysPerWeek === 5) factor = 1.725
+    else factor = 1.9
+  }
 
   return Math.round(bmr * factor)
 }

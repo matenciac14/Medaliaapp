@@ -16,6 +16,11 @@ type PlannedMeal = {
   mealType: string
   grams: number
   food: Food
+  override: {
+    overrideFoodId: string
+    overrideGrams: number
+    overrideFood: Food
+  } | null
 }
 
 type WeekMeals = Record<string, PlannedMeal[]> // date YYYY-MM-DD → meals
@@ -196,14 +201,18 @@ export default function CoachPlannedMealPlanner({ athleteId }: Props) {
     return acc
   }, {} as Record<MealType, PlannedMeal[]>)
 
-  // Daily totals
+  // Daily totals — use override food/grams when athlete has swapped
   const totals = dayMeals.reduce(
-    (acc, m) => ({
-      kcal:    acc.kcal    + calcKcal(m.food, m.grams),
-      protein: acc.protein + calcMacro(m.food.proteinPer100g, m.grams),
-      carbs:   acc.carbs   + calcMacro(m.food.carbsPer100g,   m.grams),
-      fat:     acc.fat     + calcMacro(m.food.fatPer100g,     m.grams),
-    }),
+    (acc, m) => {
+      const f = m.override ? m.override.overrideFood : m.food
+      const g = m.override ? m.override.overrideGrams : m.grams
+      return {
+        kcal:    acc.kcal    + calcKcal(f, g),
+        protein: acc.protein + calcMacro(f.proteinPer100g, g),
+        carbs:   acc.carbs   + calcMacro(f.carbsPer100g,   g),
+        fat:     acc.fat     + calcMacro(f.fatPer100g,     g),
+      }
+    },
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   )
 
@@ -305,26 +314,43 @@ export default function CoachPlannedMealPlanner({ athleteId }: Props) {
                   {/* Existing items */}
                   {items.length > 0 && (
                     <div className="space-y-1 mb-2">
-                      {items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{item.food.name}</p>
-                            <p className="text-xs text-gray-400">
-                              {item.grams}g · {calcKcal(item.food, item.grams)} kcal ·{' '}
-                              P{calcMacro(item.food.proteinPer100g, item.grams)}g
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => deleteItem(item.id)}
-                            className="ml-2 p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors"
+                      {items.map((item) => {
+                        const hasOverride = item.override !== null
+                        const displayFood = hasOverride ? item.override!.overrideFood : item.food
+                        const displayGrams = hasOverride ? item.override!.overrideGrams : item.grams
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex items-center justify-between py-1.5 px-3 rounded-lg ${hasOverride ? 'bg-orange-50 border border-orange-100' : 'bg-gray-50'}`}
                           >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-gray-800 truncate">{displayFood.name}</p>
+                                {hasOverride && (
+                                  <span className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                                    swap
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400">
+                                {displayGrams}g · {calcKcal(displayFood, displayGrams)} kcal ·{' '}
+                                P{calcMacro(displayFood.proteinPer100g, displayGrams)}g
+                                {hasOverride && (
+                                  <span className="ml-1 text-orange-500">
+                                    (original: {item.food.name})
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => deleteItem(item.id)}
+                              className="ml-2 p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 

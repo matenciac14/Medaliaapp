@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
-import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
+import { respondCoachProposal, ProposalError } from '@/domain/nutrition/respond-coach-proposal.use-case'
 
 const bodySchema = z.object({
   action: z.enum(['ACCEPTED', 'REJECTED']),
@@ -18,11 +18,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = bodySchema.safeParse(await req.json())
   if (!body.success) return NextResponse.json({ error: body.error.flatten() }, { status: 400 })
 
-  const repo = new CoachNutritionProposalRepository(prisma)
   try {
-    const updated = await repo.respond(id, session.user.id, body.data.action)
-    return NextResponse.json(updated)
-  } catch {
-    return NextResponse.json({ error: 'Propuesta no encontrada o ya respondida' }, { status: 404 })
+    const result = await respondCoachProposal(prisma, {
+      proposalId: id,
+      athleteId: session.user.id,
+      action: body.data.action,
+    })
+    return NextResponse.json(result.proposal)
+  } catch (err) {
+    if (err instanceof ProposalError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus })
+    }
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }

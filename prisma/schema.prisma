@@ -142,6 +142,9 @@ model User {
   // Propuestas nutricionales del coach al atleta
   coachNutritionProposalsSent     CoachNutritionProposal[] @relation("CoachNutritionProposalsSent")
   coachNutritionProposalsReceived CoachNutritionProposal[] @relation("CoachNutritionProposalsReceived")
+
+  // Swaps de alimentos sobre plan asignado por coach (NUT-SWAP-01)
+  nutritionOverrides AthleteNutritionOverride[]
 }
 
 enum UserRole {
@@ -871,6 +874,7 @@ model Food {
   proposals             FoodProposal[]
   plannedMeals          PlannedMeal[]
   recipeIngredients     RecipeIngredient[]
+  nutritionOverrides    AthleteNutritionOverride[]
 
   @@index([category])
   @@index([isActive])
@@ -1024,6 +1028,8 @@ model UserSubscription {
   externalCustomerId String?          // Stripe/Wompi customer ID
   externalPriceId    String?          // Stripe/Wompi price ID
   cancelAtPeriodEnd  Boolean          @default(false)
+  gateway            String?          // 'wompi' | 'mercadopago' | null
+  lastWebhookEventId String?          // idempotencia: Wompi puede reenviar el mismo evento
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -1308,9 +1314,31 @@ model PlannedMeal {
   grams     Float
   createdAt DateTime @default(now())
 
+  overrides AthleteNutritionOverride[]
+
   @@index([userId, date])
 }
 
+// Swap de alimentos — atleta sustituye un alimento del plan del coach (NUT-SWAP-01)
+// El atleta puede cambiar un alimento asignado por uno equivalente (±10% kcal).
+// El swap persiste aquí sin tocar el PlannedMeal original del coach.
+model AthleteNutritionOverride {
+  id             String      @id @default(cuid())
+  athleteId      String
+  athlete        User        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  plannedMealId  String
+  plannedMeal    PlannedMeal @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
+  overrideFoodId String
+  overrideFood   Food        @relation(fields: [overrideFoodId], references: [id])
+  overrideGrams  Float
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([athleteId, plannedMealId])
+  @@index([athleteId])
+}
+
+// DEPRECATED (NUT-13): no read/write endpoints exist
 model Recipe {
   id          String             @id @default(cuid())
   userId      String
@@ -1322,6 +1350,7 @@ model Recipe {
   @@index([userId])
 }
 
+// DEPRECATED (NUT-13): no read/write endpoints exist
 model RecipeIngredient {
   id       String @id @default(cuid())
   recipeId String
@@ -1345,6 +1374,7 @@ model WaterLog {
   @@index([userId])
 }
 
+// DEPRECATED (NUT-13): populated but never read by any endpoint
 model MealPlanVersion {
   id           String   @id @default(cuid())
   userId       String

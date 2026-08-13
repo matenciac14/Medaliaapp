@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest) {
   const userId = session.user.id
 
   const templates = await prisma.nutritionTemplate.findMany({
-    where: { athleteId: userId },
+    where: { athleteId: userId, coachId: null },
     include: {
       days: {
         include: {

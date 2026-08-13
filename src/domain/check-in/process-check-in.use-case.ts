@@ -206,17 +206,25 @@ export async function processCheckIn(
     }
 
     // 2b. Add gym note when pain/RPE triggers fire for GYM athletes (GYM-01)
+    // GYM-GAP-03: strip previous [AUTO] notes before writing — prevents indefinite accumulation
     const gymTrigger = triggers.includes('dolor_activo') || triggers.includes('rpe_excesivo')
-    if (assignedWorkout && gymTrigger) {
-      const gymNote = triggers.includes('dolor_activo')
-        ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
-        : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.'
+    if (assignedWorkout) {
+      const gymNote = gymTrigger
+        ? (triggers.includes('dolor_activo')
+            ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
+            : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.')
+        : null
       for (const day of assignedWorkout.template.days) {
-        if (day.warmupNotes?.includes('[AUTO]')) continue
-        await tx.workoutDay.update({
-          where: { id: day.id },
-          data: { warmupNotes: day.warmupNotes ? `${day.warmupNotes} ${gymNote}` : gymNote },
-        })
+        // Strip any previous [AUTO] suffix (everything from [AUTO] to end of string)
+        const baseNotes = day.warmupNotes?.replace(/\s*\[AUTO\][\s\S]*$/, '').trim() || null
+        const nextNotes = gymNote ? (baseNotes ? `${baseNotes} ${gymNote}` : gymNote) : baseNotes || null
+        // Only write if something actually changed
+        if (nextNotes !== (day.warmupNotes ?? null)) {
+          await tx.workoutDay.update({
+            where: { id: day.id },
+            data: { warmupNotes: nextNotes },
+          })
+        }
       }
     }
 
@@ -340,7 +348,8 @@ async function syncWeight(
     profile.heightCm,
     runtimeAge,
     (profile.gender ?? 'male') as 'male' | 'female',
-    5
+    profile.daysPerWeek ?? 5,
+    profile.sessionMinutes,
   )
   const macros = calculateMacros(tdee, newWeight, !!profile.weightGoalKg)
 

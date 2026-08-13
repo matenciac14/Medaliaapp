@@ -132,10 +132,10 @@ describe('getUserPlan', () => {
 // UserPlan — valores válidos
 // ---------------------------------------------------------------------------
 describe('UserPlan — valores válidos', () => {
-  it('acepta FREE, PRO y TRIAL', () => {
-    const planes: UserPlan[] = ['FREE', 'PRO', 'TRIAL']
+  it('solo acepta FREE y PRO (TRIAL eliminado del modelo)', () => {
+    const planes: UserPlan[] = ['FREE', 'PRO']
     planes.forEach(plan => {
-      expect(['FREE', 'PRO', 'TRIAL']).toContain(plan)
+      expect(['FREE', 'PRO']).toContain(plan)
     })
   })
 })

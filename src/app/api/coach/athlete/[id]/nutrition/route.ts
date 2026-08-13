@@ -21,7 +21,7 @@ export async function GET(
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-  const [mealPlan, foodProfile, foodLogs] = await Promise.all([
+  const [mealPlan, foodProfile, foodLogs, assignedPlan] = await Promise.all([
     prisma.mealPlan.findUnique({ where: { userId: athleteId } }),
     prisma.foodProfile.findUnique({ where: { userId: athleteId } }),
     prisma.foodLog.findMany({
@@ -39,6 +39,23 @@ export async function GET(
       },
       orderBy: [{ date: 'desc' }, { mealType: 'asc' }],
     }),
+    prisma.assignedNutritionPlan.findUnique({
+      where: { athleteId },
+      include: {
+        template: {
+          include: {
+            days: {
+              include: {
+                meals: {
+                  include: { items: { include: { food: { select: { name: true } } } } },
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
   ])
 
   // Resolver alimentos del atleta desde el catálogo (para el constructor visual)
@@ -54,7 +71,45 @@ export async function GET(
       })
     : []
 
-  return NextResponse.json({ mealPlan, foodProfile, athleteFoods, foodLogs })
+  // Compute totals per day type from the assigned template
+  let assignedTemplate: {
+    id: string; templateId: string; assignedAt: Date
+    template: { id: string; name: string; goal: string | null }
+  } | null = null
+  let templateTotals: Record<string, { kcal: number; proteinG: number; carbsG: number; fatG: number }> | null = null
+
+  if (assignedPlan) {
+    assignedTemplate = {
+      id: assignedPlan.id,
+      templateId: assignedPlan.templateId,
+      assignedAt: assignedPlan.assignedAt,
+      template: {
+        id: assignedPlan.template.id,
+        name: assignedPlan.template.name,
+        goal: assignedPlan.template.goal,
+      },
+    }
+    templateTotals = {}
+    for (const day of assignedPlan.template.days) {
+      let kcal = 0, proteinG = 0, carbsG = 0, fatG = 0
+      for (const meal of day.meals) {
+        for (const item of meal.items) {
+          kcal += item.kcal
+          proteinG += item.proteinG
+          carbsG += item.carbsG
+          fatG += item.fatG
+        }
+      }
+      templateTotals[day.dayType] = {
+        kcal: Math.round(kcal),
+        proteinG: Math.round(proteinG),
+        carbsG: Math.round(carbsG),
+        fatG: Math.round(fatG),
+      }
+    }
+  }
+
+  return NextResponse.json({ mealPlan, foodProfile, athleteFoods, foodLogs, assignedTemplate, templateTotals })
 }
 
 export async function PATCH(
@@ -94,9 +149,21 @@ export async function PATCH(
     return NextResponse.json({ error: 'Sin campos válidos' }, { status: 400 })
   }
 
-  const updated = await prisma.nutritionPlan.update({
+  const defaults = {
+    tdee: 2000,
+    targetKcalHard: 2200,
+    targetKcalEasy: 1800,
+    targetKcalRest: 1600,
+    proteinG: 120,
+    carbsHardG: 250,
+    carbsEasyG: 200,
+    fatG: 60,
+  }
+
+  const updated = await prisma.nutritionPlan.upsert({
     where: { userId: athleteId },
-    data,
+    update: { ...data, source: 'COACH' },
+    create: { userId: athleteId, ...defaults, ...data, source: 'COACH' },
   })
 
   return NextResponse.json({ ok: true, plan: updated })

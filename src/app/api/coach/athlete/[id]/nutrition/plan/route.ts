@@ -50,15 +50,30 @@ export async function GET(
           servingG: true, servingLabel: true,
         },
       },
+      overrides: {
+        where: { athleteId },
+        select: {
+          overrideFoodId: true,
+          overrideGrams: true,
+          overrideFood: {
+            select: {
+              id: true, name: true, category: true,
+              kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true,
+              servingG: true, servingLabel: true,
+            },
+          },
+        },
+        take: 1,
+      },
     },
     orderBy: [{ date: 'asc' }, { mealType: 'asc' }],
   })
 
-  const byDate: Record<string, typeof meals> = {}
-  for (const meal of meals) {
+  const byDate: Record<string, unknown[]> = {}
+  for (const { overrides, ...meal } of meals) {
     const dateStr = meal.date.toISOString().slice(0, 10)
     if (!byDate[dateStr]) byDate[dateStr] = []
-    byDate[dateStr].push(meal)
+    byDate[dateStr].push({ ...meal, override: overrides[0] ?? null })
   }
 
   return NextResponse.json({ weekStart: weekStart.toISOString().slice(0, 10), meals: byDate })

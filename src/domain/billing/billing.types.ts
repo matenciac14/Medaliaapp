@@ -15,6 +15,17 @@ export const COACH_TIER_PRICES_USD: Record<CoachTier, number> = {
 
 export const ATHLETE_PRO_PRICE_USD = 9.99
 
+// Precios en COP para Wompi (PSE / Nequi / Daviplata / tarjeta)
+// TRM referencia: 1 USD = 4200 COP (revisar trimestralmente)
+export const COACH_TIER_PRICES_COP: Record<CoachTier, number> = {
+  STARTER: 0,
+  GROWTH: 163_800,  // $39 USD
+  PRO: 331_800,     // $79 USD
+  SCALE: 541_800,   // $129 USD
+}
+
+export const ATHLETE_PRO_PRICE_COP = 41_980  // $9.99 USD
+
 /** Días de gracia tras expiración antes de hacer downgrade efectivo. */
 export const BILLING_GRACE_DAYS = 3
 
@@ -65,7 +76,7 @@ export type WebhookEvent = {
 export type SubscriptionSnapshot = {
   userId: string
   userRole: BillingUserRole
-  tier: 'FREE' | 'PRO' | 'TRIAL'
+  tier: 'FREE' | 'PRO'
   coachTier: CoachTier
   currentPeriodEnd: Date | null
 }

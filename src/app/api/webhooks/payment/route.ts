@@ -1,18 +1,16 @@
 /**
- * Webhook genérico de pago.
- * Agnóstico de gateway — la firma la verifica el adapter (IPaymentGateway.parseWebhookEvent).
- * Al integrar Wompi o Stripe: implementar su gateway, ajustar PAYMENT_GATEWAY env.
+ * Webhook genérico de pago — usado solo en dev/stub.
+ * Producción usa /api/webhooks/wompi (Wompi-específico con firma propia).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaymentGateway } from '@/infrastructure/billing/payment-gateway.factory'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
 import type { CoachTier } from '@/domain/subscription/tier-features'
 
-// No parsear body automáticamente — necesitamos el raw para verificar firma
 export const config = { api: { bodyParser: false } }
 
 export async function POST(req: NextRequest) {
-  const rawBody  = await req.text()
+  const rawBody   = await req.text()
   const signature = req.headers.get('x-payment-signature') ?? ''
 
   const gateway = getPaymentGateway()
@@ -23,6 +21,12 @@ export async function POST(req: NextRequest) {
     event = await gateway.parseWebhookEvent(rawBody, signature)
   } catch {
     return NextResponse.json({ error: 'Firma de webhook inválida.' }, { status: 400 })
+  }
+
+  // Idempotencia: ignorar si ya procesamos este evento
+  const lastEventId = await repo.getLastWebhookEventId(event.userId)
+  if (lastEventId === event.eventId) {
+    return NextResponse.json({ received: true, duplicate: true, eventId: event.eventId })
   }
 
   switch (event.eventType) {
@@ -39,12 +43,12 @@ export async function POST(req: NextRequest) {
       } else if (event.userRole === 'ATHLETE') {
         await repo.upgradeAthlete(event.userId, { currentPeriodEnd: periodEnd })
       }
+      await repo.saveWebhookEventId(event.userId, event.eventId)
       break
     }
 
     case 'charge.failed':
-      // No downgrade inmediato — el cron billing-check maneja el período de gracia.
-      // El atleta/coach sigue activo hasta que expire la gracia.
+      // Sin downgrade inmediato — el cron billing-check maneja el período de gracia.
       break
 
     case 'subscription.cancelled':
@@ -53,6 +57,7 @@ export async function POST(req: NextRequest) {
       } else {
         await repo.downgradeAthlete(event.userId)
       }
+      await repo.saveWebhookEventId(event.userId, event.eventId)
       break
   }
 

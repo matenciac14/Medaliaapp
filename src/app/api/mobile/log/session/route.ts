@@ -120,45 +120,32 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // ── Ajuste nutricional por intensidad real ────────────────────────────────
+  // ── Sugerencia nutricional informativa por intensidad real ────────────────
+  // DEPRECATED: PendingNutritionAdjustment ya no se genera.
+  // Solo notificación informativa si source=SYSTEM (plan de onboarding, no editado).
   if (actualIntensity && planned.intensity && actualIntensity !== planned.intensity) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const existingAdj = await prisma.pendingNutritionAdjustment.findUnique({
-      where: { userId_date: { userId, date: today } },
-      select: { id: true },
-    })
-
-    if (!existingAdj) {
-      try {
-        const nutritionPlan = await prisma.nutritionPlan.findUnique({
-          where: { userId },
-          select: { targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
-        })
-        if (nutritionPlan) {
-          const adj = calcNutritionAdjustment(planned.intensity, actualIntensity, nutritionPlan)
-          if (adj) {
-            await prisma.pendingNutritionAdjustment.create({
-              data: {
-                userId,
-                date: today,
-                sessionLogId: log.id,
-                plannedIntensity: planned.intensity,
-                actualIntensity,
-                deltaKcal: adj.deltaKcal,
-                deltaCarbsG: adj.deltaCarbsG,
-                plannedKcal: adj.plannedKcal,
-                plannedCarbsG: adj.plannedCarbsG,
-                adjustedKcal: adj.adjustedKcal,
-                adjustedCarbsG: adj.adjustedCarbsG,
-              },
-            })
-          }
+    try {
+      const nutritionPlan = await prisma.nutritionPlan.findUnique({
+        where: { userId },
+        select: { source: true, targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
+      })
+      if (nutritionPlan && nutritionPlan.source === 'SYSTEM') {
+        const { createNotification } = await import('@/infrastructure/db/notification')
+        const adj = calcNutritionAdjustment(planned.intensity, actualIntensity, nutritionPlan)
+        if (adj && Math.abs(adj.deltaKcal) >= 200) {
+          const sign = adj.deltaKcal > 0 ? '+' : ''
+          createNotification(
+            userId,
+            'SUGERENCIA_NUTRICIONAL',
+            adj.deltaKcal > 0 ? 'Hoy necesitas más energía 💪' : 'Hoy puedes comer más ligero',
+            adj.deltaKcal > 0
+              ? `Tu sesión fue más intensa de lo planificado. Tu cuerpo necesita ~${adj.adjustedKcal} kcal y ~${adj.adjustedCarbsG}g de carbos para recuperarte bien.`
+              : `Tu sesión fue más suave de lo planificado. Un target de ~${adj.adjustedKcal} kcal es suficiente para hoy.`,
+          ).catch(() => {})
         }
-      } catch {
-        // No bloquear el response si el ajuste nutricional falla (ej. P2002 por doble submit)
       }
+    } catch {
+      // No bloquear el response
     }
   }
 

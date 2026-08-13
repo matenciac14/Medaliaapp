@@ -75,7 +75,16 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
   ].filter((l) => l.show)
 
-  // Mobile: 4 tabs principales + "Más" para el resto
+  // Mobile phone (<sm): 5 tabs fijos — Figma (Inicio, Plan, Gym, Nutrición, Perfil)
+  const phoneTabs = [
+    { href: '/dashboard', label: s.dashboard, icon: LayoutDashboard },
+    { href: '/plan',      label: 'Plan',      icon: CalendarDays },
+    { href: '/gym',       label: s.gym,       icon: Dumbbell },
+    { href: '/nutrition', label: s.nutrition,  icon: Apple },
+    { href: '/profile',   label: 'Perfil',    icon: UserCircle },
+  ]
+
+  // Tablet (sm–lg): 4 tabs + Más — keeps more links accessible
   const mobileNavLinks = [
     { href: '/dashboard', label: s.dashboard,  icon: LayoutDashboard },
     ...(features.plan ? [{ href: '/plan', label: s.plan, icon: CalendarDays }] : []),
@@ -167,8 +176,8 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
         </div>
       </aside>
 
-      {/* ── Mobile top bar ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white">
+      {/* ── Mobile top bar — hidden on phone (<sm), visible on tablet (sm–lg) ── */}
+      <header className="hidden sm:flex lg:hidden fixed top-0 left-0 right-0 z-30 items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-[#ea580c] flex items-center justify-center font-bold text-white text-xs">M</div>
           <span className="text-base font-bold">Medaliq</span>
@@ -194,14 +203,39 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
       </header>
 
       {/* ── Mobile bottom nav ── */}
+
+      {/* Phone (<sm): 5 tabs fijos — Figma style */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40 pb-safe">
+        {phoneTabs.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] text-[10px] font-semibold transition-colors relative',
+                active ? 'text-[#1e3a5f]' : 'text-gray-400 hover:text-gray-600'
+              )}
+            >
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#ea580c]" />
+              )}
+              <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+              {label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Tablet (sm–lg): 4 tabs + Más drawer */}
       {showMore && (
         <div
-          className="lg:hidden fixed inset-0 z-30 bg-black/30"
+          className="hidden sm:block lg:hidden fixed inset-0 z-30 bg-black/30"
           onClick={() => setShowMore(false)}
         />
       )}
       {showMore && (
-        <div className="lg:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-xl rounded-t-2xl py-3 px-4">
+        <div className="hidden sm:block lg:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-xl rounded-t-2xl py-3 px-4">
           <div className="grid grid-cols-4 gap-2">
             {moreLinks.map(({ href, label, icon: Icon, badge }) => {
               const active = isActive(href)
@@ -230,7 +264,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
           </div>
         </div>
       )}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40 pb-safe">
+      <nav className="hidden sm:flex lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 pb-safe">
         {mobileNavLinks.map(({ href, label, icon: Icon }) => {
           const active = isActive(href)
           return (
@@ -251,7 +285,6 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
             </Link>
           )
         })}
-        {/* Tab "Más" */}
         <button
           onClick={() => setShowMore(v => !v)}
           className={cn(

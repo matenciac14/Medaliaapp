@@ -21,6 +21,7 @@ const TYPE_CONFIG: Record<string, { emoji: string; color: string; bg: string }> 
   AJUSTE_NUTRICIONAL:   { emoji: '🥗', color: 'text-green-600',  bg: 'bg-green-50' },
   LOGRO:                { emoji: '🏆', color: 'text-amber-500',  bg: 'bg-amber-50' },
   PROPUESTA_COACH:      { emoji: '👤', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  SUGERENCIA_NUTRICIONAL: { emoji: '💡', color: 'text-teal-600', bg: 'bg-teal-50' },
 }
 
 const DEFAULT_CONFIG = { emoji: '🔔', color: 'text-gray-500', bg: 'bg-gray-100' }

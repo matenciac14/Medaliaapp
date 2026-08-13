@@ -100,55 +100,35 @@ export async function POST(req: NextRequest) {
     sendPushNotification(coachRelation.coach.pushToken, `${name} completó una sesión`, 'Sesión registrada 🏃', { screen: 'coach' }).catch(() => {})
   }
 
-  // ── Ajuste nutricional por intensidad real ──────────────────────────────────
+  // ── Sugerencia nutricional informativa por intensidad real ────────────────
+  // DEPRECATED: PendingNutritionAdjustment ya no se genera.
+  // Solo se envía notificación informativa si source=SYSTEM (plan de onboarding, no editado).
   if (body.actualIntensity && plannedIntensity && body.actualIntensity !== plannedIntensity) {
     try {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const existingAdj = await prisma.pendingNutritionAdjustment.findUnique({
-        where: { userId_date: { userId, date: today } },
-        select: { id: true },
+      const nutritionPlan = await prisma.nutritionPlan.findUnique({
+        where: { userId },
+        select: { source: true, targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
       })
-      if (!existingAdj) {
-        const nutritionPlan = await prisma.nutritionPlan.findUnique({
-          where: { userId },
-          select: { targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true, carbsHardG: true, carbsEasyG: true },
-        })
-        if (nutritionPlan) {
-          const adj = calcNutritionAdjustment(
-            plannedIntensity as 'HIGH' | 'MODERATE' | 'LOW' | 'REST',
-            body.actualIntensity,
-            nutritionPlan,
-          )
-          if (adj) {
-            await prisma.pendingNutritionAdjustment.create({
-              data: {
-                userId,
-                date: today,
-                sessionLogId: log.id,
-                plannedIntensity: plannedIntensity as 'HIGH' | 'MODERATE' | 'LOW' | 'REST',
-                actualIntensity: body.actualIntensity,
-                deltaKcal: adj.deltaKcal,
-                deltaCarbsG: adj.deltaCarbsG,
-                plannedKcal: adj.plannedKcal,
-                plannedCarbsG: adj.plannedCarbsG,
-                adjustedKcal: adj.adjustedKcal,
-                adjustedCarbsG: adj.adjustedCarbsG,
-              },
-            })
-            // PLT-11: notificar al atleta del ajuste nutricional
-            const sign = adj.deltaKcal > 0 ? '+' : ''
-            createNotification(
-              userId,
-              'AJUSTE_NUTRICIONAL',
-              'Ajuste nutricional disponible',
-              `Tu sesión fue más ${adj.deltaKcal > 0 ? 'intensa' : 'suave'} de lo planificado. Ajuste sugerido: ${sign}${adj.deltaKcal} kcal.`,
-            ).catch(() => {})
-          }
+      if (nutritionPlan && nutritionPlan.source === 'SYSTEM') {
+        const adj = calcNutritionAdjustment(
+          plannedIntensity as 'HIGH' | 'MODERATE' | 'LOW' | 'REST',
+          body.actualIntensity,
+          nutritionPlan,
+        )
+        if (adj && Math.abs(adj.deltaKcal) >= 200) {
+          const sign = adj.deltaKcal > 0 ? '+' : ''
+          createNotification(
+            userId,
+            'SUGERENCIA_NUTRICIONAL',
+            adj.deltaKcal > 0 ? 'Hoy necesitas más energía 💪' : 'Hoy puedes comer más ligero',
+            adj.deltaKcal > 0
+              ? `Tu sesión fue más intensa de lo planificado. Tu cuerpo necesita ~${adj.adjustedKcal} kcal y ~${adj.adjustedCarbsG}g de carbos para recuperarte bien.`
+              : `Tu sesión fue más suave de lo planificado. Un target de ~${adj.adjustedKcal} kcal es suficiente para hoy.`,
+          ).catch(() => {})
         }
       }
     } catch {
-      // No bloquear el response si el ajuste nutricional falla (ej. P2002 por doble submit)
+      // No bloquear el response
     }
   }
 

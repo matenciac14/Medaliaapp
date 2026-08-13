@@ -1,18 +1,17 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
 import ProfileClient from './_components/ProfileClient'
 
 export default async function ProfilePage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const [dbUser, plan, logs] = await Promise.all([
+  const [dbUser, plan, logs, coachLink] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
-        profile: true,
-      },
+      include: { profile: true },
     }),
     prisma.trainingPlan.findFirst({
       where: { userId: session.user.id, status: 'ACTIVE' },
@@ -23,17 +22,26 @@ export default async function ProfilePage() {
       orderBy: { date: 'desc' },
       take: 14,
     }),
+    prisma.coachAthlete.findFirst({
+      where: { athleteId: session.user.id, status: 'ACTIVE' },
+      select: { id: true },
+    }),
   ])
 
   if (!dbUser) redirect('/login')
 
   const p = dbUser.profile
+  const config = parseUserConfig(dbUser)
+  const userPlan = getUserPlan(config.features)
+  const hasCoach = !!coachLink
 
   return (
     <ProfileClient
       user={{
         name: dbUser.name ?? dbUser.email ?? 'Atleta',
         email: dbUser.email ?? '',
+        userPlan,
+        hasCoach,
         profile: p ? {
           age: p.age,
           dateOfBirth: p.dateOfBirth?.toISOString().split('T')[0] ?? null,

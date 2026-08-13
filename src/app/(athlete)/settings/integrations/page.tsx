@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { wearableRepository } from '@/infrastructure/db/wearable.repository'
+import { prisma } from '@/lib/db/prisma'
 import IntegrationsClient from './_components/IntegrationsClient'
 
 export const metadata = { title: 'Integraciones — MedalIQ' }
@@ -9,7 +9,11 @@ export default async function IntegrationsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const connections = await wearableRepository.findAllByUser(session.user.id)
+  const connections = await prisma.wearableConnection.findMany({
+    where: { userId: session.user.id },
+    select: { provider: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  })
 
   const strava = connections.find((c) => c.provider === 'strava')
 

@@ -82,6 +82,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
         completed: true,
         durationMin: true,
         rpe: true,
+        notes: true,
         plannedSessionId: true,
       },
     }),
@@ -121,10 +122,12 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
     }
   }
 
-  // dow → GymSession (most recent if multiple)
+  // dow → GymSession (most recent if multiple) — derive dow from actual UTC date
   const gymSessionByDow = new Map<number, typeof gymSessions[number]>()
   for (const gs of gymSessions) {
-    gymSessionByDow.set(gs.dayOfWeek, gs)
+    const jsDay = new Date(gs.date).getUTCDay()
+    const dow = jsDay === 0 ? 7 : jsDay
+    gymSessionByDow.set(dow, gs)
   }
 
   // dow → free SessionLog (most recent if multiple that day)
@@ -181,6 +184,15 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
             done: gymSession?.completed ?? false,
             durationMin: gymSession?.durationMin ?? null,
             rpe: gymSession?.rpe ?? null,
+          }
+        : gymSession
+        ? {
+            workoutDayId: null,
+            label: gymSession.notes ?? 'Fuerza',
+            gymSessionId: gymSession.id,
+            done: gymSession.completed,
+            durationMin: gymSession.durationMin ?? null,
+            rpe: gymSession.rpe ?? null,
           }
         : null,
 

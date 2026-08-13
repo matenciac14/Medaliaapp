@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const [nutritionPlanRaw, mealPlan, todaySession, pendingAdj, gymToday, healthProfile, gymSessionToday, currentPlanWeek] = await Promise.all([
+  const [nutritionPlanRaw, mealPlan, todaySession, , gymToday, healthProfile, gymSessionToday, currentPlanWeek] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
     activePlan && currentWeek
@@ -43,10 +43,8 @@ export async function GET(req: NextRequest) {
           select: { type: true, intensity: true },
         })
       : Promise.resolve(null),
-    prisma.pendingNutritionAdjustment.findUnique({
-      where: { userId_date: { userId, date: todayStart } },
-      select: { id: true, deltaKcal: true, deltaCarbsG: true, adjustedKcal: true, adjustedCarbsG: true, plannedIntensity: true, actualIntensity: true, status: true },
-    }),
+    // DEPRECATED: PendingNutritionAdjustment ya no se genera (NUT-15). Mantenemos null para backward compat mobile.
+    Promise.resolve(null),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
       select: {
@@ -106,14 +104,12 @@ export async function GET(req: NextRequest) {
   const dailyTarget = getDailyNutritionTarget(sessionIntensity, nutritionPlan)
   const macros = { kcal: dailyTarget.kcal, proteinG: dailyTarget.proteinG, carbsG: dailyTarget.carbsG, fatG: dailyTarget.fatG, tdee: nutritionPlan.tdee }
 
-  const pendingAdjustment = pendingAdj?.status === 'PENDING' ? pendingAdj : null
-
   return NextResponse.json({
     hasNutritionPlan: true,
     dayType,
     macros,
     mealPlan: parseMealPlanData(mealPlan?.data ?? null),
-    pendingAdjustment,
+    pendingAdjustment: null,
     gymKcalBurned,
     waterMlTarget: nutritionPlan.waterMlTarget ?? 2000,
     planPhaseContext,

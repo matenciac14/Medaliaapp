@@ -27,6 +27,8 @@ export type AssignedWorkoutInput = {
   template: { days: { dayOfWeek: number; isRestDay: boolean }[] }
 } | null
 
+export type GymSessionInput = { date: Date; durationMin?: number | null; templateName?: string | null }
+
 export type DashboardInput = {
   user: {
     name: string | null
@@ -46,6 +48,7 @@ export type DashboardInput = {
   nutritionPlan: NutritionPlan | null
   assignedWorkout?: AssignedWorkoutInput
   gymCompletionDates?: Date[]  // fechas de GymSession completadas — para streak
+  recentGymSessions?: GymSessionInput[]  // gym sessions con detalle para recentActivity
 }
 
 export type WeekSessionSlot = {
@@ -82,14 +85,16 @@ export type DashboardSummary = {
   formStatus: 'good' | 'moderate' | 'rest'
   formMessage: string
   lastCheckIn: { energyLevel: number | null; hardestSessionRpe: number | null; sleepHours: number | null } | null
+  lastCheckinDaysAgo: number | null
   weeklyWeightChange: number | null
   weightProgressPct: number | null
   currentVolume: number | null
   volumeDeltaPct: number | null
-  mode: 'TRAINING' | 'RECOVERY' | 'FREE'
+  mode: 'TRAINING' | 'RECOVERY' | 'FREE' | 'GYM'
   recoveryDaysLeft: number | null
   completedPlanName: string | null
   recentActivity: { type: string; completedAt: string; durationMin: number | null; rpe: number | null }[]
+  hasEverLogged: boolean
 }
 
 export type DashboardResult = {
@@ -129,9 +134,12 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const recoveryDaysSinceEnd = completedPlanEndDate
     ? Math.floor((Date.now() - completedPlanEndDate.getTime()) / 86400000) : null
   const recoveryDaysLeft = recoveryDaysSinceEnd !== null ? Math.max(0, 14 - recoveryDaysSinceEnd) : null
-  const mode: 'TRAINING' | 'RECOVERY' | 'FREE' = activePlan
+  const hasGymAssignment = !!assignedWorkout
+  const mode: 'TRAINING' | 'RECOVERY' | 'FREE' | 'GYM' = activePlan
     ? 'TRAINING'
-    : recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 14 ? 'RECOVERY' : 'FREE'
+    : hasGymAssignment
+      ? 'GYM'
+      : recoveryDaysSinceEnd !== null && recoveryDaysSinceEnd <= 14 ? 'RECOVERY' : 'FREE'
 
   // ── Check-ins ─────────────────────────────────────────────────────
   const lastCheckIn = checkIns[0] ?? null
@@ -265,9 +273,11 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   }
   let weightProgressPct: number | null = null
   if (currentWeight && targetWeight && startWeight && startWeight !== targetWeight) {
-    weightProgressPct = Math.min(100, Math.max(0,
-      Math.round(((startWeight - currentWeight) / (startWeight - targetWeight)) * 100)
-    ))
+    const totalDistance = Math.abs(targetWeight - startWeight)
+    const remaining = Math.abs(targetWeight - currentWeight)
+    // Progreso = cuánto se ha cerrado la brecha entre start y target
+    const pct = Math.round(((totalDistance - remaining) / totalDistance) * 100)
+    weightProgressPct = Math.min(100, Math.max(0, pct))
   }
 
   // ── Weekly volume ─────────────────────────────────────────────────
@@ -284,13 +294,27 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     }
   }
 
-  // ── Recent activity (para modo FREE sin plan activo) ─────────────────────
-  const recentActivity = recentLogs.slice(0, 5).map(l => ({
+  // ── Recent activity (merge SessionLog + GymSession) ─────────────────────
+  const logEntries = recentLogs.map(l => ({
     type: l.freeSessionType ?? l.plannedSession?.type ?? 'OTRO',
     completedAt: l.completedAt.toISOString(),
     durationMin: l.durationMin ?? null,
     rpe: l.rpe ?? null,
+    _ts: new Date(l.completedAt).getTime(),
   }))
+  const gymEntries = (input.recentGymSessions ?? []).map(g => ({
+    type: 'FUERZA' as string,
+    completedAt: new Date(g.date).toISOString(),
+    durationMin: g.durationMin ?? null,
+    rpe: null as number | null,
+    _ts: new Date(g.date).getTime(),
+  }))
+  const recentActivity = [...logEntries, ...gymEntries]
+    .sort((a, b) => b._ts - a._ts)
+    .slice(0, 5)
+    .map(({ _ts, ...rest }) => rest)
+
+  const hasEverLogged = recentLogs.length > 0 || (input.gymCompletionDates ?? []).length > 0
 
   return {
     planIdToComplete,
@@ -324,6 +348,9 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         hardestSessionRpe: lastCheckIn.hardestSessionRpe,
         sleepHours: lastCheckIn.sleepHours,
       } : null,
+      lastCheckinDaysAgo: lastCheckIn?.recordedAt
+        ? Math.floor((todayMidnight.getTime() - new Date(lastCheckIn.recordedAt).getTime()) / 86_400_000)
+        : null,
       weeklyWeightChange,
       weightProgressPct,
       currentVolume,
@@ -332,6 +359,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
       recoveryDaysLeft,
       completedPlanName,
       recentActivity,
+      hasEverLogged,
     },
   }
 }

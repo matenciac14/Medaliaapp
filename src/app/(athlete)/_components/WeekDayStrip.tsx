@@ -15,12 +15,32 @@ type Props = {
   selectedIdx?: number
   /** Called when a cell is clicked. */
   onCellClick?: (idx: number) => void
-  /** 'cards' = dashboard tall-card style; 'grid' = plan/gym compact 7-col grid */
-  variant?: 'cards' | 'grid'
+  /** 'cards' = dashboard tall-card style; 'grid' = plan/gym compact 7-col grid; 'dots' = Figma mobile simple circles */
+  variant?: 'cards' | 'grid' | 'dots'
+  /** Today's weekday index (0=Mon). Enables past/future awareness in dots variant. */
+  todayIdx?: number
   className?: string
 }
 
-export default function WeekDayStrip({ cells, selectedIdx, onCellClick, variant = 'grid', className }: Props) {
+const DOT_DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+export default function WeekDayStrip({ cells, selectedIdx, onCellClick, variant = 'grid', todayIdx, className }: Props) {
+  if (variant === 'dots') {
+    return (
+      <div className={cn('grid grid-cols-7 gap-1', className)}>
+        {cells.map(cell => (
+          <DotCell
+            key={cell.idx}
+            cell={cell}
+            todayIdx={todayIdx ?? -1}
+            isSelected={selectedIdx === cell.idx}
+            onClick={onCellClick ? () => onCellClick(cell.idx) : undefined}
+          />
+        ))}
+      </div>
+    )
+  }
+
   if (variant === 'cards') {
     return (
       <div className={cn('flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-7 sm:overflow-visible', className)}>
@@ -28,6 +48,7 @@ export default function WeekDayStrip({ cells, selectedIdx, onCellClick, variant 
           <DashboardCard
             key={cell.idx}
             cell={cell}
+            isSelected={selectedIdx === cell.idx}
             onClick={onCellClick ? () => onCellClick(cell.idx) : undefined}
           />
         ))}
@@ -51,26 +72,47 @@ export default function WeekDayStrip({ cells, selectedIdx, onCellClick, variant 
 
 // ── Dashboard card variant ─────────────────────────────────────────────────────
 
-function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => void }) {
+function DashboardCard({ cell, isSelected = false, onClick }: { cell: WeekDayCell; isSelected?: boolean; onClick?: () => void }) {
   const { isToday, done, sessionType, label, durationMin, zoneTarget, gymOverlay, gymOverlayDone } = cell
   const isRest = sessionType === 'DESCANSO'
   const hasSession = !!sessionType && !isRest
   const emoji = SESSION_ICONS[sessionType ?? ''] ?? (isRest ? '😴' : null)
-  const sessionName = SESSION_NAMES[sessionType ?? ''] ?? label
+  const sessionName = label ?? SESSION_NAMES[sessionType ?? '']
 
-  const cardBg = !sessionType
-    ? isToday ? 'bg-gray-100 border border-gray-200' : 'bg-gray-50'
+  // Navy selection only when day has a session; empty days keep their natural style
+  const navySelected = isSelected && (hasSession || isRest)
+  // White text only on dark backgrounds (navy=today+session, green=done, navy=selected+session)
+  const hasDarkBg = navySelected || done || (isToday && hasSession)
+  const useWhiteText = hasDarkBg
+
+  const cardBg = navySelected
+    ? 'bg-[#1e3a5f] ring-2 ring-[#1e3a5f]/30'
+    : isSelected && !sessionType
+    ? isToday ? 'bg-white border-2 border-[#ea580c] ring-2 ring-[#ea580c]/20' : 'bg-[#f5f7fa] ring-2 ring-[#1e3a5f]/20'
+    : !sessionType
+    ? isToday ? 'bg-white border-2 border-[#ea580c]' : 'bg-[#f5f7fa]'
     : done ? 'bg-[#22c55e]'
     : isToday ? 'bg-[#1e3a5f]'
     : hasSession ? 'bg-white border border-gray-200'
-    : 'bg-gray-50'
+    : 'bg-[#f5f7fa]'
 
-  const dayColor = !sessionType
-    ? isToday ? 'text-gray-500' : 'text-gray-300'
+  // Top bar color: green=done, orange=today/selected, gray=default
+  const barColor = done && !navySelected ? 'bg-[#22c55e]'
+    : isToday || navySelected ? 'bg-[#ea580c]'
+    : isSelected ? 'bg-[#ea580c]'
+    : hasSession ? 'bg-gray-300'
+    : 'bg-[#99a4b5]'
+
+  const dayColor = navySelected
+    ? 'text-white/80'
+    : !sessionType
+    ? isToday ? 'text-[#ea580c]' : 'text-gray-400'
     : done || isToday ? 'text-white/80' : 'text-gray-400'
 
-  const numColor = !sessionType
-    ? 'text-gray-300'
+  const numColor = navySelected
+    ? 'text-white'
+    : !sessionType
+    ? isToday ? 'text-[#ea580c]' : 'text-gray-800'
     : done || isToday ? 'text-white' : 'text-gray-900'
 
   const Wrapper = onClick ? 'button' : 'div'
@@ -78,44 +120,91 @@ function DashboardCard({ cell, onClick }: { cell: WeekDayCell; onClick?: () => v
   return (
     <Wrapper
       onClick={onClick}
-      className={cn('rounded-2xl flex-shrink-0 w-[104px] sm:w-auto p-3 flex flex-col gap-1 min-h-[120px]', cardBg, onClick && 'cursor-pointer')}
+      className={cn('rounded-2xl flex-shrink-0 w-[104px] sm:w-auto flex flex-col min-h-[130px] overflow-hidden text-left', cardBg, onClick && 'cursor-pointer')}
     >
-      <div className="flex items-start justify-between gap-1">
-        <span className={cn('text-[11px] font-semibold leading-none', dayColor)}>
-          {WEEK_DAYS_SHORT[cell.idx]}
-        </span>
-        {done && <span className="text-white text-xs leading-none">✓</span>}
-        {isToday && sessionType && !done && (
-          <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+      {/* Top status bar */}
+      <div className={cn('h-[3px] w-full', barColor)} />
+
+      <div className="p-3 flex flex-col gap-1 flex-1">
+        <div className="flex items-start justify-between gap-1">
+          <span className={cn('text-[11px] font-medium leading-none', dayColor)}>
+            {WEEK_DAYS_SHORT[cell.idx]}
+          </span>
+          {done && <span className="text-white text-xs leading-none">✓</span>}
+          {isToday && !done && (
+            <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+          )}
+        </div>
+        <span className={cn('text-[22px] font-black leading-none', numColor)}>{cell.dateNum}</span>
+        {emoji ? (
+          <span className="text-xl leading-none mt-1">{emoji}</span>
+        ) : !sessionType && (
+          <span className={cn('text-xl leading-none mt-1', isToday ? 'text-[#ea580c]' : 'text-gray-400')}>+</span>
         )}
-        {isToday && !sessionType && (
-          <span className="text-[8px] font-bold bg-gray-400 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">HOY</span>
+        <span className={cn('text-[11px] font-semibold leading-tight mt-auto',
+          useWhiteText ? 'text-white'
+          : !sessionType && isToday ? 'text-[#ea580c]'
+          : isRest ? 'text-gray-400'
+          : !sessionType ? 'text-gray-400'
+          : 'text-gray-700'
+        )}>
+          {sessionName ?? (isToday ? 'Registrar →' : 'Sin sesión')}
+        </span>
+        {hasSession && durationMin > 0 && (
+          <span className={cn('text-[10px] leading-none', useWhiteText ? 'text-white/70' : 'text-gray-400')}>
+            {durationMin} min{zoneTarget && zoneTarget !== 'N/A' && sessionType !== 'FUERZA' ? ` · ${zoneTarget}` : ''}
+          </span>
+        )}
+        {gymOverlay && (
+          <span className={cn(
+            'inline-flex items-center gap-0.5 text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none mt-0.5 w-fit',
+            gymOverlayDone
+              ? 'text-white bg-green-500 border border-green-400'
+              : 'text-purple-600 bg-purple-50 border border-purple-100',
+          )}>
+            {gymOverlayDone ? '✓' : '💪'} {gymOverlay}
+          </span>
         )}
       </div>
-      <span className={cn('text-[22px] font-black leading-none mt-0.5', numColor)}>{cell.dateNum}</span>
-      {emoji && <span className="text-xl leading-none mt-1">{emoji}</span>}
-      {sessionName && (
-        <span className={cn('text-[11px] font-semibold leading-tight mt-0.5',
-          done || isToday ? 'text-white' : isRest ? 'text-gray-400' : 'text-gray-700'
-        )}>
-          {sessionName}
-        </span>
-      )}
-      {hasSession && durationMin > 0 && (
-        <span className={cn('text-[10px] leading-none', done || isToday ? 'text-white/70' : 'text-gray-400')}>
-          {durationMin} min{zoneTarget && zoneTarget !== 'N/A' && sessionType !== 'FUERZA' ? ` · ${zoneTarget}` : ''}
-        </span>
-      )}
-      {gymOverlay && (
-        <span className={cn(
-          'inline-flex items-center gap-0.5 text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none mt-0.5 w-fit',
-          gymOverlayDone
-            ? 'text-white bg-green-500 border border-green-400'
-            : 'text-purple-600 bg-purple-50 border border-purple-100',
-        )}>
-          {gymOverlayDone ? '✓' : '💪'} {gymOverlay}
-        </span>
-      )}
+    </Wrapper>
+  )
+}
+
+// ── Figma mobile dot variant ──────────────────────────────────────────────────
+
+function DotCell({ cell, todayIdx, isSelected, onClick }: { cell: WeekDayCell; todayIdx: number; isSelected?: boolean; onClick?: () => void }) {
+  const { isToday, done, sessionType } = cell
+  const hasSession = !!sessionType && sessionType !== 'DESCANSO'
+  const isPast = todayIdx >= 0 && cell.idx < todayIdx
+  const isFuture = todayIdx >= 0 && cell.idx > todayIdx
+  const isPastUnlogged = isPast && hasSession && !done
+  const Wrapper = onClick ? 'button' : 'div'
+
+  const dotBg = done && hasSession ? 'bg-[#22c55e] text-white'
+    : isToday ? 'bg-white border-2 border-[#ea580c] text-[#ea580c]'
+    : isPastUnlogged ? 'bg-[#fff7ed] border-2 border-[#f97316] text-[#f97316]'
+    : hasSession ? 'bg-[#1e3a5f] text-white'
+    : 'bg-gray-100 text-gray-400'
+
+  const dotContent = done && hasSession ? '✓'
+    : isPastUnlogged ? '!'
+    : hasSession ? (SESSION_ICONS[sessionType!] ?? '·')
+    : '·'
+
+  return (
+    <Wrapper onClick={onClick} className={cn('flex flex-col items-center gap-1.5 py-1', isFuture && hasSession && 'opacity-40')}>
+      <span className={cn('text-[11px] font-semibold',
+        isToday ? 'text-[#ea580c] font-bold' : isSelected ? 'text-[#1e3a5f] font-bold' : 'text-gray-400'
+      )}>
+        {DOT_DAY_LETTERS[cell.idx]}
+      </span>
+      <div className={cn(
+        'w-[38px] h-[38px] rounded-[10px] flex items-center justify-center text-[13px] font-bold',
+        dotBg,
+        isSelected && !isToday && !isPastUnlogged && 'ring-2 ring-[#1e3a5f]/40',
+      )}>
+        {dotContent}
+      </div>
     </Wrapper>
   )
 }

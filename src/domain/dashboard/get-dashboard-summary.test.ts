@@ -203,6 +203,66 @@ describe('recentActivity', () => {
     }))
     expect(summary.recentActivity[0].completedAt).toBe(now.toISOString())
   })
+
+  it('incluye GymSession completadas en recentActivity', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      recentGymSessions: [
+        { date: daysAgo(1), durationMin: 55, templateName: 'Push' },
+        { date: daysAgo(3), durationMin: 60, templateName: 'Pull' },
+      ],
+    }))
+    expect(summary.recentActivity).toHaveLength(2)
+    expect(summary.recentActivity[0].type).toBe('FUERZA')
+    expect(summary.recentActivity[0].durationMin).toBe(55)
+  })
+
+  it('merge SessionLog + GymSession ordenados por fecha desc', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      recentLogs: [
+        { completedAt: daysAgo(2), freeSessionType: 'RODAJE_Z2', durationMin: 40, rpe: 5, plannedSession: null },
+      ],
+      recentGymSessions: [
+        { date: daysAgo(1), durationMin: 55, templateName: 'Push' },
+      ],
+    }))
+    expect(summary.recentActivity).toHaveLength(2)
+    expect(summary.recentActivity[0].type).toBe('FUERZA')
+    expect(summary.recentActivity[1].type).toBe('RODAJE_Z2')
+  })
+
+  it('limita a 5 incluyendo gym sessions', () => {
+    const logs = Array.from({ length: 4 }, (_, i) => ({
+      completedAt: daysAgo(i * 2), freeSessionType: 'RODAJE_Z2', durationMin: 30, rpe: 5, plannedSession: null,
+    }))
+    const gymSessions = Array.from({ length: 4 }, (_, i) => ({
+      date: daysAgo(i * 2 + 1), durationMin: 60, templateName: null,
+    }))
+    const { summary } = getDashboardSummary(baseInput({ recentLogs: logs, recentGymSessions: gymSessions }))
+    expect(summary.recentActivity).toHaveLength(5)
+  })
+})
+
+// ── hasEverLogged ─────────────────────────────────────────────────────────────
+
+describe('hasEverLogged', () => {
+  it('false cuando no hay logs ni gym sessions', () => {
+    const { summary } = getDashboardSummary(baseInput())
+    expect(summary.hasEverLogged).toBe(false)
+  })
+
+  it('true cuando hay SessionLog', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      recentLogs: [{ completedAt: new Date(), freeSessionType: 'OTRO', durationMin: null, rpe: null, plannedSession: null }],
+    }))
+    expect(summary.hasEverLogged).toBe(true)
+  })
+
+  it('true cuando hay GymSession completadas (sin SessionLog)', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      gymCompletionDates: [daysAgo(1)],
+    }))
+    expect(summary.hasEverLogged).toBe(true)
+  })
 })
 
 // ── firstName ─────────────────────────────────────────────────────────────────
@@ -635,6 +695,27 @@ describe('weightProgressPct', () => {
       ],
     }))
     expect(summary.weightProgressPct).toBe(100)
+  })
+  it('funciona para meta de SUBIR de peso (79.8 → 83)', () => {
+    // startWeight = primer check-in = 78
+    // currentWeight = último check-in = 79.8
+    // targetWeight = 83
+    // totalDistance = |83-78| = 5, remaining = |83-79.8| = 3.2
+    // pct = (5-3.2)/5 = 36%
+    const { summary } = getDashboardSummary(baseInput({
+      user: { name: 'Seb', profile: { weightKg: 78, weightGoalKg: 83, hrResting: null, sleepHoursAvg: null, sportDetails: null, sportGoal: null } },
+      checkIns: [
+        {
+          recordedAt: new Date(), weekNumber: 4,
+          weightKg: 79.8, hrResting: null, sleepHours: null, energyLevel: null, hardestSessionRpe: null,
+        },
+        {
+          recordedAt: daysAgo(21), weekNumber: 1,
+          weightKg: 78, hrResting: null, sleepHours: null, energyLevel: null, hardestSessionRpe: null,
+        },
+      ],
+    }))
+    expect(summary.weightProgressPct).toBe(36)
   })
 })
 
