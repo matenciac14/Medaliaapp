@@ -41,10 +41,12 @@ export default async function CoachDashboardPage() {
     paidThisMonthAgg,
     coachSubscription,
   ] = await Promise.all([
-    // Todos los atletas para calcular alertas, adherencia y deporte
+    // UX-COACH-01: limitado a 25 más recientes para evitar query O(n) con joins profundos
+    // Los totales y conteos usan queries separadas (count) más abajo
     prisma.coachAthlete.findMany({
       where: { coachId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
       include: {
         athlete: {
           include: {
@@ -139,7 +141,7 @@ export default async function CoachDashboardPage() {
 
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
 
-  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === 'SIN PLAN')
+  const athletesWithoutPlan = athletes.filter((a) => a.planStatus === null)
 
   const totalAlerts = athletes.reduce((acc, a) => {
     const f = a.alertFlags

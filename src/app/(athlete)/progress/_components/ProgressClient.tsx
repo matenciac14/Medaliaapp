@@ -80,6 +80,9 @@ export type NutritionAdherencePoint = {
   adherencePct: number  // 0..1.2+
 }
 
+export type GymPRHistoryPoint = { date: string; oneRmKg: number }
+export type GymPRHistorySeries = { exerciseName: string; points: GymPRHistoryPoint[] }
+
 export type ProgressClientProps = {
   weightCheckins: WeightPoint[]
   hrCheckins: HrPoint[]
@@ -88,6 +91,7 @@ export type ProgressClientProps = {
   weightGoal: number | null
   benchmarks: BenchmarkPoint[]
   gymPRs: GymPR[]
+  gymPRHistory: GymPRHistorySeries[]
   recentActivity: HistoryItem[]
   measurementCheckins: MeasurementPoint[]
   gymAdherenceByWeek: GymAdherencePoint[]
@@ -807,6 +811,7 @@ export default function ProgressClient({
   weightGoal,
   benchmarks,
   gymPRs,
+  gymPRHistory,
   recentActivity,
   measurementCheckins,
   gymAdherenceByWeek,
@@ -1133,26 +1138,92 @@ export default function ProgressClient({
         </SectionCard>
       )}
 
+      {/* ── Curva 1RM histórica por ejercicio (FUERZA-PROG-01) ──────────────── */}
+      {gymPRHistory.length > 0 && (
+        <SectionCard title="Progresión 1RM — por ejercicio">
+          <div className="space-y-6">
+            {gymPRHistory.map((series) => {
+              const W = 500
+              const H = 80
+              const PAD_X = 6
+              const PAD_Y = 10
+              const vals = series.points.map((p) => p.oneRmKg)
+              const minV = Math.min(...vals) * 0.95
+              const maxV = Math.max(...vals) * 1.05
+              const range = maxV - minV || 1
+              const n = series.points.length
+              const toX = (i: number) => n <= 1 ? W / 2 : PAD_X + (i / (n - 1)) * (W - PAD_X * 2)
+              const toY = (v: number) => PAD_Y + (1 - (v - minV) / range) * (H - PAD_Y * 2)
+              const pts = series.points.map((p, i) => ({ x: toX(i), y: toY(p.oneRmKg), v: p.oneRmKg, date: p.date }))
+              const polyline = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+              const first = pts[0]
+              const last = pts[pts.length - 1]
+              const delta = last.v - first.v
+              const deltaColor = delta >= 0 ? '#16a34a' : '#dc2626'
+              return (
+                <div key={series.exerciseName}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-800">{series.exerciseName}</p>
+                    <span className="text-xs font-bold" style={{ color: deltaColor }}>
+                      {delta >= 0 ? '+' : ''}{delta.toFixed(1)} kg
+                    </span>
+                  </div>
+                  <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 72 }}>
+                    <polyline
+                      points={polyline}
+                      fill="none"
+                      stroke="#1e3a5f"
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {pts.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={p.x} cy={p.y} r={3.5} fill="white" stroke="#1e3a5f" strokeWidth={1.5} />
+                        <title>{`${p.date}: ${p.v} kg`}</title>
+                      </g>
+                    ))}
+                    <text x={first.x} y={first.y - 6} textAnchor="middle" fontSize={9} fill="#6b7280" fontWeight="600">
+                      {first.v} kg
+                    </text>
+                    {n > 1 && (
+                      <text x={last.x} y={last.y - 6} textAnchor="middle" fontSize={9} fill="#1e3a5f" fontWeight="700">
+                        {last.v} kg
+                      </text>
+                    )}
+                  </svg>
+                  <div className="flex justify-between mt-0.5 px-0.5">
+                    <span className="text-[10px] text-gray-400">{new Date(series.points[0].date).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' })}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(series.points[series.points.length - 1].date).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' })}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3">1RM estimado con fórmula de Epley. Mínimo 2 registros por ejercicio.</p>
+        </SectionCard>
+      )}
+
       {/* ── Adherencia gym por semana ────────────────────────────────────────── */}
       {gymAdherenceByWeek.length > 1 && (
         <SectionCard title="Adherencia Gym — por semana">
           <div className="space-y-2">
             {gymAdherenceByWeek.slice(-period).map(({ isoWeek, completed, total }) => {
-              const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+              const hasTarget = total > 0
+              const pct = hasTarget ? Math.round((completed / total) * 100) : null
+              const barWidth = pct != null ? `${pct}%` : `${Math.min(completed * 25, 100)}%`
+              const barColor = pct == null ? '#9ca3af' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626'
               return (
                 <div key={isoWeek} className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 w-16 shrink-0">Sem {isoWeek}</span>
                   <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: pct >= 80 ? '#22c55e' : pct >= 50 ? '#ea580c' : '#dc2626',
-                      }}
+                      style={{ width: barWidth, backgroundColor: barColor }}
                     />
                   </div>
                   <span className="text-xs font-semibold text-gray-700 w-16 text-right shrink-0">
-                    {completed}/{total} · {pct}%
+                    {pct != null ? `${completed}/${total} · ${pct}%` : `${completed} ses.`}
                   </span>
                 </div>
               )

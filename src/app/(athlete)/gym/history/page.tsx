@@ -50,7 +50,7 @@ export default async function GymHistoryPage() {
           workoutExercise: {
             include: {
               // BUG-039: exercise puede ser null si el WorkoutTemplate fue eliminado
-              exercise: { select: { name: true } },
+              exercise: { select: { name: true, nameEs: true } },
             },
           },
         },
@@ -117,7 +117,7 @@ export default async function GymHistoryPage() {
 
             for (const sl of gs.setLogs) {
               // BUG-039: preferir exerciseName (snapshot) sobre el join, por si el template fue eliminado
-              const exName = sl.exerciseName ?? sl.workoutExercise?.exercise?.name ?? 'Ejercicio eliminado'
+              const exName = sl.exerciseName ?? sl.workoutExercise?.exercise?.nameEs ?? sl.workoutExercise?.exercise?.name ?? 'Ejercicio eliminado'
               const exId = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
               if (!exerciseGroups[exId]) {
                 exerciseGroups[exId] = { name: exName, sets: [] }

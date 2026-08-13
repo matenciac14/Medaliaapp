@@ -14,17 +14,24 @@ export class PrismaHealthProfileRepository implements IHealthProfileRepository {
   constructor(private db: PrismaDbClient = prisma) {}
 
   async find(userId: string): Promise<AthleteHealthProfile | null> {
-    return this.db.healthProfile.findUnique({
-      where: { userId },
-      select: {
-        weightKg: true,
-        weightGoalKg: true,
-        heightCm: true,
-        age: true,
-        dateOfBirth: true,
-        gender: true,
-      },
-    })
+    // daysPerWeek lives in WeeklyRoutine (GAP-02), not HealthProfile — fetch in parallel
+    const [profile, routine] = await Promise.all([
+      this.db.healthProfile.findUnique({
+        where: { userId },
+        select: {
+          weightKg: true,
+          weightGoalKg: true,
+          heightCm: true,
+          age: true,
+          dateOfBirth: true,
+          gender: true,
+          sessionMinutes: true,
+        },
+      }),
+      this.db.weeklyRoutine.findUnique({ where: { userId }, select: { daysPerWeek: true } }),
+    ])
+    if (!profile) return null
+    return { ...profile, daysPerWeek: routine?.daysPerWeek ?? null }
   }
 
   async updateWeight(userId: string, weightKg: number): Promise<void> {

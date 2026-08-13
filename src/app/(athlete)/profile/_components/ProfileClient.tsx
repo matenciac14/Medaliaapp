@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Scale, Heart, Moon, Zap, AlertTriangle, Target, ChevronDown, ChevronUp, Check, Pencil, X } from 'lucide-react'
+import Link from 'next/link'
+import { signOut } from 'next-auth/react'
+import { User, Scale, Heart, Moon, Zap, AlertTriangle, Target, ChevronDown, ChevronUp, Check, Pencil, X, ChevronRight, LogOut, HelpCircle, MessageCircle, Activity, Link2 } from 'lucide-react'
 
 type DailyLog = {
   id: string
@@ -18,6 +20,8 @@ type Props = {
   user: {
     name: string
     email: string
+    userPlan: string
+    hasCoach: boolean
     profile: {
       age: number
       dateOfBirth: string | null
@@ -169,8 +173,83 @@ export default function ProfileClient({ user }: Props) {
   ]
   const completePct = Math.round((profileFields.filter(f => f.ok).length / profileFields.length) * 100)
 
+  const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  const planLabel = user.userPlan === 'PRO' ? 'Pro' : user.hasCoach ? 'B2B' : 'Gratis'
+  const planBadgeBg = user.userPlan === 'PRO' ? 'bg-[#22c55e]' : 'bg-white/20'
+
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-3xl mx-auto space-y-6">
+    <>
+      {/* ── Mobile profile view (< sm) — matches mobile app ── */}
+      <div className="sm:hidden min-h-screen bg-[#f1f5f9]">
+        {/* Gradient hero header */}
+        <div className="bg-gradient-to-b from-[#1e3a5f] to-[#2d5a8e] pt-[max(env(safe-area-inset-top,0px),44px)] pb-7 flex flex-col items-center">
+          <div className="w-[76px] h-[76px] rounded-full bg-white/20 flex items-center justify-center mb-3">
+            <div className="w-[68px] h-[68px] rounded-full bg-[#f97316] flex items-center justify-center">
+              <span className="text-white text-2xl font-black">{initials}</span>
+            </div>
+          </div>
+          <p className="text-xl font-bold text-white">{user.name}</p>
+          <div className={`mt-2 px-3.5 py-1.5 rounded-full ${planBadgeBg}`}>
+            <span className="text-[11px] font-semibold text-white">
+              {user.userPlan === 'PRO' ? '✦ Pro' : user.hasCoach ? 'B2B' : 'Free'}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-3.5 pb-8">
+          {/* Cuenta */}
+          <MobileMenuSection title="Cuenta">
+            <MobileMenuItem icon="👤" label="Nombre" value={user.name.split(' ')[0]} />
+            <MobileMenuDivider />
+            <MobileMenuItem icon="✉️" label="Email" value={user.email} />
+            <MobileMenuDivider />
+            <MobileMenuItem icon="🏅" label="Plan" value={planLabel} />
+          </MobileMenuSection>
+
+          {/* Datos físicos */}
+          <MobileMenuSection title="Datos físicos">
+            <MobileMenuLink icon="🏋️" label="Perfil de salud" href="/profile#health" />
+            <MobileMenuDivider />
+            <MobileMenuLink icon="🔗" label="Integraciones" href="/settings/integrations" />
+          </MobileMenuSection>
+
+          {/* Coach / Mensajes */}
+          <MobileMenuSection title={user.hasCoach ? 'Coach' : 'Coach'}>
+            {user.hasCoach ? (
+              <MobileMenuLink icon="💬" label="Mensajes" href="/messages" />
+            ) : (
+              <MobileMenuLink icon="🎯" label="Buscar coach" href="/find-coach" />
+            )}
+          </MobileMenuSection>
+
+          {/* Soporte */}
+          <MobileMenuSection title="Soporte">
+            <MobileMenuLink icon="❓" label="Ayuda y FAQ" href="https://medaliq.com/help" external />
+            <MobileMenuDivider />
+            <MobileMenuLink icon="💬" label="Contactar soporte" href="mailto:hola@medaliq.com" external />
+          </MobileMenuSection>
+
+          {/* Cerrar sesión */}
+          <div className="bg-white rounded-2xl mx-4 shadow-sm overflow-hidden">
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="flex items-center gap-3.5 w-full px-4 py-4"
+            >
+              <div className="w-9 h-9 rounded-[10px] bg-red-50 flex items-center justify-center">
+                <LogOut size={18} className="text-red-500" />
+              </div>
+              <span className="text-[15px] font-medium text-red-500">Cerrar sesión</span>
+            </button>
+          </div>
+
+          <p className="text-center text-[11px] text-gray-300 px-4">
+            Medaliq v1.0 · Hecho en Colombia 🇨🇴
+          </p>
+        </div>
+      </div>
+
+      {/* ── Desktop profile view (≥ sm) — existing layout ── */}
+    <div className="hidden sm:block px-4 py-6 lg:px-8 lg:py-8 max-w-3xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -521,5 +600,55 @@ export default function ProfileClient({ user }: Props) {
         </div>
       )}
     </div>
+    </>
   )
+}
+
+// ── Mobile menu helpers ──────────────────────────────────────────────────────
+
+function MobileMenuSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-3.5 pb-2">{title}</p>
+      <div className="bg-white rounded-2xl mx-4 shadow-sm overflow-hidden">{children}</div>
+    </div>
+  )
+}
+
+function MobileMenuItem({ icon, label, value }: { icon: string; label: string; value?: string }) {
+  return (
+    <div className="flex items-center gap-3.5 px-4 py-[15px]">
+      <div className="w-9 h-9 rounded-[10px] bg-gray-100 flex items-center justify-center text-sm">{icon}</div>
+      <span className="flex-1 text-[15px] font-medium text-gray-900">{label}</span>
+      {value && <span className="text-[13px] text-gray-400">{value}</span>}
+    </div>
+  )
+}
+
+function MobileMenuLink({ icon, label, href, external }: { icon: string; label: string; href: string; external?: boolean }) {
+  const inner = (
+    <>
+      <div className="w-9 h-9 rounded-[10px] bg-gray-100 flex items-center justify-center text-sm">{icon}</div>
+      <span className="flex-1 text-[15px] font-medium text-gray-900">{label}</span>
+      <ChevronRight size={16} className="text-gray-300" />
+    </>
+  )
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 px-4 py-[15px]">
+        {inner}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={href} className="flex items-center gap-3.5 px-4 py-[15px]">
+      {inner}
+    </Link>
+  )
+}
+
+function MobileMenuDivider() {
+  return <div className="h-px bg-[#f1f5f9] ml-[66px]" />
 }

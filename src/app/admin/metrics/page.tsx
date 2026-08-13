@@ -181,7 +181,7 @@ export default async function AdminMetricsPage() {
                     />
                   </div>
                   <span className={`text-xs ${isLast ? 'text-gray-700 font-semibold' : 'text-gray-400'}`}>
-                    {bucket.label}
+                    {`Sem ${bucket.weekNumber}`}
                   </span>
                 </div>
               )

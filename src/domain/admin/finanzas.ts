@@ -37,14 +37,6 @@ export function coachTierFeeLabel(tier: CoachTier, athleteCount: number = 0): st
 
 /**
  * Calcula el MRR estimado de atletas Pro.
- * @deprecated Usar coachTierFee(). Modelo por-asesorado eliminado.
- */
-export function coachFeeRate(_athleteCount: number): number { return 0 }
-/** @deprecated Usar coachTierFeeLabel(). */
-export function feeLabel(_athleteCount: number): string { return '—' }
-
-/**
- * Calcula el MRR estimado de atletas Pro.
  */
 export function mrrAthletes(proAthleteCount: number): number {
   return proAthleteCount * ATHLETE_PRO_PRICE_USD

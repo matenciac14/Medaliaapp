@@ -45,7 +45,6 @@ const FUERZA_CORREDOR_DAY: Record<string, string> = {
   BASE:        'system-fuerza-corredor-base',
   DESARROLLO:  'system-fuerza-corredor-especifico',
   ESPECIFICO:  'system-fuerza-corredor-especifico',
-  ESPECÍFICO:  'system-fuerza-corredor-especifico',
   AFINAMIENTO: 'system-fuerza-corredor-especifico',
 }
 

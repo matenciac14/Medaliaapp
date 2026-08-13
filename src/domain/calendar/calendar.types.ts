@@ -30,7 +30,7 @@ export type CalendarDay = {
 
   // ── Gym session (AssignedWorkout) ────────────────────────────────
   gym: {
-    workoutDayId: string
+    workoutDayId: string | null
     label: string         // WorkoutDay.label
     gymSessionId: string | null
     done: boolean

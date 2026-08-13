@@ -14,12 +14,9 @@
 import type { IHealthProfileRepository } from '@/domain/ports/health-profile.repository'
 import type { IUserRepository } from '@/domain/ports/user.repository'
 import type { IPlanRepository } from '@/domain/ports/plan.repository'
-import type { WizardData } from '@/app/onboarding/_types'
+import type { WizardData } from '@/domain/onboarding/onboarding.types'
 import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
-import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
-import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +35,12 @@ export async function completeOnboardingUseCase(
     planRepo: IPlanRepository
     healthProfileRepo: IHealthProfileRepository
     userRepo: IUserRepository
+    // Factory que crea repos con scope de transacción — evita imports de infra en el dominio
+    txRepoFactory: (tx: PrismaDbClient) => {
+      healthProfileRepo: IHealthProfileRepository
+      userRepo: IUserRepository
+      planRepo: IPlanRepository
+    }
   }
 ): Promise<CompleteOnboardingResult> {
 
@@ -48,7 +51,7 @@ export async function completeOnboardingUseCase(
     data.weightKg!,
     data.heightCm!,
     data.age!,
-    data.gender ?? 'male',
+    (data.gender === 'female' ? 'female' : 'male'),
     data.daysPerWeek
   )
   const hasDeficit = !!data.weightGoalKg || data.gymGoal === 'FAT_LOSS' || data.gymGoal === 'RECOMPOSITION'
@@ -71,9 +74,7 @@ export async function completeOnboardingUseCase(
 
   // ── Profile + nutrition + onboarding completion — all atomic ──────────────
   await deps.db.$transaction(async (tx) => {
-    const txHealthProfile = new PrismaHealthProfileRepository(tx)
-    const txUser = new PrismaUserRepository(tx)
-    const txPlan = new PrismaPlanRepository(tx)
+    const { healthProfileRepo: txHealthProfile, userRepo: txUser, planRepo: txPlan } = deps.txRepoFactory(tx)
 
     await txPlan.upsertNutrition(userId, nutritionTargets)
 
@@ -82,7 +83,7 @@ export async function completeOnboardingUseCase(
       heightCm: data.heightCm!,
       weightKg: data.weightKg!,
       weightGoalKg: data.weightGoalKg ?? undefined,
-      gender: data.gender ?? 'male',
+      gender: data.gender ?? undefined,
       sport: sportType,
       experienceLevel: data.experienceLevel ?? undefined,
       sessionMinutes: data.sessionMinutes ?? undefined,
@@ -104,17 +105,14 @@ export async function completeOnboardingUseCase(
         onboarding: { completed: true, completedAt: now() },
         sport: { type: sportType, goal: sportGoal },
       })
+      // DEBT-02: WeeklyRoutine dentro del $transaction — evita estado inconsistente si falla el upsert
+      await tx.weeklyRoutine.upsert({
+        where: { userId },
+        update: { daysPerWeek: data.daysPerWeek },
+        create: { userId, daysPerWeek: data.daysPerWeek, days: [] },
+      })
     }
   })
-
-  // ── Create empty WeeklyRoutine for B2C (B2B gets it when coach activates) ─
-  if (!isB2B) {
-    await deps.db.weeklyRoutine.upsert({
-      where: { userId },
-      update: { daysPerWeek: data.daysPerWeek },
-      create: { userId, daysPerWeek: data.daysPerWeek, days: [] },
-    })
-  }
 
   return { isB2B, planId: null }
 }

@@ -32,7 +32,10 @@ type Template = {
   days: Day[]
 }
 
-type DayIntensity = 'HARD' | 'EASY' | 'REST'
+type NutritionPlan = {
+  targetKcalHard: number; targetKcalEasy: number; targetKcalRest: number
+  proteinG: number; carbsHardG: number; carbsEasyG: number; fatG: number
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -53,8 +56,6 @@ const MEAL_LABELS: Record<string, string> = {
 
 const MEAL_ORDER = ['BREAKFAST', 'PRE_WORKOUT', 'LUNCH', 'SNACK', 'DINNER', 'POST_WORKOUT']
 
-const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 function calcMacros(food: Food, grams: number) {
   const f = grams / 100
@@ -81,14 +82,6 @@ function dayTotals(day: Day) {
   )
 }
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
-function formatDay(d: Date): string {
-  return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`
-}
-
 // ── Food Search Modal ─────────────────────────────────────────────────────────
 
 function FoodSearchModal({ onAdd, onClose }: { onAdd: (food: Food, grams: number) => void; onClose: () => void }) {
@@ -104,7 +97,7 @@ function FoodSearchModal({ onAdd, onClose }: { onAdd: (food: Food, grams: number
     setLoading(true)
     const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(q)}`)
     const data = await res.json()
-    setResults(data.foods ?? [])
+    setResults(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])
 
@@ -208,151 +201,35 @@ function FoodSearchModal({ onAdd, onClose }: { onAdd: (food: Food, grams: number
   )
 }
 
-// ── Apply Week Modal ──────────────────────────────────────────────────────────
+// ── Helpers de fecha ──────────────────────────────────────────────────────────
 
-function ApplyWeekModal({
-  templateId,
-  onClose,
-}: {
-  templateId: string
-  onClose: () => void
-}) {
-  const router = useRouter()
+function getMondayStr(): string {
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Generar los próximos 7 días desde hoy
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(today.getDate() + i)
-    return d
-  })
-
-  const [intensityMap, setIntensityMap] = useState<Record<string, DayIntensity>>(() =>
-    Object.fromEntries(days.map((d) => [toDateStr(d), 'REST' as DayIntensity]))
-  )
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-
-  function setDayIntensity(dateStr: string, intensity: DayIntensity) {
-    setIntensityMap((prev) => ({ ...prev, [dateStr]: intensity }))
-  }
-
-  function handleApply() {
-    setError(null)
-    startTransition(async () => {
-      const res = await fetch(`/api/athlete/nutrition/templates/${templateId}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          weekStart: toDateStr(today),
-          intensityMap,
-        }),
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        setError(d.error ?? 'Error al aplicar el plan.')
-        return
-      }
-      setSuccess(true)
-      setTimeout(() => {
-        router.push('/nutrition')
-        router.refresh()
-      }, 1200)
-    })
-  }
-
-  const INTENSITY_OPTIONS: { value: DayIntensity; label: string; color: string }[] = [
-    { value: 'HARD', label: 'Duro', color: 'bg-red-100 text-red-700 border-red-300' },
-    { value: 'EASY', label: 'Fácil', color: 'bg-green-100 text-green-700 border-green-300' },
-    { value: 'REST', label: 'Descanso', color: 'bg-gray-100 text-gray-600 border-gray-300' },
-  ]
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[85vh]">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <CalendarCheck size={18} className="text-orange-600" />
-            Aplicar a esta semana
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
-            <X size={18} />
-          </button>
-        </div>
-
-        {success ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-10">
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl">✓</div>
-            <p className="text-sm font-semibold text-gray-800">Plan aplicado</p>
-            <p className="text-xs text-gray-400">Redirigiendo a nutrición…</p>
-          </div>
-        ) : (
-          <>
-            <p className="px-5 pt-4 pb-1 text-xs text-gray-500">
-              Selecciona la intensidad de cada día para que el sistema cargue las comidas correctas.
-            </p>
-
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
-              {days.map((d) => {
-                const dateStr = toDateStr(d)
-                const current = intensityMap[dateStr]
-                return (
-                  <div key={dateStr} className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-gray-700 w-24 shrink-0">{formatDay(d)}</span>
-                    <div className="flex gap-1">
-                      {INTENSITY_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setDayIntensity(dateStr, opt.value)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                            current === opt.value
-                              ? opt.color
-                              : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {error && (
-              <div className="mx-5 mb-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
-                {error}
-              </div>
-            )}
-
-            <div className="px-5 py-4 border-t border-gray-100">
-              <button
-                onClick={handleApply}
-                disabled={isPending}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#ea580c' }}
-              >
-                {isPending ? 'Aplicando…' : 'Aplicar plan'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
+  const dow = today.getDay()
+  const offset = dow === 0 ? -6 : 1 - dow
+  const monday = new Date(today)
+  monday.setDate(today.getDate() + offset)
+  return monday.toISOString().slice(0, 10)
 }
 
 // ── Main Builder ──────────────────────────────────────────────────────────────
 
-export default function AthleteNutritionBuilderClient({ template: initialTemplate }: { template: Template }) {
+export default function AthleteNutritionBuilderClient({
+  template: initialTemplate,
+  nutritionPlan,
+}: {
+  template: Template
+  nutritionPlan: NutritionPlan | null
+}) {
   const router = useRouter()
   const [template, setTemplate] = useState<Template>(initialTemplate)
   const [activeDayType, setActiveDayType] = useState<'HARD' | 'EASY' | 'REST'>('HARD')
   const [addingMeal, setAddingMeal] = useState<{ dayId: string; mealType: string } | null>(null)
-  const [showApply, setShowApply] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  function handleApplyRedirect() {
+    router.push(`/nutrition/planner?week=${getMondayStr()}&templateId=${template.id}`)
+  }
 
   const activeDay = template.days.find((d) => d.dayType === activeDayType)!
   const totals = dayTotals(activeDay)
@@ -419,10 +296,18 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
   const cfg = DAY_CONFIG[activeDayType]
   const totalItems = template.days.reduce((acc, d) => acc + d.meals.reduce((a, m) => a + m.items.length, 0), 0)
 
+  // Targets per active day type for the sidebar
+  const targets = nutritionPlan ? {
+    kcal:     activeDayType === 'HARD' ? nutritionPlan.targetKcalHard : activeDayType === 'EASY' ? nutritionPlan.targetKcalEasy : nutritionPlan.targetKcalRest,
+    proteinG: nutritionPlan.proteinG,
+    carbsG:   activeDayType === 'HARD' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG,
+    fatG:     nutritionPlan.fatG,
+  } : null
+
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
-      {/* Top bar */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shrink-0">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar — sticky dentro del layout del atleta */}
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
         <button
           onClick={() => router.push('/nutrition')}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
@@ -435,7 +320,7 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
         </div>
         {totalItems > 0 && (
           <button
-            onClick={() => setShowApply(true)}
+            onClick={handleApplyRedirect}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: '#ea580c' }}
           >
@@ -446,7 +331,7 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
       </header>
 
       {/* Day tabs */}
-      <div className="bg-white border-b border-gray-200 px-4 shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4">
         <div className="flex gap-1">
           {(['HARD', 'EASY', 'REST'] as const).map((dt) => {
             const c = DAY_CONFIG[dt]
@@ -471,9 +356,10 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      {/* Two-column content */}
+      <div className="max-w-5xl mx-auto px-4 py-5 flex gap-5">
+        {/* Main column */}
+        <div className="flex-1 min-w-0 space-y-4">
 
           {/* Totales del día */}
           {totals.kcal > 0 && (
@@ -579,10 +465,10 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
             <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-orange-800">¿Listo tu plan?</p>
-                <p className="text-xs text-orange-600">Aplícalo a los próximos 7 días.</p>
+                <p className="text-xs text-orange-600">Asigna la intensidad de cada día y planifica la semana.</p>
               </div>
               <button
-                onClick={() => setShowApply(true)}
+                onClick={handleApplyRedirect}
                 className="shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: '#ea580c' }}
               >
@@ -591,11 +477,54 @@ export default function AthleteNutritionBuilderClient({ template: initialTemplat
             </div>
           )}
         </div>
+
+        {/* Right sidebar: objetivos nutricionales */}
+        {targets && (
+          <div className="w-64 shrink-0">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sticky top-28">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Objetivo del día</p>
+              <p className={`text-xs font-medium mb-4 ${cfg.badge.replace('bg-', 'text-').split(' ')[0]}`}>{cfg.label}</p>
+
+              <div className="space-y-4">
+                {[
+                  { label: 'Calorías', actual: Math.round(totals.kcal), target: targets.kcal, unit: 'kcal', barColor: 'bg-orange-400' },
+                  { label: 'Proteína', actual: Math.round(totals.proteinG), target: targets.proteinG, unit: 'g', barColor: 'bg-blue-400' },
+                  { label: 'Carbos', actual: Math.round(totals.carbsG), target: targets.carbsG, unit: 'g', barColor: 'bg-yellow-400' },
+                  { label: 'Grasas', actual: Math.round(totals.fatG), target: targets.fatG, unit: 'g', barColor: 'bg-green-400' },
+                ].map(({ label, actual, target, unit, barColor }) => {
+                  const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-gray-500">{label}</span>
+                        <span className="font-semibold text-gray-800">
+                          {actual} <span className="font-normal text-gray-400">/ {target}{unit}</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${barColor}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5 text-right">{pct}%</p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {totals.kcal === 0 && (
+                <p className="text-xs text-gray-400 text-center mt-2">
+                  Agrega alimentos para ver el progreso
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modals */}
+      {/* Modal */}
       {addingMeal && <FoodSearchModal onAdd={handleAddFood} onClose={() => setAddingMeal(null)} />}
-      {showApply && <ApplyWeekModal templateId={template.id} onClose={() => setShowApply(false)} />}
     </div>
   )
 }

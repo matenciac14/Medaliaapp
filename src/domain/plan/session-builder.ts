@@ -106,8 +106,7 @@ export function getSetsRepsScheme(phase: string): string {
   switch (phase) {
     case 'BASE':        return '3×12-15'
     case 'DESARROLLO':  return '4×10-12'
-    case 'ESPECIFICO':
-    case 'ESPECÍFICO':  return '4×8-10'
+    case 'ESPECIFICO':  return '4×8-10'
     default:            return '3×10-12' // AFINAMIENTO
   }
 }

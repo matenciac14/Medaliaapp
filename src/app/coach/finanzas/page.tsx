@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { KpiCard } from '@/app/_components/kpi-card'
 import { getDisplayStatus } from '@/lib/coach/payment-status'
 import type { DisplayStatus } from '@/lib/coach/payment-status'
+import { formatCurrency as fmt } from '@/lib/utils/format-currency'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,9 +38,6 @@ const STATUS_CONFIG: Record<DisplayStatus, { label: string; bg: string; text: st
   OVERDUE:  { label: 'Vencido',   bg: '#fee2e2', text: '#991b1b' },
 }
 
-function fmt(amount: number, currency: string) {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
-}
 
 function fmtDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })

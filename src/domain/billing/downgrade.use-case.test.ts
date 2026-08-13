@@ -50,6 +50,9 @@ function makeRepo(expired: SubscriptionSnapshot[]): IBillingRepository {
     downgradeCoach: vi.fn().mockResolvedValue(undefined),
     downgradeAthlete: vi.fn().mockResolvedValue(undefined),
     findExpired: vi.fn().mockResolvedValue(expired),
+    saveWebhookEventId: vi.fn().mockResolvedValue(undefined),
+    getLastWebhookEventId: vi.fn().mockResolvedValue(null),
+    saveGateway: vi.fn().mockResolvedValue(undefined),
   }
 }
 

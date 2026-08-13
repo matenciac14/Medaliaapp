@@ -155,7 +155,8 @@ export async function POST(req: NextRequest) {
 
     const resetLink = await generateResetLink(athlete.id)
 
-    sendAthleteWelcomeEmail(athlete.email!, athlete.name!, session.user.name ?? 'Tu coach', resetLink).catch(() => {})
+    sendAthleteWelcomeEmail(athlete.email!, athlete.name!, session.user.name ?? 'Tu coach', resetLink)
+      .catch(err => console.error('[coach/clients/create] Welcome email failed:', err))
 
     return NextResponse.json({
       ok: true,

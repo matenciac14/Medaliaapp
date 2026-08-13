@@ -34,4 +34,10 @@ export interface IBillingRepository {
    * graceDays: días de gracia tras currentPeriodEnd.
    */
   findExpired(graceDays: number, now: Date): Promise<SubscriptionSnapshot[]>
+  /** Guarda el ID del último webhook procesado para evitar doble procesamiento. */
+  saveWebhookEventId(userId: string, eventId: string): Promise<void>
+  /** Devuelve el ID del último webhook procesado para este usuario. */
+  getLastWebhookEventId(userId: string): Promise<string | null>
+  /** Guarda el gateway usado al crear la suscripción. */
+  saveGateway(userId: string, gateway: string): Promise<void>
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isoWeekKey, weekLabel, lastNWeekKeys, computeWAU } from './wau'
+import { isoWeekKey, lastNWeekKeys, computeWAU } from './wau'
 
 // Fecha de referencia fija: lunes 30 junio 2026 (semana 27)
 const REF = new Date('2026-06-30T12:00:00Z')
@@ -18,10 +18,13 @@ describe('isoWeekKey', () => {
   })
 })
 
-describe('weekLabel', () => {
-  it('convierte key a label corto', () => {
-    expect(weekLabel('2026-W27')).toBe('Sem 27')
-    expect(weekLabel('2026-W01')).toBe('Sem 1')
+describe('computeWAU — weekNumber', () => {
+  it('expone el número de semana como dato crudo (sin formatear como string UI)', () => {
+    const result = computeWAU([], 4, REF)
+    const last = result.at(-1)!
+    expect(last.key).toBe('2026-W27')
+    expect(last.weekNumber).toBe(27)
+    expect(typeof last.weekNumber).toBe('number')
   })
 })
 

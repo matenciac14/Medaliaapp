@@ -12,6 +12,7 @@
     { "path": "/api/cron/billing-check",     "schedule": "0 2 * * *" },
     { "path": "/api/cron/inactive-athlete-reminder", "schedule": "0 14 * * *" },
     { "path": "/api/cron/streak-risk", "schedule": "0 20 * * *" },
-    { "path": "/api/cron/nutrition-alert", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/nutrition-alert", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/billing-renewal-reminder", "schedule": "0 13 * * *" }
   ]
 }

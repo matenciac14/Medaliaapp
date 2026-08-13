@@ -54,7 +54,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
       <SidebarClient user={user} config={config} hasCoach={!!coachRelation} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 overflow-auto pt-14 lg:pt-0 pb-nav-safe lg:pb-0 animate-fade-up">
+        <main className="flex-1 overflow-auto sm:pt-14 lg:pt-0 pb-nav-safe lg:pb-0 animate-fade-up">
           {children}
         </main>
       </div>

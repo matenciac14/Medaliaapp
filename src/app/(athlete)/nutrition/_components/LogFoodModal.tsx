@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 type MealTemplateItem = {
@@ -97,6 +97,8 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   const [proposeForm, setProposeForm]         = useState<ProposeForm>(DEFAULT_PROPOSE)
   const [proposeSuccess, setProposeSuccess]   = useState(false)
   const [proposing, setProposing]             = useState(false)
+  const [searchResults, setSearchResults]     = useState<FoodItem[] | null>(null)
+  const [searching, setSearching]             = useState(false)
 
   useEffect(() => {
     fetch('/api/nutrition/meal-templates')
@@ -105,11 +107,28 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
       .catch(() => {})
   }, [])
 
+  // UX-NUT-03: buscar en el API cuando hay query — supera el límite take:100 de la page
+  const fetchSearchResults = useCallback((q: string) => {
+    if (!q.trim()) { setSearchResults(null); return }
+    setSearching(true)
+    fetch(`/api/nutrition/foods?q=${encodeURIComponent(q.trim())}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: FoodItem[] | null) => { if (data) setSearchResults(data) })
+      .catch(() => {})
+      .finally(() => setSearching(false))
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchSearchResults(query), 300)
+    return () => clearTimeout(timer)
+  }, [query, fetchSearchResults])
+
   const filtered = useMemo(() => {
     if (!query.trim()) return foods.slice(0, 30)
+    if (searchResults !== null) return searchResults
     const q = query.toLowerCase()
     return foods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 40)
-  }, [foods, query])
+  }, [foods, query, searchResults])
 
   function selectFood(food: FoodItem) {
     setSelected(food)
@@ -324,7 +343,9 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
                 </div>
               )}
 
-              {filtered.length === 0 ? (
+              {searching ? (
+                <p className="text-center text-sm text-gray-400 mt-10">Buscando...</p>
+              ) : filtered.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 mt-10">Sin resultados para "{query}"</p>
               ) : (
                 filtered.map(food => {

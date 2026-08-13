@@ -8,6 +8,7 @@ export type DayAdherence = {
 type Props = {
   data: DayAdherence[]
   loaded: boolean
+  selfReportedPct?: number | null
 }
 
 function badgeColor(avgPct: number | null): { bg: string; text: string; label: string } {
@@ -17,7 +18,7 @@ function badgeColor(avgPct: number | null): { bg: string; text: string; label: s
   return { bg: 'bg-red-100', text: 'text-red-700', label: `${avgPct}% promedio` }
 }
 
-export default function NutritionAdherenceCard({ data, loaded }: Props) {
+export default function NutritionAdherenceCard({ data, loaded, selfReportedPct }: Props) {
   if (!loaded) {
     return (
       <div className="animate-pulse space-y-3">
@@ -54,6 +55,12 @@ export default function NutritionAdherenceCard({ data, loaded }: Props) {
   const current = weekStats[0]
   const badge = badgeColor(current.avgPct)
 
+  const gap =
+    current.avgPct !== null && selfReportedPct !== null && selfReportedPct !== undefined
+      ? Math.abs(current.avgPct - selfReportedPct)
+      : null
+  const hasDisconnect = gap !== null && gap > 20
+
   return (
     <div className="space-y-4">
       {/* Semana actual */}
@@ -66,6 +73,30 @@ export default function NutritionAdherenceCard({ data, loaded }: Props) {
           {badge.label}
         </span>
       </div>
+
+      {/* Comparativa real vs auto-reportado */}
+      {selfReportedPct !== null && selfReportedPct !== undefined && (
+        <div className={`rounded-lg px-4 py-3 text-xs ${hasDisconnect ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div>
+              <span className="text-gray-500">Real (FoodLog)</span>
+              <span className="ml-1.5 font-bold text-gray-800">
+                {current.avgPct !== null ? `${current.avgPct}%` : '—'}
+              </span>
+            </div>
+            <span className="text-gray-300">·</span>
+            <div>
+              <span className="text-gray-500">Reportado (check-in)</span>
+              <span className="ml-1.5 font-bold text-gray-800">{selfReportedPct}%</span>
+            </div>
+            {hasDisconnect && (
+              <span className="ml-auto font-semibold text-yellow-700 flex items-center gap-1 shrink-0">
+                ⚠ Posible desconexión ({gap}%)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sparkline 4 semanas */}
       <div>

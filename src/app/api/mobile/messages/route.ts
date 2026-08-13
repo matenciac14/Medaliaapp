@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { sendPushNotification } from '@/lib/push'
+import { createNotification } from '@/infrastructure/db/notification'
 
 // GET /api/mobile/messages?with=[userId] — paginada, asc
 export async function GET(req: NextRequest) {
@@ -54,6 +55,15 @@ export async function POST(req: NextRequest) {
 
   const senderName = mobile.name ?? 'Tu atleta'
   sendPushNotification(recipient?.pushToken, `Mensaje de ${senderName}`, content.trim(), { screen: 'messages' }).catch(() => {})
+
+  // PLT-11: crear registro de notificación in-app (push ya enviado arriba)
+  createNotification(
+    toId,
+    'MENSAJE_COACH',
+    `Mensaje de ${senderName}`,
+    content.trim().slice(0, 120),
+    { push: false, metadata: { fromId: mobile.id } },
+  ).catch(() => {})
 
   return NextResponse.json({ message }, { status: 201 })
 }

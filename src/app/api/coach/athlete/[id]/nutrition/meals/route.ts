@@ -1,3 +1,5 @@
+// DEPRECATED (NUT-12): MealPlan JSON blob replaced by NutritionTemplate + PlannedMeal.
+// This endpoint is kept for backward compatibility but should not be used for new features.
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'

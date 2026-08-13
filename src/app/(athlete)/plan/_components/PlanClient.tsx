@@ -464,6 +464,7 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+      {/* Progress bar */}
       <div className="h-1 bg-gray-100">
         <div className="h-full bg-green-400 transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
@@ -481,81 +482,88 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
           const isRest = !session || session.type === 'DESCANSO'
           const isDone = (session?.done || (session ? loggedIds.has(session.id) : false)) ?? false
 
-          const cardBg = isToday && isSelected && todayActive
-            ? 'bg-[#ea580c] active:bg-[#d4520b]'
-            : isToday && isSelected
-            ? 'bg-[#ea580c] active:bg-[#ea580c]'
-            : isToday
-            ? 'bg-orange-50 ring-1 ring-inset ring-[#ea580c]/30 active:bg-[#ea580c]'
-            : isSelected ? 'bg-[#1e3a5f] hover:bg-[#243f6a] active:bg-[#243f6a]'
-            : isDone ? 'bg-green-50/60 hover:bg-gray-100 active:bg-gray-100'
-            : 'bg-white hover:bg-gray-100 active:bg-gray-100'
+          // Barra-Top-Estado: naranja HOY/selected, verde done, gris default
+          const barColor = isToday || isSelected ? 'bg-[#ea580c]' : isDone && !isRest ? 'bg-[#22c55e]' : 'bg-gray-200'
+
+          // Card background — Figma DayCard states
+          const cardBg = isToday
+            ? 'bg-[#1e3a5f]'
+            : isSelected ? 'bg-orange-50'
+            : isDone && !isRest ? 'bg-green-50/60'
+            : 'bg-[#f5f7fa] hover:bg-gray-100'
+
+          const isInverted = isToday
 
           return (
             <button
               key={dow}
-              onClick={() => { if (isToday) setTodayActive(true); else setTodayActive(false); onSelect(dow) }}
-              className={cn('flex flex-col items-center py-4 px-1 transition-colors text-center relative group', cardBg)}
+              onClick={() => onSelect(dow)}
+              className={cn('flex flex-col items-center py-3.5 px-1 transition-colors text-center relative', cardBg)}
             >
-              {isToday && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#ea580c] rounded-b" />
-              )}
-              <span className={cn('text-xs font-semibold mb-1',
-                isToday && isSelected ? 'text-white font-bold' :
-                isToday ? 'text-[#ea580c] font-bold group-active:text-white' :
-                isSelected ? 'text-blue-200' :
+              {/* Barra-Top-Estado — 3px */}
+              <div className={cn('absolute top-0 left-0 right-0 h-[3px]', barColor)} />
+
+              {/* Label-Dia */}
+              <span className={cn('text-[11px] font-semibold mb-1',
+                isInverted ? 'text-white/70' :
+                isToday || isSelected ? 'text-[#ea580c] font-bold' :
                 'text-gray-400'
               )}>
                 {WEEK_DAYS_SHORT[i]}
               </span>
 
+              {/* Label-Fecha + HOY badge */}
               <div className="flex items-center gap-1 mb-2">
-                <span className={cn('text-xl font-black leading-none',
-                  isToday && isSelected ? 'text-white' :
-                  isToday ? 'text-[#ea580c] group-active:text-white' :
-                  isSelected ? 'text-white' :
+                <span className={cn('text-[22px] font-black leading-none',
+                  isInverted ? 'text-white' :
+                  isToday || isSelected ? 'text-[#ea580c]' :
+                  isDone && !isRest ? 'text-green-600' :
                   isRest ? 'text-gray-300' :
-                  isDone ? 'text-green-600' :
                   'text-gray-800'
                 )}>
                   {dateObj.getDate()}
                 </span>
                 {isToday && (
-                  <span className="text-[9px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none">
+                  <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none">
                     HOY
                   </span>
                 )}
               </div>
 
-              <span className="text-base mb-1.5">
+              {/* Icono-Estado */}
+              <span className="text-lg mb-1.5">
                 {isDone && !isRest
-                  ? <CheckCircle2 size={18} className="text-green-500 mx-auto" />
-                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : (gymLabel ? null : '📅'))}
+                  ? <CheckCircle2 size={18} className={isInverted ? 'text-green-300 mx-auto' : 'text-green-500 mx-auto'} />
+                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : (gymLabel ? null : ''))}
               </span>
 
-              <span className={cn('text-xs font-semibold leading-tight px-0.5',
-                isToday && isSelected ? 'text-white' :
-                isToday ? 'text-gray-700 group-active:text-white' :
-                isSelected ? 'text-white' :
+              {/* Label-Sesion */}
+              <span className={cn('text-[12px] font-semibold leading-tight px-0.5',
+                isInverted ? 'text-white' :
+                isToday && !isSelected ? 'text-gray-700' :
                 isRest ? 'text-gray-400' : 'text-gray-700'
               )}>
-                {!session ? (gymLabel ? null : '—') : isRest ? 'Descanso' : (SESSION_LABELS[session.type] ?? session.type)}
+                {!session
+                  ? (gymLabel ?? 'Sin sesión')
+                  : isRest ? 'Descanso' : (SESSION_LABELS[session.type] ?? session.type)}
               </span>
 
+              {/* Duration + Zone sub-label */}
               {!isRest && session && (
                 <span className={cn('text-[10px] mt-0.5',
-                  isToday && isSelected ? 'text-white/80' :
-                  isToday ? 'text-gray-400 group-active:text-white/80' :
-                  isSelected ? 'text-blue-200' : 'text-gray-400'
+                  isInverted ? 'text-white/60' :
+                  isToday ? 'text-gray-400' : 'text-gray-400'
                 )}>
                   {session.durationMin} min
                   {session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== 'N/A' ? ` · ${session.zoneTarget}` : ''}
                 </span>
               )}
+
+              {/* Gym badge */}
               {gymLabel && (
                 <span className={cn('text-[8px] font-bold rounded-full px-1 py-0.5 leading-none mt-0.5',
                   gymDone ? 'bg-green-600 text-white' :
-                  isSelected ? 'bg-purple-700 text-white' : 'text-purple-600 bg-purple-50'
+                  isInverted ? 'bg-purple-700 text-white' : 'text-purple-600 bg-purple-50'
                 )}>
                   {gymDone ? '✓' : '💪'}{isRest ? ` ${gymLabel}` : ''}
                 </span>
@@ -798,8 +806,8 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
         <span className="text-4xl">😴</span>
         <div>
-          <p className="text-lg font-bold text-gray-700">Día de descanso</p>
-          <p className="text-sm text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
+          <p className="text-[18px] font-bold text-gray-700">Día de descanso</p>
+          <p className="text-[12px] text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
         </div>
       </div>
     )
@@ -826,38 +834,34 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
         <div className="flex-1 p-6 space-y-4">
 
           {/* Title */}
-          <div className="flex items-start gap-3">
-            <span className="text-3xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
-            <div className="flex-1">
-              <h3 className="text-2xl font-black text-gray-900 leading-tight">
-                {SESSION_LABELS[session.type] ?? session.type}
-              </h3>
-              <div className="flex items-center gap-2 mt-1.5">
-                {isToday && (
-                  <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
-                    HOY
-                  </span>
-                )}
-                {logDone && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600">
-                    <CheckCircle2 size={11} /> Completada
-                  </span>
-                )}
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[22px]">{SESSION_ICONS[session.type] ?? '🏅'}</span>
+            <h3 className="text-[22px] font-black text-gray-900 leading-tight">
+              {SESSION_LABELS[session.type] ?? session.type}
+            </h3>
+            {isToday && (
+              <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
+                HOY
+              </span>
+            )}
+            {logDone && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600">
+                <CheckCircle2 size={11} /> Completada
+              </span>
+            )}
           </div>
 
           {/* Badges */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
+            <span className="text-[12px] font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
               {session.durationMin} min
             </span>
             {showZone && !isGym && (
-              <span className="text-sm font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">
+              <span className="text-[12px] font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">
                 Zona {session.zoneTarget}
               </span>
             )}
-            <span className={cn('text-sm font-semibold px-3 py-1.5 rounded-full border', badge.bg)}>
+            <span className={cn('text-[12px] font-semibold px-3 py-1.5 rounded-full border', badge.bg)}>
               {badge.label}
             </span>
           </div>
@@ -879,18 +883,18 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
                       {/* Zone dot + label */}
                       <div className="flex items-center gap-1 shrink-0 pt-1">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-[10px] font-bold w-5 leading-none" style={{ color }}>
+                        <span className="text-[11px] font-bold w-5 leading-none" style={{ color }}>
                           {zone ?? ''}
                         </span>
                       </div>
                       {/* Duration */}
                       {durationMin != null && (
-                        <span className="text-sm font-bold text-gray-800 shrink-0 w-12 pt-px">
+                        <span className="text-[12px] font-bold text-gray-800 shrink-0 w-12 pt-px">
                           {durationMin} min
                         </span>
                       )}
                       {/* Description */}
-                      <p className="text-sm text-gray-600 leading-relaxed flex-1">{text}</p>
+                      <p className="text-[12px] text-gray-600 leading-relaxed flex-1">{text}</p>
                     </div>
                   )
                 })}
@@ -904,28 +908,28 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
               <>
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
                   <CheckCircle2 size={16} className="text-green-500" />
-                  <span className="text-sm font-semibold text-green-700">Completada</span>
+                  <span className="text-[13px] font-semibold text-green-700">Completada</span>
                 </div>
                 <button
                   onClick={() => setShowEdit(true)}
-                  className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2.5 border border-gray-200 text-gray-600 text-[13px] font-medium rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  Editar ✏️
+                  Editar sesión ✏️
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => setShowModal(true)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#ea580c] hover:opacity-90 text-white text-sm font-bold px-5 py-3 rounded-xl transition-opacity"
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#ea580c] hover:opacity-90 text-white text-[14px] font-bold px-4 py-3 rounded-xl transition-opacity whitespace-nowrap"
                 >
                   Registrar sesión →
                 </button>
                 <button
                   onClick={() => setShowEdit(true)}
-                  className="px-4 py-3 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  className="px-4 py-3 border border-gray-200 text-gray-600 text-[13px] font-medium rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
                 >
-                  Editar ✏️
+                  Editar sesión ✏️
                 </button>
               </>
             )}
@@ -965,35 +969,38 @@ function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
 
 function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } }) {
   const macros = [
-    { label: 'Proteína', value: nt.proteinG, colorVal: 'text-blue-600',   bg: 'bg-blue-50'   },
-    { label: 'Carbos',   value: nt.carbsG,   colorVal: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Grasas',   value: nt.fatG,     colorVal: 'text-green-600',  bg: 'bg-green-50'  },
+    { label: 'Proteína', value: nt.proteinG, bar: 'bg-blue-500',    labelColor: 'text-blue-600'   },
+    { label: 'Carbos',   value: nt.carbsG,   bar: 'bg-[#ea580c]',   labelColor: 'text-[#ea580c]'  },
+    { label: 'Grasas',   value: nt.fatG,     bar: 'bg-green-500',   labelColor: 'text-green-600'  },
   ]
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-2 h-2 rounded-full bg-green-400" />
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Plan nutricional del día
-        </span>
-      </div>
-      <div className="flex items-end gap-5">
-        <div className="shrink-0">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-4xl font-black text-[#ea580c] leading-none">
-              {nt.kcal.toLocaleString('es')}
-            </span>
-            <span className="text-sm font-medium text-gray-400">kcal</span>
-          </div>
-          <p className="text-xs text-gray-400 mt-1">{nt.label}</p>
-        </div>
-        <div className="flex gap-3 flex-1">
-          {macros.map(m => (
-            <div key={m.label} className={cn('flex-1 rounded-xl px-3 py-2.5 text-center', m.bg)}>
-              <p className="text-[10px] text-gray-500 mb-1">{m.label}</p>
-              <p className={cn('text-lg font-black', m.colorVal)}>{m.value} g</p>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex">
+        <div className="w-1 shrink-0 bg-green-400" />
+        <div className="flex-1 p-5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+            Nutrición hoy
+          </p>
+          <div className="flex items-end gap-4">
+            <div className="shrink-0">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[32px] font-black text-[#ea580c] leading-none">
+                  {nt.kcal.toLocaleString('es')}
+                </span>
+                <span className="text-[13px] font-medium text-gray-400">kcal</span>
+              </div>
+              <p className="text-[12px] text-gray-400 mt-1">{nt.label}</p>
             </div>
-          ))}
+            <div className="flex gap-2 flex-1 min-w-0">
+              {macros.map(m => (
+                <div key={m.label} className="flex-1 min-w-0 bg-green-50/50 rounded-xl px-2 py-2.5 text-center">
+                  <p className={cn('text-[10px] font-medium mb-1 truncate', m.labelColor)}>{m.label}</p>
+                  <p className="text-base lg:text-lg font-black text-gray-900 whitespace-nowrap">{m.value} g</p>
+                  <div className={cn('h-0.5 rounded-full mt-2', m.bar)} />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1005,23 +1012,28 @@ function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: n
 function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
   completed: number; total: number; volumeLabel: string; adherencePct: number | null; isGym: boolean
 }) {
+  const belowTarget = adherencePct !== null && adherencePct < 80
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {[
-        { label: 'Completadas',               value: `${completed} / ${total}`, sub: 'sesiones',    accent: false },
-        { label: isGym ? 'Vol. entren.' : 'Volumen', value: volumeLabel,        sub: 'esta semana', accent: false },
-        { label: 'Adherencia',                  value: adherencePct !== null ? `${adherencePct}%` : '—', sub: 'esta semana', accent: true  },
-      ].map((kpi, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">{kpi.label}</p>
-          <p className={cn('text-2xl font-black leading-none',
-            kpi.accent ? 'text-[#ea580c]' : 'text-gray-900'
-          )}>
-            {kpi.value}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-1.5">{kpi.sub}</p>
-        </div>
-      ))}
+    <div className="grid grid-cols-3 gap-2">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Completadas</p>
+        <p className="text-[20px] font-black leading-none text-gray-900">{completed}/{total}</p>
+        <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">sesiones</p>
+      </div>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Volumen</p>
+        <p className="text-[20px] font-black leading-none text-gray-900">{volumeLabel}</p>
+        <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">esta semana</p>
+      </div>
+      <div className={cn('bg-white rounded-xl shadow-sm p-3', belowTarget ? 'border-2 border-[#ea580c]/30' : 'border border-gray-100')}>
+        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Adherencia</p>
+        <p className="text-[20px] font-black leading-none text-[#ea580c]">
+          {adherencePct !== null ? `${adherencePct}%` : '—'}
+        </p>
+        <p className={cn('text-[10px] mt-1 whitespace-nowrap', belowTarget ? 'text-red-500' : 'text-gray-400')}>
+          {belowTarget ? '↓ meta 80%' : 'esta semana'}
+        </p>
+      </div>
     </div>
   )
 }
@@ -1047,8 +1059,8 @@ function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-gray-900">Progreso del plan</span>
-        <span className="text-xs text-gray-400">Sem. {currentWeekNum}/{totalWeeks} · {pct}%</span>
+        <span className="text-[12px] font-bold text-gray-900">Progreso del plan</span>
+        <span className="text-[11px] text-gray-400">Sem. {currentWeekNum}/{totalWeeks} · {pct}%</span>
       </div>
       <div className="flex gap-1.5">
         {phaseCounts.map(({ phase, count }, idx) => {
@@ -1065,7 +1077,7 @@ function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, 
                            'bg-gray-100 text-gray-400'
               )}
             >
-              <span className="text-[10px] font-bold truncate block px-1">
+              <span className="text-[9px] font-bold truncate block px-1">
                 {isDone ? '✓ ' : ''}{(isGymPlan ? PHASE_DISPLAY_GYM : PHASE_DISPLAY)[phase] ?? phase}
               </span>
             </div>
@@ -1111,20 +1123,20 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-gray-900">Historial de adherencia</span>
-        <span className="text-xs text-gray-400">{avgPct !== null ? `Promedio histórico ${avgPct}%` : 'Sin datos históricos'}</span>
+        <span className="text-[12px] font-bold text-gray-900">Adherencia semanal</span>
+        <span className="text-[11px] text-gray-400">{avgPct !== null ? `Promedio ${avgPct}%` : ''}</span>
       </div>
-      <div className="flex items-end gap-2 h-14">
+      <div className="flex items-end gap-2 h-16">
         {slots.map(({ weekNum, pct, isCurrent, isFuture }) => (
-          <div key={weekNum} className="flex-1 flex flex-col items-center gap-1">
+          <div key={weekNum} className="flex-1 flex flex-col items-center gap-1.5">
             <div
               className="w-full rounded-md transition-all duration-500"
               style={{
-                height: isFuture || pct === null ? '4px' : pct === 0 ? '3px' : `${Math.max(8, pct * 0.52)}px`,
+                height: isFuture || pct === null ? '6px' : pct === 0 ? '4px' : `${Math.max(12, pct * 0.56)}px`,
                 backgroundColor: isFuture || pct === null ? '#e5e7eb' : pct === 0 ? '#d1d5db' : isCurrent ? '#ea580c' : '#3b82f6',
               }}
             />
-            <span className="text-[9px] text-gray-400">S{weekNum}</span>
+            <span className="text-[10px] text-gray-400">S{weekNum}</span>
           </div>
         ))}
       </div>
@@ -1140,34 +1152,42 @@ function BodyCompositionCard({ weightData }: {
   if (!weightData?.currentKg) return null
   const { currentKg, goalKg, progressPct, weeklyChange } = weightData
   const delta = goalKg ? Math.round((currentKg - goalKg) * 10) / 10 : null
-  const isOnTrack = delta !== null && delta < 0 && weeklyChange !== null && weeklyChange < 0
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-bold text-gray-900">Composición corporal</span>
-        {isOnTrack && (
+        <span className="text-[12px] font-bold text-gray-900">Composición corporal</span>
+        {weeklyChange !== null && weeklyChange < 0 && (
           <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-            ↓ {Math.abs(weeklyChange!)} kg/sem · ritmo ideal
+            ↓ {Math.abs(weeklyChange)} kg/sem · ritmo ideal
           </span>
         )}
       </div>
 
       <div className="flex items-baseline gap-2 mb-3">
-        <span className="text-2xl font-black text-gray-900">{currentKg} kg</span>
-        {goalKg && <span className="text-sm text-gray-400">→ meta {goalKg} kg</span>}
+        <span className="text-[20px] font-black text-gray-900">{currentKg} kg</span>
+        {goalKg && <span className="text-[13px] text-gray-400">→ meta {goalKg} kg</span>}
       </div>
 
-      {goalKg && (
-        <p className="text-[10px] text-gray-400 mt-1">
-          🎯 Meta: {goalKg} kg
-          {delta !== null && (
-            <span className="text-gray-500 ml-1">· {delta > 0 ? '+' : ''}{delta} kg restantes</span>
-          )}
-          {weeklyChange !== null && weeklyChange < 0 && (
-            <span className="text-green-600 ml-1 font-medium">· ✓ vas bien</span>
-          )}
-        </p>
+      {/* Progress bar */}
+      {goalKg && progressPct !== null && (
+        <div className="mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400 shrink-0">{Math.round(goalKg + (currentKg - goalKg))} kg</span>
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#3b82f6] rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, progressPct)}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-400 shrink-0">{progressPct}%</span>
+            <span className="text-[10px] text-gray-500 font-medium shrink-0">{delta !== null ? `${delta > 0 ? '+' : ''}${delta} kg` : ''}</span>
+          </div>
+        </div>
+      )}
+
+      {goalKg && weeklyChange !== null && weeklyChange < 0 && (
+        <p className="text-[10px] text-green-600 font-medium">✓ vas bien</p>
       )}
     </div>
   )
@@ -1226,7 +1246,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
 
   const selDateObj = new Date(weekMonday.getTime() + (selectedDow - 1) * 86400000)
   const selDayLabel = `${WEEK_DAYS_SHORT[selectedDow - 1]} ${selDateObj.getDate()}`
-  const weekLabel = `Semana ${selectedWeekNum} · ${formatWeekRange(weekMonday)}`
+  const weekLabel = formatWeekRange(weekMonday)
 
   const selectedSession = useMemo(() => {
     const s = week?.sessions.find(s => s.dayOfWeek === selectedDow) ?? null
@@ -1256,46 +1276,46 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
     <div className="px-4 py-6 md:px-8 max-w-7xl mx-auto">
 
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
-            Mi Plan de Entrenamiento
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
+            Mi Plan
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">Plan {formatPlanName(plan.name)} · {plan.totalWeeks} semanas</p>
+          <p className="text-[12px] text-gray-400 mt-0.5">Plan {formatPlanName(plan.name)} · {plan.totalWeeks} semanas</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2">
+          {!isCurrentWeek && (
+            <button
+              onClick={() => { setSelectedWeekNum(plan.currentWeek); setSelectedDow(todayDow) }}
+              className="text-[12px] font-bold text-[#ea580c] hover:text-[#c2410c] transition-colors whitespace-nowrap"
+            >
+              Hoy
+            </button>
+          )}
+          <div className="flex items-center bg-[#f1f5f9] rounded-[10px] overflow-hidden">
             <button
               onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
               disabled={selectedWeekNum <= 1}
-              className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+              className="w-8 h-8 flex items-center justify-center bg-white rounded-lg mx-1 text-[14px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors"
             >
-              <ChevronLeft size={16} className="text-gray-500" />
+              ←
             </button>
-            <span className="px-4 text-sm font-semibold text-gray-700 whitespace-nowrap">
+            <span className="px-4 text-[13px] font-semibold text-[#1e3a5f] whitespace-nowrap">
               {weekLabel}
             </span>
             <button
               onClick={() => { setSelectedWeekNum(w => w + 1); setSelectedDow(1) }}
               disabled={selectedWeekNum >= plan.totalWeeks}
-              className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+              className="w-8 h-8 flex items-center justify-center bg-white rounded-lg mx-1 text-[14px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors"
             >
-              <ChevronRight size={16} className="text-gray-500" />
+              →
             </button>
           </div>
+        </div>
 
-          <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
-            {realCurrentPhase} · Semana {plan.currentWeek}/{plan.totalWeeks}
-          </div>
-
-          <button
-            onClick={() => window.open(`/api/plan/week-print?week=${selectedWeekNum}`, '_blank')}
-            title="Descargar semana como PDF"
-            className="hidden md:flex items-center gap-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
-          >
-            ⬇ PDF
-          </button>
+        <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-3.5 py-1.5 rounded-[20px] text-[11px] font-semibold whitespace-nowrap">
+          {realCurrentPhase} · {plan.currentWeek} / {plan.totalWeeks}
         </div>
       </div>
 
@@ -1314,12 +1334,12 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
       />
 
       {/* ── Two-column layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-5">
 
         {/* Left (3/5) */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="xl:col-span-3 space-y-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            Sesión seleccionada — {selDayLabel}
+            {selDayLabel} · Sesión del día
           </p>
 
           {selectedSession ? (
@@ -1336,16 +1356,16 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
               <span className="text-4xl">📋</span>
               <div>
-                <p className="text-lg font-bold text-gray-700">Semana sin sesiones definidas</p>
-                <p className="text-sm text-gray-400 mt-0.5">Tu coach aún no ha planificado las sesiones de esta semana</p>
+                <p className="text-[18px] font-bold text-gray-700">Semana sin sesiones definidas</p>
+                <p className="text-[12px] text-gray-400 mt-0.5">Tu coach aún no ha planificado las sesiones de esta semana</p>
               </div>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
               <span className="text-4xl">😴</span>
               <div>
-                <p className="text-lg font-bold text-gray-700">Día de descanso</p>
-                <p className="text-sm text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
+                <p className="text-[18px] font-bold text-gray-700">Día de descanso</p>
+                <p className="text-[12px] text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
               </div>
             </div>
           )}
@@ -1354,9 +1374,9 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
         </div>
 
         {/* Right (2/5) */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            Semana en números
+            Esta semana
           </p>
 
           <KPICards

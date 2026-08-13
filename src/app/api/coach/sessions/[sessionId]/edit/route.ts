@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getSessionIntensity } from '@/lib/plan/intensity'
+import { createNotification } from '@/infrastructure/db/notification'
 
 const VALID_TYPES = [
   'RODAJE_Z2', 'FARTLEK', 'TEMPO', 'INTERVALOS', 'TIRADA_LARGA',
@@ -69,6 +70,15 @@ export async function PATCH(
     where: { id: sessionId },
     data,
   })
+
+  // PLT-11: notificar al atleta que su plan fue modificado
+  createNotification(
+    athleteId,
+    'PLAN_ACTUALIZADO',
+    'Tu plan fue actualizado',
+    'Tu coach modificó una sesión de tu plan de entrenamiento.',
+    { metadata: { sessionId } },
+  ).catch(() => {})
 
   return NextResponse.json({ ok: true, session: updated })
 }

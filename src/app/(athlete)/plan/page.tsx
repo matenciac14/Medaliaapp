@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db/prisma'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
 import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
-import PlanCalendarView from './_components/PlanCalendarView'
-import PlanCompletionCard from '../_components/PlanCompletionCard'
+import PlanEmptyClient from './_components/PlanEmptyClient'
+import PlanCompletedClient from './_components/PlanCompletedClient'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { selectActivePlan } from '@/lib/plan/active-plan'
@@ -38,49 +38,7 @@ export default async function PlanPage() {
 
       const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
 
-      // Sin plan activo — sin coach asignado
-      return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-6">
-          <div className="text-5xl">{isRunner ? '🏃' : '🎯'}</div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Todavía no tenés un plan activo
-            </h2>
-            <p className="text-gray-500 text-sm max-w-sm mx-auto">
-              {isRunner
-                ? 'Un entrenador te diseña un plan periodizado con zonas Karvonen, nutrición ajustada por sesión y seguimiento semanal.'
-                : 'Un entrenador te asigna un plan de fuerza o composición corporal adaptado a tus objetivos y seguimiento personalizado.'}
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-left">
-            {[
-              { icon: '📊', label: 'Plan a medida', desc: 'Diseñado para tu fisiología y objetivos' },
-              { icon: '❤️', label: 'Seguimiento real', desc: 'Tu coach ajusta el plan cada semana' },
-              { icon: '💬', label: 'Comunicación directa', desc: 'Notas y feedback por sesión' },
-            ].map((f) => (
-              <div key={f.label} className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xl mb-1">{f.icon}</p>
-                <p className="text-xs font-semibold text-gray-800">{f.label}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-col gap-3">
-            <a
-              href="/coaches"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1e3a5f' }}
-            >
-              Encontrar mi entrenador →
-            </a>
-            <a href="/dashboard" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              Volver al dashboard
-            </a>
-          </div>
-        </div>
-      </div>
-      )
+      return <PlanEmptyClient isB2B={session.user.isB2B ?? false} showGymBuilder={!isRunner} />
     }
   }
 
@@ -90,9 +48,10 @@ export default async function PlanPage() {
   let weeks: PlanClientWeek[] = []
   let nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null = null
   let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
+  let profileData: { weightKg: number | null; weightGoalKg: number | null; sport: string | null } | null = null
 
   try {
-    const [activePlansData, nutritionPlanData, profileData, checkIns, oldestCheckIn] = await Promise.all([
+    const [activePlansData, nutritionPlanData, profileDataRaw, checkIns, oldestCheckIn] = await Promise.all([
       prisma.trainingPlan.findMany({
         where: { userId, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
@@ -111,7 +70,7 @@ export default async function PlanPage() {
       prisma.nutritionPlan.findUnique({ where: { userId } }),
       prisma.healthProfile.findUnique({
         where: { userId },
-        select: { weightKg: true, weightGoalKg: true },
+        select: { weightKg: true, weightGoalKg: true, sport: true },
       }),
       prisma.weeklyCheckIn.findMany({
         where: { userId },
@@ -125,6 +84,8 @@ export default async function PlanPage() {
         select: { weightKg: true },
       }),
     ])
+
+    profileData = profileDataRaw ?? null
 
     // Seleccionar el plan con más logs; desactivar duplicados en background
     const { winner: activePlanData, loserIds: _planLoserIds } = selectActivePlan(activePlansData)
@@ -219,14 +180,28 @@ export default async function PlanPage() {
 
   if (!plan) {
     const isB2B = session.user.isB2B ?? false
+    const planPageIsRunner = profileData?.sport === 'RUNNING' || profileData?.sport === 'BOTH'
 
-    // Buscar último plan completado para mostrar celebración en lugar de pantalla vacía
+    // Buscar último plan completado para mostrar celebración
     const lastCompleted = await prisma.trainingPlan.findFirst({
       where: { userId: session.user.id, status: 'COMPLETED' },
       orderBy: { endDate: 'desc' },
       select: {
         endDate: true, name: true, totalWeeks: true,
-        weeks: { select: { sessions: { select: { log: { select: { id: true } } } } } },
+        weeks: {
+          orderBy: { weekNumber: 'asc' },
+          select: {
+            weekNumber: true, phase: true,
+            sessions: {
+              orderBy: { dayOfWeek: 'asc' },
+              select: {
+                dayOfWeek: true, type: true, detailText: true,
+                durationMin: true, zoneTarget: true,
+                log: { select: { id: true } },
+              },
+            },
+          },
+        },
       },
     }).catch(() => null)
 
@@ -236,76 +211,45 @@ export default async function PlanPage() {
       const recoveryDaysSinceEnd = Math.floor(
         (Date.now() - new Date(lastCompleted.endDate).getTime()) / 86_400_000
       )
+      const completedAdherencePct = allSessions.length > 0
+        ? Math.round((sessionsLogged / allSessions.length) * 100)
+        : 0
+
+      // Last week's sessions for the CalendarStrip
+      const lastWeek = lastCompleted.weeks[lastCompleted.weeks.length - 1]
+      const lastWeekSessions = (lastWeek?.sessions ?? []).map(s => ({
+        dayOfWeek: s.dayOfWeek,
+        type: s.type,
+        label: s.detailText?.slice(0, 25) ?? s.type,
+        durationMin: s.durationMin,
+        zone: s.zoneTarget ?? '',
+        done: !!s.log,
+      }))
+
+      // Phase progression
+      const phases = lastCompleted.weeks.map(w => w.phase).filter(Boolean) as string[]
+      const uniquePhases = [...new Set(phases)]
+
       return (
-        <div className="px-4 py-6 md:px-8 md:py-8 max-w-md mx-auto space-y-4">
-          <PlanCompletionCard
-            planName={lastCompleted.name}
-            totalWeeks={lastCompleted.totalWeeks}
-            sessionsLogged={sessionsLogged}
-            sessionsTotal={allSessions.length}
-            recoveryDaysSinceEnd={recoveryDaysSinceEnd}
-            isB2B={isB2B}
-          />
-        </div>
+        <PlanCompletedClient
+          isB2B={isB2B}
+          planName={lastCompleted.name}
+          totalWeeks={lastCompleted.totalWeeks}
+          sessionsLogged={sessionsLogged}
+          sessionsTotal={allSessions.length}
+          recoveryDaysSinceEnd={recoveryDaysSinceEnd}
+          completedAdherencePct={completedAdherencePct}
+          lastWeekSessions={lastWeekSessions}
+          phases={uniquePhases}
+          currentWeek={lastCompleted.totalWeeks}
+        />
       )
     }
 
-    return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="text-5xl mb-4">📅</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Sin plan activo</h2>
-          <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-            {isB2B
-              ? 'Tu coach aún no ha asignado un plan de entrenamiento.'
-              : 'Empieza a entrenar o consigue un plan personalizado con un entrenador.'}
-          </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <a
-              href="/gym/builder"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1e3a5f' }}
-            >
-              Crear mi rutina →
-            </a>
-            <a
-              href="/log"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Sesión libre
-            </a>
-            {!isB2B && (
-              <a
-                href="/coaches"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Buscar entrenador
-              </a>
-            )}
-            {isB2B && (
-              <a
-                href="/dashboard"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Volver al inicio
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-    )
+    return <PlanEmptyClient isB2B={isB2B} showGymBuilder={!planPageIsRunner} />
   }
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
-      {/* ARCH-03: Vista calendario como navegación principal */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Calendario</h2>
-        <PlanCalendarView />
-      </div>
-
-      {/* Vista semanal detallada (detalle del plan) */}
-      <PlanClient plan={plan} weeks={weeks} nutritionTarget={nutritionTarget} weightData={weightData} />
-    </div>
+    <PlanClient plan={plan} weeks={weeks} nutritionTarget={nutritionTarget} weightData={weightData} />
   )
 }

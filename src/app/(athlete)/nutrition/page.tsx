@@ -7,15 +7,18 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
-import FoodSetupFlow from './_components/FoodSetupFlow'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
-import NutritionAdjustmentCard from './_components/NutritionAdjustmentCard'
 import CoachNutritionProposalCard from './_components/CoachNutritionProposalCard'
 import NutritionInitClient from './_components/NutritionInitClient'
 import WeeklyNutritionBars from './_components/WeeklyNutritionBars'
 import WeeklyMenuStrip from './_components/WeeklyMenuStrip'
+import ActivityCard from './_components/ActivityCard'
+import MacroTargetCards from './_components/MacroTargetCards'
+import HydrationWidget from './_components/HydrationWidget'
+import MealSummaryCards from './_components/MealSummaryCards'
+import TipCard from './_components/TipCard'
 import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
 
 export default async function NutritionPage() {
@@ -48,14 +51,21 @@ export default async function NutritionPage() {
   weekStart.setDate(weekStart.getDate() - 6) // ultimos 7 dias
   weekStart.setHours(0, 0, 0, 0)
 
+  // Semana actual Lun–Dom para PlannedMeals
+  const mondayThisWeek = new Date(todayDate)
+  const todayDowNum = todayDate.getDay() === 0 ? 7 : todayDate.getDay() // 1=Lun..7=Dom
+  mondayThisWeek.setDate(todayDate.getDate() - (todayDowNum - 1))
+  mondayThisWeek.setHours(0, 0, 0, 0)
+  const sundayThisWeek = new Date(mondayThisWeek)
+  sundayThisWeek.setDate(mondayThisWeek.getDate() + 6)
+  sundayThisWeek.setHours(23, 59, 59, 999)
+
   const proposalRepo = new CoachNutritionProposalRepository(prisma)
 
   // Cargar datos en paralelo — una sola ronda
   const [
-    pendingAdjustment,
     nutritionPlanRaw,
     mealPlan,
-    foodProfile,
     todaySession,
     gymToday,
     healthProfile,
@@ -65,31 +75,18 @@ export default async function NutritionPage() {
     currentPlanWeek,
     assignedNutritionPlan,
     weekSessions,
+    athleteTemplate,
+    plannedMealsThisWeek,
   ] = await Promise.all([
-    prisma.pendingNutritionAdjustment.findFirst({
-      where: { userId, status: 'PENDING', date: { gte: todayStart, lt: tomorrow } },
-      select: {
-        id: true,
-        deltaKcal: true,
-        deltaCarbsG: true,
-        plannedKcal: true,
-        adjustedKcal: true,
-        plannedCarbsG: true,
-        adjustedCarbsG: true,
-        plannedIntensity: true,
-        actualIntensity: true,
-      },
-    }),
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
-    prisma.foodProfile.findUnique({ where: { userId } }),
     activePlan && currentWeek
       ? prisma.plannedSession.findFirst({
           where: {
             week: { planId: activePlan.id, weekNumber: currentWeek },
             dayOfWeek: todayDow,
           },
-          select: { intensity: true },
+          select: { intensity: true, type: true, durationMin: true },
         })
       : Promise.resolve(null),
     prisma.assignedWorkout.findFirst({
@@ -162,6 +159,24 @@ export default async function NutritionPage() {
           select: { dayOfWeek: true, intensity: true, type: true },
         })
       : Promise.resolve([]),
+    // NUT-FLOW-01: plantilla de nutrición propia del atleta B2C
+    prisma.nutritionTemplate.findFirst({
+      where: { athleteId: userId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true },
+    }),
+    // NUT-FLOW-01 + NUT-DASH-04: PlannedMeals semana con datos de alimento
+    prisma.plannedMeal.findMany({
+      where: { userId, date: { gte: mondayThisWeek, lte: sundayThisWeek } },
+      select: {
+        id: true,
+        mealType: true,
+        grams: true,
+        date: true,
+        food: { select: { name: true, kcalPer100g: true } },
+      },
+      orderBy: { date: 'asc' },
+    }),
   ])
 
   // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
@@ -186,6 +201,7 @@ export default async function NutritionPage() {
   }
   const badge = DAY_TYPE_LABELS[todayDayType]
 
+  // MealPlan (parsedMealPlan) is deprecated fallback — NutritionTemplate is the primary source
   const parsedMealPlan = mealPlan ? parseMealPlanData(mealPlan.data) : null
 
   // Transformar plantilla del coach al formato canónico MealPlanData
@@ -219,37 +235,115 @@ export default async function NutritionPage() {
     : null
 
   const hasMealPlan = !!(assignedMealPlan ?? parsedMealPlan)
-  const hasFoodProfile = !!foodProfile
 
-  // Adherencia semanal — días donde kcal loggeada >= target * 0.9
+  // UX-NUT-01: cuando el atleta B2B tiene plan del coach pero no tiene NutritionPlan,
+  // calcular targets desde los ítems de la plantilla para evitar macros en 0.
+  function sumTemplateDayMacros(plan: NonNullable<typeof assignedNutritionPlan>, dbDayType: 'HARD' | 'EASY' | 'REST') {
+    const day = plan.template.days.find((d) => d.dayType === dbDayType)
+    if (!day) return { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+    let kcal = 0, proteinG = 0, carbsG = 0, fatG = 0
+    for (const m of day.meals) {
+      for (const i of m.items) {
+        kcal += i.kcal; proteinG += i.proteinG; carbsG += i.carbsG; fatG += i.fatG
+      }
+    }
+    return { kcal, proteinG, carbsG, fatG }
+  }
+  const syntheticNutritionPlan = !nutritionPlan && assignedNutritionPlan
+    ? (() => {
+        const hard = sumTemplateDayMacros(assignedNutritionPlan, 'HARD')
+        const easy = sumTemplateDayMacros(assignedNutritionPlan, 'EASY')
+        const rest = sumTemplateDayMacros(assignedNutritionPlan, 'REST')
+        return {
+          tdee: easy.kcal,
+          targetKcalHard: hard.kcal,
+          targetKcalEasy: easy.kcal,
+          targetKcalRest: rest.kcal,
+          proteinG: easy.proteinG,
+          carbsHardG: hard.carbsG,
+          carbsEasyG: easy.carbsG,
+          fatG: easy.fatG,
+        }
+      })()
+    : null
+  const effectiveNutritionPlan = nutritionPlan ?? syntheticNutritionPlan
+  const hasPlannedMealsThisWeek = plannedMealsThisWeek.length > 0
+
+  // NUT-DASH-04: comidas de HOY (filtramos del array semanal ya cargado)
+  const todayStr = todayDate.toISOString().split('T')[0]
+  const todayPlannedMeals = plannedMealsThisWeek.filter(m => {
+    const d = m.date instanceof Date ? m.date : new Date(m.date)
+    return d.toISOString().split('T')[0] === todayStr
+  })
+
+  // Adherencia semanal — días donde kcal loggeada >= target * 0.9 (target POR DÍA según intensidad)
   let weeklyAdherence: { daysHit: number; totalDays: number } | null = null
   const kcalByDay: Record<string, number> = {}
-  if (nutritionPlanRaw && weekFoodLogs.length > 0) {
-    const targetKcal = nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0
-    if (targetKcal > 0) {
-      for (const log of weekFoodLogs) {
-        const day = log.date.toISOString().slice(0, 10)
-        const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
-        kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
-      }
-      const loggedDays = Object.values(kcalByDay)
-      const daysHit = loggedDays.filter((k) => k >= targetKcal * 0.9).length
-      weeklyAdherence = { daysHit, totalDays: loggedDays.length }
+  if (effectiveNutritionPlan && weekFoodLogs.length > 0) {
+    for (const log of weekFoodLogs) {
+      const day = log.date.toISOString().slice(0, 10)
+      const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
+      kcalByDay[day] = (kcalByDay[day] ?? 0) + kcal
     }
+
+    // Mapear intensidad por fecha usando las sesiones de la semana
+    const intensityByDateKey = new Map<string, string>()
+    if (activePlan && currentWeek) {
+      // weekSessions ya tiene dayOfWeek + intensity para la semana actual
+      // Mapear dayOfWeek a fecha real
+      const mondayRef = new Date(todayDate)
+      const todayDowForRef = todayDate.getDay() === 0 ? 7 : todayDate.getDay()
+      mondayRef.setDate(todayDate.getDate() - (todayDowForRef - 1))
+      mondayRef.setHours(0, 0, 0, 0)
+      for (const s of weekSessions) {
+        const sessionDate = new Date(mondayRef)
+        sessionDate.setDate(mondayRef.getDate() + s.dayOfWeek)
+        const key = sessionDate.toISOString().slice(0, 10)
+        intensityByDateKey.set(key, s.intensity ?? 'REST')
+      }
+    }
+
+    let daysHit = 0
+    let totalDays = 0
+    for (const [day, kcal] of Object.entries(kcalByDay)) {
+      const intensity = intensityByDateKey.get(day) ?? 'REST'
+      const target = getDailyNutritionTarget(intensity, effectiveNutritionPlan)
+      if (target.kcal > 0) {
+        totalDays++
+        if (kcal >= target.kcal * 0.9) daysHit++
+      }
+    }
+    if (totalDays > 0) weeklyAdherence = { daysHit, totalDays }
   }
 
-  // NUT-F-03: datos de barras de adherencia para los últimos 7 días
+  // NUT-F-03: datos de barras de adherencia para los últimos 7 días (target POR DÍA)
+  // Construir mapa de intensidad por fecha para los últimos 7 días
+  const intensityMapForBars = new Map<string, string>()
+  if (activePlan && currentWeek) {
+    const mondayRef = new Date(todayDate)
+    const todayDowForBars = todayDate.getDay() === 0 ? 7 : todayDate.getDay()
+    mondayRef.setDate(todayDate.getDate() - (todayDowForBars - 1))
+    mondayRef.setHours(0, 0, 0, 0)
+    for (const s of weekSessions) {
+      const sessionDate = new Date(mondayRef)
+      sessionDate.setDate(mondayRef.getDate() + s.dayOfWeek)
+      const key = sessionDate.toISOString().slice(0, 10)
+      intensityMapForBars.set(key, s.intensity ?? 'REST')
+    }
+  }
   const DOW_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  const targetKcalForBars = nutritionPlanRaw
-    ? (nutritionPlanRaw.targetKcalEasy ?? nutritionPlanRaw.targetKcalHard ?? 0)
-    : 0
   const weekBars = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayDate)
     d.setDate(d.getDate() - 6 + i)
     const key = d.toISOString().slice(0, 10)
     const kcal = kcalByDay[key] ?? null
-    const pct = (kcal !== null && targetKcalForBars > 0)
-      ? Math.round((kcal / targetKcalForBars) * 100)
+    const intensity = intensityMapForBars.get(key) ?? 'REST'
+    const dayTarget = effectiveNutritionPlan
+      ? getDailyNutritionTarget(intensity, effectiveNutritionPlan)
+      : null
+    const effectiveTargetKcal = dayTarget?.kcal ?? 0
+    const pct = (kcal !== null && effectiveTargetKcal > 0)
+      ? Math.round((kcal / effectiveTargetKcal) * 100)
       : null
     return {
       label: DOW_LABELS[d.getDay()],
@@ -301,7 +395,7 @@ export default async function NutritionPage() {
   // Targets del día — fuente única de verdad: getDailyNutritionTarget
   const todayIntensity = (todaySession?.intensity as string | null)
     ?? (hasGymSessionToday ? 'MODERATE' : null)
-  const nt = nutritionPlan ? getDailyNutritionTarget(todayIntensity, nutritionPlan) : null
+  const nt = effectiveNutritionPlan ? getDailyNutritionTarget(todayIntensity, effectiveNutritionPlan) : null
   const todayKcal    = nt?.kcal ?? 0
   const todayCarbs   = nt?.carbsG ?? 0
   const todayProtein = nt?.proteinG ?? 0
@@ -346,23 +440,30 @@ export default async function NutritionPage() {
         />
       ))}
 
-      {/* Ajuste nutricional pendiente */}
-      {pendingAdjustment && (
-        <NutritionAdjustmentCard
-          id={pendingAdjustment.id}
-          deltaKcal={pendingAdjustment.deltaKcal}
-          deltaCarbsG={pendingAdjustment.deltaCarbsG}
-          plannedKcal={pendingAdjustment.plannedKcal}
-          adjustedKcal={pendingAdjustment.adjustedKcal}
-          plannedCarbsG={pendingAdjustment.plannedCarbsG}
-          adjustedCarbsG={pendingAdjustment.adjustedCarbsG}
-          plannedIntensity={pendingAdjustment.plannedIntensity}
-          actualIntensity={pendingAdjustment.actualIntensity}
+      {/* DEPRECATED: NutritionAdjustmentCard removida — ajustes automáticos reemplazados por notificaciones informativas */}
+
+      {/* NUT-DASH-01 — Sesión del día */}
+      {(todaySession || hasGymSessionToday) && (
+        <ActivityCard
+          sessionType={todaySession?.type ?? null}
+          intensity={todaySession?.intensity ?? null}
+          durationMin={todaySession?.durationMin ?? null}
+          isGymDay={hasGymSessionToday}
+        />
+      )}
+
+      {/* NUT-DASH-02 — Targets del día (siempre visibles con plan nutricional) */}
+      {effectiveNutritionPlan && (todayKcal > 0 || todayProtein > 0) && (
+        <MacroTargetCards
+          kcal={todayKcal}
+          proteinG={todayProtein}
+          carbsG={todayCarbs}
+          fatG={todayFat}
         />
       )}
 
       {/* Tracking hero — Lo que comí hoy (primer elemento visible) */}
-      {nutritionPlan && allFoods.length > 0 && (
+      {effectiveNutritionPlan && allFoods.length > 0 && (
         <TrackingSection
           target={{
             kcal:     todayKcal,
@@ -375,7 +476,7 @@ export default async function NutritionPage() {
       )}
 
       {/* NUT-F-03 — Adherencia calórica semanal (barras) */}
-      {nutritionPlan && (
+      {effectiveNutritionPlan && (
         <WeeklyNutritionBars days={weekBars} />
       )}
 
@@ -388,7 +489,7 @@ export default async function NutritionPage() {
       )}
 
       {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}
-      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && nutritionPlan && (
+      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan && (
         <>
           {assignedNutritionPlan && (
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-800 font-medium">
@@ -397,18 +498,20 @@ export default async function NutritionPage() {
           )}
           <NutritionContent
             mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
-            nutritionPlan={nutritionPlan}
+            nutritionPlan={effectiveNutritionPlan}
             todayDayType={todayDayType}
           />
         </>
       )}
 
-      {/* Plan en DB pero datos inválidos — mostrar aviso con CTA a regenerar */}
+      {/* Plan en DB pero datos inválidos — CTA a recrear plantilla */}
       {mealPlan && !parsedMealPlan && nutritionPlan && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
           <p className="text-sm font-semibold text-yellow-800 mb-1">Tu plan de comidas necesita actualizarse</p>
-          <p className="text-xs text-yellow-600 mb-3">El formato del plan anterior no es compatible. Genera uno nuevo.</p>
-          <FoodSetupFlow hasFoodProfile={hasFoodProfile} allFoods={allFoods} />
+          <p className="text-xs text-yellow-600 mb-3">El formato anterior no es compatible. Crea una nueva plantilla.</p>
+          <Link href="/nutrition/builder" className="inline-block text-xs font-bold text-white bg-[#1e3a5f] px-4 py-2 rounded-lg hover:bg-[#162d4a] transition-colors">
+            Crear plantilla →
+          </Link>
         </div>
       )}
 
@@ -433,12 +536,61 @@ export default async function NutritionPage() {
             <p className="text-xs text-gray-400 mt-3">TDEE base: {nutritionPlan.tdee} kcal · Ajustado según intensidad del día</p>
           </div>
 
-          {/* Setup opcional */}
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-            <p className="text-sm font-semibold text-blue-800 mb-1">¿Quieres un plan de comidas detallado?</p>
-            <p className="text-xs text-blue-600 mb-3">Completa tu perfil alimenticio para recibir un plan con comidas específicas y suplementación.</p>
-            <FoodSetupFlow hasFoodProfile={hasFoodProfile} allFoods={allFoods} />
-          </div>
+          {/* NUT-FLOW-01 — CTA dinámico según estado del atleta B2C */}
+          {!assignedNutritionPlan && (
+            !athleteTemplate ? (
+              // (a) Sin plantilla → invitar a crear Constructor A
+              <div className="bg-[#1e3a5f]/4 border border-[#1e3a5f]/15 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-[#1e3a5f]">Configura tu plan de comidas</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Diseña tu menú tipo para días duros, fáciles y de descanso.</p>
+                </div>
+                <Link
+                  href="/nutrition/builder"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: '#1e3a5f' }}
+                >
+                  Crear plantilla →
+                </Link>
+              </div>
+            ) : !hasPlannedMealsThisWeek ? (
+              // (b) Con plantilla, sin plan esta semana → invitar a Constructor B
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-orange-800">Planifica esta semana</p>
+                  <p className="text-xs text-orange-600 mt-0.5">Tu plantilla <strong>{athleteTemplate.name}</strong> está lista — asigna comidas a cada día.</p>
+                </div>
+                <Link
+                  href={`/nutrition/builder/${athleteTemplate.id}`}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: '#ea580c' }}
+                >
+                  Planificar semana →
+                </Link>
+              </div>
+            ) : (
+              // (c) Con plan semanal activo → cards de hoy + CTA planificador
+              <>
+                {todayPlannedMeals.length > 0 ? (
+                  <MealSummaryCards meals={todayPlannedMeals} />
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">Tu plan semanal está activo</p>
+                      <p className="text-xs text-green-600 mt-0.5">{plannedMealsThisWeek.length} comidas planificadas esta semana — revisa o ajusta tu menú.</p>
+                    </div>
+                    <Link
+                      href="/nutrition/planner"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: '#22c35d' }}
+                    >
+                      Ver plan →
+                    </Link>
+                  </div>
+                )}
+              </>
+            )
+          )}
         </div>
       )}
 
@@ -451,8 +603,14 @@ export default async function NutritionPage() {
       {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
-      {/* Guía de alimentos — solo cuando hay nutritionPlan (evita mostrar targets en 0) */}
-      {allFoods.length > 0 && nutritionPlan && (
+      {/* NUT-DASH-06 — Consejo contextual según tipo de día */}
+      {effectiveNutritionPlan && todayDayType && <TipCard dayType={todayDayType} />}
+
+      {/* NUT-WATER-01 — Widget de hidratación */}
+      {effectiveNutritionPlan && <HydrationWidget />}
+
+      {/* Guía de alimentos — solo cuando hay effectiveNutritionPlan (evita mostrar targets en 0) */}
+      {allFoods.length > 0 && effectiveNutritionPlan && (
         <div className="pt-2">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-gray-200" />

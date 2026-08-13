@@ -8,6 +8,7 @@ import {
   type WeToExIdMap,
   type WeNameMap,
   type WeSetsCountMap,
+  type WeNameToWeIdMap,
   type MaxPerExercise,
   type MaxPerFreeExerciseName,
   type SetInput,
@@ -140,11 +141,63 @@ describe('computeProgressionUpdates', () => {
     expect(updates[0].suggestedNextWeightKg).toBe(97.5)
   })
 
-  it('ignores sets without workoutExerciseId', () => {
+  it('ignores sets without workoutExerciseId when no name map provided', () => {
     const sets: SetInput[] = [
       { exerciseName: 'Libre', setNumber: 1, weightKg: 50, repsCompleted: 10, completed: true },
     ]
     expect(computeProgressionUpdates(sets, weSetsCountMap)).toHaveLength(0)
+  })
+
+  // GYM-GAP-05: orphan sets (workoutExerciseId=null after template edit) recovered via name map
+  describe('with weNameToWeIdMap (orphan recovery)', () => {
+    const weNameToWeIdMap: WeNameToWeIdMap = new Map([['Sentadilla', 'we-1']])
+
+    it('recovers orphan set and computes progression when all sets completed', () => {
+      const sets: SetInput[] = [
+        { exerciseName: 'Sentadilla', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+        { exerciseName: 'Sentadilla', setNumber: 2, weightKg: 102, repsCompleted: 8, completed: true },
+        { exerciseName: 'Sentadilla', setNumber: 3, weightKg: 100, repsCompleted: 8, completed: true },
+      ]
+      const updates = computeProgressionUpdates(sets, weSetsCountMap, weNameToWeIdMap)
+      expect(updates).toHaveLength(1)
+      expect(updates[0].workoutExerciseId).toBe('we-1')
+      expect(updates[0].suggestedNextWeightKg).toBe(104.5)
+    })
+
+    it('recovers orphan set and suggests decrease when <60% completed', () => {
+      const sets: SetInput[] = [
+        { exerciseName: 'Sentadilla', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+        { exerciseName: 'Sentadilla', setNumber: 2, weightKg: 100, repsCompleted: 0, completed: false },
+        { exerciseName: 'Sentadilla', setNumber: 3, weightKg: 100, repsCompleted: 0, completed: false },
+      ]
+      const updates = computeProgressionUpdates(sets, weSetsCountMap, weNameToWeIdMap)
+      expect(updates).toHaveLength(1)
+      expect(updates[0].workoutExerciseId).toBe('we-1')
+      expect(updates[0].suggestedNextWeightKg).toBe(97.5)
+    })
+
+    it('ignores orphan set with unknown exerciseName', () => {
+      const sets: SetInput[] = [
+        { exerciseName: 'Ejercicio desconocido', setNumber: 1, weightKg: 80, repsCompleted: 8, completed: true },
+      ]
+      expect(computeProgressionUpdates(sets, weSetsCountMap, weNameToWeIdMap)).toHaveLength(0)
+    })
+
+    it('mixes orphan and non-orphan sets correctly', () => {
+      const mixedWeSetsCountMap: WeSetsCountMap = new Map([['we-1', 2], ['we-2', 2]])
+      const mixedNameMap: WeNameToWeIdMap = new Map([['Sentadilla', 'we-1']])
+      const sets: SetInput[] = [
+        // Non-orphan (has workoutExerciseId)
+        { workoutExerciseId: 'we-2', setNumber: 1, weightKg: 80, repsCompleted: 8, completed: true },
+        { workoutExerciseId: 'we-2', setNumber: 2, weightKg: 80, repsCompleted: 8, completed: true },
+        // Orphan (no workoutExerciseId, has exerciseName)
+        { exerciseName: 'Sentadilla', setNumber: 1, weightKg: 100, repsCompleted: 8, completed: true },
+        { exerciseName: 'Sentadilla', setNumber: 2, weightKg: 100, repsCompleted: 8, completed: true },
+      ]
+      const updates = computeProgressionUpdates(sets, mixedWeSetsCountMap, mixedNameMap)
+      expect(updates).toHaveLength(2)
+      expect(updates.map(u => u.workoutExerciseId).sort()).toEqual(['we-1', 'we-2'])
+    })
   })
 })
 

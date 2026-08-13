@@ -1,10 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 import { coachTierFee, coachTierFeeLabel, mrrAthletes as calcMrrAthletes, mrrCoaches as calcMrrCoaches, ATHLETE_PRO_PRICE_USD } from '@/domain/admin/finanzas'
 import type { CoachTier } from '@/domain/subscription/tier-features'
-
-function fmt(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
-}
+import { formatCurrency as fmt } from '@/lib/utils/format-currency'
 
 export default async function AdminFinanzasPage() {
   const now = new Date()

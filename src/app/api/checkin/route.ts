@@ -10,6 +10,7 @@ import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
 import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
 import { mapWebCheckinBody } from '@/lib/api/checkin-mapper'
+import { createNotification } from '@/infrastructure/db/notification'
 
 const checkInBodySchema = z.object({
   hardestRpe:            z.number().min(1).max(10).optional(),
@@ -100,6 +101,16 @@ export async function POST(req: NextRequest) {
       sendPlanUpdatedEmail(session.user.email, session.user.name, result.adjustments).catch(() => {})
     }
 
+    // PLT-11: notificar al atleta cuando el check-in ajustó sesiones de la próxima semana
+    if (result.sessionsAdjusted > 0) {
+      createNotification(
+        session.user.id,
+        'PLAN_ACTUALIZADO',
+        'Plan ajustado por tu check-in',
+        `Se ajustaron ${result.sessionsAdjusted} sesión${result.sessionsAdjusted > 1 ? 'es' : ''} de la próxima semana según tus señales de fatiga.`,
+      ).catch(() => {})
+    }
+
     // Notify coach (fire-and-forget, B2B athletes only)
     const athleteId = session.user.id
     const athleteName = session.user.name ?? ''
@@ -133,6 +144,8 @@ export async function POST(req: NextRequest) {
         recommendation: result.recommendation,
         adjustments: result.adjustments,
         triggers: result.triggers,
+        planChanges: result.planChanges,
+        nutritionChanges: result.nutritionChanges,
       },
       pendingSuggestions: result.pendingSuggestions,
       suggestions,

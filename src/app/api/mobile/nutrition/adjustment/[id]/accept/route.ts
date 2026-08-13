@@ -1,3 +1,5 @@
+// DEPRECATED: PendingNutritionAdjustment ya no se genera (NUT-15).
+// Endpoint conservado para procesar ajustes históricos pendientes.
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'

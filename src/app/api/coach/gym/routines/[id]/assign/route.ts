@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { createNotification } from '@/infrastructure/db/notification'
 
 interface AssignBody {
   athleteId: string
@@ -32,7 +33,7 @@ export async function POST(
   // Verify the coach owns this template
   const template = await prisma.workoutTemplate.findFirst({
     where: { id: templateId, coachId },
-    select: { id: true },
+    select: { id: true, name: true },
   })
 
   if (!template) {
@@ -78,6 +79,14 @@ export async function POST(
       },
     })
   })
+
+  // GYM-GAP-01: notify athlete that a new routine was assigned
+  createNotification(
+    athleteId,
+    'PLAN_ACTUALIZADO',
+    'Nueva rutina asignada',
+    `Tu coach te asignó la rutina "${template.name}". Ábrela en la sección Ejercicios.`,
+  ).catch(() => {})
 
   return NextResponse.json(assignment, { status: 201 })
 }

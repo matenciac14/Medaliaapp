@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   const tz = userRecord.timezone ?? 'America/Bogota'
   const todayDow = jsToOurDow(new Date(new Date().toLocaleString('en-US', { timeZone: tz })).getDay())
 
-  // Parallel: fetch active plan + assigned workout + coach relation
-  const [activePlan, assigned, coachRelation, plannedRunTodayRaw] = await Promise.all([
+  // Parallel: fetch active plan + assigned workout + coach relation + self-coach routine
+  const [activePlan, assigned, coachRelation, plannedRunTodayRaw, weeklyRoutine] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId: athleteId, status: 'ACTIVE' },
       select: { id: true, startDate: true },
@@ -65,6 +65,8 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
+    // GYM-GAP-06: self-coach B2C routine — used in free session fallback
+    prisma.weeklyRoutine.findUnique({ where: { userId: athleteId }, select: { days: true, daysPerWeek: true } }),
   ])
 
   const plannedRunToday = plannedRunTodayRaw?.weeks
@@ -124,7 +126,7 @@ export async function GET(req: NextRequest) {
         suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
         exercise: {
           id: we.exercise.id,
-          name: we.exercise.name,
+          name: we.exercise.nameEs ?? we.exercise.name,
           bodyPart: we.exercise.bodyPart,
           target: we.exercise.target,
           equipment: we.exercise.equipment,
@@ -216,7 +218,7 @@ export async function GET(req: NextRequest) {
             suggestedNextWeightKg: we.suggestedNextWeightKg ?? null,
             exercise: {
               id: we.exercise.id,
-              name: we.exercise.name,
+              name: we.exercise.nameEs ?? we.exercise.name,
               bodyPart: we.exercise.bodyPart,
               target: we.exercise.target,
               equipment: we.exercise.equipment,
@@ -241,14 +243,21 @@ export async function GET(req: NextRequest) {
   }
 
   // ─── Free session fallback ─────────────────────────────────────────────────
-  // No template and no FUERZA plan session → return freeSession mode
+  // GYM-GAP-06: include self-coach WeeklyRoutine context so mobile can show planned day info
+  type RoutineDay = { dow: number; activity: string; split?: string | null; runType?: string | null }
+  const days = (weeklyRoutine?.days ?? []) as RoutineDay[]
+  const selfCoachDay = days.find(d => d.dow === todayDow) ?? null
+
   return NextResponse.json({
     assignedWorkoutId: null,
     plannedSessionId: null,
-    templateName: 'Sesión libre',
+    templateName: selfCoachDay?.activity === 'GYM'
+      ? (selfCoachDay.split ?? 'Sesión libre')
+      : 'Sesión libre',
     dayOfWeek: todayDow,
-    isRestDay: false,
+    isRestDay: selfCoachDay?.activity === 'REST',
     freeSession: true,
+    selfCoachDay,
     hasCoach,
     workoutDay: null,
     exercises: [],

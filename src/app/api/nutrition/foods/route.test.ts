@@ -4,7 +4,10 @@ import { GET } from './route'
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/db/prisma', () => ({
-  prisma: { food: { findMany: vi.fn(), create: vi.fn() } },
+  prisma: {
+    food: { findMany: vi.fn(), create: vi.fn() },
+    foodProfile: { findUnique: vi.fn().mockResolvedValue(null) },
+  },
 }))
 
 import { auth } from '@/auth'

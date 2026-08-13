@@ -13,8 +13,8 @@ export interface ActivityEvent {
 export interface WeekBucket {
   /** "2026-W25" — ISO year + week number */
   key: string
-  /** "Sem 25" */
-  label: string
+  /** Week number within the year (1-53) — presentation layer formats as "Sem N" */
+  weekNumber: number
   count: number
 }
 
@@ -31,12 +31,9 @@ export function isoWeekKey(date: Date): string {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
 }
 
-/**
- * Devuelve el label corto para mostrar en el eje X del gráfico.
- */
-export function weekLabel(key: string): string {
-  const [, w] = key.split('-W')
-  return `Sem ${parseInt(w, 10)}`
+/** Extrae el número de semana ISO del key "2026-W25" → 25. */
+function parseWeekNumber(key: string): number {
+  return parseInt(key.split('-W')[1], 10)
 }
 
 /**
@@ -81,7 +78,7 @@ export function computeWAU(
     .sort()
     .map((key) => ({
       key,
-      label: weekLabel(key),
+      weekNumber: parseWeekNumber(key),
       count: buckets.get(key)!.size,
     }))
 }

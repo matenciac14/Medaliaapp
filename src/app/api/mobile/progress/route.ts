@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs] = await Promise.all([
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory, rawFoodLogs, nutritionPlan] = await Promise.all([
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
@@ -79,6 +82,32 @@ export async function GET(req: NextRequest) {
         session: { select: { date: true } },
       },
     }),
+    // MOB-PROG-01: histórico de sets para curva 1RM por ejercicio (Epley)
+    prisma.setLog.findMany({
+      where: {
+        session: { athleteId: userId, completed: true },
+        weightKg: { not: null },
+        repsCompleted: { gte: 1, lte: 15 },
+      },
+      select: {
+        exerciseName: true,
+        weightKg: true,
+        repsCompleted: true,
+        session: { select: { date: true } },
+      },
+      orderBy: { session: { date: 'desc' } },
+      take: 600,
+    }),
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: thirtyDaysAgo } },
+      select: { date: true, kcalLogged: true, grams: true, food: { select: { kcalPer100g: true } } },
+      orderBy: { date: 'asc' },
+    }),
+    prisma.nutritionPlan.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      select: { targetKcalEasy: true },
+    }),
   ])
 
   const weightPoints = checkIns
@@ -137,6 +166,48 @@ export async function GET(req: NextRequest) {
     testedAt: b.testedAt.toISOString(),
   }))
 
+  // MOB-PROG-01: curva histórica 1RM — Epley formula, mejor por día, top 5 ejercicios
+  const epley = (kg: number, reps: number) => Math.round(kg * (1 + reps / 30) * 10) / 10
+  const historyMap = new Map<string, Map<string, number>>()
+  for (const sl of rawSetHistory) {
+    if (!sl.exerciseName || !sl.weightKg || !sl.repsCompleted) continue
+    const dateKey = sl.session.date.toISOString().split('T')[0]
+    const oneRm = epley(sl.weightKg, sl.repsCompleted)
+    const exMap = historyMap.get(sl.exerciseName) ?? new Map<string, number>()
+    if ((exMap.get(dateKey) ?? 0) < oneRm) exMap.set(dateKey, oneRm)
+    historyMap.set(sl.exerciseName, exMap)
+  }
+  const gymPRHistory = [...historyMap.entries()]
+    .map(([exerciseName, dateMap]) => ({
+      exerciseName,
+      points: [...dateMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, oneRmKg]) => ({ date, oneRmKg })),
+    }))
+    .filter(s => s.points.length >= 2)
+    .sort((a, b) => b.points.length - a.points.length)
+    .slice(0, 5)
+
+  const nutTarget = nutritionPlan?.targetKcalEasy ?? null
+  const nutritionAdherence = nutTarget
+    ? (() => {
+        const byDate = new Map<string, number>()
+        for (const fl of rawFoodLogs) {
+          const dateKey = (fl.date as Date).toISOString().split('T')[0]
+          const kcal = fl.kcalLogged ?? (fl.food.kcalPer100g * fl.grams / 100)
+          byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + kcal)
+        }
+        return [...byDate.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, kcalLogged]) => ({
+            date,
+            kcalLogged: Math.round(kcalLogged),
+            targetKcal: nutTarget,
+            pct: Math.min(100, Math.round((kcalLogged / nutTarget) * 100)),
+          }))
+      })()
+    : []
+
   const gymPRs = rawGymPRs.map(r => ({
     id: r.id,
     exerciseName: r.exerciseName ?? 'Ejercicio',
@@ -166,8 +237,10 @@ export async function GET(req: NextRequest) {
     weightGoal: profile?.weightGoalKg ?? null,
     gymSessionsCompleted: gymCount,
     gymAdherenceByWeek,
+    nutritionAdherence,
     benchmarks,
     gymPRs,
+    gymPRHistory,
     totalCheckIns: totalSessions,
     overallAdherencePct: overallAdherence,
   })

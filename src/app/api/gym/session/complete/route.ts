@@ -12,7 +12,9 @@ import {
   computeProgressionUpdates,
   collectPRsByWeId,
   collectPRsByName,
+  type WeNameToWeIdMap,
 } from '@/domain/gym/complete-gym-session.use-case'
+import { createNotification } from '@/infrastructure/db/notification'
 
 const SetPayloadSchema = z.object({
   workoutExerciseId: z.string().min(1).optional(),
@@ -39,8 +41,8 @@ const GymCompleteSchema = z.object({
   rpe: z.number().int().min(1).max(10).optional(),
   durationMin: z.number().int().min(0).max(600).optional(),
   notes: z.string().max(2000).optional(),
-  sets: z.array(SetPayloadSchema).optional(),
-  exerciseOverrides: z.array(ExerciseOverrideSchema).optional(),
+  sets: z.array(SetPayloadSchema).max(300).optional(),
+  exerciseOverrides: z.array(ExerciseOverrideSchema).max(50).optional(),
 })
 
 type SetPayload = z.infer<typeof SetPayloadSchema>
@@ -86,6 +88,8 @@ export async function POST(req: NextRequest) {
   const weNameMap = new Map(workoutExercises.map(we => [we.id, we.exercise.name]))
   const weExIdMap = new Map(workoutExercises.map(we => [we.id, we.exerciseId]))
   const weSetsCountMap = new Map(workoutExercises.map(we => [we.id, we.sets]))
+  // GYM-GAP-05: map exercise name → current workoutExerciseId for orphan set recovery
+  const weNameToWeIdMap: WeNameToWeIdMap = new Map(workoutExercises.map(we => [we.exercise.name, we.id]))
 
   // EX-18: estimate calories from session duration × avg caloriesPerMinute across exercises
   function estimateCalories(durMin?: number): number | null {
@@ -166,12 +170,23 @@ export async function POST(req: NextRequest) {
     return isPRSet(weId, weightKg, completed, weExIdMap, maxPerExercise)
   }
 
+  /**
+   * GYM-GAP-05: sanitize a set's workoutExerciseId before persisting.
+   * If the ID is not found in the DB (coach deleted+recreated the template),
+   * null it out so we avoid a FK constraint error (P2003).
+   */
+  function sanitizeWeId(weId: string | undefined): string | null {
+    if (!weId) return null
+    return weNameMap.has(weId) || weExIdMap.has(weId) ? weId : null
+  }
+
   function persistProgression(completedSets: SetPayload[]) {
-    const updates = computeProgressionUpdates(completedSets, weSetsCountMap)
+    const updates = computeProgressionUpdates(completedSets, weSetsCountMap, weNameToWeIdMap)
     if (updates.length > 0) {
+      // GYM-GAP-02: log failures so stale suggestions are detectable in production logs
       Promise.all(
         updates.map(u => prisma.workoutExercise.update({ where: { id: u.workoutExerciseId }, data: { suggestedNextWeightKg: u.suggestedNextWeightKg } }))
-      ).catch(() => {})
+      ).catch((err) => console.error('[gym/complete] progression update failed:', err))
     }
   }
 
@@ -233,17 +248,20 @@ export async function POST(req: NextRequest) {
           completed: true,
           exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
           setLogs: {
-            create: sets.map(s => ({
-              workoutExerciseId: s.workoutExerciseId ?? null,
-              exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-              setNumber: s.setNumber,
-              weightKg: s.weightKg ?? null,
-              repsCompleted: s.repsCompleted ?? null,
-              completed: s.completed,
-              isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
-              setLogType: s.setLogType ?? 'WORK',
-              rpe: s.rpe ?? null,
-            })),
+            create: sets.map(s => {
+              const safeWeId = sanitizeWeId(s.workoutExerciseId)
+              return {
+                workoutExerciseId: safeWeId,
+                exerciseName: safeWeId ? (weNameMap.get(safeWeId) ?? null) : (s.exerciseName ?? null),
+                setNumber: s.setNumber,
+                weightKg: s.weightKg ?? null,
+                repsCompleted: s.repsCompleted ?? null,
+                completed: s.completed,
+                isPR: safeWeId ? applyPRSet(safeWeId, s.weightKg, s.completed) : applyPRByName(s.exerciseName, s.weightKg, s.completed),
+                setLogType: s.setLogType ?? 'WORK',
+                rpe: s.rpe ?? null,
+              }
+            }),
           },
         },
         select: { id: true },
@@ -262,6 +280,17 @@ export async function POST(req: NextRequest) {
     autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
     persistProgression(sets)
     notifyCoach(athleteId, userRecord.name, 'Sesión de fuerza completada 💪').catch(() => {})
+
+    // PLT-11: notificar al atleta si logró PRs
+    if (newPRs.length > 0) {
+      createNotification(
+        athleteId,
+        'LOGRO',
+        '¡Nuevo récord personal!',
+        `Lograste ${newPRs.length} PR${newPRs.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+      ).catch(() => {})
+    }
+
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })
   }
@@ -298,6 +327,17 @@ export async function POST(req: NextRequest) {
     })
     const newPRsFree = collectPRsByName(sets, maxPerFreeExerciseName)
     notifyCoach(athleteId, userRecord.name, 'Sesión libre de gym completada 💪').catch(() => {})
+
+    // PLT-11: notificar al atleta si logró PRs en sesión libre
+    if (newPRsFree.length > 0) {
+      createNotification(
+        athleteId,
+        'LOGRO',
+        '¡Nuevo récord personal!',
+        `Lograste ${newPRsFree.length} PR${newPRsFree.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+      ).catch(() => {})
+    }
+
     revalidatePath('/dashboard')
     return NextResponse.json({ sessionId: gymSession.id, newPRs: newPRsFree }, { status: 201 })
   }
@@ -332,16 +372,19 @@ export async function POST(req: NextRequest) {
         completed: true,
         exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
         setLogs: {
-          create: sets.map(s => ({
-            workoutExerciseId: s.workoutExerciseId ?? null,
-            exerciseName: weNameMap.get(s.workoutExerciseId ?? '') ?? null,
-            setNumber: s.setNumber,
-            weightKg: s.weightKg ?? null,
-            repsCompleted: s.repsCompleted ?? null,
-            completed: s.completed,
-            isPR: applyPRSet(s.workoutExerciseId, s.weightKg, s.completed),
-            setLogType: s.setLogType ?? 'WORK',
-          })),
+          create: sets.map(s => {
+            const safeWeId = sanitizeWeId(s.workoutExerciseId)
+            return {
+              workoutExerciseId: safeWeId,
+              exerciseName: safeWeId ? (weNameMap.get(safeWeId) ?? null) : (s.exerciseName ?? null),
+              setNumber: s.setNumber,
+              weightKg: s.weightKg ?? null,
+              repsCompleted: s.repsCompleted ?? null,
+              completed: s.completed,
+              isPR: safeWeId ? applyPRSet(safeWeId, s.weightKg, s.completed) : applyPRByName(s.exerciseName, s.weightKg, s.completed),
+              setLogType: s.setLogType ?? 'WORK',
+            }
+          }),
         },
       },
       select: { id: true },
@@ -360,6 +403,17 @@ export async function POST(req: NextRequest) {
   autoCompleteStrengthSession({ athleteId, rpe, durationMin, notes }).catch(() => {})
   persistProgression(sets)
   notifyCoach(athleteId, userRecord.name, 'Sesión de gym completada 💪').catch(() => {})
+
+  // PLT-11: notificar al atleta si logró PRs en sesión de rutina asignada
+  if (newPRs.length > 0) {
+    createNotification(
+      athleteId,
+      'LOGRO',
+      '¡Nuevo récord personal!',
+      `Lograste ${newPRs.length} PR${newPRs.length > 1 ? 's' : ''} en tu sesión de hoy. ¡Sigue así!`,
+    ).catch(() => {})
+  }
+
   revalidatePath('/dashboard')
 
   return NextResponse.json({ sessionId: gymSession.id, newPRs }, { status: 201 })

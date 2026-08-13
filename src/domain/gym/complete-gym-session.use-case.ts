@@ -25,6 +25,9 @@ export type WeNameMap = Map<string, string>
 /** Maps workoutExerciseId → planned set count */
 export type WeSetsCountMap = Map<string, number>
 
+/** Maps exercise name → current workoutExerciseId — used to recover orphan sets after template edits */
+export type WeNameToWeIdMap = Map<string, string>
+
 /** Maps exerciseId → historical max weight (kg) */
 export type MaxPerExercise = Map<string, number>
 
@@ -78,17 +81,28 @@ const PROGRESSION_STEP_KG        = 2.5
  *   completedRatio > 90% → max weight + 2.5 kg
  *   completedRatio < 60% → max weight − 2.5 kg (floor 0)
  *   otherwise             → no suggestion
+ *
+ * `weNameToWeIdMap` is optional. When provided, orphan sets (workoutExerciseId=null
+ * but exerciseName known) are recovered by looking up the current workoutExerciseId
+ * for that exercise. This handles the case where the coach edited the template and
+ * old WorkoutExercise records were deleted (onDelete: SetNull).
  */
 export function computeProgressionUpdates(
   sets: SetInput[],
   weSetsCountMap: WeSetsCountMap,
+  weNameToWeIdMap?: WeNameToWeIdMap,
 ): ProgressionUpdate[] {
   const byWeId = new Map<string, SetInput[]>()
   for (const s of sets) {
-    if (!s.workoutExerciseId) continue
-    const arr = byWeId.get(s.workoutExerciseId) ?? []
+    let weId = s.workoutExerciseId
+    // Recover orphan set: no workoutExerciseId but exerciseName maps to a current exercise
+    if (!weId && s.exerciseName && weNameToWeIdMap) {
+      weId = weNameToWeIdMap.get(s.exerciseName)
+    }
+    if (!weId) continue
+    const arr = byWeId.get(weId) ?? []
     arr.push(s)
-    byWeId.set(s.workoutExerciseId, arr)
+    byWeId.set(weId, arr)
   }
 
   const updates: ProgressionUpdate[] = []

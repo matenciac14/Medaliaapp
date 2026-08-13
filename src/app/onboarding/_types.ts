@@ -6,31 +6,13 @@
 // Para planes estructurados (B2B coach) el plan lo asigna el entrenador.
 // ---------------------------------------------------------------------------
 
-export type ActivityType = 'GYM' | 'RUNNING' | 'BOTH' | 'FREE'
-export type GymGoal = 'MUSCLE_GAIN' | 'FAT_LOSS' | 'RECOMPOSITION'
-export type RunningGoal = 'GENERAL_FITNESS' | 'RACE_5K' | 'RACE_10K'
-export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+// Pure data types live in domain — re-exported here for presentation consumers
+import type { WizardData } from '@/domain/onboarding/onboarding.types'
+export type {
+  ActivityType, GymGoal, RunningGoal, ExperienceLevel, WizardData,
+} from '@/domain/onboarding/onboarding.types'
 
 export type StepId = 'goal' | 'profile' | 'generating'
-
-export type WizardData = {
-  // ── Paso 1: ¿Qué haces? ──────────────────────────────────────────────────
-  activityType: ActivityType | null
-  gymGoal: GymGoal | null          // solo cuando activityType = 'GYM' o 'BOTH'
-  runningGoal: RunningGoal | null  // solo cuando activityType = 'RUNNING' o 'BOTH'
-
-  // ── Paso 2: Tu perfil (datos físicos + disponibilidad + salud) ───────────
-  age: number | null
-  heightCm: number | null
-  weightKg: number | null
-  gender: 'male' | 'female' | null
-  weightGoalKg: number | null      // opcional
-  daysPerWeek: number
-  sessionMinutes: number           // 30, 45, 60, 90
-  experienceLevel: ExperienceLevel | null  // opcional
-  injuries: string                 // texto libre, opcional
-  conditions: string               // texto libre, opcional
-}
 
 export const INITIAL_DATA: WizardData = {
   activityType: null,

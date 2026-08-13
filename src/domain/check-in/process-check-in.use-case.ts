@@ -51,6 +51,16 @@ export type ProcessCheckInResult = {
   sessionsAdjusted: number
   /** Populated only when plan.source === 'COACH' — suggestions created instead of auto-applying. */
   pendingSuggestions: number
+  /** Numeric plan changes when auto-apply fired (AI/template plans only). */
+  planChanges?: {
+    volumeDeltaPct?: number  // negative = reduction (e.g. -20 = 20% less volume)
+    zonesAdjusted?: boolean  // true when session zones were lowered due to high RPE
+  }
+  /** Recalculated nutrition targets when weight synced and profile has nutrition plan. */
+  nutritionChanges?: {
+    newKcalHard?: number
+    newKcalEasy?: number
+  }
 }
 
 /** Full Prisma client (not transaction client) — needed to open $transaction. */
@@ -135,12 +145,20 @@ export async function processCheckIn(
     ? adjustments.join('. ')
     : RECOMMENDATION_FALLBACK
 
+  // Pre-compute volume and zone deltas for result — pure, no DB needed
+  const { hasVolumeTrigger, volumeReduction, hasPain, hasRpe } = buildSessionAdjustments(triggers)
+  const volumeDeltaPct = hasVolumeTrigger && !hasPain
+    ? Math.round((volumeReduction - 1) * 100)  // e.g. 0.8 → -20
+    : undefined
+  const zonesAdjusted = hasRpe && !hasPain
+
   // ─────────────────────────────────────────────────────────
   // PHASE 3 — All DB writes in ONE atomic $transaction
   // If any step fails, the entire check-in is rolled back.
   // ─────────────────────────────────────────────────────────
   let sessionsAdjusted = 0
   let pendingSuggestions = 0
+  let nutritionChanges: ProcessCheckInResult['nutritionChanges']
 
   await deps.db.$transaction(async (tx) => {
     const txCheckIn = new PrismaCheckInRepository(tx)
@@ -188,23 +206,31 @@ export async function processCheckIn(
     }
 
     // 2b. Add gym note when pain/RPE triggers fire for GYM athletes (GYM-01)
+    // GYM-GAP-03: strip previous [AUTO] notes before writing — prevents indefinite accumulation
     const gymTrigger = triggers.includes('dolor_activo') || triggers.includes('rpe_excesivo')
-    if (assignedWorkout && gymTrigger) {
-      const gymNote = triggers.includes('dolor_activo')
-        ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
-        : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.'
+    if (assignedWorkout) {
+      const gymNote = gymTrigger
+        ? (triggers.includes('dolor_activo')
+            ? '[AUTO] Dolor activo la semana anterior — sesión opcional. No forzar si hay molestia.'
+            : '[AUTO] RPE elevado la semana anterior — ajusta intensidad según cómo te sientas hoy.')
+        : null
       for (const day of assignedWorkout.template.days) {
-        if (day.warmupNotes?.includes('[AUTO]')) continue
-        await tx.workoutDay.update({
-          where: { id: day.id },
-          data: { warmupNotes: day.warmupNotes ? `${day.warmupNotes} ${gymNote}` : gymNote },
-        })
+        // Strip any previous [AUTO] suffix (everything from [AUTO] to end of string)
+        const baseNotes = day.warmupNotes?.replace(/\s*\[AUTO\][\s\S]*$/, '').trim() || null
+        const nextNotes = gymNote ? (baseNotes ? `${baseNotes} ${gymNote}` : gymNote) : baseNotes || null
+        // Only write if something actually changed
+        if (nextNotes !== (day.warmupNotes ?? null)) {
+          await tx.workoutDay.update({
+            where: { id: day.id },
+            data: { warmupNotes: nextNotes },
+          })
+        }
       }
     }
 
     // 3. Sync weight → HealthProfile + recalculate TDEE/macros
     if (data.weight) {
-      await syncWeight(userId, data.weight, prevCheckIn?.weight ?? null, txHealthProfile)
+      nutritionChanges = await syncWeight(userId, data.weight, prevCheckIn?.weight ?? null, txHealthProfile)
     }
 
     // 3b. Sync FC reposo → HealthProfile (always update when provided)
@@ -219,7 +245,11 @@ export async function processCheckIn(
     }
   }, { timeout: 30_000 })
 
-  return { weekNumber, triggers, adjustments, recommendation, severity, sessionsAdjusted, pendingSuggestions }
+  const planChanges: ProcessCheckInResult['planChanges'] = sessionsAdjusted > 0
+    ? { volumeDeltaPct, zonesAdjusted: zonesAdjusted || undefined }
+    : undefined
+
+  return { weekNumber, triggers, adjustments, recommendation, severity, sessionsAdjusted, pendingSuggestions, planChanges, nutritionChanges }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -298,27 +328,28 @@ async function syncWeight(
   newWeight: number,
   previousWeight: number | null,
   healthProfileRepo: IHealthProfileRepository
-): Promise<void> {
+): Promise<{ newKcalHard?: number; newKcalEasy?: number } | undefined> {
   const profile = await healthProfileRepo.find(userId)
   const runtimeAge = profile?.dateOfBirth ? calcAge(profile.dateOfBirth) : (profile?.age ?? null)
-  if (!profile?.heightCm || !runtimeAge) return
+  if (!profile?.heightCm || !runtimeAge) return undefined
 
   // BUG-055: comparar siempre vs el peso base del perfil, no vs el check-in anterior
   // Evita que ajustes de 0.3kg entre check-ins nunca actualicen el perfil base
   const prev = profile.weightKg ?? newWeight
-  if (Math.abs(newWeight - prev) < CHECK_IN_THRESHOLDS.WEIGHT_DELTA_MIN) return
+  if (Math.abs(newWeight - prev) < CHECK_IN_THRESHOLDS.WEIGHT_DELTA_MIN) return undefined
 
   await healthProfileRepo.updateWeight(userId, newWeight)
 
   const hasNutritionPlan = await healthProfileRepo.hasNutritionPlan(userId)
-  if (!hasNutritionPlan) return
+  if (!hasNutritionPlan) return undefined
 
   const tdee = calculateTDEE(
     newWeight,
     profile.heightCm,
     runtimeAge,
     (profile.gender ?? 'male') as 'male' | 'female',
-    5
+    profile.daysPerWeek ?? 5,
+    profile.sessionMinutes,
   )
   const macros = calculateMacros(tdee, newWeight, !!profile.weightGoalKg)
 
@@ -332,4 +363,6 @@ async function syncWeight(
     carbsEasyG: macros.easy.carbs,
     fatG: macros.hard.fat,
   })
+
+  return { newKcalHard: macros.hard.kcal, newKcalEasy: macros.easy.kcal }
 }

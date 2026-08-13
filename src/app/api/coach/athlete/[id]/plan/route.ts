@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { generatePlan } from '@/lib/plan/generator'
+import { PLAN_TEMPLATES } from '@/lib/plan/templates'
+
+const VALID_GOAL_TYPES = Object.keys(PLAN_TEMPLATES)
+const VALID_DAYS_PER_WEEK = [3, 4, 5, 6] as const
 
 export async function POST(
   req: NextRequest,
@@ -27,6 +31,15 @@ export async function POST(
 
   if (!goalType) {
     return NextResponse.json({ error: 'goalType es requerido.' }, { status: 400 })
+  }
+  if (!VALID_GOAL_TYPES.includes(goalType)) {
+    return NextResponse.json({ error: `goalType inválido. Válidos: ${VALID_GOAL_TYPES.join(', ')}` }, { status: 400 })
+  }
+  if (daysPerWeek !== undefined && !VALID_DAYS_PER_WEEK.includes(daysPerWeek)) {
+    return NextResponse.json({ error: 'daysPerWeek debe ser 3, 4, 5 o 6.' }, { status: 400 })
+  }
+  if (hoursPerSession !== undefined && (typeof hoursPerSession !== 'number' || hoursPerSession < 0.5 || hoursPerSession > 3)) {
+    return NextResponse.json({ error: 'hoursPerSession debe estar entre 0.5 y 3.' }, { status: 400 })
   }
 
   // Load athlete health profile for plan generation

@@ -106,7 +106,7 @@ export function AdminSidebarClient() {
             <span>Ir a la app</span>
           </Link>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut({ callbackUrl: '/login?from=signout' })}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-white/50 hover:text-white transition-colors min-h-[44px]"
           >
             <LogOut size={16} />
@@ -128,7 +128,7 @@ export function AdminSidebarClient() {
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut({ callbackUrl: '/login?from=signout' })}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
           >
             <LogOut size={16} />

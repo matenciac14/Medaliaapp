@@ -29,16 +29,9 @@ describe('getAccountStatus', () => {
     expect(getAccountStatus('FREE')).toBe('FREE')
   })
 
-  it('TRIAL → FREE (sin acceso PRO activo)', () => {
-    // TRIAL mapea a FREE en la UI — el tier premium en DB no implica acceso PRO
-    // hasta que se integre la verificación de pago (Stripe/Wompi pendiente)
-    expect(getAccountStatus('TRIAL')).toBe('FREE')
-  })
-
   it('solo PRO retorna PRO — cualquier otro valor es FREE', () => {
     expect(getAccountStatus('PRO')).toBe('PRO')
     expect(getAccountStatus('FREE')).toBe('FREE')
-    expect(getAccountStatus('TRIAL')).toBe('FREE')
   })
 })
 

@@ -11,6 +11,7 @@ export type MobileTokenPayload = {
   onboardingCompleted: boolean
   userPlan: 'FREE' | 'PRO'
   features: UserConfig['features']
+  sport?: string
 }
 
 function getSecret() {
@@ -38,7 +39,8 @@ export async function getMobileUser(req: NextRequest): Promise<MobileTokenPayloa
     if (!authHeader?.startsWith('Bearer ')) return null
     const token = authHeader.slice(7)
     return await verifyMobileToken(token)
-  } catch {
+  } catch (err) {
+    console.error('[mobile-auth] Token verification failed:', err)
     return null
   }
 }

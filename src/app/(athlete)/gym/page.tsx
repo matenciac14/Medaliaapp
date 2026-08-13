@@ -243,7 +243,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
           <p className="text-xs text-gray-500 leading-relaxed">
             <span className="font-semibold text-gray-700">¿Tienes un entrenador?</span>{' '}
             Tu coach puede asignarte una rutina personalizada desde su panel — reemplazará automáticamente la plantilla.{' '}
-            <Link href="/coaches" className="text-[#ea580c] font-semibold hover:underline">
+            <Link href="/find-coach" className="text-[#ea580c] font-semibold hover:underline">
               Buscar coach →
             </Link>
           </p>

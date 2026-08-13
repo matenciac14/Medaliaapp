@@ -5,6 +5,8 @@ export type AthleteHealthProfile = {
   age: number | null
   dateOfBirth: Date | null   // fuente canónica — calcular edad en runtime con calcAge(dob)
   gender: string | null
+  sessionMinutes: number | null  // GAP-02: used for more precise TDEE calculation
+  daysPerWeek: number | null     // GAP-02: sessions per week from onboarding
 }
 
 export type NutritionTargets = {
@@ -23,7 +25,7 @@ export type CreateHealthProfile = {
   heightCm: number
   weightKg: number
   weightGoalKg?: number
-  gender: 'male' | 'female'
+  gender?: string
   hrResting?: number
   hrMax?: number
   ftp?: number

@@ -5,7 +5,10 @@ import { GET } from './route'
 vi.mock('@/lib/mobile-auth', () => ({ getMobileUser: vi.fn() }))
 vi.mock('@/lib/rate-limit', () => ({ rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }) }))
 vi.mock('@/lib/db/prisma', () => ({
-  prisma: { food: { findMany: vi.fn() } },
+  prisma: {
+    food: { findMany: vi.fn() },
+    foodProfile: { findUnique: vi.fn().mockResolvedValue(null) },
+  },
 }))
 
 import { getMobileUser } from '@/lib/mobile-auth'

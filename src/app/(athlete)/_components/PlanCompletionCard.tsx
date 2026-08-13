@@ -10,76 +10,60 @@ type Props = {
 }
 
 export default function PlanCompletionCard({
-  planName, totalWeeks, sessionsLogged, sessionsTotal, recoveryDaysSinceEnd, isB2B,
+  planName, totalWeeks, sessionsLogged, sessionsTotal, isB2B,
 }: Props) {
   const adherencePct = sessionsTotal > 0
     ? Math.round((sessionsLogged / sessionsTotal) * 100)
     : 0
 
-  const isFreshCompletion = recoveryDaysSinceEnd <= 2
-
   return (
-    <div className="bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8e] rounded-2xl p-6 text-white overflow-hidden relative">
-      {/* Decorativo */}
-      <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-8 translate-x-8 pointer-events-none" />
+    <div className="bg-green-50 rounded-2xl border border-green-100 p-8 text-center space-y-5">
+      <div className="text-5xl">🏆</div>
 
-      {/* Badge estado */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 text-white">
-          {isFreshCompletion ? '🏆 ¡Plan completado!' : `Recuperación · día ${recoveryDaysSinceEnd + 1}/14`}
-        </span>
+      <div>
+        <h2 className="text-2xl font-black text-[#1e3a5f]">
+          ¡Plan completado!
+        </h2>
+        <p className="text-sm text-gray-500 mt-1">
+          {planName} · {totalWeeks} semanas
+        </p>
       </div>
 
-      {/* Nombre del plan */}
-      <h2 className="text-xl font-black leading-tight mb-4">{planName}</h2>
-
-      {/* Stats en fila */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-white/10 rounded-xl p-3 text-center">
-          <p className="text-2xl font-black leading-none">{totalWeeks}</p>
-          <p className="text-[10px] text-white/70 mt-1 uppercase tracking-wide">semanas</p>
+      <div className="flex items-center justify-center gap-10">
+        <div className="text-center">
+          <p className="text-2xl font-black text-[#1e3a5f]">{totalWeeks}</p>
+          <p className="text-xs text-gray-500 mt-0.5">semanas</p>
         </div>
-        <div className="bg-white/10 rounded-xl p-3 text-center">
-          <p className="text-2xl font-black leading-none">{sessionsLogged}</p>
-          <p className="text-[10px] text-white/70 mt-1 uppercase tracking-wide">sesiones</p>
+        <div className="text-center">
+          <p className="text-2xl font-black text-[#1e3a5f]">{sessionsLogged}</p>
+          <p className="text-xs text-gray-500 mt-0.5">sesiones</p>
         </div>
-        <div className="bg-white/10 rounded-xl p-3 text-center">
-          <p className={`text-2xl font-black leading-none ${adherencePct >= 80 ? 'text-green-300' : adherencePct >= 60 ? 'text-yellow-300' : 'text-red-300'}`}>
+        <div className="text-center">
+          <p className={`text-2xl font-black ${adherencePct >= 80 ? 'text-green-600' : adherencePct >= 60 ? 'text-[#ea580c]' : 'text-red-500'}`}>
             {adherencePct}%
           </p>
-          <p className="text-[10px] text-white/70 mt-1 uppercase tracking-wide">adherencia</p>
+          <p className="text-xs text-gray-500 mt-0.5">adherencia</p>
         </div>
       </div>
 
-      {/* Mensaje motivacional */}
-      {isFreshCompletion && (
-        <p className="text-sm text-white/80 leading-relaxed mb-5">
-          {adherencePct >= 80
-            ? 'Terminaste fuerte. Un descanso activo esta semana y estarás listo para el siguiente ciclo.'
-            : 'Terminaste el plan. La consistencia se construye ciclo a ciclo — el siguiente será mejor.'}
-        </p>
-      )}
-
-      {/* CTAs */}
-      <div className="flex gap-2">
+      {/* CTA — differs by B2B/B2C */}
+      <div className="pt-2 space-y-3 max-w-sm mx-auto">
         {isB2B ? (
-          <div className="flex-1 text-center bg-white/10 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-white/70">Tu coach preparará tu siguiente plan</p>
+          <div className="bg-white/70 rounded-xl px-5 py-4">
+            <p className="text-sm font-semibold text-[#1e3a5f]">Tu coach asignará el próximo plan</p>
+            <p className="text-xs text-gray-400 mt-1">Recibirás una notificación cuando tu entrenador lo tenga listo.</p>
           </div>
         ) : (
-          <Link
-            href="/coaches"
-            className="flex-1 text-center bg-[#ea580c] hover:bg-[#ea6c0b] transition-colors rounded-xl px-3 py-2.5"
-          >
-            <p className="text-sm font-bold">Buscar entrenador</p>
-          </Link>
+          <>
+            <p className="text-sm font-semibold text-[#1e3a5f]">¿Listo para el siguiente desafío?</p>
+            <Link
+              href="/find-coach"
+              className="block w-full text-center bg-[#1e3a5f] hover:bg-[#243f6a] text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors"
+            >
+              Buscar entrenador →
+            </Link>
+          </>
         )}
-        <Link
-          href="/log"
-          className="flex-1 text-center bg-white/15 hover:bg-white/25 transition-colors rounded-xl px-3 py-2.5"
-        >
-          <p className="text-sm font-semibold">Seguir entrenando</p>
-        </Link>
       </div>
     </div>
   )

@@ -111,12 +111,16 @@ export function buildFoodLogResponse(
   return { date: dateParam, dayType, logs: logsWithMacros, totals, target, pct }
 }
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
 export function parseFoodLogPost(body: unknown): { foodId: string; gramsNum: number; mealType: MealType; logDate: Date } | { error: string } {
   const { foodId, grams, mealType, date } = body as { foodId?: string; grams?: unknown; mealType?: string; date?: string }
   if (!foodId || !grams || !mealType) return { error: 'foodId, grams y mealType son requeridos' }
   if (!(VALID_MEAL_TYPES as readonly string[]).includes(mealType)) return { error: `mealType inválido. Valores válidos: ${VALID_MEAL_TYPES.join(', ')}` }
   const gramsNum = Number(grams)
   if (isNaN(gramsNum) || gramsNum <= 0) return { error: 'grams debe ser un número positivo' }
+  if (gramsNum > 5000) return { error: 'grams no puede superar 5000g por registro' }
+  if (date && !DATE_REGEX.test(date)) return { error: 'date debe tener formato YYYY-MM-DD' }
   const logDate = date
     ? new Date(`${date}T00:00:00.000Z`)
     : new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z')

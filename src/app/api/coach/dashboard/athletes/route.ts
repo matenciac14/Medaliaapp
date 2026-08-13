@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { TAKE, mapRelation } from '@/app/coach/athletes/_lib/map-athlete'
+import { mapCoachAthleteRelation } from '@/infrastructure/db/coach-athlete.mapper'
+
+const TAKE = 20
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
   const hasMore = relations.length > TAKE
   const page = hasMore ? relations.slice(0, TAKE) : relations
   const nextCursor = hasMore ? page[page.length - 1].id : null
-  const athletes = page.map((rel) => mapRelation(rel, now))
+  const athletes = page.map((rel) => mapCoachAthleteRelation(rel, now))
 
   return NextResponse.json({ athletes, hasMore, nextCursor })
 }

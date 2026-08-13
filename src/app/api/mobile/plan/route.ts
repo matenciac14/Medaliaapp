@@ -7,7 +7,7 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:plan`, { limit: 300, windowMs: 60_000 })
+  const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:plan`, { limit: 60, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const plan = await prisma.trainingPlan.findFirst({

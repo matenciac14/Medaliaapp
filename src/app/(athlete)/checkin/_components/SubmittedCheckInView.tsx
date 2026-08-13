@@ -147,6 +147,44 @@ export default function SubmittedCheckInView({
           </div>
         )}
 
+        {/* UX-CI-02: CTAs contextuales según resultado del check-in */}
+        {(() => {
+          const needsRest = submittedTriggers.includes('rpe_excesivo') || submittedTriggers.includes('dolor_activo')
+          const needsNutrition = submittedTriggers.includes('nutricion_baja')
+          const lowEnergy = submittedTriggers.includes('energia_baja') || submittedTriggers.includes('sueno_bajo')
+          if (!needsRest && !needsNutrition && !lowEnergy && !hasAdjustments) {
+            // Todo en rango — invitar a ver progreso
+            return (
+              <a
+                href="/progress"
+                className="block w-full text-center bg-[#1e3a5f] hover:opacity-90 text-white font-semibold py-3 rounded-2xl text-sm transition-opacity"
+              >
+                Ver mi progreso →
+              </a>
+            )
+          }
+          return (
+            <div className="space-y-2">
+              {(hasAdjustments || needsRest) && (
+                <a
+                  href="/plan"
+                  className="block w-full text-center bg-[#1e3a5f] hover:opacity-90 text-white font-semibold py-3 rounded-2xl text-sm transition-opacity"
+                >
+                  {needsRest ? 'Ver plan — tómate un día de descanso →' : 'Ver plan ajustado →'}
+                </a>
+              )}
+              {needsNutrition && (
+                <a
+                  href="/nutrition"
+                  className="block w-full text-center border border-[#ea580c] text-[#ea580c] font-semibold py-3 rounded-2xl text-sm hover:bg-orange-50 transition-colors"
+                >
+                  Revisa tu guía de nutrición →
+                </a>
+              )}
+            </div>
+          )
+        })()}
+
         <div className="space-y-2 pb-8">
           <button onClick={onBack} className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-4 rounded-2xl text-base transition-opacity">
             Volver al dashboard
