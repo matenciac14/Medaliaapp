@@ -335,8 +335,7 @@ async function main() {
       })
 
       // Create sessions per week
-      const sessionTemplates = [
-        // [dayOfWeek, type, intensity, durationMin, zone, detail]
+      const sessionTemplates: { day: number; type: SessionType; int: SessionIntensity; dur: number; zone: string | null; detail: string }[] = [
         { day: 2, type: SessionType.RODAJE_Z2,    int: SessionIntensity.LOW,      dur: 45, zone: 'Z2', detail: `Rodaje continuo Z2 — mantén FC ${Math.round(hrMax * 0.62)}-${Math.round(hrMax * 0.68)} bpm` },
         { day: 4, type: SessionType.TEMPO,         int: SessionIntensity.MODERATE, dur: 50, zone: 'Z3-Z4', detail: `Tempo 20 min a ritmo Z3-Z4 — FC ${Math.round(hrMax * 0.72)}-${Math.round(hrMax * 0.82)} bpm` },
         { day: 6, type: SessionType.TIRADA_LARGA,  int: SessionIntensity.LOW,      dur: 70, zone: 'Z2', detail: `Tirada larga Z2 — ritmo conversacional` },
@@ -524,7 +523,7 @@ async function main() {
   // ── 6. SessionLogs — running athletes (past 2 weeks: Jul 23 – Aug 5) ─────
   //    These are FREE logs (no plannedSessionId) for simplicity
 
-  const runSessionData = [
+  const runSessionData: { email: string; date: string; km: number; min: number; rpe: number; hr: number; type: SessionType; disc: SessionDiscipline }[] = [
     // valentina_run
     { email: 'valentina_run@medaliq.com', date: '2026-07-23', km: 8.2,  min: 52, rpe: 6, hr: 152, type: SessionType.RODAJE_Z2,   disc: SessionDiscipline.RUNNING },
     { email: 'valentina_run@medaliq.com', date: '2026-07-25', km: 6.5,  min: 42, rpe: 7, hr: 165, type: SessionType.TEMPO,        disc: SessionDiscipline.RUNNING },

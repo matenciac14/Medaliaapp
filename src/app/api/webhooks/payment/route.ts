@@ -7,8 +7,6 @@ import { getPaymentGateway } from '@/infrastructure/billing/payment-gateway.fact
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
 import type { CoachTier } from '@/domain/subscription/tier-features'
 
-export const config = { api: { bodyParser: false } }
-
 export async function POST(req: NextRequest) {
   const rawBody   = await req.text()
   const signature = req.headers.get('x-payment-signature') ?? ''
