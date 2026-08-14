@@ -1,16 +1,17 @@
 /**
  * seed-demo.ts — Demo data for local demos with clients
  *
- * Creates: 1 coach + 5 athletes with 2 weeks historical data + 2 weeks future plan
+ * Creates: 1 coach + 6 athletes with historical data + plans
  * Run: pnpm tsx prisma/seed-demo.ts
  *
  * Users:
- *   coach_demo@medaliq.com  / Coach2026!    → Coach Carlos Medina (already in DB)
- *   sebastian_gym@medaliq.com / Atleta2026! → B2C Gym, Intermediate, 26yo
- *   valentina_run@medaliq.com / Atleta2026! → B2C Running, Intermediate, 29yo
- *   andres_b2b@medaliq.com  / Atleta2026!  → B2B Gym (Carlos's athlete), 28yo
- *   felipe_run@medaliq.com  / Atleta2026!  → B2B Running (Carlos's athlete), 32yo
- *   maria_gym@medaliq.com   / Atleta2026!  → B2B Gym (Carlos's athlete), 24yo
+ *   coach_demo@medaliq.com       / Coach2026!    → Coach Carlos Medina
+ *   sebastian_gym@medaliq.com    / Atleta2026!   → B2C Gym, Intermediate, 26yo
+ *   valentina_run@medaliq.com    / Atleta2026!   → B2C Running, Intermediate, 29yo
+ *   andres_b2b@medaliq.com      / Atleta2026!   → B2B Gym (Carlos), 28yo
+ *   felipe_run@medaliq.com      / Atleta2026!   → B2B Running (Carlos), 32yo
+ *   maria_gym@medaliq.com       / Atleta2026!   → B2B Gym (Carlos), 24yo
+ *   camila_completed@medaliq.com / Atleta2026!  → B2B Gym (Carlos), 27yo · Plan COMPLETADO
  */
 
 import 'dotenv/config'
@@ -826,15 +827,217 @@ async function main() {
     console.log('No foods in DB — skipping food logs')
   }
 
+  // ── 10. Camila — B2B Gym athlete with COMPLETED plan ─────────────────────
+  {
+    const camilaEmail = 'camila_completed@medaliq.com'
+    const camilaAge = 27
+    const camilaHrMax = Math.round(211 - 0.64 * camilaAge) // female formula
+
+    const camilaUser = await prisma.user.upsert({
+      where: { email: camilaEmail },
+      update: {},
+      create: {
+        email: camilaEmail,
+        name: 'Camila Herrera',
+        password: athletePassword,
+        role: UserRole.ATHLETE,
+        featurePlan: true, featureCheckin: true, featureNutrition: true,
+        featureProgress: true, featureLog: true, featureGym: true,
+        featureCoach: false,
+        onboardingCompleted: true,
+      },
+    })
+
+    await prisma.healthProfile.upsert({
+      where: { userId: camilaUser.id },
+      update: {},
+      create: {
+        userId: camilaUser.id,
+        age: camilaAge, weightKg: 62, heightCm: 168, gender: 'female',
+        dateOfBirth: new Date('1999-04-12'),
+        hrResting: 60, hrMax: camilaHrMax,
+        sport: 'STRENGTH', sportGoal: 'BODY_RECOMPOSITION',
+        experienceLevel: 'INTERMEDIATE', sessionMinutes: 60,
+        weightGoalKg: 59,
+      },
+    })
+
+    await prisma.userSubscription.upsert({
+      where: { userId: camilaUser.id },
+      update: {},
+      create: { userId: camilaUser.id, tier: SubscriptionTier.PRO },
+    })
+
+    // B2B link to coach Carlos
+    await prisma.coachAthlete.upsert({
+      where: { coachId_athleteId: { coachId: coachDemo.id, athleteId: camilaUser.id } },
+      update: {},
+      create: {
+        coachId: coachDemo.id,
+        athleteId: camilaUser.id,
+        status: AthleteStatus.ACTIVE,
+        coachGoal: 'Recomposición corporal — perder grasa y ganar tono muscular',
+      },
+    })
+
+    // Nutrition plan
+    await prisma.nutritionPlan.upsert({
+      where: { userId: camilaUser.id },
+      update: {},
+      create: {
+        userId: camilaUser.id,
+        tdee: 2050, targetKcalHard: 2250, targetKcalEasy: 2050,
+        targetKcalRest: 1800, proteinG: 130, carbsHardG: 250,
+        carbsEasyG: 210, fatG: 65,
+      },
+    })
+
+    // Clean previous plans
+    await prisma.trainingPlan.deleteMany({ where: { userId: camilaUser.id } })
+
+    // Completed 4-week gym plan: Jun 30 → Jul 27
+    const gymPlanStart = new Date('2026-06-30T00:00:00.000Z')
+    const gymPlanEnd = new Date('2026-07-27T23:59:59.999Z')
+
+    const gymPlan = await prisma.trainingPlan.create({
+      data: {
+        userId: camilaUser.id,
+        name: 'Recomposición Corporal',
+        goalType: GoalType.BODY_RECOMPOSITION,
+        totalWeeks: 4,
+        startDate: gymPlanStart,
+        endDate: gymPlanEnd,
+        status: PlanStatus.COMPLETED,
+        generatedBy: PlanSource.COACH,
+        hrZones: {
+          z1: { min: Math.round(camilaHrMax * 0.50), max: Math.round(camilaHrMax * 0.60) },
+          z2: { min: Math.round(camilaHrMax * 0.60), max: Math.round(camilaHrMax * 0.70) },
+          z3: { min: Math.round(camilaHrMax * 0.70), max: Math.round(camilaHrMax * 0.80) },
+          z4: { min: Math.round(camilaHrMax * 0.80), max: Math.round(camilaHrMax * 0.90) },
+          z5: { min: Math.round(camilaHrMax * 0.90), max: camilaHrMax },
+        },
+      },
+    })
+
+    // 4 weeks with gym sessions (4 sessions/week: Push, Pull, Legs, Descanso)
+    const gymWeekDefs = [
+      { n: 1, start: '2026-06-30', end: '2026-07-06', phase: Phase.BASE,       focus: 'Adaptación — técnica y activación muscular' },
+      { n: 2, start: '2026-07-07', end: '2026-07-13', phase: Phase.BASE,       focus: 'Base — volumen moderado, énfasis en compuestos' },
+      { n: 3, start: '2026-07-14', end: '2026-07-20', phase: Phase.DESARROLLO, focus: 'Progresión — aumento de carga en compuestos' },
+      { n: 4, start: '2026-07-21', end: '2026-07-27', phase: Phase.DESARROLLO, focus: 'Intensificación — RPE 8-9 en principales' },
+    ]
+
+    const gymSessionTemplates = [
+      { day: 2, type: SessionType.FUERZA, int: SessionIntensity.HIGH,     dur: 55, zone: null, detail: 'Push — Pecho, Hombro, Tríceps' },
+      { day: 4, type: SessionType.FUERZA, int: SessionIntensity.HIGH,     dur: 55, zone: null, detail: 'Pull — Espalda, Bíceps' },
+      { day: 6, type: SessionType.FUERZA, int: SessionIntensity.MODERATE, dur: 60, zone: null, detail: 'Legs — Cuádriceps, Glúteos, Femorales' },
+      { day: 7, type: SessionType.DESCANSO, int: SessionIntensity.REST,   dur: 0,  zone: null, detail: 'Descanso activo — movilidad y stretching' },
+    ]
+
+    const plannedSessionIds: string[] = []
+
+    for (const wd of gymWeekDefs) {
+      const week = await prisma.planWeek.create({
+        data: {
+          planId: gymPlan.id,
+          weekNumber: wd.n,
+          phase: wd.phase,
+          volumeKm: null,
+          focusDescription: wd.focus,
+          startDate: new Date(wd.start + 'T00:00:00.000Z'),
+          endDate: new Date(wd.end + 'T23:59:59.999Z'),
+        },
+      })
+
+      for (const st of gymSessionTemplates) {
+        const weekStart = new Date(wd.start + 'T00:00:00.000Z')
+        const sessionDate = new Date(weekStart)
+        sessionDate.setUTCDate(weekStart.getUTCDate() + (st.day - 1))
+
+        const ps = await prisma.plannedSession.create({
+          data: {
+            weekId: week.id,
+            dayOfWeek: st.day,
+            type: st.type,
+            intensity: st.int,
+            durationMin: st.dur,
+            zoneTarget: st.zone,
+            detailText: st.detail,
+            date: sessionDate,
+          },
+        })
+        if (st.type !== SessionType.DESCANSO) {
+          plannedSessionIds.push(ps.id)
+        }
+      }
+    }
+
+    // SessionLogs: 10 of 12 training sessions logged (~83% adherence)
+    // Skip session index 5 (W2 Pull) and 9 (W4 Push) to simulate missed days
+    const skipIndices = new Set([5, 9])
+    const rpeValues = [6, 7, 7, 7, 8, 7, 8, 8, 8, 9, 8, 9]
+    const hrValues  = [142, 148, 145, 150, 155, 152, 158, 156, 160, 162, 158, 165]
+    const durValues = [52, 58, 57, 53, 56, 54, 58, 55, 62, 57, 60, 58]
+
+    for (let i = 0; i < plannedSessionIds.length; i++) {
+      if (skipIndices.has(i)) continue
+
+      // Derive date from plan session
+      const ps = await prisma.plannedSession.findUnique({
+        where: { id: plannedSessionIds[i] },
+        select: { date: true },
+      })
+
+      await prisma.sessionLog.create({
+        data: {
+          userId: camilaUser.id,
+          plannedSessionId: plannedSessionIds[i],
+          completedAt: ps?.date ?? new Date(),
+          sessionDate: ps?.date ?? new Date(),
+          rpe: rpeValues[i],
+          hrAvg: hrValues[i],
+          durationMin: durValues[i],
+          discipline: SessionDiscipline.STRENGTH,
+          notes: i === 0 ? 'Primera sesión del plan — buenas sensaciones' : null,
+        },
+      })
+    }
+
+    // WeeklyCheckIns (4 weeks of tracking)
+    const checkInData = [
+      { week: 1, date: '2026-07-05', weightKg: 62.0, rpe: 6 },
+      { week: 2, date: '2026-07-12', weightKg: 61.6, rpe: 7 },
+      { week: 3, date: '2026-07-19', weightKg: 61.3, rpe: 7 },
+      { week: 4, date: '2026-07-26', weightKg: 60.8, rpe: 8 },
+    ]
+
+    for (const ci of checkInData) {
+      await prisma.weeklyCheckIn.create({
+        data: {
+          userId: camilaUser.id,
+          weekNumber: ci.week,
+          recordedAt: new Date(ci.date + 'T10:00:00.000Z'),
+          weightKg: ci.weightKg,
+          rpe: ci.rpe,
+          hrResting: 60 - ci.week, // slight improvement over weeks
+          energyLevel: ci.week <= 2 ? 4 : 3,
+        },
+      }).catch(() => {}) // skip if duplicate
+    }
+
+    console.log('  Camila completed plan created (B2B Gym, 4 weeks, 10/12 sessions)')
+  }
+
   // ── Done ──────────────────────────────────────────────────────────────────
   console.log('\nDemo seed complete!')
   console.log('Users:')
-  console.log('  coach_demo@medaliq.com   / Coach2026!   → Coach')
-  console.log('  sebastian_gym@medaliq.com / Atleta2026! → B2C Gym')
-  console.log('  valentina_run@medaliq.com / Atleta2026! → B2C Running')
-  console.log('  andres_b2b@medaliq.com   / Atleta2026!  → B2B Gym (coach: Carlos)')
-  console.log('  felipe_run@medaliq.com   / Atleta2026!  → B2B Running (coach: Carlos)')
-  console.log('  maria_gym@medaliq.com    / Atleta2026!  → B2B Gym (coach: Carlos)')
+  console.log('  coach_demo@medaliq.com        / Coach2026!   → Coach')
+  console.log('  sebastian_gym@medaliq.com     / Atleta2026!  → B2C Gym')
+  console.log('  valentina_run@medaliq.com     / Atleta2026!  → B2C Running')
+  console.log('  andres_b2b@medaliq.com        / Atleta2026!  → B2B Gym (coach: Carlos)')
+  console.log('  felipe_run@medaliq.com        / Atleta2026!  → B2B Running (coach: Carlos)')
+  console.log('  maria_gym@medaliq.com         / Atleta2026!  → B2B Gym (coach: Carlos)')
+  console.log('  camila_completed@medaliq.com  / Atleta2026!  → B2B Gym (coach: Carlos) · Plan COMPLETADO')
 }
 
 main()
