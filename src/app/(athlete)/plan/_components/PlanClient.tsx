@@ -1273,7 +1273,136 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
   const realCurrentPhase = weeks.find(w => w.weekNumber === plan.currentWeek)?.phase ?? (week?.phase ?? 'BASE')
 
   return (
-    <div className="px-4 py-6 md:px-8 max-w-7xl mx-auto">
+    <>
+    {/* ══════ MOBILE (< sm) — Figma 2008:203 / 2145:218 ══════ */}
+    <div className="sm:hidden min-h-screen bg-[#f1f5f9]">
+      {/* Header — navy gradient */}
+      <div className="bg-gradient-to-b from-[#1e3a5f] to-[#2d5a8e] pb-3 px-5 pt-[max(env(safe-area-inset-top,0px),20px)]">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h1 className="text-[20px] font-bold text-white leading-tight">Mi Plan</h1>
+            <p className="text-[11px] text-white/60 mt-0.5">
+              Plan {formatPlanName(plan.name)} · {plan.totalWeeks} semanas
+            </p>
+          </div>
+          <div className="bg-white/15 text-white px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap">
+            {realCurrentPhase} · Sem {plan.currentWeek}/{plan.totalWeeks}
+          </div>
+        </div>
+
+        {/* Week Nav */}
+        <div className="flex items-center justify-between bg-white/10 rounded-xl px-1 py-1">
+          <button
+            onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
+            disabled={selectedWeekNum <= 1}
+            className="w-8 h-8 flex items-center justify-center text-white/70 disabled:opacity-30"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-[13px] font-semibold text-white">
+            Semana {selectedWeekNum} · {weekLabel}
+          </span>
+          <button
+            onClick={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
+            disabled={selectedWeekNum >= plan.totalWeeks}
+            className="w-8 h-8 flex items-center justify-center text-white/70 disabled:opacity-30"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Day Pills */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex justify-between">
+          {Array.from({ length: 7 }, (_, i) => {
+            const dow = i + 1
+            const s = week?.sessions.find(x => x.dayOfWeek === dow) ?? null
+            const dateObj = new Date(weekMonday.getTime() + i * 86400000)
+            const isToday = isCurrentWeek && dow === todayDow
+            const isSel = dow === selectedDow
+            const isDone = (s?.done || (s ? loggedIds.has(s.id) : false)) ?? false
+            const isRest = !s || s.type === 'DESCANSO'
+
+            return (
+              <button key={dow} onClick={() => setSelectedDow(dow)} className="flex flex-col items-center gap-1">
+                <span className={cn('text-[11px] font-semibold',
+                  isToday ? 'text-[#ea580c]' : isSel ? 'text-[#1e3a5f]' : 'text-gray-400'
+                )}>
+                  {WEEK_DAYS_SHORT[i]}
+                </span>
+                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors',
+                  isToday ? 'bg-[#ea580c] text-white' :
+                  isDone && !isRest ? 'bg-[#22c55e] text-white' :
+                  isSel ? 'border-2 border-[#1e3a5f] text-[#1e3a5f] bg-white' :
+                  s && !isRest ? 'bg-[#1e3a5f] text-white' :
+                  'bg-white text-gray-400 border border-gray-200'
+                )}>
+                  {dateObj.getDate()}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 space-y-4 pb-24">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          {selDayLabel} · Sesión del día
+        </p>
+
+        {selectedSession ? (
+          <SessionDetailCard
+            key={`m-${selectedSession.id}`}
+            session={selectedSession}
+            isToday={isCurrentWeek && selectedDow === todayDow}
+            isLogged={loggedIds.has(selectedSession.id)}
+            onLogged={() => markLogged(selectedSession.id)}
+            onEdited={(updates) => applyEdit(selectedSession.id, updates)}
+          />
+        ) : !week ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-3">
+            <span className="text-3xl">📋</span>
+            <div>
+              <p className="text-[16px] font-bold text-gray-700">Semana sin sesiones</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Tu coach aún no ha planificado esta semana</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-3">
+            <span className="text-3xl">😴</span>
+            <div>
+              <p className="text-[16px] font-bold text-gray-700">Día de descanso</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
+            </div>
+          </div>
+        )}
+
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Esta semana</p>
+
+        <KPICards
+          completed={completedCount}
+          total={totalTraining}
+          volumeLabel={volumeLabel}
+          adherencePct={adherencePct}
+          isGym={isGym}
+        />
+
+        {nutritionTarget && <NutritionCard nt={nutritionTarget} />}
+
+        {/* Phase — compact mobile pill (Figma) */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fase actual</span>
+          <span className="w-2 h-2 rounded-full bg-[#1e3a5f]" />
+          <span className="text-[12px] font-bold text-[#1e3a5f]">{realCurrentPhase}</span>
+          <span className="text-[11px] text-gray-400 ml-auto">Semana {plan.currentWeek} de {plan.totalWeeks}</span>
+        </div>
+      </div>
+    </div>
+
+    {/* ══════ DESKTOP (sm+) ══════ */}
+    <div className="hidden sm:block px-4 py-6 md:px-8 max-w-7xl mx-auto">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 mb-6">
@@ -1352,7 +1481,6 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
               onEdited={(updates) => { applyEdit(selectedSession.id, updates) }}
             />
           ) : !week ? (
-            // BUG-058: semana sin PlanWeek en DB ≠ día de descanso real
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
               <span className="text-4xl">📋</span>
               <div>
@@ -1408,5 +1536,6 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
         </div>
       </div>
     </div>
+    </>
   )
 }

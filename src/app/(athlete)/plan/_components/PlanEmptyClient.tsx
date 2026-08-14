@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -32,12 +33,149 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
   const weekMonday = new Date(baseMonday.getTime() + weekOffset * 7 * 86400000)
   const weekSunday = new Date(weekMonday.getTime() + 6 * 86400000)
   const weekRangeLabel = `${weekMonday.getDate()} ${MONTHS_SHORT[weekMonday.getMonth()]} – ${weekSunday.getDate()} ${MONTHS_SHORT[weekSunday.getMonth()]}`
+  const weekNavLabel = `Semana del ${weekMonday.getDate()} – ${weekSunday.getDate()} ${MONTHS_SHORT[weekSunday.getMonth()]}`
 
   const selDateObj = new Date(weekMonday.getTime() + (selectedDow - 1) * 86400000)
   const selDayLabel = `${WEEK_DAYS[selectedDow - 1]} ${selDateObj.getDate()}`
 
   return (
-    <div className="px-4 py-6 md:px-8 max-w-7xl mx-auto">
+    <>
+    {/* ══════ MOBILE (< sm) — Figma 3427:46 / 3431:46 ══════ */}
+    <div className="sm:hidden min-h-screen bg-[#f1f5f9]">
+      {/* Header — navy gradient */}
+      <div className="bg-gradient-to-b from-[#1e3a5f] to-[#2d5a8e] pb-3 px-5 pt-[max(env(safe-area-inset-top,0px),20px)]">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h1 className="text-[20px] font-bold text-white leading-tight">Mi Plan</h1>
+            <p className="text-[11px] text-white/60 mt-0.5">Sin plan asignado</p>
+          </div>
+        </div>
+
+        {/* Week Nav */}
+        <div className="flex items-center justify-between bg-white/10 rounded-xl px-1 py-1">
+          <button
+            onClick={() => { setWeekOffset(w => w - 1); setSelectedDow(1) }}
+            className="w-8 h-8 flex items-center justify-center text-white/70"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-[13px] font-semibold text-white">{weekNavLabel}</span>
+          <button
+            onClick={() => { setWeekOffset(w => w + 1); setSelectedDow(1) }}
+            className="w-8 h-8 flex items-center justify-center text-white/70"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Day Pills */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex justify-between">
+          {Array.from({ length: 7 }, (_, i) => {
+            const dow = i + 1
+            const dateObj = new Date(weekMonday.getTime() + i * 86400000)
+            const isToday = weekOffset === 0 && dow === todayDow
+            const isSel = dow === selectedDow
+
+            return (
+              <button key={dow} onClick={() => setSelectedDow(dow)} className="flex flex-col items-center gap-1">
+                <span className={cn('text-[11px] font-semibold',
+                  isToday ? 'text-[#ea580c]' : isSel ? 'text-[#1e3a5f]' : 'text-gray-400'
+                )}>
+                  {WEEK_DAYS[i]}
+                </span>
+                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors',
+                  isToday ? 'bg-[#ea580c] text-white' :
+                  isSel ? 'border-2 border-[#1e3a5f] text-[#1e3a5f] bg-white' :
+                  'bg-white text-gray-400 border border-gray-200'
+                )}>
+                  {dateObj.getDate()}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 space-y-4 pb-24">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          {selDayLabel} · Sesión del día
+        </p>
+
+        {/* Session libre card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <span className="text-[20px]">📝</span>
+            <h3 className="text-[18px] font-black text-gray-900 leading-tight">Sesión libre</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="text-[12px] font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">— min</span>
+            <span className="text-[12px] font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">Zona 2–3</span>
+            <span className="text-[12px] font-semibold bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-100">Libre</span>
+          </div>
+          <p className="text-[12px] text-gray-400">Registra actividad libre — sin plan asignado</p>
+          <a
+            href="/log"
+            className="block w-full text-center bg-[#ea580c] hover:opacity-90 text-white text-[14px] font-bold py-3 rounded-xl transition-opacity"
+          >
+            Registrar sesión libre →
+          </a>
+        </div>
+
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Esta semana</p>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Esta semana</p>
+            <p className="text-[20px] font-black leading-none text-gray-900">0</p>
+            <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">sesiones</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Tiempo</p>
+            <p className="text-[20px] font-black leading-none text-gray-900">—</p>
+            <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">registrado</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1 truncate">Adherencia</p>
+            <p className="text-[20px] font-black leading-none text-[#ea580c]">—</p>
+            <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">sin meta activa</p>
+          </div>
+        </div>
+
+        {/* CTA card */}
+        {isB2B ? (
+          <div className="bg-[#1e3a5f] rounded-xl p-5 space-y-2">
+            <p className="text-[14px] font-bold text-white">Tu coach está preparando tu plan</p>
+            <p className="text-[11px] text-white/60">Cuando tu entrenador asigne el plan, aparecerá aquí automáticamente.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <p className="text-[14px] font-bold text-[#1e3a5f]">¿Quieres entrenar con un plan?</p>
+            <p className="text-[11px] text-gray-400">Un plan estructurado adapta cada sesión a tus métricas semanales.</p>
+            <a
+              href="/find-coach"
+              className="block w-full text-center bg-[#1e3a5f] hover:bg-[#243f6a] text-white text-[14px] font-bold py-3 rounded-xl transition-colors"
+            >
+              Buscar entrenador →
+            </a>
+            {showGymBuilder && (
+              <a
+                href="/gym/builder"
+                className="block w-full text-center border border-gray-200 text-gray-700 text-[13px] font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Construir mi rutina
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* ══════ DESKTOP (sm+) ══════ */}
+    <div className="hidden sm:block px-4 py-6 md:px-8 max-w-7xl mx-auto">
       {/* TopBar */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
@@ -122,7 +260,6 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
                   )}
                 </div>
 
-                {/* Selected day shows "Sesión libre" + CTA */}
                 {isSelected && (
                   <>
                     <span className={cn('text-[12px] font-semibold leading-tight mt-auto',
@@ -143,7 +280,6 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-5">
-        {/* Left — Sesión libre */}
         <div className="xl:col-span-3 space-y-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             {selDayLabel} · Sesión del día
@@ -169,7 +305,6 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
           </div>
         </div>
 
-        {/* Right — KPIs + CTA */}
         <div className="xl:col-span-2 space-y-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Esta semana</p>
           <div className="grid grid-cols-3 gap-2">
@@ -220,5 +355,6 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
         </div>
       </div>
     </div>
+    </>
   )
 }
