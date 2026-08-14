@@ -418,6 +418,8 @@ model SessionLog {
   hrMax            Int?
   distanceKm       Float?
   durationMin      Int?
+  energyState      String?  // EXHAUSTED | NORMAL | ENERGIZED
+  discomfort       String?  // NONE | MILD | MODERATE
   notes            String?
   garminActivityId String?
   freeSessionType  SessionType?      // solo para logs libres (plannedSessionId = null)
@@ -663,6 +665,8 @@ model GymSession {
   date              DateTime
   durationMin       Int?
   rpe               Int?     // 1-10
+  energyState       String?  // EXHAUSTED | NORMAL | ENERGIZED
+  discomfort        String?  // NONE | MILD | MODERATE
   caloriesBurned    Int?     // kcal estimadas (durationMin × avgCaloriesPerMinute de los ejercicios)
   notes             String?
   completed         Boolean  @default(false)

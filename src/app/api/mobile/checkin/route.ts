@@ -42,14 +42,30 @@ export async function GET(req: NextRequest) {
     const plan = await prisma.trainingPlan.findFirst({
       where: { userId: mobile.id, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
-      select: { startDate: true, totalWeeks: true },
+      select: {
+        startDate: true,
+        totalWeeks: true,
+        weeks: {
+          select: {
+            weekNumber: true,
+            sessions: {
+              select: {
+                dayOfWeek: true,
+                type: true,
+                log: { select: { id: true } },
+              },
+            },
+          },
+          orderBy: { weekNumber: 'asc' },
+        },
+      },
     })
 
     const weekNumber = plan
       ? getPlanWeekNumber(plan.startDate, plan.totalWeeks)
       : getCurrentISOWeek()
 
-    const [existing, pendingSuggestions] = await Promise.all([
+    const [existing, pendingSuggestions, healthProfile] = await Promise.all([
       prisma.weeklyCheckIn.findFirst({
         where: { userId: mobile.id, weekNumber },
         select: {
@@ -72,11 +88,26 @@ export async function GET(req: NextRequest) {
         select: { id: true, type: true, title: true, description: true, expiresAt: true },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.healthProfile.findUnique({
+        where: { userId: mobile.id },
+        select: { weightKg: true, hrResting: true },
+      }),
     ])
+
+    // Week sessions for adherence dots
+    const currentWeekData = plan?.weeks.find((w) => w.weekNumber === weekNumber)
+    const weekSessions = currentWeekData?.sessions
+      .filter((s) => s.type !== 'DESCANSO')
+      .map((s) => ({ dayOfWeek: s.dayOfWeek, completed: !!s.log })) ?? []
+
+    const hasAutoData = !!(healthProfile?.weightKg || healthProfile?.hrResting)
 
     return ok({
       submitted: !!existing,
       weekNumber,
+      totalWeeks: plan?.totalWeeks ?? null,
+      weekSessions,
+      hasAutoData,
       data: existing ?? null,
       pendingSuggestions,
     })

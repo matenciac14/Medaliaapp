@@ -40,6 +40,8 @@ const GymCompleteSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),
   rpe: z.number().int().min(1).max(10).optional(),
   durationMin: z.number().int().min(0).max(600).optional(),
+  energyState: z.enum(['EXHAUSTED', 'NORMAL', 'ENERGIZED']).optional(),
+  discomfort: z.enum(['NONE', 'MILD', 'MODERATE']).optional(),
   notes: z.string().max(2000).optional(),
   sets: z.array(SetPayloadSchema).max(300).optional(),
   exerciseOverrides: z.array(ExerciseOverrideSchema).max(50).optional(),
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
   const body = parsed.data
 
-  const { dayOfWeek, rpe, durationMin, notes } = body
+  const { dayOfWeek, rpe, durationMin, energyState, discomfort, notes } = body
   const sets = body.sets ?? []
   const exerciseOverrides = body.exerciseOverrides ?? null
 
@@ -243,6 +245,8 @@ export async function POST(req: NextRequest) {
           date: today,
           durationMin: durationMin ?? null,
           rpe: rpe ?? null,
+          energyState: energyState ?? null,
+          discomfort: discomfort ?? null,
           caloriesBurned: estimateCalories(durationMin),
           notes: notes ?? null,
           completed: true,
@@ -306,6 +310,8 @@ export async function POST(req: NextRequest) {
         date: today,
         durationMin: durationMin ?? null,
         rpe: rpe ?? null,
+        energyState: energyState ?? null,
+        discomfort: discomfort ?? null,
         caloriesBurned: estimateCalories(durationMin),
         notes: notes ?? null,
         completed: true,
@@ -367,6 +373,8 @@ export async function POST(req: NextRequest) {
         date: today,
         durationMin: durationMin ?? null,
         rpe: rpe ?? null,
+        energyState: energyState ?? null,
+        discomfort: discomfort ?? null,
         caloriesBurned: estimateCalories(durationMin),
         notes: notes ?? null,
         completed: true,

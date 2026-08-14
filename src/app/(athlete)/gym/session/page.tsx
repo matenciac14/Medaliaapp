@@ -142,30 +142,73 @@ function RestTimer({ seconds, onDone }: { seconds: number; onDone: () => void })
 
 // ─── Complete Modal ───────────────────────────────────────────────────────────
 
+type EnergyState = 'EXHAUSTED' | 'NORMAL' | 'ENERGIZED'
+type Discomfort = 'NONE' | 'MILD' | 'MODERATE'
+
+const ENERGY_OPTIONS: { value: EnergyState; emoji: string; label: string }[] = [
+  { value: 'EXHAUSTED', emoji: '😮‍💨', label: 'Agotado' },
+  { value: 'NORMAL', emoji: '😊', label: 'Normal' },
+  { value: 'ENERGIZED', emoji: '💪', label: 'Con energía' },
+]
+
+const DISCOMFORT_OPTIONS: { value: Discomfort; emoji: string; label: string }[] = [
+  { value: 'NONE', emoji: '✅', label: 'Sin molestias' },
+  { value: 'MILD', emoji: '⚡', label: 'Leve' },
+  { value: 'MODERATE', emoji: '⚠️', label: 'Moderada' },
+]
+
 function CompleteModal({
   onSubmit,
-  onClose,
+  onSkip,
   loading,
   defaultDuration,
 }: {
-  onSubmit: (rpe: number, durationMin: number, notes: string) => void
-  onClose: () => void
+  onSubmit: (data: { rpe: number; durationMin: number; notes: string; energyState?: EnergyState; discomfort?: Discomfort }) => void
+  onSkip: () => void
   loading: boolean
   defaultDuration: number
 }) {
   const [rpe, setRpe] = useState(7)
   const [durationMin, setDurationMin] = useState(defaultDuration)
   const [notes, setNotes] = useState('')
+  const [energyState, setEnergyState] = useState<EnergyState | null>(null)
+  const [discomfort, setDiscomfort] = useState<Discomfort | null>(null)
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-        <div className="px-6 pt-6 pb-4">
-          <h2 className="text-xl font-bold text-[#1e3a5f]">Finalizar sesión</h2>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 text-center">
+          <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 size={28} className="text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-[#1e3a5f]">Sesion completada</h2>
           <p className="text-sm text-gray-500 mt-0.5">¿Cómo fue tu sesión de hoy?</p>
         </div>
 
-        <div className="px-6 space-y-5 pb-6">
+        <div className="px-6 space-y-5 pb-5">
+          {/* Energy State */}
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-2.5">¿Cómo saliste?</label>
+            <div className="grid grid-cols-3 gap-2">
+              {ENERGY_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEnergyState(opt.value)}
+                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-colors ${
+                    energyState === opt.value
+                      ? 'border-[#ea580c] bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <span className={`text-xs font-semibold ${energyState === opt.value ? 'text-[#ea580c]' : 'text-gray-600'}`}>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* RPE */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -183,6 +226,28 @@ function CompleteModal({
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>Muy fácil</span>
               <span>Máximo esfuerzo</span>
+            </div>
+          </div>
+
+          {/* Discomfort */}
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-2.5">¿Alguna molestia?</label>
+            <div className="grid grid-cols-3 gap-2">
+              {DISCOMFORT_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDiscomfort(opt.value)}
+                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-colors ${
+                    discomfort === opt.value
+                      ? 'border-[#ea580c] bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <span className={`text-xs font-semibold ${discomfort === opt.value ? 'text-[#ea580c]' : 'text-gray-600'}`}>{opt.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -205,28 +270,34 @@ function CompleteModal({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              rows={2}
               placeholder="¿Alguna observación sobre la sesión?"
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#ea580c]/40 focus:border-[#ea580c]"
             />
           </div>
         </div>
 
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="px-6 pb-6 space-y-3">
           <button
-            onClick={onClose}
+            onClick={() => onSubmit({
+              rpe,
+              durationMin,
+              notes,
+              energyState: energyState ?? undefined,
+              discomfort: discomfort ?? undefined,
+            })}
             disabled={loading}
-            className="flex-1 border border-gray-300 text-gray-700 font-medium text-sm py-3 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={() => onSubmit(rpe, durationMin, notes)}
-            disabled={loading}
-            className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-sm py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-sm py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-            Guardar sesión
+            Guardar y continuar
+          </button>
+          <button
+            onClick={onSkip}
+            disabled={loading}
+            className="w-full text-gray-400 hover:text-gray-600 text-sm font-medium py-2 transition-colors"
+          >
+            Saltar por ahora
           </button>
         </div>
       </div>
@@ -428,7 +499,8 @@ export default function GymSessionPage() {
     : sessionData?.exercises.length === 0
       || sessionData?.exercises.every((we) => setsMap[we.id]?.some((s) => s.completed)) === true
 
-  const handleComplete = useCallback(async (rpe: number, durationMin: number, notes: string) => {
+  const handleComplete = useCallback(async (data: { rpe: number; durationMin: number; notes: string; energyState?: EnergyState; discomfort?: Discomfort }) => {
+    const { rpe, durationMin, notes, energyState, discomfort } = data
     if (!sessionData) return
     setSubmitting(true)
 
@@ -479,6 +551,8 @@ export default function GymSessionPage() {
           dayOfWeek: sessionData.dayOfWeek,
           rpe,
           durationMin,
+          energyState,
+          discomfort,
           notes,
           sets,
         }),
@@ -1031,7 +1105,7 @@ export default function GymSessionPage() {
       {showModal && createPortal(
         <CompleteModal
           onSubmit={handleComplete}
-          onClose={() => setShowModal(false)}
+          onSkip={() => setShowModal(false)}
           loading={submitting}
           defaultDuration={elapsedMinutes > 0 ? elapsedMinutes : 60}
         />,

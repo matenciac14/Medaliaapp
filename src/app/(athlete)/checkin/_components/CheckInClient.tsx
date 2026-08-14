@@ -20,6 +20,9 @@ interface CheckInClientProps {
   hasNutrition: boolean
   hasGym: boolean
   weekAdherence: { completed: number; total: number }
+  currentWeek: number
+  totalWeeks: number | null
+  hasAutoData: boolean
   checkInState: CheckInState
   submittedAt: Date | null
   submittedTriggers: string[]
@@ -54,6 +57,9 @@ export default function CheckInClient({
   hasNutrition,
   hasGym,
   weekAdherence,
+  currentWeek,
+  totalWeeks,
+  hasAutoData,
   checkInState,
   submittedAt,
   submittedTriggers,
@@ -256,12 +262,57 @@ export default function CheckInClient({
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 pt-5 pb-8">
         <div className="mb-5">
-          <h1 className="text-2xl font-bold text-[#0f1e30]">Check-in Semanal</h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-[#0f1e30]">Check-in Semanal</h1>
+            {totalWeeks && (
+              <span className="text-[11px] font-bold bg-[#1e3a5f] text-white px-2.5 py-1 rounded-full uppercase tracking-wide">
+                Semana {currentWeek} de {totalWeeks}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-400 mt-0.5">{weekLabel} · Cuéntanos cómo te fue</p>
-          <p className="text-xs text-gray-400 mt-2 max-w-lg">
-            <span className="font-medium text-gray-500">¿Para qué sirve esto?</span> Acá reportás tu carga subjetiva de la semana: energía, estrés, dolor, RPE y motivación. Es distinto al registro diario de peso y FC en tu perfil — esas son métricas objetivas. El check-in semanal sincroniza tu bienestar con tu entrenamiento y va construyendo tu historial de progreso.
-          </p>
+
+          {/* Adherencia visual — dots Lun-Dom */}
+          {weekSessions.length > 0 && (
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-xs font-semibold text-gray-500">Adherencia</span>
+              <div className="flex items-center gap-1">
+                {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, i) => {
+                  const dow = i === 6 ? 0 : i + 1 // L=1(Mon), ..., S=6(Sat), D=0(Sun)
+                  const session = weekSessions.find(s => s.dayOfWeek === dow)
+                  const isRest = session?.type === 'DESCANSO'
+                  const hasSession = !!session && !isRest
+                  const done = session?.completed
+                  return (
+                    <div
+                      key={day}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        !hasSession ? 'bg-gray-100 text-gray-300'
+                        : done ? 'bg-green-500 text-white'
+                        : 'bg-red-100 text-red-500 border border-red-200'
+                      }`}
+                    >
+                      {!hasSession ? day : done ? '✓' : '✗'}
+                    </div>
+                  )
+                })}
+              </div>
+              {adherencePct !== null && (
+                <span className={`text-xs font-bold ${adherencePct >= 80 ? 'text-green-600' : adherencePct >= 50 ? 'text-[#ea580c]' : 'text-red-500'}`}>
+                  {adherencePct}%
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Auto-data banner */}
+        {hasAutoData && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-2.5">
+            <span className="text-blue-500 text-base">ℹ️</span>
+            <p className="text-xs text-blue-700">Algunos datos fueron pre-llenados automáticamente con tu último registro. Revisalos y ajustalos si es necesario.</p>
+          </div>
+        )}
 
         {/* Check-in rápido */}
         <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center justify-between gap-4">
