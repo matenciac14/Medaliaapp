@@ -723,6 +723,8 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Admin P2: banner "AI desactivada" en /admin/ai — evitar confusión al editar prompt sin efecto', done: true, priority: 'P2', note: 'Banner amber en /admin/ai indicando AI_ONBOARDING_ENABLED = false, qué sí funciona (chat) y cómo reactivar.' },
           { title: 'Admin P3: búsqueda global (⌘K) — encontrar cualquier usuario/coach desde cualquier página admin', done: true, priority: 'P3', note: 'AdminSearchPalette en layout: ⌘K/Ctrl+K abre overlay, debounce 200ms, rankResults domain puro (17 tests), flechas+Enter para navegar, ESC cierra. GET /api/admin/search?q= con Prisma contains insensitive.' },
           { title: 'Admin P3: editor de ejercicios globales desde /admin', done: true, priority: 'P3', note: '/admin/exercises: CRUD completo (GET+POST /api/admin/exercises, PATCH+DELETE /[id]). validateExercise domain puro (23 tests). Formulario inline con selects de categoría y equipamiento. Filtro client-side por nombre/categoría.' },
+          { title: 'MOB-UPG — Flujo de upgrade/marketplace in-app (mobile)', done: true, priority: 'P1', note: 'pricing.tsx (tabla Free vs Pro + checkout in-app via expo-web-browser), find-coach.tsx (pantalla B2B + marketplace próximamente). upgrade.tsx y UpgradeWall.tsx migrados de Linking.openURL a router.push pricing. Poll getMe post-pago hasta features.plan=true.' },
+          { title: 'ADMIN-FEAT — Configuración de features por tipo de usuario (/admin/features)', done: true, priority: 'P1', note: 'TierFeatureConfig DB table (B2C_FREE, B2C_PRO, B2B). Migración + seed. Infrastructure repo con cache 5min. GET+PATCH /api/admin/features. UI toggle grid en /admin/features. /status route B2B usa config DB en vez de hardcode.' },
         ],
       },
       {
@@ -1005,6 +1007,32 @@ export const GROUPS: RoadmapGroup[] = [
         note: 'Fix: getUserPlan() en user-config.ts ahora acepta isB2B?: boolean. Si isB2B=true → siempre retorna PRO independiente del tier en DB. Billing habilitado: B2B bypasea la consulta de subscription. TRIAL eliminado del flujo de getUserPlan(). Branch: feature/landing-conversion.',
       },
 
+      // ── PRERREQUISITO MIGUEL — registro en pasarelas de pago ────────────────
+      {
+        title: 'REGISTRO — Crear cuenta en Wompi (dashboard.wompi.co)',
+        done: false,
+        priority: 'P0',
+        note: 'Acción manual de Miguel. Registrarse en dashboard.wompi.co con RUT/cédula + cuenta bancaria colombiana para recibir pagos. En Configuración → API keys obtener WOMPI_PRIVATE_KEY (prv_prod_...) y WOMPI_PUBLIC_KEY. En Configuración → Webhooks configurar URL https://medaliq.com/api/webhooks/wompi y obtener WOMPI_INTEGRITY_SECRET.',
+      },
+      {
+        title: 'ACTIVAR — Configurar env vars de Wompi en Vercel',
+        done: false,
+        priority: 'P0',
+        note: 'Acción manual de Miguel. Agregar en Vercel Settings → Environment Variables: PAYMENT_GATEWAY=wompi, WOMPI_PRIVATE_KEY=prv_prod_..., WOMPI_INTEGRITY_SECRET=... También agregar en .env.local para desarrollo. Con WOMPI_SANDBOX=true se usan llaves de prueba (prv_test_...).',
+      },
+      {
+        title: 'VERIFICAR — Prueba end-to-end de checkout en sandbox Wompi',
+        done: false,
+        priority: 'P0',
+        note: 'Con WOMPI_SANDBOX=true: (1) coach hace upgrade STARTER→GROWTH → payment link generado → pagar con tarjeta de prueba 4111 1111 1111 1111. (2) Wompi sandbox envía webhook APPROVED → verificar coachTier=GROWTH en DB. (3) Enviar mismo webhook 2 veces → verificar idempotencia (solo 1 upgrade). (4) Cron billing-check con currentPeriodEnd=ayer → verificar downgrade.',
+      },
+      {
+        title: 'ACTIVAR — Habilitar Nequi y PSE en dashboard de Wompi',
+        done: false,
+        priority: 'P1',
+        note: 'Wompi soporta Nequi y PSE nativamente sin código adicional. Activar en dashboard.wompi.co → Métodos de pago antes del lanzamiento público. Tarjeta sola excluye ~50% del mercado colombiano (bancarización). Nequi es el método más popular en LatAm joven.',
+      },
+
       // ── P1 — CHECKOUT Y WEBHOOK: primer cobro real ──────────────────────────
       {
         title: 'Checkout coach — POST /api/billing/coach/checkout',
@@ -1054,13 +1082,19 @@ export const GROUPS: RoadmapGroup[] = [
         title: 'Página gestión de suscripción del atleta — /settings/plan',
         done: true,
         priority: 'P2',
-        note: 'DONE (2026-08-11). /(athlete)/settings/plan: tabla comparativa Free vs Pro, precio en COP ($41,980/mes + ~$9.99 USD referencia), botón Activar Pro → POST /api/billing/athlete/checkout → redirect a Wompi. B2B activo ve mensaje de que el acceso lo gestiona el coach. Toast ?billing=success|cancelled.',
+        note: 'DONE (2026-08-15). /(athlete)/settings/plan: tabla comparativa Free vs Pro, precio en COP (calculado con TRM real desde Banco República), fecha TRM mostrada para transparencia. botón Activar Pro → POST /api/billing/athlete/checkout → redirect a Wompi. B2B activo ve mensaje de que el acceso lo gestiona el coach. Toast ?billing=success|cancelled.',
       },
       {
         title: 'Página gestión de suscripción del coach — /coach/settings/plan',
         done: true,
         priority: 'P2',
-        note: 'DONE (2026-08-11). /coach/settings/plan: tier actual, atletas activos vs límite (barra de progreso), fecha de renovación, cards de upgrade con precios COP/USD. Botón upgrade → POST /api/billing/coach/checkout → redirect a Wompi. Toast ?billing=success|cancelled.',
+        note: 'DONE (2026-08-15). /coach/settings/plan: tier actual, atletas activos vs límite (barra de progreso), fecha de renovación, cards de upgrade con precios COP/USD. TRM real mostrado con fecha para transparencia. Botón upgrade → POST /api/billing/coach/checkout → redirect a Wompi. Toast ?billing=success|cancelled.',
+      },
+      {
+        title: 'TRM real-time — Banco de la República (transparencia de precios COP)',
+        done: true,
+        priority: 'P1',
+        note: 'DONE (2026-08-15). ITrmProvider port + BancoRepublicaTrmAdapter (datos.gov.co/resource/32sa-8pi3.json). SystemConfig.trmUsdCop + trmUpdatedAt en DB. getTrmWithMeta() lee DB → env var → fallback 4200. Cron /api/cron/refresh-trm (14:00 UTC = 9am COT) actualiza daily. UI: settings/plan coach + atleta muestran "TRM YYYY-MM-DD". Mobile pricing.tsx: COP dinámico vía /api/mobile/billing/prices + fecha TRM en footer. WompiPaymentGateway usa await getTrm() para montos al momento del checkout. Precios siempre precisos — no overcharge por TRM desactualizado.',
       },
       {
         title: 'Scale+ tier — $129 + $1.50/atleta activo sobre 100',
@@ -1203,7 +1237,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'COACH-NUT-UI-01 — KPIs banda top en Tab Nutrición coach (adherencia %, TDEE, proteína media, fase del plan)', done: true, priority: 'P2', note: 'DONE (2026-08-14). NutricionTab.tsx: grid 4 cards — adherencia 7d con semáforo verde/naranja/rojo, TDEE base kcal, proteína media g/día, fase del plan. Calculados inline desde props foodLogs + adherenceData + nutritionPlan + currentPhase (todos ya disponibles).' },
           { title: 'COACH-NUT-UI-02 — Gráfica "Kcal consumidas vs target" en Tab Nutrición coach (barras 7 días)', done: true, priority: 'P2', note: 'DONE (2026-08-14). NutricionTab.tsx: bar chart 7 días — barras de altura relativa al máximo diario, color por adherencePct (verde ≥80/naranja ≥60/rojo <60), barra semitransparente navy para el target. Leyenda con swatches. Calculado desde adherenceData (último 7 días).' },
           { title: 'COACH-NUT-UI-03 — Donut "Distribución de macros" en Tab Nutrición coach (promedio 7 días)', done: true, priority: 'P2', note: 'DONE (2026-08-14). NutricionTab.tsx: SVG donut con segmentos proteína #3b82f6 / carbos #f97316 / grasas #eab308, rotación CSS -90°. Leyenda con %, g/día promedio. Calculado desde foodLogs 7 días (kcalLogged/proteinLogged/carbsLogged/fatLogged con snapshot o estimación).' },
-          { title: 'COACH-NUT-UI-04 — Quick quantity buttons en FoodSearchModal coach (50g/100g/150g/200g/250g/Personalizar)', done: false, priority: 'P2', note: 'Figma 4117:900 muestra pills de cantidad rápida + preview de macros del alimento seleccionado antes de agregar. CoachPlannedMealPlanner ya tiene quick picks 50/100/150/200g inline — unificar UX con el modal del Constructor de Plantilla.' },
+          { title: 'COACH-NUT-UI-04 — Quick quantity buttons en FoodSearchModal coach (50g/100g/150g/200g/250g/Personalizar)', done: true, priority: 'P2', note: 'DONE (2026-08-15). NutritionConstructor.tsx: pills [50/100/150/200/250g] + input libre "Otro" + macro preview (kcal/prot/carb/gras) antes de agregar. NutritionBuilderClient ya tenía pills — UX ahora consistente en ambos constructores.' },
           { title: 'COACH-NUT-UI-05 — Target por comida en Constructor de Plantilla Nutricional', done: false, priority: 'P3', note: 'Figma 4117:821 muestra "Target: 550 kcal" por comida (Desayuno/Almuerzo/Merienda/Cena). El coach define cuántas kcal quiere en cada comida. NutritionTemplateMeal no tiene campo targetKcal — requiere migración. Ayuda al coach a balancear la distribución calórica.' },
           { title: 'COACH-NUT-UI-06 — Sidebar "Resumen del día" + "Tip" en Constructor de plan de comidas del atleta', done: false, priority: 'P3', note: 'Figma 4185:177 muestra sidebar derecho con resumen de macros del día seleccionado + tip contextual para el coach. Datos ya disponibles en NutritionConstructor. Solo UI.' },
         ],
@@ -1223,7 +1257,7 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'NUT-08 — POST .../approve + .../reject — ReviewFoodUseCase', done: true, priority: 'P1', note: 'DONE: PATCH /api/admin/nutrition/proposals/[id] con { action: APPROVE|REJECT, reviewNote? }. APPROVE: FoodProposal.status=APPROVED + Food.isVerified=true. REJECT: FoodProposal.status=REJECTED + Food.isActive=false. Ambos en $transaction. Requiere role=ADMIN.' },
           { title: 'NUT-03-08 UI — Proponer alimento: step "propose" en LogFoodModal web + mobile', done: true, priority: 'P1', note: 'DONE: LogFoodModal.tsx (web: /nutrition/_components) y LogFoodModal.tsx (mobile: MEDALIQ-MOBILE/src/components). Nuevo step "propose" con form: nombre, categoría (chips), macros 4-col por 100g, país (chips Universal/CO/MX/AR/PE/VE/CL), notas textarea. CTA "¿No lo encontraste? Proponer alimento →" aparece en búsqueda con ≥2 chars, pre-rellena nombre. Estado success con checkmark. Web usa fetch plain, mobile usa useMutation. POST /api/nutrition/foods/propose (web) y /api/mobile/nutrition/foods/propose (mobile).' },
           { title: 'NUT-09 — Seed Argentina/Peru/Chile/Venezuela (~150 alimentos)', done: true, priority: 'P2', note: 'DONE. scripts/seed-latam-foods.ts — 41 alimentos LatAm: AR (milanesa, empanada, choripán, dulce de leche, asado, yerba mate), PE (lomo saltado, ceviche, aji amarillo, maca, causa, anticuchos, choclo), VE (arepa harina PAN, pabellón criollo, cachapa, caraotas, hallaca, tequeños), CL (pastel de choclo, sopaipilla, completo, chorrillana, mote), CO extra (bandeja paisa, pandebono, ajiaco, changua, buñuelo, chicharrón), MX (tortilla maíz, guacamole, frijoles refritos, tacos). Upsert-safe por nombre. Run: pnpm tsx scripts/seed-latam-foods.ts' },
-          { title: 'NUT-10 — IFoodLookupClient port + OpenFoodFactsClient (barcode scanning)', done: false, priority: 'P2', note: 'Port: IFoodLookupClient.lookupByBarcode(code) → FoodLookupResult | null. Implementación: fetch world.openfoodfacts.org/api/v2/product/{code}. Flujo: DB lookup first → si no existe → OFF → response con needsConfirmation:true → atleta confirma → POST crea Food { source:"openfoodfacts", isVerified:false, barcode:code }. Ver implementacion/nutricion.md para código completo.' },
+          { title: 'NUT-10 — IFoodLookupClient port + OpenFoodFactsClient (barcode scanning)', done: true, priority: 'P2', note: 'DONE. Port IFoodLookupClient en domain/ports/food-lookup.client.ts. OpenFoodFactsClient en infrastructure/food/open-food-facts.client.ts. Fetch OFF v2 con 5s timeout, User-Agent Medaliq/1.0. Requiere nombre + 4 macros, else null. FoodItem.fiberPer100g añadido a tipo mobile (src/api/nutrition.ts) — resuelve TS error en BarcodeScannerModal.' },
           { title: 'NUT-10 — IFoodLookupClient port + OpenFoodFactsClient (barcode scanning)', done: true, priority: 'P2', note: 'DONE. Port IFoodLookupClient en domain/ports/food-lookup.client.ts. OpenFoodFactsClient en infrastructure/food/open-food-facts.client.ts. Fetch OFF v2 con 5s timeout, User-Agent Medaliq/1.0. Requiere nombre + 4 macros, else null.' },
           { title: 'NUT-11 — GET /api/nutrition/foods/barcode + /api/mobile/nutrition/foods/barcode', done: true, priority: 'P2', note: 'DONE. GET ?code= → DB lookup first → OpenFoodFactsClient fallback → needsConfirmation pattern. POST confirma y crea Food con source:openfoodfacts. Rate limit 60/min GET, 10/min POST.' },
           { title: 'NUT-12 — Mobile: UI scanner código de barras + flujo de confirmación', done: true, priority: 'P3', note: 'DONE. BarcodeScannerModal.tsx con expo-camera CameraView + barcodeScannerSettings ean13/ean8/upc. Botón 📷 en LogFoodModal search header. onFoodFound → handleSelectFood (detail step). onNotFound → propose step con barcode en notes. Confirmación OFF con macros grid antes de crear.' },
