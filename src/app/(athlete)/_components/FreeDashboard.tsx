@@ -164,7 +164,7 @@ export default function FreeDashboard({
               { href: '/nutrition', emoji: '🥗', label: 'Nutrición', desc: 'Registra calorías y macros del día' },
               { href: '/progress', emoji: '📊', label: 'Progreso', desc: 'Evolución de peso, FC y PRs' },
               { href: '/checkin', emoji: '✅', label: 'Check-in', desc: 'Balance semanal de tu entrenamiento' },
-              { href: isGym ? '/gym' : '/log', emoji: isGym ? '🏋️' : '🏃', label: isGym ? 'Gym' : 'Mis sesiones', desc: isGym ? 'Tus rutinas y PRs' : 'Historial de salidas' },
+              { href: isGym ? '/gym' : '/log', emoji: isGym ? '🏋️' : '🏃', label: isGym ? 'Entreno' : 'Mis sesiones', desc: isGym ? 'Tus rutinas y PRs' : 'Historial de salidas' },
             ] as const).map(({ href, emoji, label, desc }) => (
               <Link key={href} href={href} className="group block">
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all p-3 text-center">

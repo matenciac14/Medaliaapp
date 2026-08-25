@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Verify ownership
   const relation = await prisma.coachAthlete.findFirst({
-    where: { coachId: session.user.id, athleteId },
+    where: { coachId: session.user.id, athleteId, status: 'ACTIVE' },
   })
   if (!relation) {
     return NextResponse.json({ error: 'Atleta no encontrado.' }, { status: 404 })

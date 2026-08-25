@@ -1,7 +1,6 @@
 'use client'
 
-import type { AthleteData, HealthProfileData, ActivePlanData, CheckInData, InitialFeatures } from '../AthleteDetailClient'
-import AthleteFeatureToggles from '../AthleteFeatureToggles'
+import type { AthleteData, HealthProfileData, ActivePlanData, CheckInData } from '../AthleteDetailClient'
 import Stat from '../Stat'
 
 type DailyLogEntry = { date: string; weightKg: number | null; energyLevel: number | null; hrResting: number | null; sleepHours: number | null }
@@ -16,10 +15,9 @@ interface ResumenTabProps {
   athlete: AthleteData
   healthProfile: HealthProfileData
   activePlan: ActivePlanData
-  initialFeatures: InitialFeatures
   activated: boolean
-  activating: boolean
-  handleActivate: () => void
+  togglingStatus: boolean
+  handleToggleStatus: () => void
   resettingPwd: boolean
   resetLink: string | null
   pwdCopied: boolean
@@ -40,15 +38,67 @@ interface ResumenTabProps {
   dailyLogs: DailyLogEntry[]
 }
 
+function TrendSummary({ logs }: { logs: DailyLogEntry[] }) {
+  const weights = logs.filter(l => l.weightKg != null).map(l => l.weightKg!)
+  const energies = logs.filter(l => l.energyLevel != null).map(l => l.energyLevel!)
+  const hrs = logs.filter(l => l.hrResting != null).map(l => l.hrResting!)
+  const sleeps = logs.filter(l => l.sleepHours != null).map(l => l.sleepHours!)
+
+  const avg = (arr: number[]) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : null
+  const trend = (arr: number[]) => {
+    if (arr.length < 2) return null
+    const diff = arr[arr.length - 1] - arr[0]
+    return diff > 0.2 ? 'up' : diff < -0.2 ? 'down' : 'stable'
+  }
+  const arrow = (t: string | null) => t === 'up' ? '\u2191' : t === 'down' ? '\u2193' : '\u2192'
+  const trendColor = (t: string | null, upIsGood: boolean) => {
+    if (!t || t === 'stable') return 'text-gray-500'
+    return (t === 'up') === upIsGood ? 'text-green-600' : 'text-red-600'
+  }
+
+  const wFirst = weights[0]
+  const wLast = weights[weights.length - 1]
+  const wTrend = trend(weights)
+  const eAvg = avg(energies)
+  const eTrend = trend(energies)
+  const hAvg = avg(hrs)
+  const hTrend = trend(hrs)
+  const sAvg = avg(sleeps)
+  const sTrend = trend(sleeps)
+
+  const items = [
+    { label: 'Peso', value: weights.length >= 2 ? `${wFirst}\u2192${wLast} kg` : weights.length === 1 ? `${wLast} kg` : null, trend: wTrend, upIsGood: false },
+    { label: 'Energia', value: eAvg != null ? `${eAvg.toFixed(1)} avg` : null, trend: eTrend, upIsGood: true },
+    { label: 'FC rep.', value: hAvg != null ? `${Math.round(hAvg)} avg` : null, trend: hTrend, upIsGood: false },
+    { label: 'Sueno', value: sAvg != null ? `${sAvg.toFixed(1)}h avg` : null, trend: sTrend, upIsGood: true },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {items.map(item => (
+        <div key={item.label}>
+          <p className="text-xs text-gray-400 mb-0.5">{item.label}</p>
+          {item.value ? (
+            <p className={`text-sm font-semibold ${trendColor(item.trend, item.upIsGood)}`}>
+              {item.value} {arrow(item.trend)}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-300">—</p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ResumenTab({
   athleteId,
   athlete,
   healthProfile,
   activePlan,
-  initialFeatures,
   activated,
-  activating,
-  handleActivate,
+  togglingStatus,
+  handleToggleStatus,
   resettingPwd,
   resetLink,
   pwdCopied,
@@ -124,10 +174,13 @@ export default function ResumenTab({
         </div>
       </div>
 
-      {/* DailyLog últimos 7 días */}
+      {/* Tendencia 7 días + DailyLog */}
       {dailyLogs.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Registros diarios — últimos 7 días</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">Tendencia 7 días</h2>
+          <TrendSummary logs={dailyLogs} />
+          <div className="border-t border-gray-100 my-4" />
+          <h3 className="text-sm font-medium text-gray-500 mb-3">Registros diarios</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -159,20 +212,34 @@ export default function ResumenTab({
         </div>
       )}
 
-      {/* Activación */}
-      {!activated && (
+      {/* Activación / Pausa */}
+      {!activated ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-amber-800">Cuenta pendiente de activación</p>
-            <p className="text-xs text-amber-600 mt-0.5">El asesorado no tiene acceso al dashboard hasta que lo actives</p>
+            <p className="text-xs text-amber-600 mt-0.5">El asesorado no tiene acceso al dashboard hasta que lo actives. Recibirá todas las features Pro automáticamente.</p>
           </div>
           <button
-            onClick={handleActivate}
-            disabled={activating}
+            onClick={handleToggleStatus}
+            disabled={togglingStatus}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0"
             style={{ backgroundColor: '#1e3a5f' }}
           >
-            {activating ? 'Activando...' : 'Activar cuenta'}
+            {togglingStatus ? 'Activando...' : 'Activar cuenta'}
+          </button>
+        </div>
+      ) : (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-green-800">Atleta activo — acceso Pro completo</p>
+            <p className="text-xs text-green-600 mt-0.5">Pausar revierte las features al tier Free hasta que lo reactives.</p>
+          </div>
+          <button
+            onClick={handleToggleStatus}
+            disabled={togglingStatus}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0 bg-red-500"
+          >
+            {togglingStatus ? 'Pausando...' : 'Pausar atleta'}
           </button>
         </div>
       )}
@@ -243,6 +310,35 @@ export default function ResumenTab({
         </div>
       </div>
 
+      {/* Lesiones y Condiciones médicas */}
+      {healthProfile && (healthProfile.injuries.length > 0 || healthProfile.conditions.length > 0) && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+          {healthProfile.injuries.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-red-700 mb-2">Lesiones</h3>
+              <ul className="space-y-1">
+                {healthProfile.injuries.map((injury, i) => (
+                  <li key={i} className="text-sm text-gray-700">• {injury}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {healthProfile.injuries.length > 0 && healthProfile.conditions.length > 0 && (
+            <div className="border-t border-gray-100" />
+          )}
+          {healthProfile.conditions.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-red-700 mb-2">Condiciones médicas</h3>
+              <ul className="space-y-1">
+                {healthProfile.conditions.map((cond, i) => (
+                  <li key={i} className="text-sm text-gray-700">• {cond}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Zonas FC */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <h2 className="font-semibold text-gray-900 mb-4">Zonas de frecuencia cardíaca</h2>
@@ -274,9 +370,6 @@ export default function ResumenTab({
           </ul>
         </div>
       )}
-
-      {/* Acceso del atleta */}
-      <AthleteFeatureToggles athleteId={athleteId} initialFeatures={initialFeatures} />
 
       {/* Últimos check-ins tabla */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 overflow-x-auto">

@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { mapRelation } from '../athletes/_lib/map-athlete'
-import { KpiCard } from '@/app/_components/kpi-card'
 import { getCoachLimits } from '@/domain/subscription/tier-features'
 
 const SPORT_LABELS: Record<string, string> = {
@@ -13,6 +12,16 @@ const SPORT_LABELS: Record<string, string> = {
   SWIMMING:  '🏊 Natación',
   TRIATHLON: '🏅 Triatlón',
   FOOTBALL:  '⚽ Fútbol',
+}
+
+// Paleta determinista por inicial para avatares del feed
+const AVATAR_COLORS = [
+  '#1e3a5f', '#16a34a', '#ea580c', '#7c3aed',
+  '#0891b2', '#dc2626', '#d97706', '#0d9488',
+]
+function avatarColor(name: string): string {
+  const code = name.charCodeAt(0) ?? 0
+  return AVATAR_COLORS[code % AVATAR_COLORS.length]
 }
 
 export default async function CoachDashboardPage() {
@@ -25,24 +34,24 @@ export default async function CoachDashboardPage() {
   const coachId = session.user.id
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000)
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 86_400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
 
+  // ── Round 1 ──────────────────────────────────────────────────────────────
   const [
     coachRelations,
     totalCount,
     checkInsWeekCount,
     thisMonthCount,
     lastMonthTotal,
-    recentActivity,
+    recentCheckIns,
     sportRows,
     overduePayments,
     pendingOnboarding,
     paidThisMonthAgg,
     coachSubscription,
   ] = await Promise.all([
-    // UX-COACH-01: limitado a 25 más recientes para evitar query O(n) con joins profundos
-    // Los totales y conteos usan queries separadas (count) más abajo
     prisma.coachAthlete.findMany({
       where: { coachId },
       orderBy: { createdAt: 'desc' },
@@ -81,15 +90,12 @@ export default async function CoachDashboardPage() {
     prisma.coachAthlete.count({
       where: { coachId, status: 'ACTIVE', athlete: { checkIns: { some: { recordedAt: { gte: sevenDaysAgo } } } } },
     }),
-    // Nuevos este mes
     prisma.coachAthlete.count({ where: { coachId, createdAt: { gte: startOfMonth } } }),
-    // Total que existían el mes pasado (para calcular retención)
     prisma.coachAthlete.count({ where: { coachId, createdAt: { lt: startOfMonth, gte: startOfLastMonth } } }),
-    // Feed de actividad: últimos 8 check-ins de los atletas de este coach
     prisma.weeklyCheckIn.findMany({
       where: { user: { coachedBy: { some: { coachId } } } },
       orderBy: { recordedAt: 'desc' },
-      take: 8,
+      take: 5,
       select: {
         recordedAt: true,
         weekNumber: true,
@@ -98,25 +104,16 @@ export default async function CoachDashboardPage() {
         user: { select: { id: true, name: true } },
       },
     }),
-    // Distribución por deporte
     prisma.healthProfile.findMany({
       where: { user: { coachedBy: { some: { coachId } } } },
       select: { sport: true },
     }),
-    // Pagos vencidos del coach
     prisma.payment.findMany({
       where: { coachId, status: 'PENDING', dueDate: { lt: now } },
       orderBy: { dueDate: 'asc' },
       take: 5,
-      select: {
-        id: true,
-        amount: true,
-        dueDate: true,
-        athleteId: true,
-        athlete: { select: { name: true } },
-      },
+      select: { id: true, amount: true, dueDate: true, athleteId: true, athlete: { select: { name: true } } },
     }),
-    // Atletas pendientes de onboarding (B2B sin completar)
     prisma.coachAthlete.findMany({
       where: { coachId, status: 'ACTIVE', athlete: { onboardingCompleted: false } },
       select: {
@@ -127,94 +124,217 @@ export default async function CoachDashboardPage() {
       orderBy: { createdAt: 'asc' },
       take: 5,
     }),
-    // Ingresos reales del mes (pagos PAID con paidAt en el mes actual)
     prisma.payment.aggregate({
       where: { coachId, status: 'PAID', paidAt: { gte: startOfMonth } },
       _sum: { amount: true },
     }),
-    // Suscripción del coach para conocer su tier y límite de atletas
     prisma.userSubscription.findUnique({
       where: { userId: coachId },
       select: { coachTier: true },
     }),
   ])
 
+  // ── Round 2: datos nuevos ────────────────────────────────────────────────
+  const [
+    unreadMessagesCount,
+    lastWeekCheckInsCount,
+    lastWeekPaymentAgg,
+    recentGymSessions,
+    recentRunSessions,
+    recentPaidPayments,
+  ] = await Promise.all([
+    prisma.message.count({ where: { toId: coachId, readAt: null } }),
+    prisma.weeklyCheckIn.count({
+      where: {
+        user: { coachedBy: { some: { coachId } } },
+        recordedAt: { gte: twoWeeksAgo, lt: sevenDaysAgo },
+      },
+    }),
+    prisma.payment.aggregate({
+      where: { coachId, status: 'PAID', paidAt: { gte: twoWeeksAgo, lt: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
+    prisma.gymSession.findMany({
+      where: { athlete: { coachedBy: { some: { coachId } } }, completed: true, date: { gte: sevenDaysAgo } },
+      orderBy: { date: 'desc' },
+      take: 5,
+      select: { id: true, date: true, rpe: true, durationMin: true, athlete: { select: { id: true, name: true } } },
+    }),
+    prisma.sessionLog.findMany({
+      where: { user: { coachedBy: { some: { coachId } } }, completedAt: { gte: sevenDaysAgo }, discipline: 'RUNNING' },
+      orderBy: { completedAt: 'desc' },
+      take: 5,
+      select: { id: true, completedAt: true, durationMin: true, distanceKm: true, rpe: true, user: { select: { id: true, name: true } } },
+    }),
+    prisma.payment.findMany({
+      where: { coachId, status: 'PAID', paidAt: { gte: sevenDaysAgo } },
+      orderBy: { paidAt: 'desc' },
+      take: 3,
+      select: { id: true, amount: true, paidAt: true, athleteId: true, athlete: { select: { name: true } } },
+    }),
+  ])
+
+  // ── Derived values ───────────────────────────────────────────────────────
   const athletes = coachRelations.map((rel) => mapRelation(rel, now))
-
   const athletesWithoutPlan = athletes.filter((a) => a.planStatus === null)
-
+  const athletesWithAlerts = athletes.filter((a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop)
   const totalAlerts = athletes.reduce((acc, a) => {
     const f = a.alertFlags
     return acc + (f.noCheckin ? 1 : 0) + (f.highRpe ? 1 : 0) + (f.weightDrop ? 1 : 0)
   }, 0)
-
   const athletesWithPlan = athletes.filter((a) => a.planStatus === 'ACTIVE')
   const avgAdherence: number | null =
     athletesWithPlan.length > 0
       ? Math.round(athletesWithPlan.reduce((acc, a) => acc + a.adherencePct, 0) / athletesWithPlan.length)
       : null
-
   const checkInsPct = totalCount > 0 ? Math.round((checkInsWeekCount / totalCount) * 100) : 0
   const ingresosMes = Number(paidThisMonthAgg._sum.amount ?? 0)
   const coachTier = coachSubscription?.coachTier ?? 'STARTER'
   const { maxAthletes } = getCoachLimits(coachTier)
+  const tierPct = maxAthletes === Infinity ? null : Math.round((totalCount / maxAthletes) * 100)
   const athletesDisplay = maxAthletes === Infinity ? `${totalCount}` : `${totalCount}/${maxAthletes}`
 
-  // Distribución por deporte
   const sportCounts: Record<string, number> = {}
   for (const row of sportRows) {
     if (row.sport) sportCounts[row.sport] = (sportCounts[row.sport] ?? 0) + 1
   }
   const sportEntries = Object.entries(sportCounts).sort((a, b) => b[1] - a[1])
 
-  // Top atletas con alertas para el panel de atención
-  const athletesWithAlerts = athletes.filter(
-    (a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop
-  )
+  // Greeting
+  const hour = now.getHours()
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches'
+  const firstName = (session.user.name ?? 'Coach').split(' ')[0]
+
+  const subLineParts: string[] = []
+  if (athletesWithAlerts.length > 0) subLineParts.push(`${athletesWithAlerts.length} atleta${athletesWithAlerts.length !== 1 ? 's' : ''} requieren atención`)
+  if (overduePayments.length > 0) subLineParts.push(`${overduePayments.length} pago${overduePayments.length !== 1 ? 's' : ''} vencido${overduePayments.length !== 1 ? 's' : ''}`)
+  if (pendingOnboarding.length > 0) subLineParts.push(`${pendingOnboarding.length} pendiente${pendingOnboarding.length !== 1 ? 's' : ''} de onboarding`)
+  if (subLineParts.length === 0) subLineParts.push('Todo al día · buen trabajo 🎉')
+
+  // Salud negocio
+  const alertPct = totalCount > 0 ? Math.round(((totalCount - athletesWithAlerts.length) / totalCount) * 100) : 100
+  const saludScore = totalCount === 0 ? null : Math.min(100, Math.round(checkInsPct * 0.4 + alertPct * 0.3 + (avgAdherence ?? 50) * 0.3))
+  const saludColor = saludScore === null ? '#9ca3af' : saludScore >= 75 ? '#16a34a' : saludScore >= 50 ? '#d97706' : '#dc2626'
+
+  // Semana pasada
+  const lastWeekRevenue = Number(lastWeekPaymentAgg._sum.amount ?? 0)
+  const lastWeekCheckInPct = totalCount > 0 ? Math.round((lastWeekCheckInsCount / totalCount) * 100) : 0
+  const retentionPct = lastMonthTotal > 0 ? Math.min(100, Math.round((totalCount / (totalCount + lastMonthTotal)) * 100)) : null
+
+  // Feed unificado
+  type FeedItem = { type: string; athleteName: string; athleteId: string; ts: Date; detail: string }
+  const feedItems: FeedItem[] = [
+    ...recentCheckIns.map(ci => ({
+      type: 'checkin',
+      athleteName: ci.user.name ?? 'Atleta',
+      athleteId: ci.user.id,
+      ts: new Date(ci.recordedAt),
+      detail: `completó check-in S${ci.weekNumber}${ci.weightKg ? ` — peso ${ci.weightKg}kg` : ''}${ci.energyLevel ? ` · energía ${ci.energyLevel}/10` : ''}`,
+    })),
+    ...recentGymSessions.map(gs => ({
+      type: 'gym',
+      athleteName: gs.athlete.name ?? 'Atleta',
+      athleteId: gs.athlete.id,
+      ts: new Date(gs.date),
+      detail: `registró sesión de fuerza${gs.durationMin ? ` — ${gs.durationMin}min` : ''}${gs.rpe ? ` · RPE ${gs.rpe}` : ''}`,
+    })),
+    ...recentRunSessions.map(sl => ({
+      type: 'run',
+      athleteName: sl.user.name ?? 'Atleta',
+      athleteId: sl.user.id,
+      ts: new Date(sl.completedAt),
+      detail: `completó sesión de running${sl.distanceKm ? ` — ${sl.distanceKm.toFixed(1)}km` : ''}${sl.durationMin ? ` · ${sl.durationMin}min` : ''}${sl.rpe ? ` · RPE ${sl.rpe}` : ''}`,
+    })),
+    ...recentPaidPayments.map(p => ({
+      type: 'payment',
+      athleteName: p.athlete?.name ?? 'Asesorado',
+      athleteId: p.athleteId ?? '',
+      ts: new Date(p.paidAt!),
+      detail: `pagó $${Number(p.amount)} USD`,
+    })),
+  ]
+  feedItems.sort((a, b) => b.ts.getTime() - a.ts.getTime())
+  const topFeedItems = feedItems.slice(0, 8)
+
+  function timeAgo(ts: Date): string {
+    const diff = now.getTime() - ts.getTime()
+    const mins = Math.floor(diff / 60_000)
+    const hours = Math.floor(diff / 3_600_000)
+    const days = Math.floor(diff / 86_400_000)
+    if (mins < 60) return `Hace ${mins}m`
+    if (hours < 24) return `Hace ${hours}h`
+    if (days === 1) return 'Ayer'
+    return `Hace ${days}d`
+  }
+
+  const TRIGGER_LABEL: Record<string, { msg: string; color: string }> = {
+    rpe_excesivo:        { msg: 'RPE alto',         color: '#ea580c' },
+    dolor_activo:        { msg: 'Dolor activo',      color: '#dc2626' },
+    sueno_bajo:          { msg: 'Sueño bajo',        color: '#7c3aed' },
+    energia_baja:        { msg: 'Energía baja',      color: '#d97706' },
+    estres_alto:         { msg: 'Estrés alto',       color: '#b45309' },
+    motivacion_baja:     { msg: 'Motivación baja',   color: '#6b7280' },
+    fc_alta:             { msg: 'FC elevada',         color: '#dc2626' },
+    perdida_peso_rapida: { msg: 'Baja peso rápido',  color: '#eab308' },
+  }
+
+  const overdueTotal = overduePayments.reduce((acc, p) => acc + Number(p.amount), 0)
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+
       {/* Banner: perfil incompleto */}
       {!session.user.profileComplete && (
-        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <span className="mt-0.5 text-base">⚠️</span>
-          <div>
-            <span className="font-semibold">Completa tu perfil profesional</span>
-            {' '}— necesitas registrar tu número de cédula y tu WhatsApp para poder invitar asesorados.{' '}
-            <Link href="/coach/profile" className="underline font-medium hover:text-amber-900">
+        <div className="mb-5 rounded-md px-3 py-2.5 h-8 flex items-center" style={{ backgroundColor: '#fff2e0' }}>
+          <p className="text-[10px] font-medium" style={{ color: '#995900' }}>
+            ⚠ Completa tu perfil profesional — registra tu cédula y WhatsApp para invitar asesorados.{' '}
+            <Link href="/coach/profile" className="underline hover:opacity-80">
               Completar ahora →
             </Link>
-          </div>
-        </div>
-      )}
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>
-            Dashboard
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            Vista general de tu negocio · {now.toLocaleDateString('es', { month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/coach/invite"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors"
-          >
-            Compartir link
-          </a>
-          <a
-            href="/coach/clients/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
-          >
-            + Nuevo asesorado
-          </a>
+      )}
+
+      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h1 className="text-[22px] font-bold leading-tight" style={{ color: '#1f3b5e' }}>
+            {greeting}, {firstName} 👋
+          </h1>
+          <p className="text-[11px] mt-1" style={{ color: '#738090' }}>{subLineParts.join(' · ')}</p>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          {saludScore !== null && (
+            <div className="flex flex-col items-center gap-0.5">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center border-[3px]"
+                style={{ backgroundColor: '#1f3b5e', borderColor: '#22c35d' }}
+              >
+                <span className="text-base font-bold text-white">{saludScore}</span>
+              </div>
+              <span className="text-[9px] font-medium" style={{ color: '#738090' }}>Salud negocio</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <a
+              href="/coach/invite"
+              className="inline-flex items-center px-4 py-2 rounded-lg text-[11px] font-medium border hover:bg-gray-50 transition-colors"
+              style={{ borderColor: '#ccd1d9', color: '#1f3b5e' }}
+            >
+              Compartir link
+            </a>
+            <a
+              href="/coach/clients/new"
+              className="inline-flex items-center px-4 py-2 rounded-lg text-[11px] font-semibold text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#1f3b5e' }}
+            >
+              + Nuevo
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* First-time experience — solo cuando no hay atletas */}
+      {/* First-time experience */}
       {totalCount === 0 && (
         <div className="mb-8 rounded-2xl border-2 border-dashed border-[#1e3a5f]/20 bg-gradient-to-br from-[#1e3a5f]/5 to-orange-50 p-8">
           <div className="max-w-lg">
@@ -224,123 +344,164 @@ export default async function CoachDashboardPage() {
               Tu panel está listo. El siguiente paso es agregar a tus primeros asesorados para empezar a gestionar sus planes, check-ins y progreso.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <a
-                href="/coach/clients/new"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#ea580c' }}
-              >
+              <a href="/coach/clients/new" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#ea580c' }}>
                 + Agregar primer asesorado
               </a>
-              <a
-                href="/coach/invite"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors"
-              >
+              <a href="/coach/invite" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-colors">
                 Compartir link de invitación
               </a>
             </div>
-            <p className="text-xs text-gray-400 mt-4">
-              También puedes compartir tu link de invitación y que los atletas se registren solos.
-            </p>
           </div>
         </div>
       )}
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KpiCard
-          label="Ingresos / mes"
-          value={ingresosMes > 0 ? `$${ingresosMes.toFixed(0)} USD` : '—'}
-          sub={ingresosMes > 0 ? 'pagos registrados este mes' : 'sin pagos este mes'}
-          color="#16a34a"
-        />
-        <KpiCard
-          label="Atletas activos"
-          value={athletesDisplay}
-          sub={thisMonthCount > 0 ? `+${thisMonthCount} este mes` : 'sin nuevos este mes'}
-          color="#1e3a5f"
-        />
-        <KpiCard
-          label="Check-ins semana"
-          value={`${checkInsWeekCount}/${totalCount}`}
-          sub={`${checkInsPct}% de adherencia`}
-          color={checkInsPct >= 70 ? '#16a34a' : checkInsPct >= 40 ? '#d97706' : '#dc2626'}
-        />
-        <KpiCard
-          label="Adherencia promedio"
-          value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
-          sub="al plan de entrenamiento"
-          color={avgAdherence === null ? '#9ca3af' : avgAdherence >= 70 ? '#16a34a' : avgAdherence >= 40 ? '#d97706' : '#dc2626'}
-        />
+      {/* ── KPI ROW ────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-6">
+
+        {/* Ingresos */}
+        <div className="bg-white rounded-lg border border-gray-100 p-3 relative overflow-hidden h-20">
+          <span className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: '#ea580c' }} />
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: '#738090' }}>Ingresos / mes</p>
+              <p className="text-[22px] font-bold leading-tight mt-0.5" style={{ color: '#ea580c' }}>
+                {ingresosMes > 0 ? `$${ingresosMes.toFixed(0)}` : '—'}
+              </p>
+            </div>
+            <div className="flex items-end gap-[5px] mt-1">
+              {[20, 28, 35, 42].map((h, i) => (
+                <div key={i} className="w-[10px] rounded-sm" style={{ height: h, backgroundColor: '#ea580c', opacity: i === 3 ? 1 : 0.3 }} />
+              ))}
+            </div>
+          </div>
+          <p className="text-[9px] mt-0.5" style={{ color: '#808c99' }}>
+            {ingresosMes > 0 ? 'pagos registrados este mes' : 'sin pagos este mes'}
+          </p>
+        </div>
+
+        {/* Atletas activos */}
+        <div className="bg-white rounded-lg border border-gray-100 p-3 relative overflow-hidden h-20">
+          <span className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: '#1e3a5f' }} />
+          <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: '#738090' }}>Atletas activos</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[22px] font-bold leading-tight mt-0.5" style={{ color: '#1e3a5f' }}>{athletesDisplay}</p>
+            {tierPct !== null && tierPct >= 80 && (
+              <a
+                href="/coach/settings/plan"
+                className="text-[8px] font-medium px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: '#f2f5fa', color: '#1f3b5e' }}
+              >
+                {tierPct}% · Upgrade →
+              </a>
+            )}
+          </div>
+          <p className="text-[9px] mt-0.5" style={{ color: '#808c99' }}>
+            {thisMonthCount > 0 ? `+${thisMonthCount} este mes` : 'sin nuevos este mes'}
+          </p>
+        </div>
+
+        {/* Check-ins semana */}
+        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-start justify-between gap-2 relative overflow-hidden h-20">
+          <span className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: '#22c35d' }} />
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: '#738090' }}>Check-ins semana</p>
+            <p className="text-[22px] font-bold leading-tight mt-0.5" style={{ color: checkInsPct >= 70 ? '#22c35d' : checkInsPct >= 40 ? '#d97706' : '#dc2626' }}>
+              {checkInsWeekCount}/{totalCount}
+            </p>
+            <p className="text-[9px] mt-0.5" style={{ color: '#808c99' }}>{checkInsPct}% de adherencia</p>
+          </div>
+          <div className="shrink-0 relative w-10 h-10">
+            <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f3f4f6" strokeWidth="3" />
+              <circle
+                cx="18" cy="18" r="15.9" fill="none"
+                stroke={checkInsPct >= 70 ? '#22c35d' : checkInsPct >= 40 ? '#d97706' : '#dc2626'}
+                strokeWidth="3"
+                strokeDasharray={`${checkInsPct} ${100 - checkInsPct}`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold" style={{ color: checkInsPct >= 70 ? '#22c35d' : checkInsPct >= 40 ? '#d97706' : '#dc2626' }}>{checkInsPct}%</span>
+          </div>
+        </div>
+
+        {/* Mensajes sin leer */}
+        <div className="bg-white rounded-lg border border-gray-100 p-3 relative overflow-hidden h-20">
+          <span className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: '#ea580c' }} />
+          <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: '#738090' }}>Mensajes sin leer</p>
+          <p className="text-[22px] font-bold leading-tight mt-0.5" style={{ color: unreadMessagesCount > 0 ? '#ea580c' : '#9ca3af' }}>
+            {unreadMessagesCount > 0 ? unreadMessagesCount : '—'}
+          </p>
+          <p className="text-[9px] mt-0.5" style={{ color: '#808c99' }}>
+            {unreadMessagesCount > 0
+              ? <a href="/coach/athletes" className="hover:underline" style={{ color: '#808c99' }}>de {unreadMessagesCount} atletas · Responder →</a>
+              : 'bandeja al día'
+            }
+          </p>
+        </div>
       </div>
 
-      {/* Middle row: Alertas + Distribución */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      {/* ── ALERTAS + ACCIONES RÁPIDAS ─────────────────────────────────────── */}
+      <div className="grid grid-cols-[1fr_160px] sm:grid-cols-[1fr_220px] md:grid-cols-[1fr_300px] lg:grid-cols-[1fr_430px] gap-3 mb-5">
 
-        {/* Atletas que requieren atención */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h2 className="font-semibold text-gray-900 text-sm">Requieren atención</h2>
+        {/* Requieren atención */}
+        <div className="bg-white rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+            <h2 className="text-[13px] font-semibold" style={{ color: '#1f3b5e' }}>● Requieren atención</h2>
             {totalAlerts > 0 && (
-              <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+              <span className="text-[9px] font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#ea580c' }}>
                 {totalAlerts} alertas
               </span>
             )}
-            <Link href="/coach/athletes?filter=alerts" className="text-xs text-blue-600 hover:underline ml-2">
+            <Link href="/coach/athletes?filter=alerts" className="ml-auto text-[11px] font-medium" style={{ color: '#ea580c' }}>
               Ver todos →
             </Link>
           </div>
           {athletesWithAlerts.length === 0 ? (
-            <div className="px-5 py-8 text-center">
+            <div className="px-4 py-8 text-center">
               <p className="text-2xl mb-2">✅</p>
-              <p className="text-sm text-gray-400">Todos tus atletas están al día</p>
+              <p className="text-[11px]" style={{ color: '#808c99' }}>Todos tus atletas están al día</p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-50">
+            <ul className="divide-y divide-gray-50 max-h-[250px] overflow-y-auto">
               {athletesWithAlerts.slice(0, 5).map((a) => {
-                const TRIGGER_LABEL: Record<string, { msg: string; color: string }> = {
-                  rpe_excesivo:   { msg: 'RPE alto',       color: '#ea580c' },
-                  dolor_activo:   { msg: 'Dolor activo',   color: '#dc2626' },
-                  sueno_bajo:     { msg: 'Sueño bajo',     color: '#7c3aed' },
-                  energia_baja:   { msg: 'Energía baja',   color: '#d97706' },
-                  estres_alto:    { msg: 'Estrés alto',    color: '#b45309' },
-                  motivacion_baja:{ msg: 'Motivación baja',color: '#6b7280' },
-                  fc_alta:        { msg: 'FC elevada',     color: '#dc2626' },
-                  perdida_peso_rapida: { msg: 'Baja peso rápido', color: '#eab308' },
-                }
                 const alerts: { msg: string; color: string }[] = []
-                if (a.alertFlags.noCheckin) alerts.push({ msg: 'Sin check-in +7d', color: '#dc2626' })
-                // Use adjustments from check-in for differentiated labels
+                if (a.alertFlags.noCheckin) alerts.push({ msg: `Sin check-in >7d`, color: '#8c6633' })
                 const triggerAlerts = (a.alertFlags.adjustments ?? [])
                   .map((t: string) => TRIGGER_LABEL[t])
                   .filter(Boolean) as { msg: string; color: string }[]
                 if (triggerAlerts.length > 0) {
                   alerts.push(...triggerAlerts)
                 } else if (a.alertFlags.highRpe) {
-                  alerts.push({ msg: 'Carga alta', color: '#ea580c' })
+                  alerts.push({ msg: 'Carga alta', color: '#8c6633' })
                 }
-                if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#eab308' })
+                if (a.alertFlags.weightDrop) alerts.push({ msg: `−${a.alertFlags.weightDropKg.toFixed(1)}kg`, color: '#8c6633' })
+
                 return (
-                  <li key={a.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                  <li key={a.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      style={{ backgroundColor: '#1f3b5e' }}
+                    >
+                      {a.name.slice(0, 1).toUpperCase()}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
-                        {a.status === 'PAUSED' && (
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 shrink-0">Pausado</span>
-                        )}
-                      </div>
-                      <div className="flex gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-semibold" style={{ color: '#1f3b5e' }}>{a.name}</p>
                         {alerts.map((al, i) => (
-                          <span key={i} className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: al.color + '20', color: al.color }}>
+                          <span key={i} className="text-[9px] font-medium px-2 py-0.5 rounded" style={{ backgroundColor: '#f7f2eb', color: al.color }}>
                             {al.msg}
                           </span>
                         ))}
                       </div>
                     </div>
+                    <span className="text-[10px] shrink-0" style={{ color: '#8c99a6' }}>
+                      hace {a.lastCheckInDaysAgo >= 999 ? '?' : a.lastCheckInDaysAgo}d
+                    </span>
                     <a
                       href={`/coach/athlete/${a.id}`}
-                      className="flex-shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
-                      style={{ backgroundColor: '#1e3a5f' }}
+                      className="shrink-0 text-[10px] font-semibold text-white px-2.5 py-1 rounded-md"
+                      style={{ backgroundColor: '#1f3b5e' }}
                     >
                       Ver →
                     </a>
@@ -351,197 +512,210 @@ export default async function CoachDashboardPage() {
           )}
         </div>
 
-        {/* Distribución por deporte + stats rápidos */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-semibold text-gray-900 text-sm mb-4">Distribución deporte</h2>
-            {sportEntries.length === 0 ? (
-              <p className="text-xs text-gray-400">Sin datos de deporte</p>
-            ) : (
-              <div className="space-y-2.5">
-                {sportEntries.map(([sport, count]) => (
-                  <div key={sport}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-600">{SPORT_LABELS[sport] ?? sport}</span>
-                      <span className="font-semibold text-gray-800">{count}</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.round((count / totalCount) * 100)}%`,
-                          backgroundColor: '#1e3a5f',
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-semibold text-gray-900 text-sm mb-3">Este mes</h2>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Nuevos asesorados</span>
-                <span className="font-semibold" style={{ color: '#16a34a' }}>+{thisMonthCount}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Mes anterior</span>
-                <span className="font-semibold text-gray-700">{lastMonthTotal}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Atletas totales</span>
-                <span className="font-semibold text-gray-700">{totalCount}</span>
-              </div>
-            </div>
+        {/* Acciones rápidas */}
+        <div className="bg-white rounded-lg p-4">
+          <h2 className="text-[13px] font-semibold mb-4" style={{ color: '#1f3b5e' }}>Acciones rápidas</h2>
+          <div className="space-y-2">
+            {[
+              { letter: 'G', color: '#22c35d', label: 'Nueva rutina',        sub: 'Crear plantilla gym',      href: '/coach/gym/routines/new' },
+              { letter: 'R', color: '#ea580c', label: 'Crear sesión running', sub: 'Asignar a atleta',         href: '/coach/athletes' },
+              { letter: 'N', color: '#1f3b5e', label: 'Plantilla nutrición',  sub: 'Macro targets',            href: '/coach/nutrition' },
+              { letter: '+', color: '#6b7280', label: 'Agregar asesorado',    sub: 'Invitar o crear',          href: '/coach/clients/new' },
+            ].map((action) => (
+              <a
+                key={action.href}
+                href={action.href}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                  style={{ backgroundColor: action.color + '1f', color: action.color }}
+                >
+                  {action.letter}
+                </div>
+                <div className="flex-1 min-w-0 hidden md:block">
+                  <p className="text-xs font-semibold truncate" style={{ color: '#1f3b5e' }}>{action.label}</p>
+                  <p className="text-[10px] truncate" style={{ color: '#808c99' }}>{action.sub}</p>
+                </div>
+                <span className="text-sm hidden lg:block" style={{ color: '#b2b8bf' }}>→</span>
+              </a>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Pagos vencidos */}
-      {overduePayments.length > 0 && (
-        <div className="mb-6 bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-red-100 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h2 className="font-semibold text-gray-900 text-sm">Pagos vencidos</h2>
-            <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-              {overduePayments.length} pendiente{overduePayments.length !== 1 ? 's' : ''}
-            </span>
-            <a href="/coach/finanzas" className="text-xs text-blue-600 hover:underline ml-2">
-              Ver finanzas →
-            </a>
-          </div>
-          <ul className="divide-y divide-gray-50">
-            {overduePayments.map((p) => {
-              const daysOverdue = Math.floor((now.getTime() - p.dueDate.getTime()) / 86_400_000)
-              return (
-                <li key={p.id} className="px-5 py-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{p.athlete?.name ?? 'Asesorado eliminado'}</p>
-                    <p className="text-xs text-red-600">{daysOverdue}d vencido · ${Number(p.amount)} USD</p>
-                  </div>
-                  {p.athleteId && (
-                    <a
-                      href={`/coach/athlete/${p.athleteId}`}
-                      className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
-                      style={{ backgroundColor: '#dc2626' }}
-                    >
-                      Cobrar →
-                    </a>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
+      {/* ── PAGOS VENCIDOS + PENDIENTES ────────────────────────────────────── */}
+      {(overduePayments.length > 0 || pendingOnboarding.length > 0 || athletesWithoutPlan.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
 
-      {/* Atletas sin plan / pendientes de onboarding */}
-      {(athletesWithoutPlan.length > 0 || pendingOnboarding.length > 0) && (
-        <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {pendingOnboarding.length > 0 && (
-            <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-amber-100 flex items-center gap-2">
-                <span className="text-amber-500">⏳</span>
-                <h2 className="font-semibold text-gray-900 text-sm">Pendientes de onboarding</h2>
-                <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                  {pendingOnboarding.length}
+          {/* Pagos vencidos */}
+          {overduePayments.length > 0 && (
+            <div className="bg-white rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <h2 className="text-[13px] font-semibold" style={{ color: '#1f3b5e' }}>Pagos vencidos</h2>
+                <span className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: '#22c35d' }}>
+                  {overduePayments.length}
                 </span>
               </div>
-              <ul className="divide-y divide-gray-50">
-                {pendingOnboarding.map((rel) => {
-                  const daysAgo = Math.floor((now.getTime() - rel.createdAt.getTime()) / 86_400_000)
+              <p className="px-4 pt-2 text-[10px]" style={{ color: '#808c99' }}>${overdueTotal.toFixed(0)} USD pendientes</p>
+              <ul className="divide-y divide-gray-50 max-h-[170px] overflow-y-auto">
+                {overduePayments.map((p) => {
+                  const daysOverdue = Math.floor((now.getTime() - p.dueDate.getTime()) / 86_400_000)
+                  const isUrgent = daysOverdue >= 10
                   return (
-                    <li key={rel.athleteId} className="px-5 py-3 flex items-center gap-3">
+                    <li key={p.id} className="px-4 py-2.5 flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{rel.athlete.name ?? rel.athlete.email}</p>
-                        <p className="text-xs text-gray-400">Invitado hace {daysAgo}d</p>
+                        <p className="text-xs font-semibold" style={{ color: '#1f3b5e' }}>{p.athlete?.name ?? 'Asesorado eliminado'}</p>
+                        <p className="text-[10px]" style={{ color: '#808c99' }}>${Number(p.amount)} USD · {daysOverdue}d vencido</p>
                       </div>
-                      <a
-                        href={`/coach/athlete/${rel.athleteId}`}
-                        className="text-xs text-amber-700 font-semibold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
+                      <span
+                        className="text-[9px] font-medium px-2 py-0.5 rounded shrink-0"
+                        style={isUrgent
+                          ? { backgroundColor: '#ea580c1a', color: '#ea580c' }
+                          : { backgroundColor: '#f9fafb', color: '#6b7280' }
+                        }
                       >
-                        Ver →
-                      </a>
+                        {isUrgent ? 'Urgente' : 'Pendiente'}
+                      </span>
+                      {p.athleteId && (
+                        <a
+                          href={`/coach/athlete/${p.athleteId}`}
+                          className="shrink-0 text-[10px] font-semibold text-white px-2.5 py-1 rounded-md"
+                          style={{ backgroundColor: '#ea580c' }}
+                        >
+                          Cobrar →
+                        </a>
+                      )}
                     </li>
                   )
                 })}
               </ul>
+              <div className="px-4 py-2 border-t border-gray-50">
+                <a href="/coach/finanzas" className="text-[10px] font-medium" style={{ color: '#808c99' }}>Ver finanzas →</a>
+              </div>
             </div>
           )}
 
-          {athletesWithoutPlan.length > 0 && (
-            <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-blue-100 flex items-center gap-2">
-                <span className="text-blue-500">📋</span>
-                <h2 className="font-semibold text-gray-900 text-sm">Sin plan asignado</h2>
-                <span className="ml-auto text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                  {athletesWithoutPlan.length}
-                </span>
+          {/* Pendientes (onboarding + sin plan) */}
+          {(pendingOnboarding.length > 0 || athletesWithoutPlan.length > 0) && (
+            <div className="bg-white rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h2 className="text-[13px] font-semibold" style={{ color: '#1f3b5e' }}>Pendientes</h2>
               </div>
-              <ul className="divide-y divide-gray-50">
-                {athletesWithoutPlan.slice(0, 5).map((a) => (
-                  <li key={a.id} className="px-5 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
-                      <p className="text-xs text-gray-400">{a.sport ? a.sport : 'Sin deporte'}</p>
-                    </div>
-                    <a
-                      href={`/coach/athlete/${a.id}`}
-                      className="text-xs text-blue-700 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Asignar →
-                    </a>
-                  </li>
-                ))}
-              </ul>
+
+              {pendingOnboarding.length > 0 && (
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <p className="text-[10px] font-semibold mb-2" style={{ color: '#738090' }}>Pendientes onboarding</p>
+                  <div className="space-y-2 max-h-[120px] overflow-y-auto">
+                    {pendingOnboarding.map((rel) => {
+                      const daysAgo = Math.floor((now.getTime() - rel.createdAt.getTime()) / 86_400_000)
+                      const isLate = daysAgo >= 2
+                      return (
+                        <div key={rel.athleteId} className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: '#1f3b5e' }}>{rel.athlete.name ?? rel.athlete.email}</p>
+                            <p className="text-[10px]" style={{ color: '#808c99' }}>Invitada hace {daysAgo}d · Sin acceso</p>
+                          </div>
+                          {isLate && <span className="text-[9px] font-medium shrink-0" style={{ color: '#ea580c' }}>Más de 48h</span>}
+                          <a
+                            href={`/coach/athlete/${rel.athleteId}`}
+                            className="text-[10px] font-medium shrink-0"
+                            style={{ color: '#ea580c' }}
+                          >
+                            Reenviar link
+                          </a>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {athletesWithoutPlan.length > 0 && (
+                <div className="px-4 py-3">
+                  <p className="text-[10px] font-semibold mb-2" style={{ color: '#738090' }}>Sin plan asignado</p>
+                  <div className="space-y-2 max-h-[120px] overflow-y-auto">
+                    {athletesWithoutPlan.slice(0, 4).map((a) => (
+                      <div key={a.id} className="flex items-center gap-3">
+                        <p className="flex-1 text-[11px] truncate" style={{ color: '#4d5966' }}>{a.name}</p>
+                        <p className="text-[10px] shrink-0" style={{ color: '#808c99' }}>{a.sport ? SPORT_LABELS[a.sport]?.replace(/^.\s/, '') ?? a.sport : 'Sin deporte'}</p>
+                        <a href={`/coach/athlete/${a.id}`} className="text-[10px] font-medium shrink-0" style={{ color: '#ea580c' }}>
+                          Asignar plan →
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Actividad reciente */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 text-sm">Actividad reciente</h2>
-          <Link href="/coach/athletes" className="text-xs text-blue-600 hover:underline">
+      {/* ── SEMANA PASADA ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 mb-5">
+        <div className="bg-white rounded-lg px-4 py-3">
+          <p className="text-xs font-semibold" style={{ color: '#1f3b5e' }}>Semana pasada</p>
+          <p className="text-[10px] mt-1" style={{ color: '#738090' }}>
+            {lastWeekCheckInPct}% check-ins
+            {lastWeekRevenue > 0 && ` · $${lastWeekRevenue.toFixed(0)} cobrados`}
+            {' · '}{sportEntries.map(([s, c]) => `${c} ${SPORT_LABELS[s]?.replace(/^.\s/, '') ?? s}`).join(', ')}
+            {'    '}
+            <Link href="/coach/athletes" className="font-medium hover:underline" style={{ color: '#738090' }}>
+              Ver reporte completo →
+            </Link>
+          </p>
+        </div>
+        {retentionPct !== null && (
+          <div className="bg-white rounded-lg px-4 py-3 flex items-center gap-2">
+            <div>
+              <p className="text-[11px] font-medium" style={{ color: '#738090' }}>Retención</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-bold" style={{ color: '#22c35d' }}>{retentionPct}%</span>
+                <span className="text-[10px]" style={{ color: '#808c99' }}>{now.toLocaleDateString('es', { month: 'long' })}</span>
+              </div>
+            </div>
+            <div className="ml-auto flex items-end gap-1.5">
+              {[30, 28, 29, 29].map((h, i) => (
+                <div key={i} className="w-[14px] rounded-sm" style={{ height: h, backgroundColor: '#1e3a5f', opacity: 0.4 }} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── ACTIVIDAD RECIENTE ─────────────────────────────────────────────── */}
+      <div className="bg-white rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-[13px] font-semibold" style={{ color: '#1f3b5e' }}>Actividad reciente</h2>
+          <Link href="/coach/athletes" className="text-[11px] font-medium" style={{ color: '#ea580c' }}>
             Ver todos los atletas →
           </Link>
         </div>
-        {recentActivity.length === 0 ? (
-          <div className="px-5 py-8 text-center">
-            <p className="text-sm text-gray-400">Sin actividad reciente</p>
+        {topFeedItems.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-[11px]" style={{ color: '#808c99' }}>Sin actividad reciente</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-50">
-            {recentActivity.map((ci, i) => {
-              const daysAgo = Math.floor((now.getTime() - new Date(ci.recordedAt).getTime()) / 86_400_000)
-              const when = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : `Hace ${daysAgo}d`
-              return (
-                <li key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#1e3a5f' }}>
-                    {(ci.user.name ?? 'A').slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">{ci.user.name ?? 'Atleta'}</span>
-                      {' '}completó check-in semana {ci.weekNumber}
-                      {ci.energyLevel ? ` · energía ${ci.energyLevel}/10` : ''}
-                    </p>
-                    <p className="text-xs text-gray-400">{when}</p>
-                  </div>
-                  <a href={`/coach/athlete/${ci.user.id}`} className="text-xs text-blue-600 hover:underline flex-shrink-0">
-                    Ver →
-                  </a>
-                </li>
-              )
-            })}
+          <ul className="divide-y divide-gray-50 max-h-[280px] overflow-y-auto">
+            {topFeedItems.map((item, i) => (
+              <li key={i} className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  style={{ backgroundColor: (item.type === 'checkin' ? '#22c35d' : avatarColor(item.athleteName)) + '1f', color: item.type === 'checkin' ? '#22c35d' : avatarColor(item.athleteName) }}
+                >
+                  {item.type === 'checkin' ? '✓' : item.athleteName.slice(0, 1).toUpperCase()}
+                </div>
+                <p className="flex-1 text-[11px] min-w-0" style={{ color: '#33404d' }}>
+                  <span className="font-semibold">{item.athleteName}</span>
+                  {' '}{item.detail}
+                </p>
+                <span className="text-[10px] shrink-0" style={{ color: '#8c99a6' }}>{timeAgo(item.ts)}</span>
+              </li>
+            ))}
           </ul>
         )}
       </div>
     </div>
   )
 }
-

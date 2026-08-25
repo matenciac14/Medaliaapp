@@ -73,7 +73,7 @@ export default async function CoachAthletesPage() {
   const athletes = page.map((rel) => mapRelation(rel, now))
 
   const overdueAthleteIds = [...new Set(overduePayments.map((p) => p.athleteId).filter((id): id is string => id !== null))]
-  const totalAlerts = athletes.reduce((acc, a) => acc + a.alerts.length, 0)
+  const alertCount = athletes.filter((a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop).length
 
   const pendingAthletes = pendingRelations.map((r) => ({
     athleteId: r.athlete.id,
@@ -83,29 +83,23 @@ export default async function CoachAthletesPage() {
   }))
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>
+    <div className="max-w-6xl mx-auto px-8 py-6 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-bold" style={{ fontSize: 22, color: '#1e3a5f' }}>
             Mis Atletas
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{totalCount} asesorados activos</p>
+          <p style={{ fontSize: 13, color: '#6b737d' }}>
+            {totalCount} asesorados{alertCount > 0 ? ` · ${alertCount} con alertas` : ''}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          {totalAlerts > 0 && (
-            <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 font-semibold text-sm px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              {totalAlerts} alertas
-            </span>
-          )}
-          <a
-            href="/coach/clients/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
-          >
-            + Nuevo asesorado
-          </a>
-        </div>
+        <a
+          href="/coach/clients/new"
+          className="inline-flex items-center font-semibold text-white transition-opacity hover:opacity-90 shrink-0"
+          style={{ fontSize: 13, backgroundColor: '#ea580c', padding: '10px 18px', borderRadius: 8 }}
+        >
+          + Nuevo asesorado
+        </a>
       </div>
 
       {athletes.length === 0 && (
@@ -134,66 +128,9 @@ export default async function CoachAthletesPage() {
       <PendingAthletesSection athletes={pendingAthletes} />
 
       {athletes.length > 0 && (
-        <>
-          <AlertsFeed athletes={athletes} overdueAthleteIds={overdueAthleteIds} />
-          <AthleteTabs athletes={athletes} hasMore={hasMore} nextCursor={nextCursor} overdueAthleteIds={overdueAthleteIds} />
-        </>
+        <AthleteTabs athletes={athletes} hasMore={hasMore} nextCursor={nextCursor} overdueAthleteIds={overdueAthleteIds} totalCount={totalCount} />
       )}
     </div>
   )
 }
 
-type AlertFlag = {
-  noCheckin: boolean
-  highRpe: boolean
-  weightDrop: boolean
-  weightDropKg: number
-  adjustments: string[]
-}
-
-function AlertsFeed({ athletes, overdueAthleteIds }: { athletes: { id: string; name: string; alertFlags: AlertFlag }[]; overdueAthleteIds: string[] }) {
-  const overdueSet = new Set(overdueAthleteIds)
-  type AlertItem = { athleteId: string; name: string; type: string; message: string; color: string }
-  const items: AlertItem[] = []
-
-  for (const a of athletes) {
-    const f = a.alertFlags
-    if (f.noCheckin)
-      items.push({ athleteId: a.id, name: a.name, type: 'sin-checkin', message: 'Sin check-in hace +7 días', color: '#dc2626' })
-    if (f.highRpe)
-      items.push({ athleteId: a.id, name: a.name, type: 'rpe', message: 'Carga/fatiga alta (RPE ≥ 8)', color: '#ea580c' })
-    if (f.weightDrop)
-      items.push({ athleteId: a.id, name: a.name, type: 'peso', message: `Bajó ${f.weightDropKg.toFixed(1)} kg esta semana`, color: '#eab308' })
-    if (f.adjustments.length > 0)
-      items.push({ athleteId: a.id, name: a.name, type: 'ajuste', message: `Plan auto-ajustado: ${f.adjustments.join(', ')}`, color: '#6366f1' })
-    if (overdueSet.has(a.id))
-      items.push({ athleteId: a.id, name: a.name, type: 'mora', message: 'Pago vencido', color: '#ea580c' })
-  }
-
-  if (items.length === 0) return null
-
-  return (
-    <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-        <h2 className="font-semibold text-gray-900 text-sm">Alertas que requieren atención</h2>
-        <span className="ml-auto text-xs text-gray-400">{items.length} activas</span>
-      </div>
-      <ul className="divide-y divide-gray-50">
-        {items.map((item, i) => (
-          <li key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-            <a href={`/coach/athlete/${item.athleteId}`} className="flex-1 min-w-0">
-              <span className="font-medium text-gray-900 text-sm">{item.name}</span>
-              <span className="text-gray-400 mx-2">·</span>
-              <span className="text-gray-600 text-sm">{item.message}</span>
-            </a>
-            <a href={`/coach/athlete/${item.athleteId}`} className="text-xs text-blue-600 hover:underline flex-shrink-0">
-              Ver →
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}

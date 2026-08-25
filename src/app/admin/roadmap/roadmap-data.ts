@@ -513,6 +513,8 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'Dashboard coach: widget "Distribución deporte" sin datos — conectar o eliminar', done: true, priority: 'P3', note: 'DONE. Widget ya conectado: healthProfile.findMany({ where: { user: { coachedBy: { some: { coachId } } } } }) → sportCounts. Muestra barras proporcionales por deporte. Estado era stale.' },
           { title: 'COACH-FEAT-01 — Exponer templates de plan en el builder del coach (templates ya existen en código)', done: true, priority: 'P1', note: 'DONE. Ver ítem duplicado más abajo — implementado vía /api/coach/athlete/[id]/plan/from-template + PlanBuilderClient.' },
           { title: 'COACH-FEAT-02 — First-time experience para coach nuevo: overlay de bienvenida 3 pasos', done: true, priority: 'P2', note: 'DONE. dashboard/page.tsx ya tiene bloque {totalCount === 0 && ...} con banner "Bienvenido a Medaliq" + CTA "Agregar primer asesorado" + "Compartir link de invitación". Estado era stale. Adicionalmente fix: eliminado $${totalCount*6} USD (modelo per-atleta) en widget "Este mes" → reemplazado por "Atletas totales".' },
+          { title: 'COACH-UX-01 — Auditoría Figma coach + dropdown acciones + tabs alineados + ResumenTab mejorado', done: true, priority: 'P1', note: 'DONE (2026-08-20). Figma: 43 frames verificados sin overlaps, tabs actualizados a 9 (Resumen/Plan/Progreso/Nutrición/Ejercicios/Sesiones/Adherencia/Benchmarks/Mensajes), dropdown con cobros disabled y variante Reactivar, cascada de reposicionamiento (Progreso→Nutrición→Propuesta v2→Gym→Mensajes). Código: AthleteDropdown.tsx (7 acciones), AthleteTabs.tsx integra dropdown en desktop+mobile, AthleteDetailClient.tsx soporta ?tab= query param + badge deporte, ResumenTab.tsx con TrendSummary (tendencia 7 días) + Lesiones/Condiciones médicas. Tests: AthleteDropdown.test.ts 5 tests.' },
+          { title: 'COACH-UX-02 — Discipline-aware plan: specialties[] canónico + PlanTab con 4 discipline cards + Figma rediseñado', done: true, priority: 'P1', note: 'DONE (2026-08-21). Schema: primarySpecialty @deprecated, specialties String[] como fuente canónica ([] = ALL backward compat). Sidebar: CoachSidebarClient migrado de enum a array helpers (hasGym/hasNutrition). PlanTab.tsx: nuevo DisciplineCards con 4 cards (Running/Gym/Nutrition/Copy) filtradas por coachSpecialties + AthleteProfileReference siempre visible. AthleteDetailClient pasa coachSpecialties desde page.tsx. TEMPLATE_PREVIEW corregido 16→12 semanas. Figma: frame 4594:31 rediseñado con perfil atleta + 4 discipline cards coloreadas. Tests: 22 tests coach-specialty.test.ts. Domain doc coach.md actualizado.' },
         ],
       },
       {
@@ -597,6 +599,21 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'API mobile: GET /api/mobile/nutrition/assigned-plan', done: true, priority: 'P1', note: 'Fix: src/app/api/mobile/nutrition/assigned-plan/route.ts. Devuelve template asignado + comidas del día según intensidad de la sesión de hoy (HARD/EASY/REST). Incluye totales del día + targets NutritionPlan para comparación.' },
           { title: 'Atleta: personalización sobre plan asignado (swap de alimentos)', done: true, priority: 'P2', note: 'DONE: AthleteNutritionOverride model + migration. POST/DELETE /api/mobile/nutrition/plan/[id]/swap (validación ±10% kcal). GET plan mobile incluye override. SwapPicker inline en PlannedMealsSection (botón Cambiar + Restaurar). Coach ve swap badge + alimento original en CoachPlannedMealPlanner. Totales diarios del coach usan override cuando existe.' },
           { title: 'Link en sidebar del coach: "Nutrición" → /coach/nutrition/templates', done: true, priority: 'P1', note: 'Fix: CoachSidebarClient.tsx — icono Salad + href /coach/nutrition. isActive añadido a exactMatch.' },
+        ],
+      },
+      {
+        id: 'builder-v2',
+        label: 'Plan Builder v2 — Orquestador Multi-disciplina',
+        period: 'Próximo',
+        items: [
+          { title: 'BUILDER-01 — Selector de disciplina en sidebar (Running / Fuerza / Todas)', done: false, priority: 'P1', note: 'Dropdown en sidebar que filtra SESSION_TYPES por disciplina. Running: RODAJE_Z2, FARTLEK, TEMPO, TIRADA_LARGA, INTERVALOS, TEST. Fuerza: FUERZA. Todas: los 10 tipos. Respeta coach.specialties — si solo tiene GYM, default Fuerza. Diseño en Figma: frames 4912:31 y 4919:90.' },
+          { title: 'BUILDER-02 — Vincular NutritionTemplate a nivel de plan (config, no sidebar)', done: false, priority: 'P1', note: 'Selector en header/config del plan para asociar un NutritionTemplate existente. Al vincular, el sistema auto-mapea HARD/EASY/REST basado en intensidad de cada PlannedSession del día. No es un session type — es config del plan completo. Permite al coach ver preview de kcal/macros por día en el grid.' },
+          { title: 'BUILDER-03 — Unificar AssignedWorkout vs PlannedSession.workoutDayId', done: false, priority: 'P2', note: 'Hoy coexisten dos caminos para gym: AssignedWorkout (asignación directa desde tab Ejercicios) y PlannedSession.workoutDayId (vía builder). Decidir: ¿el builder reemplaza la asignación directa o coexisten? Si coexisten, tab Ejercicios debe mostrar ambas fuentes. Si builder reemplaza, deprecar AssignedWorkout para atletas con plan activo.' },
+          { title: 'BUILDER-04 — Campo distancia (km) en sesiones de running', done: false, priority: 'P2', note: 'PlannedSession.distanceKm Float? — campo nuevo. El coach puede especificar distancia objetivo además de duración. Visible en SessionCard y SessionModal del builder.' },
+          { title: 'BUILDER-05 — Session templates reutilizables (guardar/cargar sesiones frecuentes)', done: false, priority: 'P2', note: 'Coach guarda una sesión como template (ej: "Intervalos 5×1000m"). Al crear nueva sesión, puede elegir de su biblioteca de templates en vez de llenar desde cero. Tabla SessionTemplate { coachId, name, type, durationMin, zoneTarget, detailText, structure }.' },
+          { title: 'BUILDER-06 — Distribución de intensidad visual (barra o gráfica por semana)', done: false, priority: 'P3', note: 'Mostrar proporción HIGH/MODERATE/LOW/REST por semana en el WeekNav o en un panel lateral. Ayuda al coach a verificar periodización sin contar sesiones manualmente.' },
+          { title: 'BUILDER-07 — Detección de conflictos (dos sesiones alta intensidad consecutivas)', done: false, priority: 'P3', note: 'Warning visual si el coach coloca INTERVALOS + TEMPO en días consecutivos, o >3 sesiones HIGH en una semana. No bloquea, solo alerta.' },
+          { title: 'BUILDER-08 — CTA "Vincular a plan" en Constructor de comidas del coach', done: false, priority: 'P2', note: 'En /coach/nutrition/templates/[id]/build agregar botón que permite vincular el template al plan activo de un atleta. Hoy el coach crea templates pero no tiene camino directo desde el constructor de comidas al plan del builder.' },
         ],
       },
       {
@@ -944,6 +961,28 @@ export const GROUPS: RoadmapGroup[] = [
           { title: 'GYM-MOB-04 — Sugerencia de próxima carga en sesión de gym mobile', done: true, priority: 'P2', note: 'DONE (2026-08-14). (1) completed:sl.completed agregado a map previousLogs en ambas rutas de /api/gym/session/today/route.ts. (2) GymSessionData.exercises actualizado con suggestedNextWeightKg + completed en previousLogs. (3) gym-session.tsx: allPrevCompleted + suggestedWeight computation (ex.suggestedNextWeightKg ?? prevAvgWeight+2.5). Badge verde "↑ Xkg" sobre el input de peso — tap auto-rellena el campo.' },
           { title: 'NUT-WATER-MOB — Water tracking mobile: GET/POST + progress bar + quick-add buttons', done: true, priority: 'P2', note: 'DONE (2026-08-14). Backend: GET+POST /api/mobile/nutrition/water (upsert WaterLog con delta, rate limiting, getMobileUser). API client: getWaterLog + logWater + WaterLogData type en src/api/nutrition.ts. UI: HydrationSection en nutrition.tsx rediseñada — useQuery water-log, useMutation logWater, progress bar kcal-styled, quick-add +250/+500/+750 ml, botón − para corregir, badge verde al alcanzar meta.' },
           { title: 'COACH-NUT-UI-01/02/03 — KPI band + bar chart + macro donut en panel de nutrición del coach', done: true, priority: 'P2', note: 'DONE (2026-08-14). NutricionTab.tsx: (1) KPI band 4 cards — adherencia 7d con semáforo, TDEE base, proteína media g/día, fase del plan. (2) Bar chart 7 días kcal consumidas vs objetivo — barras relativas al máximo, color por adherencia pct (verde/naranja/rojo), target como barra semitransparente. (3) Donut SVG macros 7d — proteína #3b82f6 / carbos #f97316 / grasas #eab308, leyenda con %+g/día. Todos calculados inline desde props foodLogs+adherenceData ya disponibles.' },
+          // ── GYM Sprint 1 — exponer datos de backend existente ───────────────
+          { title: 'GYM-S1-01 — setLogType + rpe por set en gym/history API', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym/history/route.ts: select de exercise extendido con bodyPart/target/secondaryMuscles. exerciseMap ahora incluye setLogType+rpe por set. Tipo ExerciseEntry con bodyPart/target/secondaryMuscles.' },
+          { title: 'GYM-S1-02 — bodyPart + target + secondaryMuscles en gym/week + gym/history APIs', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym/week/route.ts: ambas rutas de selectedDetail (assignedWorkout path + plan path) incluyen bodyPart+target por exercise. Tipo CompletedExercise con campos de músculo.' },
+          { title: 'GYM-S1-03 — Endpoint GET /api/mobile/gym/prs + 1RM estimado en gym-session', done: true, priority: 'P1', note: 'DONE (2026-08-19). Nuevo endpoint gym/prs/route.ts: Epley formula (kg×(1+reps/30)×10)/10, max por ejercicio de todos los SetLog. gym-session.tsx: useQuery gym-prs, GymPR type + getGymPRs en src/api/gym.ts. Display "🏆 1RM est.: X kg" en header de ejercicio.' },
+          { title: 'GYM-S1-04 — Screen wake lock con expo-keep-awake', done: true, priority: 'P1', note: 'DONE (2026-08-19). gym-session.tsx: import * as KeepAwake + useEffect activateKeepAwakeAsync al montar, deactivateKeepAwake en cleanup.' },
+          { title: 'GYM-S1-05 — Colores WARMUP (azul) y DROPSET (púrpura) en badges de set', done: true, priority: 'P2', note: 'DONE (2026-08-19). SET_TYPE_CONFIG: WARMUP bg=#eff6ff text=#3b82f6 badge=W, DROPSET bg=#f5f3ff text=#7c3aed badge=D.' },
+          // ── GYM Sprint 2 — muscle map SVG ───────────────────────────────────
+          { title: 'GYM-S2-01 — GET /api/mobile/progress/muscles: agregación de volumen muscular con fatigueLevel', done: true, priority: 'P2', note: 'DONE (2026-08-19). Nuevo progress/muscles/route.ts: setLogs con workoutExerciseId → bodyPart/target/secondaryMuscles. Volume=kg×reps, secondary ×0.5. fatigueLevel: >48h=0, >24h=1, >12h=2, <12h=3.' },
+          { title: 'GYM-S2-02 — MuscleMap.tsx: SVG body map front/back con colores por fatigueLevel', done: true, priority: 'P2', note: 'DONE (2026-08-19). src/components/MuscleMap.tsx con react-native-svg. Silueta compartida (BodySilhouette). FrontBody: delts/chest/biceps/forearms/abs/quads/calves. BackBody: traps/upperBack/lats/triceps/forearms/lowerBack/glutes/hamstrings/calves. Toggle front/back + leyenda.' },
+          { title: 'GYM-S2-03 — MuscleMap integrado en progress screen + heatmap 52 semanas', done: true, priority: 'P2', note: 'DONE (2026-08-19). progress.tsx: useQuery progress-muscles → getMuscleVolume(7). Sección "Músculos esta semana" con MuscleMap. Heatmap ActivityHeatmap: grid 52 semanas, colores por sessionCount (0/1/2/3+). activityGrid agregado en /api/mobile/progress/route.ts (gymSessions+runSessions).' },
+          // ── GYM Sprint 3 — polish ────────────────────────────────────────────
+          { title: 'GYM-S3-02 — Muscle preview pre-sesión en gym.tsx (músculos de hoy)', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym.tsx: calcula muscleData desde session.exercises.bodyPart/target → MuscleMap con fatigueLevel=3 (todos "intenso") antes de iniciar. Card "Músculos de hoy" entre CTA y pills.' },
+          // ── GYM Sprint 4 — gaps vs openGym ──────────────────────────────────
+          { title: 'GYM-S4-01 — Progresión de carga por ejercicio en gym-history', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym-history.tsx: ExerciseProgressionChart component (mini bar chart últimas 8 sesiones, último bar en naranja). progressionByExercise map con useMemo (max weight por ejercicio por sesión). Mostrado bajo sets en vista expandida.' },
+          { title: 'GYM-S4-02 — Barra de progreso de series por ejercicio en gym-session', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym-session.tsx: progress bar por ejercicio (done/total) con fill naranja proporcional. Mostrada debajo del bloque de series/reps.' },
+          { title: 'GYM-S4-03 — Notas por ejercicio en gym-session', done: true, priority: 'P3', note: 'DONE (2026-08-19). gym-session.tsx: exerciseNotesMap state (Record<string,string>). TextInput por ejercicio visible cuando exercise done. Notas concatenadas al notes de sesión con formato "Ejercicio: nota" al finalizar.' },
+          { title: 'GYM-S4-04 — completedSets visible en SessionCard de gym-history', done: true, priority: 'P3', note: 'DONE (2026-08-19). gym-history.tsx: "{session.completedSets} series" mostrado en área de stats derecha de la card.' },
+          { title: 'GYM-S4-05 — Proyección de carga 4 semanas en gym.tsx', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym.tsx: sección "Progresión planeada" con tabla Ant. | Hoy | S+2 | S+3 | S+4 por ejercicio. Base: suggestedNextWeightKg ?? prevWeight+2.5, luego +2.5kg/semana.' },
+          { title: 'GYM-S4-06 — Músculos esta semana en gym.tsx (weekly MuscleMap)', done: true, priority: 'P2', note: 'DONE (2026-08-19). gym.tsx: useQuery progress-muscles (7 días, staleTime 10min). Sección "Músculos esta semana" con MuscleMap del aggregate semanal de la API.' },
+          // ── GYM Web — MuscleMapWeb en panel web ─────────────────────────────
+          { title: 'GYM-WEB-01 — MuscleMapWeb en gym/page.tsx (no-workout): fatigue map + session preview', done: true, priority: 'P2', note: 'DONE (2026-08-20). gym/page.tsx sin rutina: query SetLogs 7d + agregación bodyPart/target → MuscleMapWeb mode=fatigue entre Plantillas y Biblioteca. Con rutina: todayMuscleData desde muscleGroups+target → MuscleMapWeb compact mode=session en card "Sesión de hoy". src/components/MuscleMapWeb.tsx (SVG inline, paths curvados, front/back toggle, leyenda, compact mode).' },
+          { title: 'GYM-WEB-02 — MuscleMapWeb en gym/session/page.tsx (during session): session mode compact', done: true, priority: 'P2', note: 'DONE (2026-08-20). gym/session/page.tsx: buildSessionMuscleData([workoutDay.muscleGroups, exercises.muscleGroups]) → MuscleMapWeb compact mode=session entre header y progress bar.' },
         ],
       },
     ],
@@ -1094,7 +1133,7 @@ export const GROUPS: RoadmapGroup[] = [
         title: 'TRM real-time — Banco de la República (transparencia de precios COP)',
         done: true,
         priority: 'P1',
-        note: 'DONE (2026-08-15). ITrmProvider port + BancoRepublicaTrmAdapter (datos.gov.co/resource/32sa-8pi3.json). SystemConfig.trmUsdCop + trmUpdatedAt en DB. getTrmWithMeta() lee DB → env var → fallback 4200. Cron /api/cron/refresh-trm (14:00 UTC = 9am COT) actualiza daily. UI: settings/plan coach + atleta muestran "TRM YYYY-MM-DD". Mobile pricing.tsx: COP dinámico vía /api/mobile/billing/prices + fecha TRM en footer. WompiPaymentGateway usa await getTrm() para montos al momento del checkout. Precios siempre precisos — no overcharge por TRM desactualizado.',
+        note: 'DONE (2026-08-19). TrmService (clase con cache TTL 1h por instancia) + BancoRepublicaTrmAdapter (datos.gov.co — Superintendencia Financiera oficial). Sin DB, sin cron — fetch directo con cache en módulo. Jerarquía: API → env TRM_USD_COP → fallback 4200 (siempre loggea). UI: settings/plan coach + atleta muestran precio COP + TRM date. Mobile: /api/mobile/billing/prices. Wompi usa getTrm() al momento del checkout. 20 unit tests.',
       },
       {
         title: 'Scale+ tier — $129 + $1.50/atleta activo sobre 100',
@@ -1540,13 +1579,13 @@ export const GROUPS: RoadmapGroup[] = [
             title: 'EX-13 — Script admin: descarga todos los GIFs desde gifUrl → sube a AWS S3 → actualiza gifStoredUrl en DB',
             done: false,
             priority: 'P2',
-            note: 'Endpoint POST /api/admin/exercises/upload-gifs — ADMIN only. Itera exercises WHERE gifStoredUrl IS NULL, fetch(gifUrl), upload S3 bucket medaliq-exercises/, update gifStoredUrl. Costo: ~70MB storage ($0.0016/mes) + egress S3 ($0.09/GB). A 500 coaches: ~$1.35/mes. Trigger: cuando haya 5 coaches pagando activos — el riesgo de dependencia WorkoutX CDN justifica el setup.',
+            note: 'BLOQUEADO por licencia: WorkoutX ToS prohíbe bulk caching. Requiere comprar ExerciseDB $599 one-time (self-hosting permitido explícitamente). Trigger: cuando haya 5 coaches pagando activos. Alternativa interim implementada: proxy GET /api/gym/gif/[id] (EX-GIF-PROXY).',
           },
           {
             title: 'EX-14 — UI transparente: gifStoredUrl ?? gifUrl en todos los componentes que muestran GIFs de ejercicios',
             done: true,
             priority: 'P2',
-            note: 'DONE: La API (/api/gym/session/today, /api/exercises, /api/coach/gym/exercises) ya retorna gif: gifStoredUrl??gifUrl. Todos los clientes web y mobile consumen el campo gif resuelto — ningún componente accede directamente a gifUrl/gifStoredUrl. Implementación automática sin cambios adicionales. EX-13 (S3) sigue pendiente pero la UI ya es transparente.',
+            note: 'DONE (2026-08-20): resolveExerciseGifUrl() en src/lib/gym/gif-url.ts. Proxy GET /api/gym/gif/[id] añade X-WorkoutX-Key server-side. Todos los puntos actualizados: exercise.repository.ts, gym/session/today, (athlete)/gym/page.tsx, gym/exercises/page.tsx + AthleteExercisesGrid.tsx, coach/gym/exercises/page.tsx + ExercisesGrid.tsx, api/gym/exercises/search/route.ts, api/gym/session/[id]/route.ts, api/mobile/exercises/[id]/alternatives/route.ts. Cache 7 días en Vercel Edge.',
           },
         ],
       },
@@ -3069,6 +3108,148 @@ export const GROUPS: RoadmapGroup[] = [
             note: 'Acción manual de Miguel: api.trainingpeaks.com/request-access. Implementar solo cuando aprueben. Prioridad baja — la mayoría de coaches migrarán desde TP pero no necesitan la integración post-migración.',
           },
         ],
+      },
+    ],
+  },
+
+  // ─── SECURITY & PERFORMANCE — HARDENING ──────────────────────────────────────
+  // Auditoría interna agosto 2026. Items SEC-* y PERF-* son correcciones de código
+  // (ya aplicadas). Items INFRA-* requieren decisiones de infraestructura/presupuesto.
+
+  {
+    id: 'hardening',
+    label: 'Security & Performance — Hardening',
+    color: '#dc2626',
+    bgColor: '#fef2f2',
+    borderColor: '#fecaca',
+    period: 'Agosto 2026',
+    phases: [
+      {
+        label: 'Security',
+        items: [
+          { title: 'SEC-01 — Feature gates en checkin + sessions endpoints', done: true, priority: 'P0', note: 'requireFeature(mobile.features, "checkin") en POST /api/mobile/checkin. requireFeature(mobile.features, "plan") en GET/PATCH /api/mobile/sessions/[sessionId]. Usuarios Free bloqueados correctamente.' },
+          { title: 'SEC-02 — CoachAthlete status:ACTIVE en 12 rutas coach', done: true, priority: 'P0', note: 'Las rutas nutrition/meals, running-adherence, nutrition/plan/[mealId], nutrition/adherence, nutrition, running-logs, plan, plan/copy-from, invite-link, plan/custom, plan/from-template no verificaban status:ACTIVE. Coach con relación INACTIVE podía seguir accediendo a datos del atleta. Todas corregidas.' },
+          { title: 'SEC-03 — Rate limit 200 en lugar de 429 en meal-templates', done: true, priority: 'P1', note: 'api/mobile/nutrition/meal-templates/route.ts y [id]/route.ts retornaban status 200 en lugar de 429 al superar el límite. NextResponse import faltaba. Corregido.' },
+          { title: 'SEC-04 — URL incorrecta /api/gym/assign en mobile (→ /api/mobile/gym/assign)', done: true, priority: 'P1', note: 'src/api/gym.ts:assignTemplate llamaba /api/gym/assign (ruta web, requiere Auth.js session). Mobile usa JWT jose → siempre 401 en producción. Corregido a /api/mobile/gym/assign.' },
+          { title: 'SEC-05 — PendingSync gym en AsyncStorage → expo-secure-store', done: true, priority: 'P1', note: 'src/store/gymSessionDraft.ts guardaba sesiones pendientes de sincronización en AsyncStorage (sin cifrado). Migrado a SecureStore.setItemAsync/getItemAsync/deleteItemAsync. Datos en reposo cifrados en iOS/Android.' },
+          { title: 'SEC-06 — checkin-status devuelve datos sin feature gate', done: true, priority: 'P1', note: 'GET /api/mobile/checkin-status retornaba datos de check-in a usuarios Free sin gate. Ahora retorna { pending: false, locked: true } para usuarios sin featureCheckin. No expone información de estado.' },
+        ],
+      },
+      {
+        label: 'Performance',
+        items: [
+          { title: 'PERF-01 — Limit en weeklyCheckIn query (sin cap = scan completo)', done: true, priority: 'P1', note: 'api/mobile/progress/route.ts: weeklyCheckIn.findMany sin take → scan completo para atletas con 2+ años de datos. Añadido take: 104 (2 años). gymSession.findMany acotado a últimos 365 días.' },
+          { title: 'PERF-02 — N+1 en plan/copy-from (create() en loop)', done: true, priority: 'P1', note: 'src/app/api/coach/athlete/[id]/plan/copy-from/route.ts: plannedSession.create() dentro de loop por semana reemplazado por acumulación en allSessionsData[] + un solo createMany() al final. De N queries a 1.' },
+          { title: 'PERF-03 — Connection pool max:10 insuficiente para serverless', done: false, priority: 'P2', note: 'DATABASE_URL con max=10. Vercel serverless puede tener 50+ instancias simultáneas → pool exhaustion bajo carga. Requiere Neon pgbouncer en modo transaction + DATABASE_URL?pgbouncer=true. Costo: $69/mes Neon Pro.' },
+          { title: 'PERF-04 — Upstash Free rate limiting (10k req/day, sin persistencia entre instancias)', done: false, priority: 'P2', note: 'Plan Free de Upstash tiene límite de 10k requests/día. Bajo carga real con 200+ usuarios activos se agota en horas. Upgrade a Upstash Pro ~$25/mes o usar in-memory con aceptación de no-persistencia entre instancias.' },
+          { title: 'PERF-05 — Sin caching en endpoints de alta frecuencia (dashboard, gym-today, plan)', done: false, priority: 'P2', note: 'Endpoints mobile más llamados no tienen cache. Agregar staleTime en queries y/o Redis cache en server. Redis cache (~$15/mes) puede reducir DB queries en 60-70% para /api/mobile/dashboard.' },
+          { title: 'PERF-06 — progress endpoint sin paginación (gymSession scan anual)', done: false, priority: 'P2', note: 'PERF-01 puso un límite de 365 días pero gymSession.findMany sigue retornando todos los logs del año. Para usuarios con >200 sesiones/año el payload crece. Agregar paginación por cursor en siguiente iteración.' },
+          { title: 'PERF-07 — Ausencia de índices en queries de alta frecuencia', done: false, priority: 'P3', note: 'SessionLog (athleteId, date), GymSession (athleteId, date), PlannedMeal (userId, date) no tienen índices compuestos. Prisma crea índices en FK pero no en combinaciones date+FK. Agregar en siguiente migración cuando el volumen lo justifique (>10k rows por tabla).' },
+        ],
+      },
+      {
+        label: 'Infraestructura',
+        items: [
+          { title: 'INFRA-01 — Neon pgbouncer (connection pooling serverless-safe)', done: false, priority: 'P2', note: 'Prerequisito: PERF-03. Cambiar DATABASE_URL a Neon Pro con pgbouncer en modo transaction. Costo: $69/mes. Activar cuando usuarios concurrentes superen 200.' },
+          { title: 'INFRA-02 — Upstash Pro (rate limiting persistente multi-instancia)', done: false, priority: 'P2', note: 'Prerequisito: PERF-04. Upgrade a Upstash Pro para persistencia entre instancias Vercel y límite de 100k+ req/día. Costo: ~$25/mes.' },
+          { title: 'INFRA-03 — Redis cache para endpoints de alta frecuencia', done: false, priority: 'P2', note: 'Prerequisito: PERF-05. Upstash Redis o Vercel KV para cachear respuestas de /api/mobile/dashboard, /api/mobile/gym/week, /api/mobile/plan. TTL 60-300s según endpoint. Costo: ~$15/mes.' },
+          { title: 'INFRA-04 — Vercel Analytics + error monitoring (Sentry)', done: false, priority: 'P3', note: 'Sin observabilidad actual. Vercel Analytics gratuito para métricas de performance. Sentry ~$26/mes para error tracking. Activar antes de lanzamiento público.' },
+          { title: 'INFRA-05 — CDN para GIFs de ejercicios (WorkoutX CDN)', done: false, priority: 'P3', note: 'GIFs de ejercicios (gifUrl de WorkoutX) se sirven desde CDN externo sin control. Evaluar mirror en Cloudflare R2 (~$0.015/GB/mes) si el CDN de WorkoutX presenta latencia en LatAm.' },
+        ],
+      },
+    ],
+  },
+
+  // ─── SOCIAL SHARING — VIRAL LOOP ────────────────────────────────────────────
+  // Análisis competitivo agosto 2026. Inspirado en Strava, Nike Run Club, WHOOP.
+  // Objetivo: cada logro compartido = impresión orgánica de MedalIQ. Sin integración
+  // con APIs de Meta — share nativo del OS + Instagram Stories URL scheme.
+
+  {
+    id: 'social-sharing',
+    label: 'Social Sharing — Viral Loop',
+    color: '#0891b2',
+    bgColor: '#ecfeff',
+    borderColor: '#a5f3fc',
+    period: 'Sprint agosto 2026',
+    phases: [
+      {
+        label: 'Diseño',
+        items: [
+          { title: 'SHARE-D01 — Share cards en Design System Figma (5 variantes)', done: true, priority: 'P1', note: 'Diseñadas en página Design System (2697:31), sección "Share Cards — Mobile · Variants" (node 5034:31). 6 cards: ① PR Fuerza (navy + trofeo + 1RM hero), ② Sesión Completada (dark navy + stats 3-col), ③ Racha Semanal (warm dark + fire + dot grid), ④ Temporada Completada (extra dark + gold + 2×2 stats), ⑤ Resumen Semanal (7-day activity grid + metric boxes), ⑥ Transparent Mode (glass overlay navy 82% sobre foto del usuario — BlurView expo-blur). Todos los valores son placeholder — el componente RN los recibe como props. Dimensiones: 390×693 en Figma → 1080×1920 en producción (scale 2.77x con ViewShot).' },
+        ],
+      },
+      {
+        label: 'Sprint 1 — Tarjetas',
+        items: [
+          { title: 'SHARE-01 — ShareCard.tsx — componente con 6 variantes', done: true, priority: 'P1', note: 'src/components/ShareCard.tsx — 6 variantes: pr_gym · session · streak · season · weekly · transparent (glass overlay). Props tipadas en ShareCardProps. Dimensiones 360×640pt (= 1080×1920px en 3x DPI). StyleSheet nativo, fuentes Inter_*. Sub-components compartidos: TopBar, Footer, Pill, StatCell, SeasonStat, MiniStat.' },
+          { title: 'SHARE-02 — Captura PNG + share sheet nativo (expo-sharing)', done: true, priority: 'P1', note: 'src/lib/share.ts — captureShareCard(ref) usa react-native-view-shot (v4.0.3) sin width/height explícito → DPI nativo del dispositivo. shareImage(uri) usa expo-sharing. Constantes CARD_W=360, CARD_H=640 exportadas. src/components/SharePreviewModal.tsx — Modal pageSheet con preview escalada (PREVIEW_SCALE = screenW-80/CARD_W), ViewShot ref, botón "Compartir" + "Cancelar". Paquetes instalados: react-native-view-shot expo-sharing expo-blur.' },
+          { title: 'SHARE-03 — Instagram Stories URL scheme directo', done: false, priority: 'P2', note: 'react-native-share con Social.INSTAGRAM_STORIES. Requiere Facebook App ID registrado (Meta Developer Portal, gratis, sin review). Sin App ID → fallback a share sheet genérico. No bloqueante para V1.' },
+        ],
+      },
+      {
+        label: 'Sprint 2 — Integración en flujos',
+        items: [
+          { title: 'SHARE-04 — Integrar en modal post-sesión gym (PR)', done: true, priority: 'P1', note: 'gym-session.tsx: PRModal recibe onShare(pr: PRResult) prop. "Compartir 📤" ahora abre SharePreviewModal con card variant=pr_gym. handleSharePR() mapea PRResult → ShareCardProps (ejercicioNombre, weightKg, estimatedOneRM desde gymPRs query, fecha de hoy). SharePreviewModal se monta sobre el PRModal — al cerrarlo vuelve al PRModal. Imports: SharePreviewModal + ShareCardProps.' },
+          { title: 'SHARE-05 — Integrar en modal post-sesión running', done: true, priority: 'P1', note: 'log-run.tsx: success screen rediseñada — elimina auto-navigate, muestra stats (duración, km, RPE) + botón "Compartir corrida" (orange) + "Listo". "Compartir" abre SharePreviewModal con card variant=session, sessionType=RUNNING, durationMin/distanceKm/rpe del formulario, fecha de hoy. shareCardProps construido en handleSubmit() antes de mutate. showShareModal boolean controla visibilidad independiente del success screen.' },
+          { title: 'SHARE-06 — Racha semanal — celebración en milestones 4/8/12/16 semanas', done: false, priority: 'P2', note: 'Al completar semana N (4, 8, 12, 16...): modal "X semanas consecutivas" + ShareCard racha. Trigger: endpoint check-in o completion de semana detecta milestone. Notificación push si no abrió la app ese día.' },
+          { title: 'SHARE-07 — Temporada completada (plan finalizado)', done: false, priority: 'P2', note: 'Al marcar plan como COMPLETED: pantalla "Temporada N completada" con stats totales del plan (semanas, km/kg acumulados, sesiones). ShareCard tipo "season". Renombrar internamente de "plan completado" a "temporada".' },
+          { title: 'SHARE-08 — Resumen semanal shareable (Sunday card)', done: false, priority: 'P3', note: 'Cada domingo tras check-in: botón "Compartir tu semana". ShareCard tipo "weekly_summary" con heatmap simplificado de 7 días + métricas clave. Generado automáticamente, sin acción extra del usuario.' },
+        ],
+      },
+      {
+        label: 'Sprint 3 — Mecanismos de hábito social',
+        items: [
+          { title: 'SHARE-09 — Racha visible en dashboard (streak counter)', done: false, priority: 'P1', note: 'Número de semanas consecutivas con plan adherido siempre visible en dashboard mobile. Icono de fuego 🔥 + número. Al romper racha: badge "Racha rota" con CTA para recuperar. Dato ya calculable desde WeeklyCheckIn.' },
+          { title: 'SHARE-10 — Narrativa de Temporadas (renombrar plan → temporada en UI)', done: false, priority: 'P2', note: 'Plan de 12 semanas = Temporada 1. Al terminar → Temporada 2 disponible. Crea arco narrativo y sensación de progreso acumulado. Solo cambio de copy en UI, no en DB.' },
+          { title: 'SHARE-11 — Coach celebra PR del atleta (1 tap desde panel web)', done: false, priority: 'P2', note: 'En AthleteDetailClient o ResumenTab: el coach ve los PRs recientes del atleta y puede reaccionar con 🏆 en 1 tap. El atleta recibe push notification "Tu coach celebró tu nuevo récord en [ejercicio]". Mayor retención que auto-share. Requiere: PATCH /api/coach/athlete/[id]/celebrate-pr + push notification.' },
+          { title: 'SHARE-12 — Perfil público del atleta con logros (opt-in)', done: false, priority: 'P3', note: 'El atleta puede activar un perfil público en medaliq.com/athlete/[slug] que muestra sus temporadas completadas + PRs actuales. El coach puede compartirlo como referencia a nuevos prospectos. Opt-in estricto.' },
+        ],
+      },
+    ],
+  },
+
+  // ─── FEATURES DESEADAS — INSPIRACIÓN DE MERCADO ──────────────────────────────
+  // No priorizado. Scope futuro identificado tras análisis competitivo (Ladder, 2026-08).
+  // NO implementar sin decisión explícita de Miguel.
+
+  {
+    id: 'desired',
+    label: 'Features Deseadas — Inspiración de Mercado',
+    period: 'No priorizado',
+    color: '#7c3aed',
+    bgColor: '#faf5ff',
+    borderColor: '#c4b5fd',
+    items: [
+      {
+        title: 'DESIRED-01 — Audio coaching en sesión de gym (cues in-ear con expo-av)',
+        done: false,
+        priority: 'P3',
+        note: 'Inspirado en Ladder: cues de voz guían al atleta ("Descansa 60s", "Empuja") sin mirar la pantalla. Implementación: expo-av + Text-to-Speech nativo o clips de audio del coach. Requiere diseñar la lógica de timing: cuándo disparar el cue según el estado de la sesión (inicio set, fin set, descanso). El coach podría grabar sus propios clips. No implementar sin definir si el audio es generado (TTS) o grabado por el coach.',
+      },
+      {
+        title: 'DESIRED-02 — Identidad de marca del coach en marketplace (/p/[slug])',
+        done: false,
+        priority: 'P3',
+        note: 'Inspirado en Ladder: el coach no solo tiene bio y especialidad — tiene metodología propia, filosofía de entrenamiento, tipo ideal de atleta, resultados típicos ("atletas que completan maratón en 6 meses"). Campos adicionales en CoachProfile: methodology (texto libre), athleteIdealProfile, typicalResults, coachingStyle (ONLINE/PRESENCIAL/HIBRIDO). Diferencia a coaches reales de los genéricos. Requiere rediseño del perfil /p/[slug] y del formulario /coach/profile.',
+      },
+      {
+        title: 'DESIRED-03 — Free trial 7 días sin tarjeta al activar billing B2C',
+        done: false,
+        priority: 'P3',
+        note: 'Inspirado en Ladder: reducir fricción de conversión — el atleta B2C prueba Pro 7 días sin ingresar tarjeta. Al día 7 se solicita pago o revierte a Free. Requiere: columna trialEndsAt en UserSubscription, lógica de gracia en getUserPlan(), UI de cuenta regresiva del trial, email al día 5 ("te quedan 2 días"). No implementar hasta que billing B2C esté activo (Wompi conectado).',
+      },
+      {
+        title: 'DESIRED-04 — Video form feedback: coach revisa clips de levantamientos del atleta',
+        done: false,
+        priority: 'P3',
+        note: 'Inspirado en Ladder: el atleta sube un clip corto de su técnica (sentadilla, peso muerto) y el coach lo comenta. Requiere: almacenamiento de video (Cloudflare R2 o S3), endpoint de upload, visor de video en el panel del coach con campo de nota/feedback, notificación al atleta. Alta complejidad técnica (storage, transcoding, tamaño de archivos). Solo viable con infraestructura de media dedicada. Evaluar primero si hay demanda real antes de construir.',
+      },
+      {
+        title: 'DESIRED-05 — Grupos de accountability entre atletas del mismo coach',
+        done: false,
+        priority: 'P3',
+        note: 'Inspirado en Ladder: los atletas de un mismo coach pueden verse entre sí (adherencia, rachas, PRs) — presión social positiva. El coach crea grupos (ej. "Grupo Maratón Nov"). Los atletas optan por ser visibles en el grupo. Feed de actividad: "Ana completó su sesión", "Carlos batió su PR de sentadilla". Requiere: modelo AthleteCohort, privacidad granular, feed de actividad. Alta complejidad social. Evaluar PMF antes de construir — feature de comunidad, no de coaching.',
       },
     ],
   },

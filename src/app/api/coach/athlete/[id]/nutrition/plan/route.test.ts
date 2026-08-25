@@ -61,6 +61,7 @@ describe('GET /api/coach/athlete/[id]/nutrition/plan', () => {
     const meal = {
       id: 'pm-1', mealType: 'BREAKFAST', grams: 100, date: new Date('2026-07-28'),
       food: { id: 'f1', name: 'Arroz', category: 'GRAINS', kcalPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatPer100g: 0.3, servingG: 100, servingLabel: null },
+      overrides: [],
     }
     vi.mocked(prisma.plannedMeal.findMany).mockResolvedValue([meal] as any)
 

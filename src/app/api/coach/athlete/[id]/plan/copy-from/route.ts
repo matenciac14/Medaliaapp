@@ -28,7 +28,7 @@ export async function POST(
 
   // Verify coach owns the target athlete
   const targetRelation = await prisma.coachAthlete.findFirst({
-    where: { coachId, athleteId: targetAthleteId },
+    where: { coachId, athleteId: targetAthleteId, status: 'ACTIVE' },
   })
   if (!targetRelation) {
     return NextResponse.json({ error: 'Atleta no encontrado.' }, { status: 404 })
@@ -95,6 +95,21 @@ export async function POST(
       })
 
       // Copy weeks + sessions with recalculated dates
+      const allSessionsData: {
+        weekId: string
+        dayOfWeek: number
+        type: typeof sourcePlan.weeks[0]['sessions'][0]['type']
+        intensity: typeof sourcePlan.weeks[0]['sessions'][0]['intensity']
+        durationMin: number | null
+        zoneTarget: string | null
+        structure: string | null
+        detailText: string | null
+        sportLabel: string | null
+        coachNote: null
+        date: Date
+        workoutDayId: string | null
+      }[] = []
+
       for (const week of sourcePlan.weeks) {
         const weekStart = addDays(newStartDate, (week.weekNumber - 1) * 7)
         const weekEnd   = addDays(weekStart, 6)
@@ -113,24 +128,25 @@ export async function POST(
         })
 
         for (const s of week.sessions) {
-          const sessionDate = addDays(weekStart, s.dayOfWeek - 1)
-          await tx.plannedSession.create({
-            data: {
-              weekId:      newWeek.id,
-              dayOfWeek:   s.dayOfWeek,
-              type:        s.type,
-              intensity:   s.intensity,
-              durationMin: s.durationMin,
-              zoneTarget:  s.zoneTarget,
-              structure:   s.structure,
-              detailText:  s.detailText,
-              sportLabel:  s.sportLabel,
-              coachNote:   null, // don't copy coach notes — they're athlete-specific
-              date:        sessionDate,
-              workoutDayId: s.workoutDayId,
-            },
+          allSessionsData.push({
+            weekId:      newWeek.id,
+            dayOfWeek:   s.dayOfWeek,
+            type:        s.type,
+            intensity:   s.intensity,
+            durationMin: s.durationMin,
+            zoneTarget:  s.zoneTarget,
+            structure:   s.structure,
+            detailText:  s.detailText,
+            sportLabel:  s.sportLabel,
+            coachNote:   null, // don't copy coach notes — they're athlete-specific
+            date:        addDays(weekStart, s.dayOfWeek - 1),
+            workoutDayId: s.workoutDayId,
           })
         }
+      }
+
+      if (allSessionsData.length > 0) {
+        await tx.plannedSession.createMany({ data: allSessionsData })
       }
 
       return plan

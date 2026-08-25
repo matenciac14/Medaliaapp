@@ -32,13 +32,8 @@ export async function PATCH(req: NextRequest) {
   const {
     slug, bio, headline, city, country, whatsapp, instagram,
     yearsExp, specialties, certifications, isPublic, avatarUrl,
-    primarySpecialty, identification, phoneWa,
+    identification, phoneWa,
   } = body
-
-  const VALID_SPECIALTIES = ['RUNNING', 'GYM', 'NUTRITION', 'ALL']
-  if (primarySpecialty !== undefined && !VALID_SPECIALTIES.includes(primarySpecialty)) {
-    return NextResponse.json({ error: 'Especialidad inválida.' }, { status: 400 })
-  }
 
   // Validate slug: lowercase letters, numbers, hyphens only
   if (slug && !/^[a-z0-9-]+$/.test(slug)) {
@@ -147,7 +142,6 @@ export async function PATCH(req: NextRequest) {
         ...(yearsExp !== undefined && { yearsExp: yearsExp ? parseInt(yearsExp) : null }),
         ...(certifications !== undefined && { certifications }),
         ...(isPublic !== undefined && { isPublic }),
-        ...(primarySpecialty !== undefined && { primarySpecialty }),
       },
     })
   } catch (err: unknown) {

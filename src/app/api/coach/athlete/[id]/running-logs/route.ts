@@ -14,7 +14,7 @@ export async function GET(
   const { id: athleteId } = await params
 
   const relation = await prisma.coachAthlete.findFirst({
-    where: { coachId: session.user.id, athleteId },
+    where: { coachId: session.user.id, athleteId, status: 'ACTIVE' },
     select: { id: true },
   })
   if (!relation) {

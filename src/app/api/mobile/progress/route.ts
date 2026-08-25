@@ -18,10 +18,14 @@ export async function GET(req: NextRequest) {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory, rawFoodLogs, nutritionPlan] = await Promise.all([
+  const oneYearAgo = new Date()
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+
+  const [checkIns, plan, profile, gymCount, rawGymSessions, rawBenchmarks, rawGymPRs, rawSetHistory, rawFoodLogs, nutritionPlan, rawRunSessions] = await Promise.all([
     prisma.weeklyCheckIn.findMany({
       where: { userId },
       orderBy: { weekNumber: 'asc' },
+      take: 104,
       select: {
         weekNumber: true,
         weightKg: true,
@@ -61,7 +65,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.gymSession.count({ where: { athleteId: userId, completed: true } }),
     prisma.gymSession.findMany({
-      where: { athleteId: userId, completed: true },
+      where: { athleteId: userId, completed: true, date: { gte: oneYearAgo } },
       select: { date: true },
       orderBy: { date: 'asc' },
     }),
@@ -107,6 +111,10 @@ export async function GET(req: NextRequest) {
       where: { userId },
       orderBy: { updatedAt: 'desc' },
       select: { targetKcalEasy: true },
+    }),
+    prisma.sessionLog.findMany({
+      where: { userId, completedAt: { gte: oneYearAgo } },
+      select: { completedAt: true },
     }),
   ])
 
@@ -228,6 +236,25 @@ export async function GET(req: NextRequest) {
     ? Math.round(weeksWithPastSessions.reduce((acc, w) => acc + calcAdherencePct(w.sessions.filter(s => s.log !== null).length, w.sessions.length), 0) / weeksWithPastSessions.length)
     : 0
 
+  // Activity heatmap — last 52 weeks, gym + running sessions by date
+  const activityGrid: Record<string, { sessionCount: number; types: string[] }> = {}
+  for (const s of rawGymSessions) {
+    if (!s.date) continue
+    const key = s.date.toISOString().split('T')[0]
+    const entry = activityGrid[key] ?? { sessionCount: 0, types: [] }
+    entry.sessionCount += 1
+    if (!entry.types.includes('gym')) entry.types.push('gym')
+    activityGrid[key] = entry
+  }
+  for (const s of rawRunSessions) {
+    if (!s.completedAt) continue
+    const key = s.completedAt.toISOString().split('T')[0]
+    const entry = activityGrid[key] ?? { sessionCount: 0, types: [] }
+    entry.sessionCount += 1
+    if (!entry.types.includes('running')) entry.types.push('running')
+    activityGrid[key] = entry
+  }
+
   return NextResponse.json({
     weightPoints,
     hrPoints,
@@ -241,6 +268,7 @@ export async function GET(req: NextRequest) {
     benchmarks,
     gymPRs,
     gymPRHistory,
+    activityGrid,
     totalCheckIns: totalSessions,
     overallAdherencePct: overallAdherence,
   })

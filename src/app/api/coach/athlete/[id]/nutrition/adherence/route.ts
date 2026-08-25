@@ -16,7 +16,7 @@ export async function GET(
   const { id: athleteId } = await params
 
   const link = await prisma.coachAthlete.findFirst({
-    where: { coachId: session.user.id, athleteId },
+    where: { coachId: session.user.id, athleteId, status: 'ACTIVE' },
   })
   if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 

@@ -3,32 +3,33 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { MappedAthlete } from '../_lib/map-athlete'
+import AthleteDropdown from './AthleteDropdown'
 
 type Athlete = MappedAthlete
 
-const TABS = [
-  { key: 'all',        label: 'Todos' },
-  { key: 'alerts',     label: 'Con alertas' },
-  { key: 'adherencia', label: 'Por adherencia' },
-  { key: 'nocheckIn',  label: 'Sin check-in reciente' },
-  { key: 'paused',     label: 'Pausados' },
-]
-
 const SPORT_LABELS: Record<string, string> = {
-  RUNNING:    '🏃 Running',
-  STRENGTH:   '🏋️ Fuerza',
-  CYCLING:    '🚴 Ciclismo',
-  SWIMMING:   '🏊 Natación',
-  TRIATHLON:  '🏅 Triatlón',
-  FOOTBALL:   '⚽ Fútbol',
+  RUNNING:   'Running',
+  STRENGTH:  'Fuerza',
+  CYCLING:   'Ciclismo',
+  SWIMMING:  'Natación',
+  TRIATHLON: 'Triatlón',
+  FOOTBALL:  'Fútbol',
 }
 
+const AVATAR_COLORS = [
+  '#1e3a5f', '#16a34a', '#ea580c', '#7c3aed',
+  '#0891b2', '#dc2626', '#d97706', '#0d9488',
+]
+function avatarColor(name: string): string {
+  return AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
+}
+
+// Figma: ≤1d = #218c21 · 2-6d = #6b737d · ≥7d = #db2626
 function checkInColor(days: number): string {
-  if (days < 3) return '#16a34a'
-  if (days <= 7) return '#d97706'
-  return '#dc2626'
+  if (days <= 1) return '#218c21'
+  if (days < 7)  return '#6b737d'
+  return '#db2626'
 }
-
 function checkInLabel(days: number): string {
   if (days === 0) return 'Hoy'
   if (days === 1) return 'Ayer'
@@ -36,19 +37,15 @@ function checkInLabel(days: number): string {
   return `Hace ${days}d`
 }
 
-function StatusBadge({ status }: { status: 'ACTIVE' | 'PAUSED' }) {
-  return (
-    <span
-      className="text-xs font-semibold px-2 py-0.5 rounded-full"
-      style={
-        status === 'ACTIVE'
-          ? { backgroundColor: '#dcfce7', color: '#16a34a' }
-          : { backgroundColor: '#fef3c7', color: '#92400e' }
-      }
-    >
-      {status === 'ACTIVE' ? 'ACTIVO' : 'PAUSADO'}
-    </span>
-  )
+// Figma: ≥75% = #1e3a5f · 50-74% = #ea580c · <50% = #db2626
+function adherenceColor(pct: number): string {
+  if (pct >= 75) return '#1e3a5f'
+  if (pct >= 50) return '#ea580c'
+  return '#db2626'
+}
+
+function hasAlerts(a: Athlete): boolean {
+  return a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop
 }
 
 export default function AthleteTabs({
@@ -56,11 +53,13 @@ export default function AthleteTabs({
   hasMore: initialHasMore,
   nextCursor: initialCursor,
   overdueAthleteIds = [],
+  totalCount,
 }: {
   athletes: Athlete[]
   hasMore: boolean
   nextCursor: string | null
   overdueAthleteIds?: string[]
+  totalCount: number
 }) {
   const overdueSet = new Set(overdueAthleteIds)
   const [tab, setTab] = useState('all')
@@ -70,7 +69,6 @@ export default function AthleteTabs({
   const [nextCursor, setNextCursor] = useState<string | null>(initialCursor)
   const [loading, setLoading] = useState(false)
 
-  // Optimistic status — key: athleteId → 'ACTIVE' | 'PAUSED'
   const [statuses, setStatuses] = useState<Record<string, 'ACTIVE' | 'PAUSED'>>(() =>
     Object.fromEntries(initialAthletes.map((a) => [a.id, a.status]))
   )
@@ -109,168 +107,347 @@ export default function AthleteTabs({
       }))
       setHasMore(data.hasMore)
       setNextCursor(data.nextCursor)
-    } catch { /* silently fail */ } finally {
+    } catch { /* ignore */ } finally {
       setLoading(false)
     }
   }
 
   const q = search.trim().toLowerCase()
   const searched = q
-    ? allAthletes.filter(
-        (a) => a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
-      )
+    ? allAthletes.filter((a) => a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
     : allAthletes
 
+  const pausedCount    = allAthletes.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED').length
+  const alertsCount    = allAthletes.filter(hasAlerts).length
+  const noCheckInCount = allAthletes.filter((a) => a.lastCheckInDaysAgo >= 7).length
+
+  const TABS = [
+    { key: 'all',        label: 'Todos',          count: allAthletes.length },
+    { key: 'alerts',     label: 'Con alertas',    count: alertsCount },
+    { key: 'adherencia', label: 'Por adherencia', count: null },
+    { key: 'nocheckIn',  label: 'Sin check-in',   count: noCheckInCount },
+    { key: 'paused',     label: 'Pausados',       count: pausedCount },
+  ]
+
   const filtered = (() => {
-    if (tab === 'alerts')     return searched.filter((a) => a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || a.alertFlags.adjustments.includes('fatiga_acumulada'))
-    if (tab === 'nocheckIn')  return searched.filter((a) => a.lastCheckInDaysAgo >= 3)
+    if (tab === 'alerts')     return searched.filter(hasAlerts)
+    if (tab === 'nocheckIn')  return searched.filter((a) => a.lastCheckInDaysAgo >= 7)
     if (tab === 'paused')     return searched.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED')
-    if (tab === 'adherencia') return [...searched].sort((a, b) => a.adherencePct - b.adherencePct)  // ascendente: peor adherencia primero
+    if (tab === 'adherencia') return [...searched].sort((a, b) => a.adherencePct - b.adherencePct)
     return searched
   })()
 
-  const pausedCount = allAthletes.filter((a) => (statuses[a.id] ?? a.status) === 'PAUSED').length
-
   return (
-    <div>
-      {/* Search + Tab bar */}
-      <div className="mb-4 space-y-3">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o email..."
-          className="w-full sm:w-72 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]/30 transition-shadow"
-        />
-        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto scrollbar-none">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex items-center gap-1.5 shrink-0"
-              style={
-                tab === t.key
-                  ? { color: '#1e3a5f', borderBottom: '2px solid #1e3a5f', marginBottom: '-1px' }
-                  : { color: '#6b7280' }
-              }
-            >
-              {t.label}
-              {t.key === 'paused' && pausedCount > 0 && (
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full leading-none">
-                  {pausedCount}
+    <div className="flex flex-col gap-4">
+      {/* Search input — standalone */}
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar por nombre o email..."
+        className="focus:outline-none"
+        style={{
+          width: 280,
+          height: 36,
+          border: '1px solid #e5e8eb',
+          borderRadius: 8,
+          padding: '9px 12px',
+          fontSize: 13,
+          color: '#525963',
+          backgroundColor: '#ffffff',
+        }}
+      />
+
+      {/* Tabs row — standalone, outside the table card */}
+      <div className="flex flex-col">
+        <div className="flex items-end overflow-x-auto" style={{ gap: 28, paddingBottom: 10 }}>
+          {TABS.map((t) => {
+            const active = tab === t.key
+            const label = t.count !== null ? `${t.label} (${t.count})` : t.label
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className="flex flex-col items-start shrink-0 transition-colors"
+                style={{ gap: 6 }}
+              >
+                <span
+                  className="whitespace-nowrap"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: active ? 600 : 500,
+                    color: active ? '#1e3a5f' : '#6b737d',
+                  }}
+                >
+                  {label}
                 </span>
-              )}
-            </button>
-          ))}
+                {active && (
+                  <div style={{ height: 2, width: '100%', backgroundColor: '#ea580c', borderRadius: 1 }} />
+                )}
+              </button>
+            )
+          })}
         </div>
+        {/* Tab separator */}
+        <div style={{ height: 1, backgroundColor: '#e5e8eb', width: '100%' }} />
       </div>
 
-      {filtered.length === 0 && (
-        <p className="text-gray-400 text-sm text-center py-8">
-          {q ? `Sin resultados para "${search}"` : 'No hay atletas en esta categoría'}
-        </p>
-      )}
+      {/* Table card */}
+      <div
+        className="bg-white w-full"
+        style={{ border: '1px solid #e5e8eb', borderRadius: 12 }}
+      >
+        {/* Empty state */}
+        {filtered.length === 0 && (
+          <div className="py-12 text-center">
+            <p style={{ fontSize: 13, color: '#9ea6b0' }}>
+              {q ? `Sin resultados para "${search}"` : 'No hay atletas en esta categoría'}
+            </p>
+          </div>
+        )}
 
-      {/* Table — desktop */}
-      {filtered.length > 0 && (
-        <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nombre</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Deporte</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Semana</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Adherencia</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((a) => {
-                const currentStatus = statuses[a.id] ?? a.status
-                const isToggling = toggling[a.id] ?? false
-                return (
-                  <tr key={a.id} className={`hover:bg-gray-50 transition-colors ${currentStatus === 'PAUSED' ? 'opacity-60' : ''}`}>
-                    <td className="px-5 py-3.5">
-                      <div className="font-semibold text-gray-900">{a.name}</div>
-                      {(a.alertFlags.noCheckin || a.alertFlags.highRpe || a.alertFlags.weightDrop || overdueSet.has(a.id) || a.alertFlags.adjustments.includes('fatiga_acumulada')) && (
-                        <div className="flex gap-1 mt-0.5 flex-wrap">
-                          {a.alertFlags.adjustments.includes('fatiga_acumulada') && <span className="text-[10px] text-red-700 bg-red-100 px-1.5 py-0.5 rounded font-bold">⚠ Fatiga</span>}
-                          {a.alertFlags.noCheckin  && <span className="text-[10px] text-red-600    bg-red-50    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
-                          {a.alertFlags.highRpe    && <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
-                          {a.alertFlags.weightDrop && <span className="text-[10px] text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded">⚠ Peso</span>}
-                          {overdueSet.has(a.id)    && <span className="text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 text-gray-600">
-                      {SPORT_LABELS[a.sport] ?? a.sport ?? '—'}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {a.totalWeeks > 0 ? (
-                        <span className="font-medium text-gray-900">
-                          {a.currentWeek}<span className="text-gray-400 font-normal">/{a.totalWeeks}</span>
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="font-medium" style={{ color: checkInColor(a.lastCheckInDaysAgo) }}>
-                        {checkInLabel(a.lastCheckInDaysAgo)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        {/* Table — desktop */}
+        {filtered.length > 0 && (
+          <div className="hidden md:block">
+            <table className="w-full table-fixed" style={{ fontSize: 13 }}>
+              <colgroup>
+                <col style={{ width: '22%' }} />  {/* NOMBRE */}
+                <col style={{ width: '8%' }} />   {/* DEPORTE */}
+                <col style={{ width: '6%' }} />   {/* HOY */}
+                <col style={{ width: '9%' }} />   {/* SEMANA */}
+                <col style={{ width: '9%' }} />   {/* CHECK-IN */}
+                <col style={{ width: '9%' }} />   {/* PESO */}
+                <col style={{ width: '16%' }} />  {/* ADHERENCIA */}
+                <col style={{ width: '8%' }} />   {/* ESTADO */}
+                <col style={{ width: '13%' }} />  {/* ACCIONES */}
+              </colgroup>
+
+              {/* Header */}
+              <thead>
+                <tr style={{ backgroundColor: '#f2f5f7' }}>
+                  <th className="text-left" style={{ padding: '14px 20px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>NOMBRE</th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>DEPORTE</th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>HOY</th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>SEMANA</th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>
+                    CHECK-IN <span style={{ fontSize: 10, color: '#9ea6b0', fontWeight: 500 }}>↕</span>
+                  </th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>
+                    PESO <span style={{ fontSize: 10, color: '#9ea6b0', fontWeight: 500 }}>↕</span>
+                  </th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>
+                    ADHERENCIA <span style={{ fontSize: 10, color: '#9ea6b0', fontWeight: 500 }}>↕</span>
+                  </th>
+                  <th className="text-left whitespace-nowrap" style={{ padding: '14px 8px', fontSize: 11, fontWeight: 600, color: '#6b737d' }}>ESTADO</th>
+                  <th style={{ padding: '14px 8px' }} />
+                </tr>
+              </thead>
+
+              {/* Header separator */}
+              <tbody>
+                {filtered.map((a) => {
+                  const currentStatus = statuses[a.id] ?? a.status
+                  const isToggling    = toggling[a.id] ?? false
+                  const rowAlert      = hasAlerts(a)
+                  const atPlanEnd     = a.totalWeeks > 0 && a.currentWeek >= a.totalWeeks
+
+                  // Weight trend — Figma: ↓ red, ↑ green, = gray
+                  const drop = a.alertFlags.weightDropKg
+                  const trendChar  = drop > 0.2 ? '↓' : drop < -0.2 ? '↑' : '='
+                  const trendColor = drop > 0.2 ? '#db2626' : drop < -0.2 ? '#218c21' : '#6b737d'
+
+                  return (
+                    <tr
+                      key={a.id}
+                      style={{
+                        backgroundColor: rowAlert ? '#fef2f2' : '#ffffff',
+                        borderTop: '1px solid #e5e8eb',
+                      }}
+                    >
+                      {/* NOMBRE */}
+                      <td style={{ padding: '12px 20px' }}>
+                        <div className="flex items-center" style={{ gap: 8 }}>
                           <div
-                            className="h-full rounded-full"
+                            className="flex items-center justify-center text-white font-semibold shrink-0"
                             style={{
-                              width: `${a.adherencePct}%`,
-                              backgroundColor: a.adherencePct >= 80 ? '#16a34a' : a.adherencePct >= 60 ? '#d97706' : '#dc2626',
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              backgroundColor: avatarColor(a.name),
+                              fontSize: 13,
                             }}
-                          />
+                          >
+                            {a.name.slice(0, 1).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col" style={{ gap: 3 }}>
+                            {/* Figma: name color #525963 font-medium */}
+                            <p className="whitespace-nowrap font-medium" style={{ fontSize: 13, color: '#525963' }}>{a.name}</p>
+                            <div className="flex flex-wrap" style={{ gap: 4 }}>
+                              {/* Figma: ALL badges neutral — #f2f5f7 bg / #6b737d text */}
+                              {a.alertFlags.noCheckin && (
+                                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>Sin CI</span>
+                              )}
+                              {a.alertFlags.highRpe && (
+                                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>RPE alto</span>
+                              )}
+                              {a.alertFlags.weightDrop && a.alertFlags.weightDropKg > 0 && (
+                                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>
+                                  -{a.alertFlags.weightDropKg.toFixed(1)}kg
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
+                      </td>
+
+                      {/* DEPORTE — Figma: text-12px regular #6b737d */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px', fontSize: 12, color: '#6b737d' }}>
+                        {SPORT_LABELS[a.sport] ?? a.sport ?? '—'}
+                      </td>
+
+                      {/* HOY — Figma: ALL orange #ea580c font-semibold text-11px */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px' }}>
+                        {a.todaySession ? (
+                          <span className="font-semibold" style={{ fontSize: 11, color: '#ea580c' }}>
+                            {a.todaySession.label}
+                          </span>
+                        ) : (
+                          <span className="font-semibold" style={{ fontSize: 11, color: '#9ea6b0' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* SEMANA — Figma: single text, #525963 normal, #ea580c semibold when at end */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px' }}>
+                        {a.totalWeeks > 0 ? (
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: atPlanEnd ? '#ea580c' : '#525963',
+                              fontWeight: atPlanEnd ? 600 : 400,
+                            }}
+                          >
+                            Sem {a.currentWeek}/{a.totalWeeks}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 13, color: '#9ea6b0' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* CHECK-IN — Figma: font-regular text-12px */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px' }}>
+                        <span style={{ fontSize: 12, color: checkInColor(a.lastCheckInDaysAgo) }}>
+                          {checkInLabel(a.lastCheckInDaysAgo)}
+                        </span>
+                      </td>
+
+                      {/* PESO — Figma: two lines gap-px, text-12px regular */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px' }}>
+                        {a.weightKg != null ? (
+                          <div className="flex flex-col" style={{ gap: 1 }}>
+                            <span style={{ fontSize: 12, color: '#525963' }}>{a.weightKg.toFixed(1)} kg</span>
+                            <span style={{ fontSize: 11, color: trendColor }}>{trendChar}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 13, color: '#9ea6b0' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* ADHERENCIA — Figma: bar bg #e5e8eb w-80px, gap-8px, % font-medium text-11px */}
+                      <td style={{ padding: '12px 8px' }}>
+                        <div className="flex items-center" style={{ gap: 8 }}>
+                          <div
+                            className="overflow-hidden shrink-0"
+                            style={{ width: 80, height: 6, backgroundColor: '#e5e8eb', borderRadius: 3 }}
+                          >
+                            <div
+                              style={{
+                                width: `${a.adherencePct}%`,
+                                height: '100%',
+                                backgroundColor: '#1e3a5f',
+                                borderRadius: 3,
+                              }}
+                            />
+                          </div>
+                          <span className="font-medium whitespace-nowrap" style={{ fontSize: 11, color: adherenceColor(a.adherencePct) }}>
+                            {a.adherencePct}%
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* ESTADO — Figma: rounded-4px (not full), ACTIVO bg #edf7ed text #218c21 */}
+                      <td className="whitespace-nowrap" style={{ padding: '12px 8px' }}>
                         <span
-          className="text-xs font-semibold"
-          style={{ color: a.adherencePct >= 80 ? '#16a34a' : a.adherencePct >= 60 ? '#d97706' : '#dc2626' }}
-        >{a.adherencePct}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <StatusBadge status={currentStatus} />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleStatus(a.id)}
-                          disabled={isToggling}
-                          className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors disabled:opacity-40"
+                          className="font-semibold"
+                          style={
+                            currentStatus === 'ACTIVE'
+                              ? { fontSize: 10, backgroundColor: '#edf7ed', color: '#218c21', padding: '4px 8px', borderRadius: 4 }
+                              : { fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '4px 8px', borderRadius: 4 }
+                          }
                         >
-                          {isToggling ? '...' : currentStatus === 'ACTIVE' ? 'Pausar' : 'Reactivar'}
-                        </button>
-                        <Link
-                          href={`/coach/athlete/${a.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-                          style={{ backgroundColor: '#1e3a5f' }}
-                        >
-                          Ver →
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                          {currentStatus === 'ACTIVE' ? 'ACTIVO' : 'PAUSADO'}
+                        </span>
+                      </td>
+
+                      {/* ACCIONES — Figma: gap-8px, "..." px-8px py-4px text-16px rounded-6px, "Ver →" px-10px py-6px text-11px rounded-6px */}
+                      <td style={{ padding: '12px 8px' }}>
+                        <div className="flex items-center justify-end" style={{ gap: 8 }}>
+                          <AthleteDropdown
+                            athleteId={a.id}
+                            status={currentStatus}
+                            isToggling={isToggling}
+                            onToggleStatus={() => handleToggleStatus(a.id)}
+                          />
+                          <Link
+                            href={`/coach/athlete/${a.id}`}
+                            className="font-semibold text-white hover:opacity-90 transition-opacity whitespace-nowrap"
+                            style={{ fontSize: 11, backgroundColor: '#1e3a5f', padding: '6px 10px', borderRadius: 6 }}
+                          >
+                            Ver →
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Footer — Figma: px-20px py-12px, "Cargar más →" text-11px #1e3a5f border #e5e8eb */}
+        {filtered.length > 0 && (
+          <div
+            className="flex items-center justify-between"
+            style={{ padding: '12px 20px', borderTop: '1px solid #e5e8eb' }}
+          >
+            <p style={{ fontSize: 12, color: '#9ea6b0' }}>
+              Mostrando {filtered.length} de {totalCount} atletas
+            </p>
+            {hasMore && tab === 'all' && !q && (
+              <button
+                onClick={loadMore}
+                disabled={loading}
+                className="font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
+                style={{
+                  fontSize: 11,
+                  color: '#1e3a5f',
+                  border: '1px solid #e5e8eb',
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#ffffff',
+                }}
+              >
+                {loading ? 'Cargando...' : 'Cargar más →'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Cards — mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden flex flex-col" style={{ gap: 12 }}>
         {filtered.map((athlete) => (
-          <AthleteCard
+          <MobileAthleteCard
             key={athlete.id}
             athlete={athlete}
             currentStatus={statuses[athlete.id] ?? athlete.status}
@@ -279,25 +456,22 @@ export default function AthleteTabs({
             hasOverdue={overdueSet.has(athlete.id)}
           />
         ))}
-      </div>
-
-      {/* Load more */}
-      {hasMore && tab === 'all' && !q && (
-        <div className="mt-6 flex justify-center">
+        {hasMore && tab === 'all' && !q && (
           <button
             onClick={loadMore}
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="w-full font-medium disabled:opacity-50 hover:opacity-80 transition-opacity"
+            style={{ padding: '12px 0', fontSize: 13, border: '1px solid #e5e8eb', borderRadius: 10, color: '#6b737d', backgroundColor: '#ffffff' }}
           >
             {loading ? 'Cargando...' : 'Cargar más atletas'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
 
-function AthleteCard({
+function MobileAthleteCard({
   athlete,
   currentStatus,
   isToggling,
@@ -310,73 +484,120 @@ function AthleteCard({
   onToggleStatus: () => void
   hasOverdue?: boolean
 }) {
-  const hasFatiga = athlete.alertFlags.adjustments.includes('fatiga_acumulada')
-  const hasAlerts = athlete.alertFlags.noCheckin || athlete.alertFlags.highRpe || athlete.alertFlags.weightDrop || hasOverdue || hasFatiga
+  const rowAlert = hasAlerts(athlete)
+  const drop = athlete.alertFlags.weightDropKg
+  const trendChar  = drop > 0.2 ? '↓' : drop < -0.2 ? '↑' : '='
+  const trendColor = drop > 0.2 ? '#db2626' : drop < -0.2 ? '#218c21' : '#6b737d'
+
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 ${currentStatus === 'PAUSED' ? 'opacity-70' : ''}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-gray-900 text-sm">{athlete.name}</h3>
-            <StatusBadge status={currentStatus} />
+    <div
+      className="bg-white"
+      style={{
+        border: rowAlert ? '1px solid #fecaca' : '1px solid #e5e8eb',
+        borderRadius: 10,
+        padding: 16,
+        backgroundColor: rowAlert ? '#fef2f2' : '#ffffff',
+      }}
+    >
+      <div className="flex items-start justify-between" style={{ gap: 12, marginBottom: 12 }}>
+        <div className="flex items-center min-w-0" style={{ gap: 10 }}>
+          <div
+            className="flex items-center justify-center text-white font-semibold shrink-0"
+            style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: avatarColor(athlete.name), fontSize: 13 }}
+          >
+            {athlete.name.slice(0, 1).toUpperCase()}
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">{SPORT_LABELS[athlete.sport] ?? athlete.sport ?? '—'}</p>
+          <div className="min-w-0 flex flex-col" style={{ gap: 3 }}>
+            <p className="font-medium truncate" style={{ fontSize: 13, color: '#525963' }}>{athlete.name}</p>
+            <div className="flex flex-wrap" style={{ gap: 4 }}>
+              {athlete.alertFlags.noCheckin && (
+                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>Sin CI</span>
+              )}
+              {athlete.alertFlags.highRpe && (
+                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>RPE alto</span>
+              )}
+              {athlete.alertFlags.weightDrop && athlete.alertFlags.weightDropKg > 0 && (
+                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>
+                  -{athlete.alertFlags.weightDropKg.toFixed(1)}kg
+                </span>
+              )}
+              {hasOverdue && (
+                <span className="font-medium" style={{ fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '2px 5px', borderRadius: 4 }}>Mora</span>
+              )}
+            </div>
+          </div>
         </div>
-        <Link
-          href={`/coach/athlete/${athlete.id}`}
-          className="flex-shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
-          style={{ backgroundColor: '#1e3a5f' }}
-        >
-          Ver →
-        </Link>
+        <div className="flex items-center shrink-0" style={{ gap: 8 }}>
+          <span
+            className="font-semibold"
+            style={
+              currentStatus === 'ACTIVE'
+                ? { fontSize: 10, backgroundColor: '#edf7ed', color: '#218c21', padding: '4px 8px', borderRadius: 4 }
+                : { fontSize: 10, backgroundColor: '#f2f5f7', color: '#6b737d', padding: '4px 8px', borderRadius: 4 }
+            }
+          >
+            {currentStatus === 'ACTIVE' ? 'ACTIVO' : 'PAUSADO'}
+          </span>
+          <Link
+            href={`/coach/athlete/${athlete.id}`}
+            className="font-semibold text-white hover:opacity-90"
+            style={{ fontSize: 11, backgroundColor: '#1e3a5f', padding: '6px 10px', borderRadius: 6 }}
+          >
+            Ver →
+          </Link>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 text-xs text-gray-600 mb-3">
-        <div>
-          <span className="text-gray-400">Semana </span>
-          <span className="font-semibold">{athlete.currentWeek}/{athlete.totalWeeks || '—'}</span>
+      <div className="grid grid-cols-2" style={{ gap: '8px 16px', marginBottom: 12 }}>
+        <div className="flex flex-col" style={{ gap: 2 }}>
+          <p style={{ fontSize: 11, color: '#9ea6b0' }}>Semana</p>
+          <p className="font-medium" style={{ fontSize: 13, color: '#525963' }}>
+            {athlete.totalWeeks > 0 ? `Sem ${athlete.currentWeek}/${athlete.totalWeeks}` : '—'}
+          </p>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: checkInColor(athlete.lastCheckInDaysAgo) }} />
-          <span style={{ color: checkInColor(athlete.lastCheckInDaysAgo) }}>
+        <div className="flex flex-col" style={{ gap: 2 }}>
+          <p style={{ fontSize: 11, color: '#9ea6b0' }}>Check-in</p>
+          <p style={{ fontSize: 12, color: checkInColor(athlete.lastCheckInDaysAgo) }}>
             {checkInLabel(athlete.lastCheckInDaysAgo)}
+          </p>
+        </div>
+        {athlete.todaySession && (
+          <div className="flex flex-col" style={{ gap: 2 }}>
+            <p style={{ fontSize: 11, color: '#9ea6b0' }}>Hoy</p>
+            <p className="font-semibold" style={{ fontSize: 11, color: '#ea580c' }}>{athlete.todaySession.label}</p>
+          </div>
+        )}
+        {athlete.weightKg != null && (
+          <div className="flex flex-col" style={{ gap: 2 }}>
+            <p style={{ fontSize: 11, color: '#9ea6b0' }}>Peso</p>
+            <p style={{ fontSize: 12, color: '#525963' }}>
+              {athlete.weightKg.toFixed(1)} kg <span style={{ color: trendColor }}>{trendChar}</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="flex justify-between" style={{ marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: '#9ea6b0' }}>Adherencia</span>
+          <span className="font-medium" style={{ fontSize: 11, color: adherenceColor(athlete.adherencePct) }}>
+            {athlete.adherencePct}%
           </span>
         </div>
-      </div>
-
-      <div className="mb-3">
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>Adherencia</span>
-          <span className="font-medium">{athlete.adherencePct}%</span>
-        </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="overflow-hidden" style={{ height: 6, backgroundColor: '#e5e8eb', borderRadius: 3 }}>
           <div
-            className="h-full rounded-full"
-            style={{
-              width: `${athlete.adherencePct}%`,
-              backgroundColor: athlete.adherencePct >= 80 ? '#16a34a' : athlete.adherencePct >= 60 ? '#d97706' : '#dc2626',
-            }}
+            style={{ width: `${athlete.adherencePct}%`, height: '100%', backgroundColor: '#1e3a5f', borderRadius: 3 }}
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        {hasAlerts ? (
-          <div className="flex flex-wrap gap-1">
-            {hasFatiga                         && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">⚠ Fatiga</span>}
-            {athlete.alertFlags.noCheckin      && <span className="text-[10px] bg-red-50    text-red-700    border border-red-100    px-1.5 py-0.5 rounded">⚠ Sin CI</span>}
-            {athlete.alertFlags.highRpe        && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded">⚠ Carga alta</span>}
-            {athlete.alertFlags.weightDrop     && <span className="text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-100 px-1.5 py-0.5 rounded">⚠ Peso</span>}
-            {hasOverdue                        && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded font-semibold">💰 Mora</span>}
-          </div>
-        ) : <div />}
-        <button
-          onClick={onToggleStatus}
-          disabled={isToggling}
-          className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 transition-colors disabled:opacity-40 shrink-0"
-        >
-          {isToggling ? '...' : currentStatus === 'ACTIVE' ? 'Pausar' : 'Reactivar'}
-        </button>
+      <div className="flex justify-end" style={{ marginTop: 12 }}>
+        <AthleteDropdown
+          athleteId={athlete.id}
+          status={currentStatus}
+          isToggling={isToggling}
+          onToggleStatus={onToggleStatus}
+        />
       </div>
     </div>
   )

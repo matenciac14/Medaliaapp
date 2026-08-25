@@ -203,7 +203,7 @@ export default function ProfileClient({ user }: Props) {
             <MobileMenuDivider />
             <MobileMenuItem icon="✉️" label="Email" value={user.email} />
             <MobileMenuDivider />
-            <MobileMenuItem icon="🏅" label="Plan" value={planLabel} />
+            <MobileMenuLink icon="🏅" label="Mi suscripción" href="/settings/plan" />
           </MobileMenuSection>
 
           {/* Datos físicos */}
@@ -256,13 +256,21 @@ export default function ProfileClient({ user }: Props) {
         <div className="w-14 h-14 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-xl font-bold shrink-0">
           {user.name.charAt(0).toUpperCase()}
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
           <p className="text-sm text-gray-500">{user.email}</p>
           {user.plan && (
             <p className="text-xs text-[#ea580c] font-medium mt-0.5">{user.plan.name} · {user.plan.totalWeeks} semanas</p>
           )}
         </div>
+        <Link
+          href="/settings/plan"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors shrink-0"
+        >
+          <span className="text-base">🏅</span>
+          <span>Mi suscripción</span>
+          <ChevronRight size={14} className="text-gray-400" />
+        </Link>
       </div>
 
       {/* Completitud del perfil */}

@@ -16,13 +16,6 @@ export default async function PlanPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  // GYM user with assigned workout → redirect to gym module regardless of features
-  const assignedWorkoutCheck = await prisma.assignedWorkout.findFirst({
-    where: { athleteId: session.user.id, isActive: true },
-    select: { id: true },
-  })
-  if (assignedWorkoutCheck) redirect('/gym')
-
   if (!session.user.features?.plan) {
     // JWT may be stale post-onboarding — verify DB before showing empty state
     const hasActivePlan = await prisma.trainingPlan.findFirst({

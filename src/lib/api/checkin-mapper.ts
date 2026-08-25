@@ -79,9 +79,9 @@ export function mapWebCheckinBody(body: WebCheckinBody): CheckInInput {
 // ── Mobile (escala 1–5 → 1–10) ────────────────────────────────────────────────
 
 export type MobileCheckinBody = {
-  energyLevel:           number   // 1–5 → energyLevel 1–10
-  muscleSoreness:        number   // 1–5 → rpe 1–10
-  stressLevel?:          number   // 1–5 → stressLevel 1–10
+  energyLevel:           number   // 1–10 → energyLevel 1–10
+  muscleSoreness:        number   // 1–10 → rpe 1–10
+  stressLevel?:          number   // 1–10 → stressLevel 1–10
   motivationLevel?:      number   // 0–10 (ya en escala dominio)
   sleepScore?:           number   // 0–10 (ya en escala dominio)
   painLevel?:            number   // 0–10 (ya en escala dominio)
@@ -98,11 +98,11 @@ export type MobileCheckinBody = {
 
 export function mapMobileCheckinBody(body: MobileCheckinBody): CheckInInput {
   return {
-    rpe:                scale5to10(body.muscleSoreness),
+    rpe:                body.muscleSoreness,
     sleepHours:         body.sleepHours,
     sleepScore:         body.sleepScore,
-    energyLevel:        scale5to10(body.energyLevel),
-    stressLevel:        body.stressLevel !== undefined ? scale5to10(body.stressLevel) : undefined,
+    energyLevel:        body.energyLevel,
+    stressLevel:        body.stressLevel,
     weight:             body.weightKg,
     heartRate:          body.hrResting,
     painLevel:          body.painLevel,

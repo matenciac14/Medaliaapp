@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
+import { configToAthleteFeatures } from '@/domain/subscription/tier-features'
+import { getTierFeatureConfig } from '@/infrastructure/db/tier-feature-config.repository'
+import { sendPushNotification } from '@/lib/push'
+
+// B2B-01: Al activar → features de tipo B2B según TierFeatureConfig (configurable por admin).
+// Al pausar → features de tipo B2C_FREE (configurable por admin).
+// El coach paga por que sus atletas tengan acceso completo — no hay toggles granulares.
 
 export async function PATCH(
   req: NextRequest,
@@ -25,10 +33,30 @@ export async function PATCH(
     return NextResponse.json({ error: 'Atleta no encontrado' }, { status: 404 })
   }
 
-  await prisma.coachAthlete.update({
-    where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
-    data: { status },
+  // Aplicar features según config del admin (TierFeatureConfig)
+  const userType = status === 'ACTIVE' ? 'B2B' : 'B2C_FREE'
+  const config = await getTierFeatureConfig(userType)
+  const features = configToAthleteFeatures(config)
+
+  await prisma.$transaction(async (tx) => {
+    await new PrismaUserRepository(tx).mergeFeatures(athleteId, features)
+    await tx.coachAthlete.update({
+      where: { coachId_athleteId: { coachId: session.user.id, athleteId } },
+      data: { status },
+    })
   })
+
+  // Notificar al atleta (fire-and-forget)
+  prisma.user.findUnique({ where: { id: athleteId }, select: { pushToken: true } })
+    .then((athlete) => {
+      if (!athlete?.pushToken) return
+      const title = status === 'ACTIVE' ? 'Tu entrenador te activó' : 'Tu plan fue pausado'
+      const body = status === 'ACTIVE'
+        ? 'Abre la app para acceder a tu plan de entrenamiento.'
+        : 'Sigues usando Medaliq en modo básico.'
+      return sendPushNotification(athlete.pushToken, title, body, { type: 'features_updated' })
+    })
+    .catch(() => {})
 
   return NextResponse.json({ ok: true, status })
 }

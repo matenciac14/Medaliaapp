@@ -74,27 +74,64 @@ type CopyModalState = {
   sessionLabel: string
 }
 
+type NutritionPlanData = {
+  targetKcalHard: number
+  targetKcalEasy: number
+  targetKcalRest: number
+  proteinG: number
+  carbsHardG: number
+  carbsEasyG: number
+  fatG: number
+}
+
+type AssignedRoutineDay = {
+  id: string
+  dayOfWeek: number
+  label: string
+  muscleGroups: string[]
+  exerciseCount: number
+}
+
+type AssignedRoutine = {
+  id: string
+  name: string
+  daysPerWeek: number
+  days: AssignedRoutineDay[]
+}
+
 type Props = {
   athleteId: string
   athleteName: string
   initialPlan: BuilderPlan | null
   gymTemplates: GymTemplate[]
+  nutritionPlan: NutritionPlanData | null
+  assignedRoutine: AssignedRoutine | null
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const SESSION_TYPES = [
-  { type: 'RODAJE_Z2',    label: 'Rodaje Z2',    color: '#16a34a' },
-  { type: 'FARTLEK',      label: 'Fartlek',      color: '#ea580c' },
-  { type: 'TEMPO',        label: 'Tempo',        color: '#dc2626' },
-  { type: 'TIRADA_LARGA', label: 'Tirada larga', color: '#3b82f6' },
-  { type: 'INTERVALOS',   label: 'Intervalos',   color: '#ef4444' },
-  { type: 'FUERZA',       label: 'Fuerza',       color: '#7c3aed' },
-  { type: 'CICLA',        label: 'Ciclismo',     color: '#d97706' },
-  { type: 'NATACION',     label: 'Natación',     color: '#0891b2' },
-  { type: 'TEST',         label: 'Test',         color: '#6366f1' },
-  { type: 'DESCANSO',     label: 'Descanso',     color: '#9ca3af' },
+  { type: 'RODAJE_Z2',    label: 'Rodaje Z2',    color: '#16a34a', sub: null },
+  { type: 'FARTLEK',      label: 'Fartlek',      color: '#ea580c', sub: null },
+  { type: 'TEMPO',        label: 'Tempo',        color: '#dc2626', sub: null },
+  { type: 'TIRADA_LARGA', label: 'Tirada larga', color: '#3b82f6', sub: null },
+  { type: 'INTERVALOS',   label: 'Intervalos',   color: '#ef4444', sub: null },
+  { type: 'FUERZA',       label: 'Fuerza',       color: '#7c3aed', sub: 'Complementario' },
+  { type: 'CICLA',        label: 'Ciclismo',     color: '#d97706', sub: null },
+  { type: 'NATACION',     label: 'Natación',     color: '#0891b2', sub: null },
+  { type: 'DESCANSO',     label: 'Descanso',     color: '#9ca3af', sub: null },
+  { type: 'TEST',         label: 'Test',         color: '#6366f1', sub: null },
 ]
+
+const INTENSITY_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  RODAJE_Z2:    { label: 'MOD',  color: '#ea580c', bg: '#ea580c1a' },
+  TEMPO:        { label: 'MOD',  color: '#ea580c', bg: '#ea580c1a' },
+  TIRADA_LARGA: { label: 'MOD',  color: '#ea580c', bg: '#ea580c1a' },
+  FARTLEK:      { label: 'HIGH', color: '#dc2626', bg: '#dc26261a' },
+  INTERVALOS:   { label: 'HIGH', color: '#dc2626', bg: '#dc26261a' },
+  FUERZA:       { label: 'HIGH', color: '#dc2626', bg: '#dc26261a' },
+  DESCANSO:     { label: 'REST', color: '#9ca3af', bg: '#9ca3af1a' },
+}
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -102,6 +139,30 @@ const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov
 
 function getSessionConfig(type: string) {
   return SESSION_TYPES.find((s) => s.type === type) ?? { type, label: type, color: '#9ca3af' }
+}
+
+/** Calcula target nutricional del día según intensidad (mirror de daily-target.ts, client-side) */
+function getDayNutrition(intensity: string, plan: NutritionPlanData) {
+  switch (intensity) {
+    case 'HIGH':
+      return { kcal: plan.targetKcalHard, label: 'Duro', color: '#dc2626' }
+    case 'MODERATE':
+      return { kcal: plan.targetKcalEasy, label: 'Mod', color: '#ea580c' }
+    case 'LOW':
+      return { kcal: Math.round(plan.targetKcalEasy * 0.88), label: 'Suave', color: '#3b82f6' }
+    default:
+      return { kcal: plan.targetKcalRest, label: 'Rest', color: '#9ca3af' }
+  }
+}
+
+/** Intensidad de una sesión para nutrición */
+function sessionIntensity(type: string): string {
+  const high = ['INTERVALOS', 'TEMPO', 'TIRADA_LARGA', 'FARTLEK', 'TEST']
+  const mod = ['RODAJE_Z2', 'FUERZA', 'CICLA', 'NATACION']
+  if (high.includes(type)) return 'HIGH'
+  if (mod.includes(type)) return 'MODERATE'
+  if (type === 'DESCANSO') return 'REST'
+  return 'REST'
 }
 
 function dayDate(weekStartDate: string, dayOfWeek: number): Date {
@@ -140,7 +201,7 @@ const PHASE_COLORS: Record<string, string> = {
   BASE: '#1e3a5f', DESARROLLO: '#ea580c', ESPECIFICO: '#dc2626', AFINAMIENTO: '#7c3aed',
 }
 
-export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates }: Props) {
+export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates, nutritionPlan, assignedRoutine }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
 
   // ── Estado para crear plan ────────────────────────────────────────────────
@@ -621,10 +682,71 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: st.color }}
                 />
-                <span className="text-sm text-gray-600 group-hover:text-gray-900">{st.label}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-600 group-hover:text-gray-900">{st.label}</span>
+                  {st.sub && (
+                    <span className="text-[10px] leading-tight" style={{ color: '#8c949e' }}>{st.sub}</span>
+                  )}
+                </div>
               </button>
             ))}
           </div>
+
+          {/* RESUMEN DEL PLAN */}
+          {week && (
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <p className="text-[9px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#667382' }}>
+                Resumen del plan
+              </p>
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-[10px]" style={{ color: '#8c949e' }}>Semana</span>
+                  <span className="text-[11px] font-bold" style={{ color: '#1f2938' }}>{week.weekNumber}/{plan.totalWeeks}</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-[10px]" style={{ color: '#8c949e' }}>Sesiones totales</span>
+                  <span className="text-[11px] font-bold" style={{ color: '#1f2938' }}>{week.sessions.length}</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-[10px]" style={{ color: '#8c949e' }}>Fase actual</span>
+                  <span
+                    className="text-[11px] font-bold"
+                    style={{ color: PHASE_COLORS[week.phase] ?? '#1f2938' }}
+                  >
+                    {PHASE_LABELS[week.phase] ?? week.phase}
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div>
+                  <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.round((weekIdx + 1) / plan.totalWeeks * 100)}%`,
+                        backgroundColor: '#1e3a5f',
+                      }}
+                    />
+                  </div>
+                  <p className="text-[9px] font-medium mt-1" style={{ color: '#8c949e' }}>
+                    {Math.round((weekIdx + 1) / plan.totalWeeks * 100)}% completado
+                  </p>
+                </div>
+              </div>
+
+              <button
+                className="w-full mt-4 py-2 rounded-lg text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1e3a5f' }}
+              >
+                Publicar semana →
+              </button>
+              <button
+                className="w-full mt-1.5 py-1.5 text-[10px] font-medium rounded-lg transition-colors hover:bg-gray-50"
+                style={{ color: '#667382' }}
+              >
+                Notificar al atleta
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Week grid */}
@@ -698,6 +820,49 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
             </button>
           </div>
 
+          {/* Weekly summary bar */}
+          {week && (() => {
+            const totalSessions = week.sessions.length
+            const totalMin = week.sessions.reduce((s, x) => s + x.durationMin, 0)
+            const totalKm = week.volumeKm ?? 0
+            const highCount = week.sessions.filter(s => {
+              const i = INTENSITY_MAP[s.type]; return i?.label === 'HIGH'
+            }).length
+            const modCount = week.sessions.filter(s => {
+              const i = INTENSITY_MAP[s.type]; return i?.label === 'MOD'
+            }).length
+            const restCount = week.sessions.filter(s => {
+              const i = INTENSITY_MAP[s.type]; return i?.label === 'REST'
+            }).length
+            return (
+              <div className="flex items-center gap-3 mb-3 px-1">
+                <span className="text-[11px] font-medium" style={{ color: '#59616b' }}>
+                  {totalSessions} sesiones · {totalMin} min{totalKm > 0 ? ` · ${totalKm} km` : ''}
+                </span>
+                <div className="flex items-center gap-2">
+                  {highCount > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#dc2626' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#dc2626' }} />
+                      {highCount} alta
+                    </span>
+                  )}
+                  {modCount > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#ea580c' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ea580c' }} />
+                      {modCount} moderada
+                    </span>
+                  )}
+                  {restCount > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#9ca3af' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#9ca3af' }} />
+                      {restCount} descanso
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
           {/* 7-day grid */}
           <div className="grid grid-cols-7 gap-2">
             {DAY_NAMES.map((dayName, dayIdx) => {
@@ -706,8 +871,43 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
               return (
                 <div key={dayIdx} className="min-h-[260px] flex flex-col">
                   <div className="mb-2">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase">{dayName}</p>
-                    <p className="text-xl font-bold text-gray-900 leading-tight">{date.getDate()}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase">{dayName}</p>
+                        <p className="text-xl font-bold text-gray-900 leading-tight">{date.getDate()}</p>
+                      </div>
+                      {sessions.length > 0 && (() => {
+                        const mainType = sessions[0].type
+                        const intensity = INTENSITY_MAP[mainType]
+                        return intensity ? (
+                          <span
+                            className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
+                            style={{ color: intensity.color, backgroundColor: intensity.bg }}
+                          >
+                            {intensity.label}
+                          </span>
+                        ) : null
+                      })()}
+                    </div>
+                    {/* Nutrition target for this day */}
+                    {nutritionPlan && (() => {
+                      const bestIntensity = sessions.length > 0
+                        ? sessions.reduce((best, s) => {
+                            const si = sessionIntensity(s.type)
+                            const rank = si === 'HIGH' ? 3 : si === 'MODERATE' ? 2 : 1
+                            return rank > (best === 'HIGH' ? 3 : best === 'MODERATE' ? 2 : 1) ? si : best
+                          }, 'REST' as string)
+                        : (assignedRoutine?.days.some(d => d.dayOfWeek === dayIdx + 1) ? 'MODERATE' : 'REST')
+                      const nut = getDayNutrition(bestIntensity, nutritionPlan)
+                      return (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: nut.color }} />
+                          <span className="text-[10px] font-semibold" style={{ color: '#3b5e9e' }}>
+                            {nut.kcal} kcal
+                          </span>
+                        </div>
+                      )
+                    })()}
                     <div className="h-px bg-gray-200 mt-1" />
                   </div>
                   <div className="flex-1 space-y-2">
@@ -745,16 +945,28 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                               </p>
                             )}
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setCopyModal({ sessionId: s.id, sessionLabel: cfg.label })
-                            }}
-                            title="Copiar sesión a otra semana"
-                            className="absolute top-1.5 right-1.5 p-0.5 rounded bg-white text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Copy size={10} />
-                          </button>
+                          <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setCopyModal({ sessionId: s.id, sessionLabel: cfg.label })
+                              }}
+                              title="Copiar sesión a otra semana"
+                              className="p-0.5 rounded bg-white text-gray-300 hover:text-gray-600"
+                            >
+                              <Copy size={10} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openEditModal(s, week!.id)
+                              }}
+                              title="Opciones"
+                              className="p-0.5 rounded bg-white text-gray-300 hover:text-gray-600 text-xs leading-none"
+                            >
+                              ⋮
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
@@ -762,8 +974,62 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
                       onClick={() => openAddModal(week!.id, dayIdx)}
                       className="w-full py-2 text-xs text-gray-300 hover:text-gray-500 hover:bg-white rounded-lg border border-dashed border-gray-200 transition-colors"
                     >
-                      + Añadir
+                      + Añadir sesión
                     </button>
+
+                    {/* Gym routine for this day (from AssignedWorkout) */}
+                    {assignedRoutine && (() => {
+                      const gymDay = assignedRoutine.days.find(d => d.dayOfWeek === dayIdx + 1)
+                      if (!gymDay) return null
+                      const alreadyInPlan = sessions.some(s => s.type === 'FUERZA' && s.workoutDay)
+                      if (alreadyInPlan) return null
+                      return (
+                        <div className="mt-auto pt-2 border-t border-dashed border-gray-100">
+                          <div className="px-2 py-1.5 rounded-md" style={{ backgroundColor: '#7c3aed0d' }}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#7c3aed' }} />
+                              <span className="text-[10px] font-semibold" style={{ color: '#7c3aed' }}>
+                                {gymDay.label}
+                              </span>
+                            </div>
+                            <p className="text-[9px] mt-0.5" style={{ color: '#8c949e' }}>
+                              {gymDay.exerciseCount} ejercicios · {gymDay.muscleGroups.slice(0, 2).join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Nutrition summary for this day */}
+                    {nutritionPlan && (() => {
+                      const bestIntensity = sessions.length > 0
+                        ? sessions.reduce((best, s) => {
+                            const si = sessionIntensity(s.type)
+                            const rank = si === 'HIGH' ? 3 : si === 'MODERATE' ? 2 : 1
+                            return rank > (best === 'HIGH' ? 3 : best === 'MODERATE' ? 2 : 1) ? si : best
+                          }, 'REST' as string)
+                        : (assignedRoutine?.days.some(d => d.dayOfWeek === dayIdx + 1) ? 'MODERATE' : 'REST')
+                      const nut = getDayNutrition(bestIntensity, nutritionPlan)
+                      return (
+                        <div className="mt-1 px-2 py-1.5 rounded-md" style={{ backgroundColor: '#f8f9fb' }}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-medium" style={{ color: '#667382' }}>🍽️ Nutrición</span>
+                            <span
+                              className="text-[8px] font-semibold px-1 py-0.5 rounded"
+                              style={{ color: nut.color, backgroundColor: nut.color + '15' }}
+                            >
+                              {nut.label}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#1f2938' }}>
+                            {nut.kcal} kcal
+                          </p>
+                          <p className="text-[9px]" style={{ color: '#8c949e' }}>
+                            P{nutritionPlan.proteinG}g · C{bestIntensity === 'HIGH' ? nutritionPlan.carbsHardG : nutritionPlan.carbsEasyG}g · F{nutritionPlan.fatG}g
+                          </p>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               )

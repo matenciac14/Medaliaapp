@@ -9,6 +9,7 @@ interface MetricSliderProps {
   lowLabel?: string
   highLabel?: string
   prevValue?: number | null
+  helperText?: string
 }
 
 export default function MetricSlider({
@@ -20,6 +21,7 @@ export default function MetricSlider({
   lowLabel,
   highLabel,
   prevValue,
+  helperText,
 }: MetricSliderProps) {
   const pct = value > 0 ? ((value - 1) / (max - 1)) * 100 : 0
 
@@ -40,6 +42,10 @@ export default function MetricSlider({
           </span>
         </div>
       </div>
+
+      {helperText && (
+        <p className="text-[11px] text-[#71808e] -mt-0.5">{helperText}</p>
+      )}
 
       {/* Track container — relative para que el input absoluto se alinee */}
       <div className="relative h-[6px] rounded-full bg-[#e6e6e6]">

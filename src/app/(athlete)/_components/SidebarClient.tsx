@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   X,
   Users,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserConfig } from '@/lib/config/user-config'
@@ -72,7 +73,8 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
     { href: '/gym',       label: s.gym,         icon: Dumbbell,        show: true },
     { href: '/messages',  label: 'Mensajes',    icon: MessageSquare,   show: hasCoach, badge: unreadCount },
     { href: '/find-coach',   label: 'Buscar coach', icon: Users,           show: !hasCoach },
-    { href: '/profile',   label: s.profile,     icon: UserCircle,      show: true },
+    { href: '/profile',      label: s.profile,      icon: UserCircle,      show: true },
+    { href: '/settings/plan', label: 'Mi suscripción', icon: CreditCard,  show: true },
   ].filter((l) => l.show)
 
   // Mobile phone (<sm): 5 tabs fijos — Figma (Inicio, Plan, Gym, Nutrición, Perfil)
@@ -107,7 +109,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
   return (
     <>
       {/* ── Sidebar desktop ── */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex lg:flex-col lg:w-60 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#ea580c] flex items-center justify-center font-bold text-white text-sm">M</div>

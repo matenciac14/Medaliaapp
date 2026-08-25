@@ -15,7 +15,7 @@ export async function DELETE(
   const { id: athleteId, mealId } = await params
 
   const link = await prisma.coachAthlete.findFirst({
-    where: { coachId: session.user.id, athleteId },
+    where: { coachId: session.user.id, athleteId, status: 'ACTIVE' },
     select: { id: true },
   })
   if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
