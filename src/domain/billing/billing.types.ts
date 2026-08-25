@@ -15,16 +15,25 @@ export const COACH_TIER_PRICES_USD: Record<CoachTier, number> = {
 
 export const ATHLETE_PRO_PRICE_USD = 9.99
 
-// Precios en COP para Wompi (PSE / Nequi / Daviplata / tarjeta)
-// TRM referencia: 1 USD = 4200 COP (revisar trimestralmente)
-export const COACH_TIER_PRICES_COP: Record<CoachTier, number> = {
-  STARTER: 0,
-  GROWTH: 163_800,  // $39 USD
-  PRO: 331_800,     // $79 USD
-  SCALE: 541_800,   // $129 USD
+/**
+ * Convierte un precio USD a centavos COP para Wompi.
+ * El TRM viene de infraestructura (env var TRM_USD_COP) — el dominio lo recibe como parámetro.
+ * Redondea al múltiplo de 100 COP más cercano para precios más limpios.
+ *
+ * @param usdAmount - precio en USD (ej. 9.99)
+ * @param trm       - tasa de cambio 1 USD = TRM COP (ej. 4200)
+ * @returns centavos COP para el campo amount_in_cents de Wompi
+ */
+export function usdToCopCents(usdAmount: number, trm: number): number {
+  const cop = usdAmount * trm
+  const rounded = Math.round(cop / 100) * 100  // redondea a COP 100 más cercano
+  return rounded * 100                          // centavos para Wompi
 }
 
-export const ATHLETE_PRO_PRICE_COP = 41_980  // $9.99 USD
+/** Precio COP display (sin centavos) — para mostrar en UI. */
+export function usdToCopDisplay(usdAmount: number, trm: number): number {
+  return Math.round(usdAmount * trm / 100) * 100
+}
 
 /** Días de gracia tras expiración antes de hacer downgrade efectivo. */
 export const BILLING_GRACE_DAYS = 3

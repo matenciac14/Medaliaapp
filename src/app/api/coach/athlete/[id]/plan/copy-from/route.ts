@@ -28,7 +28,7 @@ export async function POST(
 
   // Verify coach owns the target athlete
   const targetRelation = await prisma.coachAthlete.findFirst({
-    where: { coachId, athleteId: targetAthleteId },
+    where: { coachId, athleteId: targetAthleteId, status: 'ACTIVE' },
   })
   if (!targetRelation) {
     return NextResponse.json({ error: 'Atleta no encontrado.' }, { status: 404 })
@@ -95,6 +95,9 @@ export async function POST(
       })
 
       // Copy weeks + sessions with recalculated dates
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allSessionsData: any[] = []
+
       for (const week of sourcePlan.weeks) {
         const weekStart = addDays(newStartDate, (week.weekNumber - 1) * 7)
         const weekEnd   = addDays(weekStart, 6)
@@ -113,24 +116,24 @@ export async function POST(
         })
 
         for (const s of week.sessions) {
-          const sessionDate = addDays(weekStart, s.dayOfWeek - 1)
-          await tx.plannedSession.create({
-            data: {
-              weekId:      newWeek.id,
-              dayOfWeek:   s.dayOfWeek,
-              type:        s.type,
-              intensity:   s.intensity,
-              durationMin: s.durationMin,
-              zoneTarget:  s.zoneTarget,
-              structure:   s.structure,
-              detailText:  s.detailText,
-              sportLabel:  s.sportLabel,
-              coachNote:   null, // don't copy coach notes — they're athlete-specific
-              date:        sessionDate,
-              workoutDayId: s.workoutDayId,
-            },
+          allSessionsData.push({
+            weekId:       newWeek.id,
+            dayOfWeek:    s.dayOfWeek,
+            type:         s.type,
+            intensity:    s.intensity,
+            durationMin:  s.durationMin ?? undefined,
+            zoneTarget:   s.zoneTarget ?? undefined,
+            structure:    s.structure ?? undefined,
+            detailText:   s.detailText ?? undefined,
+            sportLabel:   s.sportLabel ?? undefined,
+            date:         addDays(weekStart, s.dayOfWeek - 1),
+            workoutDayId: s.workoutDayId ?? undefined,
           })
         }
+      }
+
+      if (allSessionsData.length > 0) {
+        await tx.plannedSession.createMany({ data: allSessionsData })
       }
 
       return plan

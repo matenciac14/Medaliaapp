@@ -10,6 +10,7 @@ interface MetricInputProps {
   step?: string
   inputMode?: 'numeric' | 'decimal'
   invertDelta?: boolean  // true = subir el valor es malo (ej. FC reposo)
+  helperText?: string
 }
 
 export default function MetricInput({
@@ -22,6 +23,7 @@ export default function MetricInput({
   step,
   inputMode = 'numeric',
   invertDelta = false,
+  helperText,
 }: MetricInputProps) {
   const numValue = value ? Number(value) : null
   const delta = numValue !== null && prevValue != null ? numValue - prevValue : null
@@ -33,7 +35,7 @@ export default function MetricInput({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <label className="text-xs font-medium text-gray-500">{label}</label>
-        {delta !== null && (
+        {delta !== null && delta !== 0 && (
           <span
             className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
               isPositive
@@ -64,6 +66,9 @@ export default function MetricInput({
           </span>
         )}
       </div>
+      {helperText && (
+        <p className="text-[10px] text-[#8fa3bc]">{helperText}</p>
+      )}
     </div>
   )
 }

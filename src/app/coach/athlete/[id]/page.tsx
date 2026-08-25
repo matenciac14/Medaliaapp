@@ -14,15 +14,12 @@ export default async function AthleteDetailPage({
   if (!session?.user?.id) redirect('/login')
 
   // ─── Parallel DB queries ──────────────────────────────────────────────────
-  const [athlete, healthProfile, activePlan, recentCheckIns, nutritionPlan, coachRelation] =
+  const [athlete, healthProfile, activePlan, recentCheckIns, nutritionPlan, coachRelation, coachProfile] =
     await Promise.all([
       // Basic user data
       prisma.user.findUnique({
         where: { id: athleteId },
-        select: {
-          id: true, name: true, email: true, createdAt: true,
-          featurePlan: true, featureCheckin: true, featureNutrition: true, featureProgress: true,
-        },
+        select: { id: true, name: true, email: true, createdAt: true },
       }),
 
       // Health profile
@@ -62,19 +59,17 @@ export default async function AthleteDetailPage({
         where: { coachId: session.user.id, athleteId },
         select: { id: true, status: true, coachGoal: true, privateNotes: true },
       }),
+
+      // Coach specialties for discipline-aware plan creation
+      prisma.coachProfile.findUnique({
+        where: { coachId: session.user.id },
+        select: { specialties: true },
+      }),
     ])
 
   // Security: coach can only view their own athletes
   if (!coachRelation || !athlete) {
     redirect('/coach/dashboard')
-  }
-
-  // ─── Read athlete features from columns ──────────────────────────────────
-  const initialFeatures = {
-    plan:      athlete.featurePlan,
-    checkin:   athlete.featureCheckin,
-    nutrition: athlete.featureNutrition,
-    progress:  athlete.featureProgress,
   }
 
   // ─── Shape data for client component ─────────────────────────────────────
@@ -173,10 +168,10 @@ export default async function AthleteDetailPage({
       activePlan={activePlanData}
       recentCheckIns={checkInsData}
       nutritionPlan={nutritionPlanData}
-      initialFeatures={initialFeatures}
       initialStatus={(coachRelation.status as 'ACTIVE' | 'PAUSED') ?? 'ACTIVE'}
       coachGoal={coachRelation.coachGoal ?? null}
       privateNotes={coachRelation.privateNotes ?? null}
+      coachSpecialties={coachProfile?.specialties ?? []}
     />
   )
 }

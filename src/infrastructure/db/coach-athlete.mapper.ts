@@ -7,6 +7,21 @@
  */
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 
+const SESSION_DISPLAY: Record<string, { label: string; color: string }> = {
+  RODAJE_Z2:    { label: 'Z2',   color: '#16a34a' },
+  FARTLEK:      { label: 'FAR',  color: '#ea580c' },
+  TEMPO:        { label: 'TEMP', color: '#ea580c' },
+  INTERVALOS:   { label: 'INT',  color: '#dc2626' },
+  TIRADA_LARGA: { label: 'TL',   color: '#2563eb' },
+  FUERZA:       { label: 'GYM',  color: '#ea580c' },
+  CICLA:        { label: 'CIC',  color: '#2563eb' },
+  NATACION:     { label: 'NAT',  color: '#2563eb' },
+  DESCANSO:     { label: '—',    color: '#9ca3af' },
+  TEST:         { label: 'TEST', color: '#dc2626' },
+  SIMULACRO:    { label: 'SIM',  color: '#dc2626' },
+  OTRO:         { label: 'OTRO', color: '#6b7280' },
+}
+
 export type MappedAthlete = {
   id: string
   name: string
@@ -20,10 +35,12 @@ export type MappedAthlete = {
   weightKg: number | null
   weightGoalKg: number | null
   hrResting: number | null
+  weightDropKg: number
   adherencePct: number
   alerts: string[]
   planStatus: string | null
   status: 'ACTIVE' | 'PAUSED'
+  todaySession: { label: string; color: string } | null
   alertFlags: {
     noCheckin: boolean
     highRpe: boolean
@@ -56,7 +73,11 @@ export type CoachAthleteRow = {
       weeks: Array<{
         weekNumber: number
         phase: string
-        sessions: Array<{ log: { id: string } | null }>
+        sessions: Array<{
+          date: Date
+          type: string
+          log: { id: string } | null
+        }>
       }>
     }>
     checkIns: Array<{
@@ -104,6 +125,17 @@ export function mapCoachAthleteRelation(rel: CoachAthleteRow, now: Date): Mapped
   const noCheckinAlert = daysSince >= 7
   const adjustments = lastCheckIn?.adjustmentsTriggered ?? []
 
+  // Find today's planned session across all weeks
+  const nowY = now.getFullYear()
+  const nowM = now.getMonth()
+  const nowD = now.getDate()
+  const allSessions = plan?.weeks.flatMap((w) => w.sessions) ?? []
+  const todayPlanned = allSessions.find((s) => {
+    const d = new Date(s.date)
+    return d.getFullYear() === nowY && d.getMonth() === nowM && d.getDate() === nowD
+  })
+  const todaySession = todayPlanned ? (SESSION_DISPLAY[todayPlanned.type] ?? null) : null
+
   return {
     id: athlete.id,
     name: athlete.name ?? 'Atleta',
@@ -117,10 +149,12 @@ export function mapCoachAthleteRelation(rel: CoachAthleteRow, now: Date): Mapped
     weightKg: lastCheckIn?.weightKg ?? athlete.profile?.weightKg ?? null,
     weightGoalKg: athlete.profile?.weightGoalKg ?? null,
     hrResting: lastCheckIn?.hrResting ?? athlete.profile?.hrResting ?? null,
+    weightDropKg: weightDrop,
     adherencePct,
     alerts: adjustments,
     planStatus: plan?.status ?? null,
     status: (rel.status as 'ACTIVE' | 'PAUSED') ?? 'ACTIVE',
+    todaySession,
     alertFlags: {
       noCheckin: noCheckinAlert,
       highRpe,

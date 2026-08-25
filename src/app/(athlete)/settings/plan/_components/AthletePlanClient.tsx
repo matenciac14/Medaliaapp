@@ -9,6 +9,7 @@ type Props = {
   coachName: string | null
   priceCOP: number
   priceUSD: number
+  trmDate: string | null
   billingStatus: string | null
 }
 
@@ -41,6 +42,7 @@ export default function AthletePlanClient({
   coachName,
   priceCOP,
   priceUSD,
+  trmDate,
   billingStatus,
 }: Props) {
   const router = useRouter()
@@ -209,6 +211,21 @@ export default function AthletePlanClient({
             </li>
           ))}
         </ul>
+
+        {/* Precio siempre visible — transparencia total */}
+        {priceCOP > 0 && (
+          <div className={`mt-5 pt-4 border-t ${tier === 'PRO' ? 'border-white/20' : 'border-gray-100'}`}>
+            <p className={`text-xs mb-0.5 ${tier === 'PRO' ? 'text-white/50' : 'text-gray-400'}`}>
+              {tier === 'PRO' ? 'Valor de tu suscripción' : 'Precio del plan Pro'}
+            </p>
+            <p className={`text-lg font-bold ${tier === 'PRO' ? 'text-white' : 'text-[#1e3a5f]'}`}>
+              ${priceCOP.toLocaleString('es-CO')} COP/mes
+            </p>
+            <p className={`text-xs ${tier === 'PRO' ? 'text-white/40' : 'text-gray-400'}`}>
+              ~${priceUSD} USD{trmDate ? ` · TRM ${trmDate}` : ''}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* CTA upgrade si es FREE */}
@@ -218,22 +235,14 @@ export default function AthletePlanClient({
           <p className="text-sm text-gray-500 mb-4">
             Plan adaptativo, check-in semanal y métricas de progreso.
           </p>
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-2xl font-bold text-[#1e3a5f]">
-                ${priceCOP.toLocaleString('es-CO')} COP
-              </p>
-              <p className="text-xs text-gray-400">por mes (~${priceUSD} USD)</p>
-            </div>
-            <button
-              onClick={handleUpgrade}
-              disabled={loading || polling}
-              className="px-6 py-3 bg-[#ea580c] hover:bg-[#c2410c] text-white font-semibold rounded-xl disabled:opacity-60 transition-colors"
-            >
-              {loading ? 'Redirigiendo...' : 'Activar Pro'}
-            </button>
-          </div>
-          <p className="text-xs text-gray-400">
+          <button
+            onClick={handleUpgrade}
+            disabled={loading || polling}
+            className="w-full px-6 py-3 bg-[#ea580c] hover:bg-[#c2410c] text-white font-semibold rounded-xl disabled:opacity-60 transition-colors"
+          >
+            {loading ? 'Redirigiendo...' : 'Activar Pro'}
+          </button>
+          <p className="text-xs text-gray-400 mt-3">
             Pago seguro con Wompi — PSE, Nequi, Daviplata o tarjeta.
           </p>
         </div>

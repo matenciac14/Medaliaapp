@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { AlertTriangle } from 'lucide-react'
 import MetricSlider from './MetricSlider'
 import MetricInput from './MetricInput'
-import SessionsPanel, { type WeekSession } from './SessionsPanel'
 import SubmittedCheckInView from './SubmittedCheckInView'
 import EarlyCheckInScreen from './EarlyCheckInScreen'
 import CheckInResultScreen, { type CheckInSuggestion } from './CheckInResultScreen'
 import type { PrevMetrics, LastWeekSummary, CheckInState } from './checkin.types'
+import type { WeekSession } from './SessionsPanel'
 
 export type { PrevMetrics, CheckInState }
 
@@ -20,6 +20,9 @@ interface CheckInClientProps {
   hasNutrition: boolean
   hasGym: boolean
   weekAdherence: { completed: number; total: number }
+  currentWeek: number
+  totalWeeks: number | null
+  hasAutoData: boolean
   checkInState: CheckInState
   submittedAt: Date | null
   submittedTriggers: string[]
@@ -30,30 +33,44 @@ interface CheckInClientProps {
 function evaluateAlerts(data: {
   weightKg?: number
   hrResting?: number
-  sleepScore?: number
   previousWeightKg?: number | null
   previousHrResting?: number | null
 }): string[] {
   const alerts: string[] = []
   if (data.hrResting && data.previousHrResting && data.hrResting > data.previousHrResting * 1.10) {
-    alerts.push('FC reposo elevada — considera un día extra de descanso')
-  }
-  if (data.sleepScore && data.sleepScore < 70) {
-    alerts.push('Calidad de sueño baja — priorizá el descanso esta semana')
+    alerts.push('FC reposo elevada — considera un dia extra de descanso')
   }
   if (data.weightKg && data.previousWeightKg && (data.previousWeightKg - data.weightKg) > 1.2) {
-    alerts.push('Bajaste más de 1.2 kg esta semana — aumentá 200-300 kcal')
+    alerts.push('Bajaste mas de 1.2 kg esta semana — aumenta 200-300 kcal')
   }
   return alerts
 }
+
+const PAIN_OPTIONS = [
+  { value: 1, label: 'Sin molestias', shortLabel: 'Sin molestias' },
+  { value: 4, label: 'Molestia leve', shortLabel: 'Leve' },
+  { value: 7, label: 'Dolor moderado', shortLabel: 'Moderada' },
+] as const
+
+const ADHERENCE_DAYS = [
+  { label: 'Lun', dow: 1 },
+  { label: 'Mar', dow: 2 },
+  { label: 'Mie', dow: 3 },
+  { label: 'Jue', dow: 4 },
+  { label: 'Vie', dow: 5 },
+  { label: 'Sab', dow: 6 },
+  { label: 'Dom', dow: 0 },
+] as const
 
 export default function CheckInClient({
   weekSessions,
   prevMetrics,
   weekLabel,
   hasNutrition,
-  hasGym,
   weekAdherence,
+  currentWeek,
+  totalWeeks,
+  hasAutoData,
   checkInState,
   submittedAt,
   submittedTriggers,
@@ -64,25 +81,15 @@ export default function CheckInClient({
   const [openForm, setOpenForm] = useState(false)
 
   const [weightKg, setWeightKg] = useState(prevMetrics.weightKg?.toString() ?? '')
-  const [sleepHours, setSleepHours] = useState(prevMetrics.sleepHours?.toString() ?? '')
+  const [sleepHours, setSleepHours] = useState(prevMetrics.sleepHours ?? 0)
   const [hrResting, setHrResting] = useState(prevMetrics.hrResting?.toString() ?? '')
   const [energyLevel, setEnergyLevel] = useState(0)
-  const [hardestRpe, setHardestRpe] = useState(0)
-  const [sleepQuality, setSleepQuality] = useState(0)
+  const [hardestRpe, setHardestRpe] = useState(prevMetrics.hardestSessionRpe ?? 0)
   const [stressLevel, setStressLevel] = useState(0)
   const [motivationLevel, setMotivationLevel] = useState(0)
   const [painLevel, setPainLevel] = useState(0)
   const [nutritionAdherence, setNutritionAdherence] = useState(0)
   const [notes, setNotes] = useState('')
-
-  // Body measurements
-  const [waistCm, setWaistCm] = useState('')
-  const [armsCm, setArmsCm] = useState('')
-  const [hipsCm, setHipsCm] = useState('')
-  const [thighsCm, setThighsCm] = useState('')
-
-  const [showWellness, setShowWellness] = useState(false)
-  const [showMeasurements, setShowMeasurements] = useState(false)
 
   const [alerts, setAlerts] = useState<string[]>([])
   const [showAlertModal, setShowAlertModal] = useState(false)
@@ -90,7 +97,6 @@ export default function CheckInClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [gymRpe, setGymRpe] = useState(0)
 
   const [adjustment, setAdjustment] = useState<{
     severity: 'ok' | 'warning' | 'critical'
@@ -103,53 +109,24 @@ export default function CheckInClient({
   const [suggestions, setSuggestions] = useState<CheckInSuggestion[]>(initialSuggestions)
 
   function buildBody() {
-    // When athlete has gym, use gymRpe as the hardestRpe if it's higher
-    const effectiveRpe = hasGym && gymRpe > 0
-      ? Math.max(hardestRpe || 0, gymRpe)
-      : (hardestRpe || 5)
     return {
       weightKg: weightKg ? Number(weightKg) : undefined,
       hrResting: hrResting ? Number(hrResting) : undefined,
-      sleepHours: sleepHours ? Number(sleepHours) : undefined,
-      sleepScore: sleepQuality > 0 ? sleepQuality * 10 : undefined,
-      hardestRpe: effectiveRpe || 5,
+      sleepHours: sleepHours > 0 ? sleepHours : undefined,
+      hardestRpe: hardestRpe || 5,
       painLevel: painLevel > 0 ? painLevel : undefined,
       energyLevel: energyLevel || 5,
       stressLevel: stressLevel || undefined,
       motivationLevel: motivationLevel || undefined,
       nutritionAdherencePct: hasNutrition && nutritionAdherence > 0 ? nutritionAdherence * 10 : undefined,
       notes: notes || undefined,
-      waistCm: waistCm ? Number(waistCm) : undefined,
-      armsCm: armsCm ? Number(armsCm) : undefined,
-      hipsCm: hipsCm ? Number(hipsCm) : undefined,
-      thighsCm: thighsCm ? Number(thighsCm) : undefined,
     }
-  }
-
-  async function handleQuickSave() {
-    await doSave({
-      weightKg: undefined,
-      hrResting: undefined,
-      sleepHours: undefined,
-      sleepScore: undefined,
-      hardestRpe: 6,
-      painLevel: undefined,
-      energyLevel: 7,
-      stressLevel: undefined,
-      motivationLevel: undefined,
-      nutritionAdherencePct: undefined,
-      notes: undefined,
-      waistCm: undefined,
-      armsCm: undefined,
-      hipsCm: undefined,
-      thighsCm: undefined,
-    })
   }
 
   function handleSubmit() {
     if (saving) return
     if (!energyLevel || !hardestRpe) {
-      setFormError('Completa al menos la energía percibida y el RPE de la sesión más dura.')
+      setFormError('Completa al menos la energia percibida y el RPE de la sesion mas dura.')
       return
     }
     setFormError(null)
@@ -157,7 +134,6 @@ export default function CheckInClient({
     const found = evaluateAlerts({
       weightKg: body.weightKg,
       hrResting: body.hrResting,
-      sleepScore: body.sleepScore,
       previousWeightKg: prevMetrics.weightKg,
       previousHrResting: prevMetrics.hrResting,
     })
@@ -184,14 +160,14 @@ export default function CheckInClient({
         throw new Error(err?.error ?? `Error ${res.status} — intenta de nuevo`)
       }
       const json = await res.json() as {
-        adjustment?: { severity: 'ok' | 'warning' | 'critical'; recommendation: string; adjustments: string[]; triggers: string[]; planChanges?: { volumeDeltaPct?: number; zonesAdjusted?: boolean }; nutritionChanges?: { newKcalHard?: number; newKcalEasy?: number } }
+        adjustment?: typeof adjustment
         suggestions?: CheckInSuggestion[]
       }
       if (json.adjustment) setAdjustment(json.adjustment)
       if (json.suggestions) setSuggestions(json.suggestions)
       setSaved(true)
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'No se pudo guardar el check-in. Revisa tu conexión e intenta de nuevo.')
+      setSaveError(err instanceof Error ? err.message : 'No se pudo guardar. Revisa tu conexion e intenta de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -202,7 +178,7 @@ export default function CheckInClient({
     setSuggestions(prev => prev.filter(s => s.id !== id))
   }
 
-  // ——— Estado: ya enviaste esta semana ———
+  // --- State routing ---
   if (checkInState === 'submitted' && !openForm && !saved) {
     return (
       <SubmittedCheckInView
@@ -218,8 +194,6 @@ export default function CheckInClient({
       />
     )
   }
-
-  // ——— Estado: temprano en la semana (Lun-Jue), aún no envió ———
   if (checkInState === 'early' && !openForm && !saved) {
     return (
       <EarlyCheckInScreen
@@ -229,8 +203,6 @@ export default function CheckInClient({
       />
     )
   }
-
-  // ——— Pantalla de resultado post-save ———
   if (saved) {
     return (
       <CheckInResultScreen
@@ -246,164 +218,345 @@ export default function CheckInClient({
     )
   }
 
-  // ——— Form principal ———
+  // --- Computed ---
   const adherencePct = weekAdherence.total > 0
     ? Math.round((weekAdherence.completed / weekAdherence.total) * 100)
     : null
-  const painColor = painLevel >= 7 ? '#ef4444' : painLevel >= 4 ? '#ea580c' : '#22c55e'
+  const sleepPct = sleepHours > 0 ? Math.min(100, ((sleepHours - 3) / 9) * 100) : 0
+  const rpePct = hardestRpe > 0 ? ((hardestRpe - 1) / 9) * 100 : 0
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 pt-5 pb-8">
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-[#0f1e30]">Check-in Semanal</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{weekLabel} · Cuéntanos cómo te fue</p>
-          <p className="text-xs text-gray-400 mt-2 max-w-lg">
-            <span className="font-medium text-gray-500">¿Para qué sirve esto?</span> Acá reportás tu carga subjetiva de la semana: energía, estrés, dolor, RPE y motivación. Es distinto al registro diario de peso y FC en tu perfil — esas son métricas objetivas. El check-in semanal sincroniza tu bienestar con tu entrenamiento y va construyendo tu historial de progreso.
-          </p>
+      {/* ===== MOBILE HEADER (navy) ===== */}
+      <div className="lg:hidden bg-[#1e3a5f] px-4 pt-6 pb-5 text-white">
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-[22px] font-bold">{`Revisi\u00f3n Semanal`}</h1>
+          {totalWeeks && (
+            <span className="text-[11px] font-semibold bg-[rgba(34,195,93,0.22)] text-[#22c35d] px-3 py-1 rounded-full uppercase tracking-wide">
+              Semana {currentWeek} de {totalWeeks}
+            </span>
+          )}
         </div>
+        <p className="text-[13px] text-white/70">{`Eval\u00faa tu semana y ajusta el plan`}</p>
+        <p className="text-[11px] text-white/55 mt-0.5">
+          {weekLabel} {'\u00b7'} {weekAdherence.completed}/{weekAdherence.total} sesiones completadas
+        </p>
+        {adherencePct !== null && (
+          <div className="mt-3">
+            <div className="h-1 bg-white/15 rounded-sm overflow-hidden">
+              <div
+                className="h-full rounded-sm transition-all"
+                style={{ width: `${adherencePct}%`, backgroundColor: '#22c35d' }}
+              />
+            </div>
+            <p className="text-[11px] text-white/65 mt-1.5">
+              {adherencePct}% adherencia {'\u00b7'} {adherencePct >= 80 ? 'sigue bien' : adherencePct >= 50 ? 'puedes mejorar' : 'animo, sigamos'}
+            </p>
+          </div>
+        )}
+      </div>
 
-        {/* Check-in rápido */}
-        <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+      {/* ===== DESKTOP HEADER ===== */}
+      <div className="hidden lg:block max-w-5xl mx-auto px-4 pt-5">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm font-semibold text-green-800">¿Semana sin novedades?</p>
-            <p className="text-xs text-green-600 mt-0.5">Energía normal, sin dolores, cumpliste el plan.</p>
+            <p className="text-[11px] font-bold text-[#1e3a5f] uppercase tracking-wider mb-0.5">{`Revisi\u00f3n Semanal`}</p>
+            <h1 className="text-2xl font-bold text-[#0f1e30]">{`Revisi\u00f3n Semanal`}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">{weekLabel}</p>
           </div>
-          <button
-            onClick={handleQuickSave}
-            disabled={saving}
-            className="shrink-0 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
-          >
-            {saving ? '...' : 'Todo bien →'}
-          </button>
-        </div>
-
-        <div className="lg:grid lg:grid-cols-[1fr_340px] lg:gap-5 space-y-5 lg:space-y-0">
-
-          {/* Columna izquierda */}
-          <div className="space-y-5">
-            <section className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">📊 Métricas de la semana</h2>
-              </div>
-              <div className="px-6 py-5 space-y-5">
-                <MetricInput label="Peso corporal" value={weightKg} onChange={setWeightKg} unit="kg" step="0.1" inputMode="decimal" placeholder="ej. 70.5" prevValue={prevMetrics.weightKg} />
-                <MetricInput label="Horas de sueño (prom.)" value={sleepHours} onChange={setSleepHours} unit="h" step="0.5" inputMode="decimal" placeholder="ej. 7.5" prevValue={prevMetrics.sleepHours} />
-                <MetricInput label="FC reposo" value={hrResting} onChange={setHrResting} unit="bpm" placeholder="ej. 58" prevValue={prevMetrics.hrResting} invertDelta />
-                <MetricSlider label="Energía percibida" value={energyLevel} onChange={setEnergyLevel} color="#ea580c" lowLabel="Sin energía" highLabel="Al 100%" prevValue={prevMetrics.energyLevel} />
-                <MetricSlider label="RPE sesión más dura" value={hardestRpe} onChange={setHardestRpe} color="#ef4444" lowLabel="Fácil" highLabel="Al límite" prevValue={prevMetrics.hardestSessionRpe} />
-                {hasGym && (
-                  <MetricSlider label="RPE sesión de gym" value={gymRpe} onChange={setGymRpe} color="#7c3aed" lowLabel="Fácil" highLabel="Al límite" />
-                )}
-              </div>
-            </section>
-
-            <section className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowWellness(v => !v)}
-                className="w-full px-6 py-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">😴 Bienestar general <span className="text-xs font-normal text-gray-400 ml-1">opcional</span></h2>
-                <span className={`text-gray-400 text-sm transition-transform duration-200 ${showWellness ? 'rotate-180' : ''}`}>▼</span>
-              </button>
-              {showWellness && (
-                <div className="px-6 py-5 space-y-5">
-                  <MetricSlider label="Calidad del sueño" value={sleepQuality} onChange={setSleepQuality} color="#1a9933" lowLabel="Muy mal" highLabel="Excelente" prevValue={prevMetrics.prevSleepScore} />
-                  <MetricSlider label="Nivel de estrés" value={stressLevel} onChange={setStressLevel} color="#c33" lowLabel="Sin estrés" highLabel="Muy estresado" prevValue={prevMetrics.stressLevel} />
-                  <MetricSlider label="Motivación" value={motivationLevel} onChange={setMotivationLevel} color="#1a9933" lowLabel="Sin motivación" highLabel="Muy motivado" prevValue={prevMetrics.motivationLevel} />
-                  <MetricSlider label="Dolor / molestias" value={painLevel} onChange={setPainLevel} color={painColor} lowLabel="Sin dolor" highLabel="Dolor intenso" prevValue={prevMetrics.painLevel} />
-                  {hasNutrition && (
-                    <MetricSlider label="Adherencia al plan de comida" value={nutritionAdherence} onChange={setNutritionAdherence} color="#14b8a6" lowLabel="No lo seguí" highLabel="Al 100%" prevValue={prevMetrics.prevNutritionAdherence} />
-                  )}
-                </div>
-              )}
-              {!showWellness && (
-                <p className="px-6 py-3 text-xs text-gray-400">Estrés, motivación, calidad de sueño, dolor — ayudan al sistema a ajustar mejor tu plan.</p>
-              )}
-            </section>
-
-            <section className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowMeasurements(v => !v)}
-                className="w-full px-6 py-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">📏 Medidas corporales <span className="text-xs font-normal text-gray-400 ml-1">opcional</span></h2>
-                <span className={`text-gray-400 text-sm transition-transform duration-200 ${showMeasurements ? 'rotate-180' : ''}`}>▼</span>
-              </button>
-              {showMeasurements && (
-                <div className="px-6 py-5 grid grid-cols-2 gap-4">
-                  <MetricInput label="Cintura" value={waistCm} onChange={setWaistCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 78" />
-                  <MetricInput label="Caderas" value={hipsCm} onChange={setHipsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 96" />
-                  <MetricInput label="Brazos" value={armsCm} onChange={setArmsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 32" />
-                  <MetricInput label="Muslos" value={thighsCm} onChange={setThighsCm} unit="cm" step="0.5" inputMode="decimal" placeholder="ej. 54" />
-                </div>
-              )}
-              {!showMeasurements && (
-                <p className="px-6 py-3 text-xs text-gray-400">Cintura, caderas, brazos y muslos — útil para ver recomposición aunque el peso no baje.</p>
-              )}
-            </section>
-
-            {/* Notas + CTA (mobile) */}
-            <section className="lg:hidden bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">Notas de la semana</h2>
-              </div>
-              <div className="px-6 py-5">
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-lg px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
-              </div>
-            </section>
-
-            <div className="lg:hidden space-y-3">
-              {formError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError}</p>}
-              {saveError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{saveError}</p>}
-              <p className="text-xs text-center text-gray-400">Estos datos ajustarán tu plan de la próxima semana automáticamente.</p>
-              <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
-                {saving ? 'Guardando...' : 'Enviar check-in'}
-              </button>
-            </div>
-          </div>
-
-          {/* Columna derecha (sticky desktop) */}
-          <div className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-            <div className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">✅ Sesiones completadas</h2>
-                {adherencePct !== null && (
-                  <span className="text-sm font-bold text-[#1e3a5f]">{weekAdherence.completed}/{weekAdherence.total}</span>
-                )}
-              </div>
-              {adherencePct !== null && (
-                <div className="px-6 pt-4 pb-2">
-                  <div className="h-[6px] bg-[#e6e6e6] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${adherencePct}%`, backgroundColor: adherencePct >= 80 ? '#1a9933' : adherencePct >= 50 ? '#ea580c' : '#ef4444' }} />
-                  </div>
-                </div>
-              )}
-              <SessionsPanel sessions={weekSessions} showHeader={false} />
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <h2 className="text-[15px] font-semibold text-[#0f1e30]">📝 Notas de la semana</h2>
-              </div>
-              <div className="px-6 py-5">
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Las series del fartlek me costaron más de lo esperado..." rows={3} className="w-full text-sm bg-[#f7f7f7] rounded-lg px-3 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#808080]" />
-              </div>
-            </div>
-
-            {(formError || saveError) && (
-              <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError ?? saveError}</p>
+          <div className="text-right space-y-1.5">
+            {totalWeeks && (
+              <span className="inline-block text-[11px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-full uppercase tracking-wide">
+                Semana {currentWeek} de {totalWeeks}
+              </span>
             )}
-            <button onClick={handleSubmit} disabled={saving} className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md">
-              {saving ? 'Guardando...' : 'Enviar check-in'}
-            </button>
+            {adherencePct !== null && (
+              <>
+                <div className="h-[5px] bg-gray-200 rounded-full overflow-hidden w-48 ml-auto">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${adherencePct}%`, backgroundColor: adherencePct >= 80 ? '#22c55e' : adherencePct >= 50 ? '#ea580c' : '#ef4444' }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">{adherencePct}% adherencia esta semana</p>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Modal de alertas */}
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-8">
+        {/* Banner auto-datos */}
+        {hasAutoData && (
+          <div className="mb-4 bg-[#fff3e0] rounded-xl overflow-hidden flex items-stretch gap-0">
+            <div className="w-[3px] bg-[#ea5809] rounded-sm shrink-0 my-3 ml-4" />
+            <div className="flex-1 px-3 py-3">
+              <p className="text-[12px] font-semibold text-[#8c4000]">{'\u26a1'}  {`Datos pre-llenados autom\u00e1ticamente`}</p>
+              <p className="text-[10px] text-[rgba(140,64,0,0.8)] mt-0.5">
+                {[
+                  prevMetrics.hardestSessionRpe ? `RPE pico: ${prevMetrics.hardestSessionRpe}` : '',
+                  prevMetrics.energyLevel ? `Energ\u00eda: ${prevMetrics.energyLevel}/10 (prom.)` : '',
+                  weekAdherence.total > 0 ? `Sesiones: ${weekAdherence.completed}/${weekAdherence.total}` : '',
+                ].filter(Boolean).join(' \u00b7 ')}
+              </p>
+            </div>
+            <span className="shrink-0 self-center mr-4 text-[10px] font-semibold bg-[rgba(34,195,93,0.2)] text-[#22c35d] px-2.5 py-1 rounded-full">Auto {'\u2713'}</span>
+          </div>
+        )}
+
+        {/* ===== FORM LAYOUT ===== */}
+        {/* Mobile: single card | Desktop: two-column grid */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden lg:bg-transparent lg:shadow-none lg:rounded-none lg:grid lg:grid-cols-[5fr_6fr] lg:gap-5 lg:overflow-visible">
+
+          {/* LEFT: DATOS AUTOMATICOS */}
+          <section className="bg-[#f0fdf4] lg:bg-white lg:rounded-2xl lg:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] lg:overflow-hidden lg:self-start lg:sticky lg:top-6">
+            <div className="px-4 pt-3 lg:px-5 lg:py-4 lg:border-b lg:border-gray-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[10px] font-semibold text-[#106f33] uppercase tracking-[0.3px] lg:text-xs lg:font-bold lg:text-emerald-700 lg:tracking-wider">
+                  {`DATOS AUTOM\u00c1TICOS \u2713`}
+                </h2>
+                <span className="hidden lg:inline text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Del sistema</span>
+              </div>
+            </div>
+            <div className="px-4 py-3 lg:px-5 lg:py-5 space-y-4 lg:space-y-6">
+              {/* RPE */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium text-[#262626]">{`RPE m\u00e1s duro de la semana`}</p>
+                    <p className="text-[11px] text-[#106f33] lg:text-gray-400 mt-0.5">
+                      {prevMetrics.hardestSessionRpe
+                        ? `\ud83d\udccb Registrado autom\u00e1ticamente`
+                        : `Ajusta el RPE de tu sesi\u00f3n m\u00e1s dura`}
+                    </p>
+                  </div>
+                  {/* Mobile: orange rect badge */}
+                  <div className="lg:hidden w-8 h-6 rounded-[7px] bg-[#ea5809] text-white flex items-center justify-center text-sm font-bold shrink-0 ml-3">
+                    {hardestRpe || '\u2014'}
+                  </div>
+                  {/* Desktop: navy circle */}
+                  <div className="hidden lg:flex w-11 h-11 rounded-full bg-[#1e3a5f] text-white items-center justify-center text-xl font-bold shrink-0 ml-3">
+                    {hardestRpe || '\u2014'}
+                  </div>
+                </div>
+                <div className="relative h-[5px] rounded-full bg-[#e5ecf2]">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full pointer-events-none transition-all duration-100"
+                    style={{ width: hardestRpe > 0 ? `${rpePct}%` : '0%', backgroundColor: '#ea5809' }}
+                  />
+                  <input
+                    type="range" min={1} max={10} value={hardestRpe || 1}
+                    onChange={e => setHardestRpe(Number(e.target.value))}
+                    className="absolute w-full cursor-pointer opacity-0"
+                    style={{ top: '50%', transform: 'translateY(-50%)', height: '22px', margin: 0, padding: 0 }}
+                  />
+                  {hardestRpe > 0 && (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full bg-white border-2 border-[#ea5809] shadow-sm pointer-events-none transition-all duration-100"
+                      style={{ left: `clamp(0px, calc(${rpePct}% - 5px), calc(100% - 11px))` }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Adherencia al plan */}
+              {weekSessions.length > 0 && (
+                <div>
+                  <div className="h-px bg-[#e5ecf2] mb-3" />
+                  <p className="text-[11px] font-semibold text-[#99a6b2] mb-1">Adherencia al plan</p>
+                  <p className="text-[10px] text-[#6f859a] mb-2.5">
+                    {weekAdherence.completed} de {weekAdherence.total} sesiones completadas esta semana
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {ADHERENCE_DAYS.map(({ label, dow }) => {
+                      const session = weekSessions.find(s => s.dayOfWeek === dow)
+                      const isRest = session?.type === 'DESCANSO'
+                      const hasSession = !!session && !isRest
+                      const done = session?.completed
+                      return (
+                        <div
+                          key={label}
+                          className={`flex flex-col items-center justify-center w-[38px] h-10 rounded-lg text-center ${
+                            !hasSession ? 'bg-[#e5ecf2] text-[#6f859a]'
+                            : done ? 'bg-[#22c35d] text-white'
+                            : 'bg-[rgba(234,88,9,0.18)] text-[#ea5809]'
+                          }`}
+                        >
+                          <span className="text-[10px] font-semibold leading-none">{label}</span>
+                          <span className="text-[11px] font-bold leading-none mt-0.5">{!hasSession ? '\u2014' : done ? '\u2713' : '\u2717'}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Info note — desktop only */}
+              <div className="hidden lg:flex items-start gap-2 bg-blue-50 rounded-lg px-3 py-2.5">
+                <span className="text-blue-500 shrink-0 text-sm">i</span>
+                <p className="text-[11px] text-blue-700 leading-relaxed">
+                  {`Estos datos vienen de tus logs de sesi\u00f3n.`}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* COMPLETA TU separator — mobile only */}
+          <div className="bg-[#f5f7fa] px-4 py-2 lg:hidden">
+            <p className="text-[10px] font-semibold text-[#6f859a] uppercase tracking-[0.3px]">{`COMPLETA T\u00da`}</p>
+          </div>
+
+          {/* RIGHT: COMPLETA TU */}
+          <section className="lg:bg-white lg:rounded-2xl lg:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)] lg:overflow-hidden">
+            <div className="hidden lg:block px-5 py-4 border-b border-gray-100">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{`Completa t\u00fa`}</h2>
+            </div>
+            <div className="px-4 lg:px-5 py-4 lg:py-5 space-y-0 lg:space-y-5">
+              {/* Horas de sueno */}
+              <div className="space-y-1.5 pb-4 lg:pb-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-[#262626]">{`Horas de sue\u00f1o`}</span>
+                  <span className="text-[12px] font-semibold text-[#333] bg-[#f5f7fa] rounded-[10px] px-3 py-1 lg:bg-transparent lg:px-0 lg:py-0 lg:text-[13px] lg:text-[#1e3a5f]">
+                    {sleepHours > 0 ? `${sleepHours} hrs` : '\u2014'}
+                  </span>
+                </div>
+                <div className="relative h-[5px] rounded-full bg-[#e5ecf2]">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full pointer-events-none transition-all duration-100"
+                    style={{ width: sleepHours > 0 ? `${sleepPct}%` : '0%', backgroundColor: 'rgba(30,58,95,0.45)' }}
+                  />
+                  <input
+                    type="range" min={3} max={12} step={0.5} value={sleepHours || 7}
+                    onChange={e => setSleepHours(Number(e.target.value))}
+                    className="absolute w-full cursor-pointer opacity-0"
+                    style={{ top: '50%', transform: 'translateY(-50%)', height: '22px', margin: 0, padding: 0 }}
+                  />
+                  {sleepHours > 0 && (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full bg-white border-2 shadow-sm pointer-events-none transition-all duration-100"
+                      style={{ left: `clamp(0px, calc(${sleepPct}% - 5px), calc(100% - 11px))`, borderColor: 'rgba(30,58,95,0.45)' }}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Stress */}
+              <div className="pt-4 lg:pt-0">
+                <MetricSlider label={`Nivel de estr\u00e9s`} value={stressLevel} onChange={setStressLevel} color="rgba(30,58,95,0.4)" prevValue={prevMetrics.stressLevel} />
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Motivation */}
+              <div className="pt-4 lg:pt-0">
+                <MetricSlider label={`Nivel de motivaci\u00f3n`} value={motivationLevel} onChange={setMotivationLevel} color="#ea580c" prevValue={prevMetrics.motivationLevel} />
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Energy + helper text */}
+              <div className="pt-4 lg:pt-0">
+                <MetricSlider label={`Energ\u00eda general`} value={energyLevel} onChange={setEnergyLevel} color="#1e3a5f" prevValue={prevMetrics.energyLevel} helperText={`\u00bfC\u00f3mo fue tu energ\u00eda esta semana? (1\u201310)`} />
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* FC reposo + helper */}
+              <div className="pt-4 lg:pt-0">
+                <MetricInput label="FC reposo (bpm)" value={hrResting} onChange={setHrResting} unit="bpm" placeholder="ej. 60" prevValue={prevMetrics.hrResting} invertDelta helperText={`Frecuencia card\u00edaca al despertar`} />
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Peso */}
+              <div className="pt-4 lg:pt-0">
+                <MetricInput label="Peso actual" value={weightKg} onChange={setWeightKg} unit="kg" step="0.1" inputMode="decimal" placeholder="ej. 72.5" prevValue={prevMetrics.weightKg} />
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Nutrition adherence */}
+              {hasNutrition && (
+                <>
+                  <div className="pt-4 lg:pt-0">
+                    <MetricSlider label={`Adherencia nutricional`} value={nutritionAdherence} onChange={setNutritionAdherence} color="#ea580c" prevValue={prevMetrics.prevNutritionAdherence} />
+                  </div>
+                  <div className="h-px bg-[#e5ecf2] lg:hidden" />
+                </>
+              )}
+
+              {/* Pain — 3 buttons */}
+              <div className="space-y-2 pt-4 lg:pt-0">
+                <span className="text-[13px] font-semibold text-[#1e3a5f]">{`\u00bfAlguna molestia?`}</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {PAIN_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPainLevel(painLevel === opt.value ? 0 : opt.value)}
+                      className={`py-2 text-[11px] font-semibold rounded-lg border transition-colors ${
+                        painLevel === opt.value
+                          ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white'
+                          : 'bg-white border-[#1e3a5f] text-[#1e3a5f]'
+                      }`}
+                    >
+                      {opt.shortLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="h-px bg-[#e5ecf2] lg:hidden" />
+
+              {/* Notes */}
+              <div className="pt-4 lg:pt-0">
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder={`\u00bfAlgo que tu coach deba saber? (opcional)`}
+                  rows={2}
+                  className="w-full text-[11px] bg-[#f5f7fa] rounded-[10px] px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 text-[#4d4d4d] placeholder:text-[#6f859a]"
+                />
+              </div>
+
+              {/* Errors + CTA — desktop only */}
+              <div className="hidden lg:block space-y-3 pt-2">
+                {formError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError}</p>}
+                {saveError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{saveError}</p>}
+                <button
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-opacity shadow-md"
+                >
+                  {saving ? 'Guardando...' : `Enviar revisi\u00f3n semanal \u2192`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push('/dashboard')}
+                  className="w-full text-sm text-gray-400 hover:text-gray-600 py-1 transition-colors"
+                >
+                  Saltar por ahora
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* CTA — mobile only, outside the card */}
+        <div className="lg:hidden mt-4 space-y-3">
+          {formError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{formError}</p>}
+          {saveError && <p className="text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">{saveError}</p>}
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="w-full bg-[#ea580c] hover:opacity-90 active:opacity-80 disabled:opacity-50 text-white font-bold py-[14px] rounded-xl text-[15px] transition-opacity"
+          >
+            {saving ? 'Guardando...' : `Enviar revisi\u00f3n semanal \u2192`}
+          </button>
+          <p className="text-center text-[12px] text-[rgba(111,133,154,0.8)]">
+            <button type="button" onClick={() => router.push('/dashboard')} className="hover:underline">
+              Saltar por ahora
+            </button>
+          </p>
+        </div>
+      </div>
+
+      {/* Alert modal */}
       {showAlertModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -411,13 +564,13 @@ export default function CheckInClient({
               <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-bold text-yellow-800">Atenciones detectadas</p>
-                <p className="text-xs text-yellow-700 mt-0.5">Revisá estos puntos antes de guardar</p>
+                <p className="text-xs text-yellow-700 mt-0.5">Revisa estos puntos antes de guardar</p>
               </div>
             </div>
             <div className="px-5 py-4 space-y-2">
               {alerts.map((alert, i) => (
                 <div key={i} className="flex items-start gap-2.5 bg-yellow-50 rounded-xl px-3 py-2.5">
-                  <span className="text-base shrink-0">⚠️</span>
+                  <span className="text-base shrink-0">!</span>
                   <p className="text-sm text-yellow-900">{alert}</p>
                 </div>
               ))}

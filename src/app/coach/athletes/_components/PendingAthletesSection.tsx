@@ -1,8 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-
 export type PendingAthlete = {
   athleteId: string
   name: string
@@ -13,88 +10,53 @@ export type PendingAthlete = {
 function daysAgo(iso: string): string {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
   if (days === 0) return 'hoy'
-  if (days === 1) return 'hace 1 día'
-  return `hace ${days} días`
-}
-
-function CopyLinkButton({ athleteId }: { athleteId: string }) {
-  const [state, setState] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
-
-  async function handleCopy() {
-    setState('loading')
-    try {
-      const res = await fetch(`/api/coach/athlete/${athleteId}/invite-link`)
-      if (!res.ok) throw new Error()
-      const { link } = await res.json()
-      await navigator.clipboard.writeText(link).catch(() => {
-        const el = document.createElement('textarea')
-        el.value = link
-        document.body.appendChild(el)
-        el.select()
-        document.execCommand('copy')
-        document.body.removeChild(el)
-      })
-      setState('copied')
-      setTimeout(() => setState('idle'), 2500)
-    } catch {
-      setState('error')
-      setTimeout(() => setState('idle'), 2000)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      disabled={state === 'loading'}
-      className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50"
-      style={
-        state === 'copied'
-          ? { backgroundColor: '#f0fdf4', borderColor: '#86efac', color: '#15803d' }
-          : state === 'error'
-          ? { backgroundColor: '#fef2f2', borderColor: '#fca5a5', color: '#dc2626' }
-          : { backgroundColor: '#fff', borderColor: '#e5e7eb', color: '#374151' }
-      }
-    >
-      {state === 'loading' ? '…' : state === 'copied' ? '✓ Copiado' : state === 'error' ? 'Error' : '📋 Copiar link'}
-    </button>
-  )
+  if (days === 1) return 'hace 1d'
+  return `hace ${days}d`
 }
 
 export default function PendingAthletesSection({ athletes }: { athletes: PendingAthlete[] }) {
   if (athletes.length === 0) return null
 
+  const names = athletes.map((a) => `${a.name} (${daysAgo(a.addedAt)})`).join(' · ')
+  const count = athletes.length
+
   return (
-    <div className="mb-6 bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-amber-200 flex items-center gap-2">
-        <span className="text-amber-600">⏳</span>
-        <h2 className="font-semibold text-amber-900 text-sm">Pendientes de onboarding</h2>
-        <span className="ml-auto text-xs text-amber-600 font-medium">{athletes.length}</span>
+    <div
+      className="bg-white flex items-center gap-4"
+      style={{
+        border: '1px solid #e5e8eb',
+        borderRadius: 10,
+        paddingTop: 14,
+        paddingBottom: 14,
+        paddingRight: 20,
+      }}
+    >
+      {/* Accent bar — no left padding on container, bar is first child */}
+      <div className="shrink-0" style={{ backgroundColor: '#1e3a5f', width: 3, height: 48 }} />
+
+      {/* Text content */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <p className="font-semibold" style={{ fontSize: 13, color: '#525963' }}>
+          {count} atleta{count !== 1 ? 's' : ''} pendiente{count !== 1 ? 's' : ''} de onboarding
+        </p>
+        <p className="truncate" style={{ fontSize: 12, color: '#9ea6b0' }}>{names}</p>
       </div>
-      <ul className="divide-y divide-amber-100">
-        {athletes.map((a) => (
-          <li key={a.athleteId} className="px-5 py-3.5 flex items-center gap-3 flex-wrap sm:flex-nowrap">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-gray-900 text-sm">{a.name}</span>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                  Sin activar
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">{a.email} · Invitado {daysAgo(a.addedAt)}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <CopyLinkButton athleteId={a.athleteId} />
-              <Link
-                href={`/coach/athlete/${a.athleteId}`}
-                className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#1e3a5f' }}
-              >
-                Ver →
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+
+      {/* Actions */}
+      <a
+        href="/coach/athletes?filter=pending"
+        className="font-medium whitespace-nowrap shrink-0"
+        style={{ fontSize: 12, color: '#1e3a5f' }}
+      >
+        Ver pendientes →
+      </a>
+      <a
+        href="/coach/invite"
+        className="font-semibold text-white whitespace-nowrap shrink-0 hover:opacity-90 transition-opacity"
+        style={{ fontSize: 11, backgroundColor: '#1e3a5f', padding: '7px 14px', borderRadius: 6 }}
+      >
+        Reenviar invitación
+      </a>
     </div>
   )
 }

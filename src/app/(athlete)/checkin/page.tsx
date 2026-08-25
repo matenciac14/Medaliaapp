@@ -176,6 +176,9 @@ export default async function CheckinPage() {
       hasNutrition={hasNutrition}
       hasGym={hasGym}
       weekAdherence={weekAdherence}
+      currentWeek={currentWeek}
+      totalWeeks={activePlan?.totalWeeks ?? null}
+      hasAutoData={!!(prevCheckIn?.weightKg || prevCheckIn?.hrResting || prevCheckIn?.sleepHours || healthProfile?.weightKg || healthProfile?.hrResting)}
       checkInState={checkInState}
       submittedAt={thisWeekCheckIn?.recordedAt ?? null}
       submittedTriggers={thisWeekCheckIn?.adjustmentsTriggered ?? []}

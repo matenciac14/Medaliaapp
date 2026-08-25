@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getInitialWeekIdx } from '@/lib/core/week-number'
 import Link from 'next/link'
 import { FoodLogsSection, type FoodLogEntry } from './FoodLogsSection'
@@ -99,13 +99,6 @@ export type NutritionPlanData = {
   carbsEasyG: number
   fatG: number
 } | null
-
-export type InitialFeatures = {
-  plan: boolean
-  checkin: boolean
-  nutrition: boolean
-  progress: boolean
-}
 
 export type AthleteStatus = 'ACTIVE' | 'PAUSED'
 
@@ -209,10 +202,10 @@ interface AthleteDetailClientProps {
   activePlan: ActivePlanData
   recentCheckIns: CheckInData[]
   nutritionPlan: NutritionPlanData
-  initialFeatures: InitialFeatures
   initialStatus: AthleteStatus
   coachGoal: string | null
   privateNotes: string | null
+  coachSpecialties: string[]
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -224,13 +217,29 @@ export default function AthleteDetailClient({
   activePlan,
   recentCheckIns,
   nutritionPlan,
-  initialFeatures,
   initialStatus,
   coachGoal: initialCoachGoal,
   privateNotes: initialPrivateNotes,
+  coachSpecialties,
 }: AthleteDetailClientProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('Resumen')
+  const searchParams = useSearchParams()
+
+  const TAB_PARAM_MAP: Record<string, string> = {
+    resumen: 'Resumen', plan: 'Plan', progreso: 'Progreso',
+    nutricion: 'Nutrición', ejercicios: 'Ejercicios', sesiones: 'Sesiones',
+    adherencia: 'Adherencia', benchmarks: 'Benchmarks', mensajes: 'Mensajes',
+  }
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const param = searchParams.get('tab')?.toLowerCase()
+    // Match against TABS constant and param map
+    if (param) {
+      const mapped = TAB_PARAM_MAP[param]
+      if (mapped && TABS.includes(mapped)) return mapped
+    }
+    return 'Resumen'
+  })
 
   // Plan session notes
   const [notes, setNotes] = useState<Record<string, string>>(() => {
@@ -303,18 +312,6 @@ export default function AthleteDetailClient({
     } finally { setPlanGenerating(false) }
   }
 
-  // Activation
-  const [activating, setActivating] = useState(false)
-  const [activated, setActivated] = useState(initialFeatures.plan)
-
-  async function handleActivate() {
-    setActivating(true)
-    try {
-      const res = await fetch(`/api/coach/athlete/${athleteId}/config`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ features: { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } }) })
-      if (res.ok) setActivated(true)
-    } finally { setActivating(false) }
-  }
-
   // Reset password
   const [resettingPwd, setResettingPwd] = useState(false)
   const [resetLink, setResetLink] = useState<string | null>(null)
@@ -359,6 +356,8 @@ export default function AthleteDetailClient({
   // Athlete status
   const [athleteStatus, setAthleteStatus] = useState<AthleteStatus>(initialStatus)
   const [togglingStatus, setTogglingStatus] = useState(false)
+  // activated se deriva del status del atleta — no de features individuales
+  const activated = athleteStatus === 'ACTIVE'
 
   async function handleToggleStatus() {
     const next: AthleteStatus = athleteStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'
@@ -780,6 +779,12 @@ export default function AthleteDetailClient({
             >
               {athleteStatus === 'ACTIVE' ? 'Activo' : 'Pausado'}
             </span>
+            {healthProfile?.sport && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                {healthProfile.sport === 'RUNNING' ? 'Running' : healthProfile.sport === 'STRENGTH' ? 'Fuerza' : healthProfile.sport}
+                {healthProfile.experienceLevel && ` · ${healthProfile.experienceLevel === 'BEGINNER' ? 'Principiante' : healthProfile.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' : healthProfile.experienceLevel === 'ADVANCED' ? 'Avanzado' : healthProfile.experienceLevel}`}
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-500">{athlete.email}</p>
         </div>
@@ -821,10 +826,9 @@ export default function AthleteDetailClient({
           athlete={athlete}
           healthProfile={healthProfile}
           activePlan={activePlan}
-          initialFeatures={initialFeatures}
           activated={activated}
-          activating={activating}
-          handleActivate={handleActivate}
+          togglingStatus={togglingStatus}
+          handleToggleStatus={handleToggleStatus}
           resettingPwd={resettingPwd}
           resetLink={resetLink}
           pwdCopied={pwdCopied}
@@ -883,6 +887,7 @@ export default function AthleteDetailClient({
           handleNoteChange={handleNoteChange}
           handleSaveNote={handleSaveNote}
           handleSaveSession={handleSaveSession}
+          coachSpecialties={coachSpecialties}
         />
       )}
 

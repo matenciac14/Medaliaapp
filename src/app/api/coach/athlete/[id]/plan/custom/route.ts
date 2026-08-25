@@ -15,7 +15,7 @@ export async function POST(
   const { id: athleteId } = await params
   const coachId = session.user.id
 
-  const relation = await prisma.coachAthlete.findFirst({ where: { coachId, athleteId } })
+  const relation = await prisma.coachAthlete.findFirst({ where: { coachId, athleteId, status: 'ACTIVE' } })
   if (!relation) return NextResponse.json({ error: 'Asesorado no encontrado.' }, { status: 404 })
 
   const body = await req.json() as { name?: string; totalWeeks?: number; startDate?: string }

@@ -8,15 +8,16 @@ import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { unauthorized, ok, serverError, badRequest } from '@/lib/api/responses'
+import { requireFeature } from '@/lib/guards/feature-gate'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
 import { sendPlanUpdatedEmail, sendCoachCheckInEmail } from '@/infrastructure/email/resend'
-import { mapMobileCheckinBody, scale5to10 } from '@/lib/api/checkin-mapper'
+import { mapMobileCheckinBody } from '@/lib/api/checkin-mapper'
 import { z } from 'zod'
 
 const mobileCheckInSchema = z.object({
-  energyLevel:     z.number().min(1).max(5),
-  muscleSoreness:  z.number().min(1).max(5),
-  stressLevel:     z.number().min(1).max(5).optional(),
+  energyLevel:     z.number().min(1).max(10),
+  muscleSoreness:  z.number().min(1).max(10),
+  stressLevel:     z.number().min(1).max(10).optional(),
   motivationLevel: z.number().min(0).max(10).optional(),
   sleepScore:      z.number().min(0).max(10).optional(),
   painLevel:       z.number().min(0).max(10).optional(),
@@ -42,14 +43,30 @@ export async function GET(req: NextRequest) {
     const plan = await prisma.trainingPlan.findFirst({
       where: { userId: mobile.id, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
-      select: { startDate: true, totalWeeks: true },
+      select: {
+        startDate: true,
+        totalWeeks: true,
+        weeks: {
+          select: {
+            weekNumber: true,
+            sessions: {
+              select: {
+                dayOfWeek: true,
+                type: true,
+                log: { select: { id: true } },
+              },
+            },
+          },
+          orderBy: { weekNumber: 'asc' },
+        },
+      },
     })
 
     const weekNumber = plan
       ? getPlanWeekNumber(plan.startDate, plan.totalWeeks)
       : getCurrentISOWeek()
 
-    const [existing, pendingSuggestions] = await Promise.all([
+    const [existing, pendingSuggestions, healthProfile] = await Promise.all([
       prisma.weeklyCheckIn.findFirst({
         where: { userId: mobile.id, weekNumber },
         select: {
@@ -72,11 +89,26 @@ export async function GET(req: NextRequest) {
         select: { id: true, type: true, title: true, description: true, expiresAt: true },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.healthProfile.findUnique({
+        where: { userId: mobile.id },
+        select: { weightKg: true, hrResting: true },
+      }),
     ])
+
+    // Week sessions for adherence dots
+    const currentWeekData = plan?.weeks.find((w) => w.weekNumber === weekNumber)
+    const weekSessions = currentWeekData?.sessions
+      .filter((s) => s.type !== 'DESCANSO')
+      .map((s) => ({ dayOfWeek: s.dayOfWeek, completed: !!s.log })) ?? []
+
+    const hasAutoData = !!(healthProfile?.weightKg || healthProfile?.hrResting)
 
     return ok({
       submitted: !!existing,
       weekNumber,
+      totalWeeks: plan?.totalWeeks ?? null,
+      weekSessions,
+      hasAutoData,
       data: existing ?? null,
       pendingSuggestions,
     })
@@ -91,6 +123,8 @@ export async function POST(req: NextRequest) {
   if (!mobile) return unauthorized()
   const { allowed: rlOk } = await rateLimitAsync(`mobile-${mobile.id}:checkin`, { limit: 100, windowMs: 60_000 })
   if (!rlOk) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
+  const featureGuard = requireFeature(mobile.features, 'checkin')
+  if (featureGuard) return featureGuard
 
   const raw = await req.json()
   const parsed = mobileCheckInSchema.safeParse(raw)
@@ -126,8 +160,8 @@ export async function POST(req: NextRequest) {
     }).then((rel) => {
       if (rel?.coach.email) {
         return sendCoachCheckInEmail(rel.coach.email, rel.coach.name ?? '', mobile.name, mobile.id, {
-          energyLevel: scale5to10(body.energyLevel),
-          hardestRpe:  scale5to10(body.muscleSoreness),
+          energyLevel: body.energyLevel,
+          hardestRpe:  body.muscleSoreness,
           weightKg:    body.weightKg,
         })
       }

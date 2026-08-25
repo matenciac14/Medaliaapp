@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           include: {
             days: {
               include: {
-                exercises: { include: { exercise: { select: { name: true, bodyPart: true, target: true, gifUrl: true, gifStoredUrl: true } } }, orderBy: { order: 'asc' } },
+                exercises: { include: { exercise: { select: { name: true, bodyPart: true, target: true } } }, orderBy: { order: 'asc' } },
               },
             },
           },
@@ -88,9 +88,10 @@ export async function GET(req: NextRequest) {
     }))
 
     // Detail for selectedDow
+    type CompletedExercise = { name: string; bodyPart: string | null; target: string | null; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }
     let selectedDetail: {
       type: 'completed' | 'planned' | 'rest' | 'none'
-      session?: { durationMin: number | null; rpe: number | null; notes: string | null; exercises: { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }[] }
+      session?: { durationMin: number | null; rpe: number | null; notes: string | null; exercises: CompletedExercise[] }
       planned?: { label: string; exercises: { name: string; sets: number; repsScheme: string }[] }
     } | null = null
 
@@ -109,17 +110,22 @@ export async function GET(req: NextRequest) {
           where: { athleteId, assignedWorkoutId: assigned.id, dayOfWeek: selectedDow, date: { gte: selDayStart, lt: selDayEnd } },
           include: {
             setLogs: {
-              include: { workoutExercise: { include: { exercise: { select: { name: true } } } } },
+              include: { workoutExercise: { include: { exercise: { select: { name: true, bodyPart: true, target: true } } } } },
               orderBy: [{ workoutExerciseId: 'asc' }, { setNumber: 'asc' }],
             },
           },
         })
 
         if (session?.completed && session.setLogs.length > 0) {
-          const exerciseMap = new Map<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }>()
+          const exerciseMap = new Map<string, CompletedExercise>()
           for (const sl of session.setLogs) {
             const key = sl.workoutExercise?.id ?? sl.exerciseName ?? 'unknown'
-            if (!exerciseMap.has(key)) exerciseMap.set(key, { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] })
+            if (!exerciseMap.has(key)) exerciseMap.set(key, {
+              name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio',
+              bodyPart: sl.workoutExercise?.exercise.bodyPart ?? null,
+              target: sl.workoutExercise?.exercise.target ?? null,
+              sets: [],
+            })
             exerciseMap.get(key)!.sets.push({ setNumber: sl.setNumber, weightKg: sl.weightKg, repsCompleted: sl.repsCompleted, completed: sl.completed })
           }
           selectedDetail = { type: 'completed', session: { durationMin: session.durationMin, rpe: session.rpe, notes: session.notes, exercises: [...exerciseMap.values()] } }
@@ -230,9 +236,10 @@ export async function GET(req: NextRequest) {
   })
 
   // Detail for selectedDow
+  type CompletedExercise2 = { name: string; bodyPart: string | null; target: string | null; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }
   let selectedDetail: {
     type: 'completed' | 'planned' | 'rest' | 'none'
-    session?: { durationMin: number | null; rpe: number | null; notes: string | null; exercises: { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }[] }
+    session?: { durationMin: number | null; rpe: number | null; notes: string | null; exercises: CompletedExercise2[] }
     planned?: { label: string; exercises: { name: string; sets: number; repsScheme: string }[] }
   } | null = null
 
@@ -248,16 +255,21 @@ export async function GET(req: NextRequest) {
           where: { id: session.id },
           include: {
             setLogs: {
-              include: { workoutExercise: { include: { exercise: { select: { name: true } } } } },
+              include: { workoutExercise: { include: { exercise: { select: { name: true, bodyPart: true, target: true } } } } },
               orderBy: [{ workoutExerciseId: 'asc' }, { setNumber: 'asc' }],
             },
           },
         })
         if (fullSession?.setLogs.length) {
-          const exerciseMap = new Map<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean }[] }>()
+          const exerciseMap = new Map<string, CompletedExercise2>()
           for (const sl of fullSession.setLogs) {
             const key = sl.workoutExercise?.id ?? sl.exerciseName ?? 'unknown'
-            if (!exerciseMap.has(key)) exerciseMap.set(key, { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] })
+            if (!exerciseMap.has(key)) exerciseMap.set(key, {
+              name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio',
+              bodyPart: sl.workoutExercise?.exercise.bodyPart ?? null,
+              target: sl.workoutExercise?.exercise.target ?? null,
+              sets: [],
+            })
             exerciseMap.get(key)!.sets.push({ setNumber: sl.setNumber, weightKg: sl.weightKg, repsCompleted: sl.repsCompleted, completed: sl.completed })
           }
           selectedDetail = { type: 'completed', session: { durationMin: fullSession.durationMin, rpe: fullSession.rpe, notes: fullSession.notes, exercises: [...exerciseMap.values()] } }

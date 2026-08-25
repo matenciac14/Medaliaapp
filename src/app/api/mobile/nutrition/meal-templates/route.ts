@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { prisma } from '@/lib/db/prisma'
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return unauthorized()
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:meal-templates-get`, { limit: 300, windowMs: 60_000 })
-  if (!allowed) return ok({ error: 'Demasiadas solicitudes.' })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   try {
     const templates = await prisma.mealTemplate.findMany({
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
   if (!mobile) return unauthorized()
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:meal-templates-post`, { limit: 100, windowMs: 60_000 })
-  if (!allowed) return ok({ error: 'Demasiadas solicitudes.' })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const raw = await req.json()
   const parsed = createSchema.safeParse(raw)

@@ -44,7 +44,6 @@ export default async function CoachProfilePage() {
           slug: profile.slug,
           bio: profile.bio,
           headline: profile.headline,
-          primarySpecialty: profile.primarySpecialty,
           specialties: profile.specialties,
           city: profile.city,
           country: profile.country,

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         setLogs: {
           include: {
             workoutExercise: {
-              include: { exercise: { select: { name: true } } },
+              include: { exercise: { select: { name: true, bodyPart: true, target: true, secondaryMuscles: true } } },
             },
           },
           orderBy: [{ workoutExercise: { order: 'asc' } }, { setNumber: 'asc' }],
@@ -54,16 +54,33 @@ export async function GET(req: NextRequest) {
   const formattedGym = gymSessions.map(gs => {
     const workoutDay = gs.assignedWorkout?.template.days.find(d => d.dayOfWeek === gs.dayOfWeek)
 
-    const exerciseMap: Record<string, { name: string; sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean; isPR: boolean }[] }> = {}
+    type ExerciseEntry = {
+      name: string
+      bodyPart: string | null
+      target: string | null
+      secondaryMuscles: string[]
+      sets: { setNumber: number; weightKg: number | null; repsCompleted: number | null; completed: boolean; isPR: boolean; setLogType: string; rpe: number | null }[]
+    }
+    const exerciseMap: Record<string, ExerciseEntry> = {}
     for (const sl of gs.setLogs) {
       const key = sl.workoutExerciseId ?? sl.exerciseName ?? 'unknown'
-      if (!exerciseMap[key]) exerciseMap[key] = { name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio', sets: [] }
+      if (!exerciseMap[key]) {
+        exerciseMap[key] = {
+          name: sl.workoutExercise?.exercise.name ?? sl.exerciseName ?? 'Ejercicio',
+          bodyPart: sl.workoutExercise?.exercise.bodyPart ?? null,
+          target: sl.workoutExercise?.exercise.target ?? null,
+          secondaryMuscles: sl.workoutExercise?.exercise.secondaryMuscles ?? [],
+          sets: [],
+        }
+      }
       exerciseMap[key].sets.push({
         setNumber: sl.setNumber,
         weightKg: sl.weightKg,
         repsCompleted: sl.repsCompleted,
         completed: sl.completed,
         isPR: sl.isPR,
+        setLogType: sl.setLogType,
+        rpe: sl.rpe,
       })
     }
 

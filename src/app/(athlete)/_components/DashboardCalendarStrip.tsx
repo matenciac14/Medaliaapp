@@ -280,7 +280,7 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
     ? gym!.rpe
     : freeRun?.rpe ?? null
 
-  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Gym' : 'Carrera libre'
+  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Entreno' : 'Carrera libre'
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">

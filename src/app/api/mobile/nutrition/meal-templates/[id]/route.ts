@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { prisma } from '@/lib/db/prisma'
@@ -8,7 +8,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const mobile = await getMobileUser(req)
   if (!mobile) return unauthorized()
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:meal-templates-delete`, { limit: 100, windowMs: 60_000 })
-  if (!allowed) return ok({ error: 'Demasiadas solicitudes.' })
+  if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const { id } = await params
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/db/prisma'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 export async function GET(
   req: NextRequest,
@@ -69,7 +70,7 @@ export async function GET(
       bodyPart: e.bodyPart,
       target: e.target,
       equipment: e.equipment,
-      gif: e.gifStoredUrl ?? e.gifUrl ?? undefined,
+      gif: resolveExerciseGifUrl(e.id, e.gifStoredUrl, e.gifUrl) ?? undefined,
     }))
   )
 }

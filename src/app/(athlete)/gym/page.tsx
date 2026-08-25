@@ -4,11 +4,15 @@ import { auth } from '@/auth'
 import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { DAY_LABELS } from '@/lib/constants/sessions'
-import { translateMuscleGroup, translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { translateMuscleGroup } from '@/lib/gym-labels'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 import PublicTemplates from './_components/PublicTemplates'
+import FeaturedExercisesGrid from './_components/FeaturedExercisesGrid'
 import WeekNavBar from '../_components/WeekNavBar'
+import MuscleMapWeb from '@/components/MuscleMapWeb'
+import type { MuscleData } from '@/components/MuscleMapWeb'
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-CO', {
@@ -90,7 +94,8 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
   })
 
   if (!assigned) {
-    const [coachRelation, publicTemplates, healthProfile, featuredExercises] = await Promise.all([
+    const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const [coachRelation, publicTemplates, healthProfile, featuredExercises, rawMuscleSets] = await Promise.all([
       prisma.coachAthlete.findFirst({
         where: { athleteId, status: 'ACTIVE' },
         select: { id: true },
@@ -113,7 +118,46 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         orderBy: { popularityRank: 'asc' },
         take: 6,
       }),
+      prisma.setLog.findMany({
+        where: { session: { athleteId, completed: true, date: { gte: sevenDaysAgo } }, completed: true },
+        select: {
+          weightKg: true,
+          repsCompleted: true,
+          session: { select: { date: true } },
+          workoutExercise: {
+            select: { exercise: { select: { bodyPart: true, target: true, secondaryMuscles: true } } },
+          },
+        },
+      }),
     ])
+
+    // Aggregate muscle fatigue — last 7 days
+    type MuscleStatEntry = { volume: number; sets: number; lastTrainedAt: Date }
+    const statMap = new Map<string, MuscleStatEntry>()
+    for (const sl of rawMuscleSets) {
+      const ex = sl.workoutExercise?.exercise
+      if (!ex) continue
+      const vol = (sl.weightKg ?? 0) * (sl.repsCompleted ?? 1)
+      const date = sl.session.date
+      const upsert = (k: string) => {
+        const prev = statMap.get(k) ?? { volume: 0, sets: 0, lastTrainedAt: date }
+        statMap.set(k, { volume: prev.volume + vol, sets: prev.sets + 1, lastTrainedAt: date > prev.lastTrainedAt ? date : prev.lastTrainedAt })
+      }
+      if (ex.bodyPart) upsert(ex.bodyPart)
+      if (ex.target) upsert(ex.target)
+      for (const sm of ex.secondaryMuscles ?? []) { if (sm) upsert(sm) }
+    }
+    const now = new Date()
+    const gymMuscleData: MuscleData = {}
+    for (const [key, stats] of statMap) {
+      const hrs = (now.getTime() - stats.lastTrainedAt.getTime()) / 3_600_000
+      gymMuscleData[key] = {
+        fatigueLevel: (hrs > 48 ? 0 : hrs > 24 ? 1 : hrs > 12 ? 2 : 3) as 0|1|2|3,
+        volume: Math.round(stats.volume),
+        sets: stats.sets,
+        lastTrainedAt: stats.lastTrainedAt.toISOString(),
+      }
+    }
 
     const isRunner = healthProfile?.sport === 'RUNNING'
 
@@ -137,7 +181,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         ) : (
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-[#1e3a5f]">Tu gym</h1>
+              <h1 className="text-2xl font-bold text-[#1e3a5f]">Tu entreno</h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Elige una plantilla o construye tu propia rutina.
               </p>
@@ -183,6 +227,17 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
           <PublicTemplates templates={publicTemplates} />
         </section>
 
+        {/* ── MAPA MUSCULAR ────────────────────────────────────── */}
+        <section>
+          <div className="mb-3">
+            <h2 className="text-base font-bold text-[#1e3a5f]">Músculos · esta semana</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Elige qué entrenar según tu fatiga muscular.</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <MuscleMapWeb data={gymMuscleData} mode="fatigue" />
+          </div>
+        </section>
+
         {/* ── BIBLIOTECA WORKOUTX ──────────────────────────────── */}
         {featuredExercises.length > 0 && (
           <section>
@@ -198,42 +253,12 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 Ver todos →
               </Link>
             </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              {featuredExercises.map((ex) => {
-                const gif = ex.gifStoredUrl ?? ex.gifUrl
-                return (
-                  <Link
-                    key={ex.id}
-                    href={`/gym/exercises?open=${ex.id}`}
-                    className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
-                  >
-                    <div className="bg-gray-50 aspect-square overflow-hidden relative">
-                      {gif ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={gif}
-                          alt={ex.nameEs ?? ex.name}
-                          loading="lazy"
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-200">
-                          <Dumbbell size={28} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2.5">
-                      <p className="font-semibold text-[11px] text-gray-900 line-clamp-2 leading-snug">
-                        {ex.nameEs ?? ex.name}
-                      </p>
-                      <span className="inline-block mt-1 text-[10px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">
-                        {translateBodyPart(ex.bodyPart)}
-                      </span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
+            <FeaturedExercisesGrid
+              exercises={featuredExercises.map(ex => ({
+                ...ex,
+                gif: resolveExerciseGifUrl(ex.id, ex.gifStoredUrl, ex.gifUrl),
+              }))}
+            />
           </section>
         )}
 
@@ -365,6 +390,18 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       }, 0)
     : 0
 
+  // Muscle data for today's session preview (session mode)
+  const todayMuscleData: MuscleData = {}
+  if (todayWorkoutDay && !todayWorkoutDay.isRestDay) {
+    const muscleKeys = [
+      ...todayWorkoutDay.muscleGroups,
+      ...todayWorkoutDay.exercises.map(e => e.exercise.target).filter(Boolean),
+    ]
+    for (const key of muscleKeys) {
+      if (key) todayMuscleData[key.toLowerCase()] = { fatigueLevel: 3 }
+    }
+  }
+
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
 
@@ -408,7 +445,7 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1e3a5f]">Rutina gym</h1>
+          <h1 className="text-2xl font-bold text-[#1e3a5f]">Tu rutina</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {assigned.coach ? `Coach: ${assigned.coach.name ?? 'Tu coach'} · ` : ''}desde {formatDate(assigned.startDate)}
           </p>
@@ -526,6 +563,11 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
                 </div>
               </div>
             </div>
+            {Object.keys(todayMuscleData).length > 0 && (
+              <div className="px-5 py-4 border-b border-[#ea580c]/10 flex justify-center">
+                <MuscleMapWeb data={todayMuscleData} mode="session" compact={true} />
+              </div>
+            )}
             <div className="px-5 py-4 flex flex-col sm:flex-row gap-3">
               {completedDows.has(todayDow) ? (
                 <div className="flex-1 inline-flex items-center justify-center gap-2 bg-green-50 text-green-700 border border-green-200 font-semibold text-sm px-4 py-3 rounded-lg">

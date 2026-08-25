@@ -313,33 +313,53 @@ export default function NutritionConstructor({ athleteId, nutritionPlan, athlete
                   )}
                 </div>
               )}
-              <div className="flex gap-2">
+              {/* Quick quantity pills */}
+              <div className="flex gap-1 flex-wrap">
+                {[50, 100, 150, 200, 250].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setGrams(String(g))}
+                    className={`px-2 py-1 text-xs rounded-lg border transition-colors ${grams === String(g) ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                  >
+                    {g}g
+                  </button>
+                ))}
                 <input
                   type="number"
-                  placeholder="Gramos"
+                  placeholder="Otro"
                   value={grams}
                   onChange={e => setGrams(e.target.value)}
-                  className="w-24 text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  className="w-16 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400"
                   min={1}
                 />
-                {selectedFoodId && grams && (
-                  <span className="text-xs text-gray-500 self-center">
-                    = {Math.round((athleteFoods.find(f => f.id === selectedFoodId)?.kcalPer100g ?? 0) * parseFloat(grams || '0') / 100)} kcal
-                  </span>
-                )}
-                <div className="flex gap-1 ml-auto">
-                  <button onClick={() => setAddingTo(null)} className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50">
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => addEntry(slot)}
-                    disabled={!selectedFoodId || !grams}
-                    className="px-3 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-40"
-                    style={{ backgroundColor: '#1e3a5f' }}
-                  >
-                    Agregar
-                  </button>
-                </div>
+              </div>
+              {/* Macro preview */}
+              {selectedFoodId && grams && (() => {
+                const food = athleteFoods.find(f => f.id === selectedFoodId)
+                const g = parseFloat(grams)
+                if (!food || isNaN(g) || g <= 0) return null
+                const r = g / 100
+                return (
+                  <div className="flex gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                    <span><strong>{Math.round(food.kcalPer100g * r)}</strong> kcal</span>
+                    <span><strong>{Math.round(food.proteinPer100g * r * 10) / 10}</strong>g prot</span>
+                    <span><strong>{Math.round(food.carbsPer100g * r * 10) / 10}</strong>g carb</span>
+                    <span><strong>{Math.round(food.fatPer100g * r * 10) / 10}</strong>g gras</span>
+                  </div>
+                )
+              })()}
+              <div className="flex gap-1 justify-end">
+                <button onClick={() => setAddingTo(null)} className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => addEntry(slot)}
+                  disabled={!selectedFoodId || !grams}
+                  className="px-3 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-40"
+                  style={{ backgroundColor: '#1e3a5f' }}
+                >
+                  Agregar
+                </button>
               </div>
             </div>
           )}

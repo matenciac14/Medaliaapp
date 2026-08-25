@@ -648,7 +648,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <span className="text-[9px] font-semibold text-white/55 tracking-widest uppercase">Hoy</span>
                   <div className="flex items-center gap-3">
                     <span className="text-[34px]">💪</span>
-                    <span className="text-[22px] font-black text-white tracking-tight">Gym hoy</span>
+                    <span className="text-[22px] font-black text-white tracking-tight">Entreno hoy</span>
                   </div>
                 </div>
                 <div className="bg-white px-4 py-3">
@@ -726,7 +726,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="flex items-center gap-3">
                 <span className="text-[34px]">💪</span>
                 <span className="text-[22px] font-black text-white tracking-tight">
-                  {assignedWorkout?.template.name ?? 'Gym hoy'}
+                  {assignedWorkout?.template.name ?? 'Entreno hoy'}
                 </span>
               </div>
             </div>
@@ -1164,7 +1164,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <div className="flex-1">
                           <p className="text-[15px] font-semibold text-gray-900">Registra tu primera sesión</p>
                           <p className="text-[12px] text-[#ea580c] mt-0.5">
-                            <Link href="/log/run">Running</Link> · <Link href="/gym">Gym</Link> · Lo que practiques →
+                            <Link href="/log/run">Running</Link> · <Link href="/gym">Entreno</Link> · Lo que practiques →
                           </p>
                         </div>
                       </div>

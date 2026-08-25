@@ -418,6 +418,8 @@ model SessionLog {
   hrMax            Int?
   distanceKm       Float?
   durationMin      Int?
+  energyState      String?  // EXHAUSTED | NORMAL | ENERGIZED
+  discomfort       String?  // NONE | MILD | MODERATE
   notes            String?
   garminActivityId String?
   freeSessionType  SessionType?      // solo para logs libres (plannedSessionId = null)
@@ -663,6 +665,8 @@ model GymSession {
   date              DateTime
   durationMin       Int?
   rpe               Int?     // 1-10
+  energyState       String?  // EXHAUSTED | NORMAL | ENERGIZED
+  discomfort        String?  // NONE | MILD | MODERATE
   caloriesBurned    Int?     // kcal estimadas (durationMin × avgCaloriesPerMinute de los ejercicios)
   notes             String?
   completed         Boolean  @default(false)
@@ -710,11 +714,11 @@ model CoachProfile {
   id               String         @id @default(cuid())
   coachId          String         @unique
   slug             String         @unique   // "carlos-entrenador"
-  primarySpecialty CoachSpecialty @default(ALL) // Especialidad principal — controla herramientas del panel
+  primarySpecialty CoachSpecialty @default(ALL) // @deprecated — usar specialties[]. Se mantiene por backward compat hasta migración completa.
   bio              String?
   avatarUrl        String?
   headline         String?            // "Especialista en media maratón y recomposición"
-  specialties      String[]           // ["RUNNING", "GYM", "CYCLING", "TRIATHLON", "FUNCTIONAL"] — para marketplace
+  specialties      String[]           // Fuente canónica de disciplinas del coach: ["RUNNING", "GYM", "NUTRITION", "CYCLING", "SWIMMING", "YOGA", "FUNCTIONAL"]
   city           String?
   country        String   @default("CO")
   whatsapp       String?
@@ -783,9 +787,9 @@ enum NutritionSource {
 
 /// Singleton — siempre un solo registro con id = "singleton"
 model SystemConfig {
-  id        String   @id @default("singleton")
-  aiProfile Json     @default("{}")   // AIProfile — perfil de la AI para planes y chat
-  updatedAt DateTime @updatedAt
+  id           String    @id @default("singleton")
+  aiProfile    Json      @default("{}")   // AIProfile — perfil de la AI para planes y chat
+  updatedAt    DateTime  @updatedAt
 }
 
 model NutritionPlan {
@@ -1464,4 +1468,25 @@ enum CoachProposalStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+// ─── Admin — Feature configuration per user type ─────────────────────────────
+
+enum AthleteUserType {
+  B2C_FREE
+  B2C_PRO
+  B2B
+}
+
+model TierFeatureConfig {
+  id               String          @id @default(cuid())
+  userType         AthleteUserType @unique
+  featurePlan      Boolean         @default(false)
+  featureCheckin   Boolean         @default(false)
+  featureNutrition Boolean         @default(true)
+  featureProgress  Boolean         @default(false)
+  featureLog       Boolean         @default(true)
+  featureGym       Boolean         @default(true)
+  updatedAt        DateTime        @updatedAt
+  updatedBy        String?         // admin userId que hizo el último cambio
 }

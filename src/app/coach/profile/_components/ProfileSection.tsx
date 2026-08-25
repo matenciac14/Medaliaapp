@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import ProfileForm from './ProfileForm'
 import ProgramForm from './ProgramForm'
 import PostForm from './PostForm'
@@ -8,7 +9,6 @@ import PostForm from './PostForm'
 type CoachProfileData = {
   id: string
   slug: string
-  primarySpecialty: string
   bio: string | null
   headline: string | null
   specialties: string[]
@@ -89,6 +89,20 @@ export default function ProfileSection({ initialProfile, initialPrograms, initia
 
   return (
     <div className="space-y-8">
+      {/* Suscripción */}
+      <section className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Mi suscripción</p>
+          <p className="text-xs text-gray-500 mt-0.5">Gestiona tu plan y límite de asesorados</p>
+        </div>
+        <Link
+          href="/coach/settings/plan"
+          className="px-4 py-2 text-sm font-semibold text-[#1e3a5f] border border-[#1e3a5f] rounded-xl hover:bg-[#1e3a5f] hover:text-white transition-colors"
+        >
+          Ver plan
+        </Link>
+      </section>
+
       {/* Perfil público */}
       <section className="bg-white border border-gray-200 rounded-xl p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-5">Perfil público</h2>

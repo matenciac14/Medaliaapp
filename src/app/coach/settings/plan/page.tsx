@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import {
-  COACH_TIER_PRICES_COP,
   COACH_TIER_PRICES_USD,
+  usdToCopDisplay,
 } from '@/domain/billing/billing.types'
+import { getTrmWithMeta } from '@/infrastructure/billing/trm'
 import { getCoachLimits } from '@/domain/subscription/tier-features'
 import type { CoachTier } from '@/domain/subscription/tier-features'
 import CoachPlanClient from './_components/CoachPlanClient'
@@ -32,7 +33,7 @@ export default async function CoachPlanPage({
   const params = await searchParams
   const billingStatus = params.billing ?? null
 
-  const [sub, athleteCount] = await Promise.all([
+  const [sub, athleteCount, trmMeta] = await Promise.all([
     prisma.userSubscription.findUnique({
       where: { userId: session.user.id },
       select: { coachTier: true, currentPeriodEnd: true, gateway: true },
@@ -44,6 +45,7 @@ export default async function CoachPlanPage({
         athlete: { onboardingCompleted: true },
       },
     }),
+    getTrmWithMeta(),
   ])
 
   const currentTier = (sub?.coachTier ?? 'STARTER') as CoachTier
@@ -52,10 +54,12 @@ export default async function CoachPlanPage({
   const gateway = sub?.gateway ?? null
 
   const currentIdx = TIER_ORDER.indexOf(currentTier)
+  const currentPriceCOP = usdToCopDisplay(COACH_TIER_PRICES_USD[currentTier], trmMeta.value)
+  const currentPriceUSD = COACH_TIER_PRICES_USD[currentTier]
   const upgradeTiers = TIER_ORDER.filter((t) => TIER_ORDER.indexOf(t) > currentIdx).map((tier) => ({
     tier,
     name: TIER_NAMES[tier],
-    priceCOP: COACH_TIER_PRICES_COP[tier],
+    priceCOP: usdToCopDisplay(COACH_TIER_PRICES_USD[tier], trmMeta.value),
     priceUSD: COACH_TIER_PRICES_USD[tier],
     maxAthletes: getCoachLimits(tier).maxAthletes,
   }))
@@ -64,11 +68,14 @@ export default async function CoachPlanPage({
     <CoachPlanClient
       currentTier={currentTier}
       currentTierName={TIER_NAMES[currentTier]}
+      currentPriceCOP={currentPriceCOP}
+      currentPriceUSD={currentPriceUSD}
       athleteCount={athleteCount}
       maxAthletes={maxAthletes}
       currentPeriodEnd={currentPeriodEnd}
       gateway={gateway}
       upgradeTiers={upgradeTiers}
+      trmDate={trmMeta.date}
       billingStatus={billingStatus}
     />
   )

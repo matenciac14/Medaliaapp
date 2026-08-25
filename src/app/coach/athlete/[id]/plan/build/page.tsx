@@ -25,7 +25,7 @@ export default async function PlanBuildPage({
   })
   if (!athlete) redirect('/coach/athletes')
 
-  const [plan, gymTemplates] = await Promise.all([
+  const [plan, gymTemplates, nutritionPlan, assignedWorkout] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId: athleteId, status: 'ACTIVE' },
       include: {
@@ -52,6 +52,27 @@ export default async function PlanBuildPage({
           where: { isRestDay: false },
           orderBy: { order: 'asc' },
           include: { exercises: { include: { exercise: { select: { name: true } } }, orderBy: { order: 'asc' } } },
+        },
+      },
+    }),
+    prisma.nutritionPlan.findUnique({
+      where: { userId: athleteId },
+      select: {
+        targetKcalHard: true, targetKcalEasy: true, targetKcalRest: true,
+        proteinG: true, carbsHardG: true, carbsEasyG: true, fatG: true,
+      },
+    }),
+    prisma.assignedWorkout.findFirst({
+      where: { athleteId, isActive: true },
+      include: {
+        template: {
+          include: {
+            days: {
+              where: { isRestDay: false },
+              orderBy: { order: 'asc' },
+              include: { exercises: { include: { exercise: { select: { name: true } } }, orderBy: { order: 'asc' } } },
+            },
+          },
         },
       },
     }),
@@ -108,12 +129,29 @@ export default async function PlanBuildPage({
     })),
   }))
 
+  const assignedRoutineData = assignedWorkout
+    ? {
+        id: assignedWorkout.id,
+        name: assignedWorkout.template.name,
+        daysPerWeek: assignedWorkout.template.daysPerWeek,
+        days: assignedWorkout.template.days.map(d => ({
+          id: d.id,
+          dayOfWeek: d.dayOfWeek,
+          label: d.label,
+          muscleGroups: d.muscleGroups,
+          exerciseCount: d.exercises.length,
+        })),
+      }
+    : null
+
   return (
     <PlanBuilderClient
       athleteId={athleteId}
       athleteName={athlete.name ?? 'Atleta'}
       initialPlan={planData}
       gymTemplates={gymTemplatesData}
+      nutritionPlan={nutritionPlan}
+      assignedRoutine={assignedRoutineData}
     />
   )
 }

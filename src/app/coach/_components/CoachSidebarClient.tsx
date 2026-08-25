@@ -8,13 +8,12 @@ import { cn } from '@/lib/utils'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
-type CoachSpecialty = 'RUNNING' | 'GYM' | 'NUTRITION' | 'ALL'
-type Props = { coachName: string; specialty: CoachSpecialty }
+type Props = { coachName: string; specialties: string[] }
 
-function showGym(sp: CoachSpecialty)       { return sp === 'GYM' || sp === 'ALL' }
-function showNutrition(sp: CoachSpecialty) { return sp === 'NUTRITION' || sp === 'ALL' }
+function hasGym(sp: string[])       { return sp.includes('GYM') || sp.length === 0 }
+function hasNutrition(sp: string[]) { return sp.includes('NUTRITION') || sp.length === 0 }
 
-export default function CoachSidebarClient({ coachName, specialty }: Props) {
+export default function CoachSidebarClient({ coachName, specialties }: Props) {
   const pathname = usePathname()
   const { t } = useLanguage()
   const s = t.app.sidebar
@@ -23,19 +22,19 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
   const allNavLinks = [
     { href: '/coach/dashboard', label: 'Dashboard',      icon: LayoutDashboard, always: true   },
     { href: '/coach/athletes',  label: s.myAthletes,     icon: Users,           always: true   },
-    { href: '/coach/gym',       label: s.gym,            icon: Dumbbell,        show: showGym(specialty)       },
-    { href: '/coach/nutrition', label: 'Nutrición',      icon: Salad,           show: showNutrition(specialty) },
+    { href: '/coach/gym',       label: s.gym,            icon: Dumbbell,        show: hasGym(specialties)       },
+    { href: '/coach/nutrition', label: 'Nutrición',      icon: Salad,           show: hasNutrition(specialties) },
     { href: '/coach/profile',   label: 'Mi Perfil',      icon: Globe,           always: true   },
     { href: '/coach/finanzas',  label: 'Finanzas',       icon: Wallet,          always: true   },
     { href: '/coach/invite',    label: 'Invitar atleta', icon: UserPlus,        always: true   },
-    { href: '/coach/settings',  label: s.settings,       icon: Settings,        always: true   },
+    { href: '/coach/settings/plan', label: 'Mi plan',    icon: Settings,        always: true   },
   ]
   const navLinks = allNavLinks.filter(l => l.always || l.show)
 
-  // Mobile: 5 tabs planos — respeta especialidad en tab de herramientas
-  const mobileTool = showGym(specialty)
+  // Mobile: 5 tabs planos — respeta especialidades en tab de herramientas
+  const mobileTool = hasGym(specialties)
     ? { href: '/coach/gym',       label: s.gym,       icon: Dumbbell }
-    : showNutrition(specialty)
+    : hasNutrition(specialties)
     ? { href: '/coach/nutrition', label: 'Nutrición', icon: Salad    }
     : { href: '/coach/athletes',  label: s.myAthletes, icon: Users   }
 
@@ -48,7 +47,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
   ]
 
   function isActive(href: string) {
-    const exactMatch = ['/coach/dashboard', '/coach/athletes', '/coach/invite', '/coach/settings', '/coach/finanzas', '/coach/nutrition']
+    const exactMatch = ['/coach/dashboard', '/coach/athletes', '/coach/invite', '/coach/finanzas', '/coach/nutrition']
     return exactMatch.includes(href) ? pathname === href : pathname.startsWith(href)
   }
 
@@ -56,7 +55,7 @@ export default function CoachSidebarClient({ coachName, specialty }: Props) {
     <>
       {/* ── Sidebar desktop ── */}
       <aside
-        className="hidden lg:flex lg:flex-col w-64 fixed inset-y-0 left-0 z-10 shadow-lg"
+        className="hidden lg:flex lg:flex-col w-60 fixed inset-y-0 left-0 z-10 shadow-lg"
         style={{ backgroundColor: '#1e3a5f' }}
       >
         <div className="px-6 py-5 border-b border-white/10">

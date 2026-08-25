@@ -3,6 +3,7 @@ import { jsToOurDow } from '@/lib/core/date-utils'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 
 export async function GET(req: NextRequest) {
@@ -132,7 +133,7 @@ export async function GET(req: NextRequest) {
           equipment: we.exercise.equipment,
           mechanic: we.exercise.mechanic,
           description: we.exercise.description,
-          gif: we.exercise.gifStoredUrl ?? we.exercise.gifUrl ?? null,
+          gif: resolveExerciseGifUrl(we.exercise.id, we.exercise.gifStoredUrl, we.exercise.gifUrl),
         },
         previousLogs: (previousSession?.setLogs ?? [])
           .filter(sl => sl.workoutExerciseId === we.id)
@@ -140,6 +141,7 @@ export async function GET(req: NextRequest) {
             setNumber: sl.setNumber,
             weightKg: sl.weightKg,
             repsCompleted: sl.repsCompleted,
+            completed: sl.completed,
           })),
       })),
       previousLogs: previousSession?.setLogs ?? [],
@@ -224,7 +226,7 @@ export async function GET(req: NextRequest) {
               equipment: we.exercise.equipment,
               mechanic: we.exercise.mechanic,
               description: we.exercise.description,
-              gif: we.exercise.gifStoredUrl ?? we.exercise.gifUrl ?? null,
+              gif: resolveExerciseGifUrl(we.exercise.id, we.exercise.gifStoredUrl, we.exercise.gifUrl),
             },
             previousLogs: (previousSession?.setLogs ?? [])
               .filter(sl => sl.workoutExerciseId === we.id)
@@ -232,6 +234,7 @@ export async function GET(req: NextRequest) {
                 setNumber: sl.setNumber,
                 weightKg: sl.weightKg,
                 repsCompleted: sl.repsCompleted,
+                completed: sl.completed,
               })),
           })),
           previousLogs: previousSession?.setLogs ?? [],

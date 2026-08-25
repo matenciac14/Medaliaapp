@@ -16,8 +16,8 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
 const TEMPLATE_PREVIEW: Record<string, { weeks: number; description: string; phases: string[] }> = {
   RACE_5K:            { weeks: 8,  description: 'Intervalos progresivos + fartlek semanal.', phases: ['BASE 3 sem', 'DESARROLLO 3 sem', 'AFINAMIENTO 2 sem'] },
   RACE_10K:           { weeks: 12, description: 'Volumen aeróbico + tempo runs y series.', phases: ['BASE 4 sem', 'DESARROLLO 5 sem', 'ESPECÍFICO 2 sem', 'AFINAMIENTO 1 sem'] },
-  STRENGTH_TRAINING:  { weeks: 16, description: 'Splits Push/Pull/Legs con progresión de cargas.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
-  BODY_RECOMPOSITION: { weeks: 16, description: 'Fuerza + cardio moderado para recomposición.', phases: ['BASE 4 sem', 'DESARROLLO 6 sem', 'ESPECÍFICO 4 sem', 'AFINAMIENTO 2 sem'] },
+  STRENGTH_TRAINING:  { weeks: 12, description: 'Splits Push/Pull/Legs con progresión de cargas.', phases: ['BASE 3 sem', 'DESARROLLO 5 sem', 'ESPECÍFICO 3 sem', 'AFINAMIENTO 1 sem'] },
+  BODY_RECOMPOSITION: { weeks: 12, description: 'Fuerza + cardio moderado para recomposición.', phases: ['BASE 3 sem', 'DESARROLLO 5 sem', 'ESPECÍFICO 3 sem', 'AFINAMIENTO 1 sem'] },
 }
 
 const INTENSITY_SCORE: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1, REST: 0 }
@@ -25,6 +25,24 @@ const INTENSITY_SCORE: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1, 
 function weekLoadScore(sessions: { intensity: string }[]) {
   return sessions.reduce((sum, s) => sum + (INTENSITY_SCORE[s.intensity] ?? 2), 0)
 }
+
+const SPORT_LABELS: Record<string, string> = {
+  RUNNING: 'Running', STRENGTH: 'Fuerza', CYCLING: 'Ciclismo',
+  SWIMMING: 'Natación', TRIATHLON: 'Triatlón', FOOTBALL: 'Fútbol',
+}
+
+const EXP_LABELS: Record<string, string> = {
+  BEGINNER: 'Principiante', INTERMEDIATE: 'Intermedio', ADVANCED: 'Avanzado',
+}
+
+// ─── Discipline helpers ────────────────────────────────────────────────────
+
+function coachCanDo(specialties: string[], discipline: string): boolean {
+  if (specialties.length === 0) return true // empty = ALL (backward compat)
+  return specialties.includes(discipline)
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
 
 type SessionDraft = { durationMin: number; type: string; zoneTarget: string; detailText: string; structure: string }
 
@@ -64,7 +82,140 @@ interface PlanTabProps {
   handleNoteChange: (sessionId: string, value: string) => void
   handleSaveNote: (sessionId: string) => void
   handleSaveSession: (sessionId: string) => void
+  coachSpecialties: string[]
 }
+
+// ─── Athlete Profile Reference ─────────────────────────────────────────────
+
+function AthleteProfileReference({ healthProfile }: { healthProfile: HealthProfileData }) {
+  if (!healthProfile) return null
+  return (
+    <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Perfil del atleta para referencia</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+        <div><span className="text-gray-400">Edad:</span> <strong className="text-gray-800">{healthProfile.age} años</strong></div>
+        <div><span className="text-gray-400">Peso:</span> <strong className="text-gray-800">{healthProfile.weightKg} kg</strong></div>
+        <div><span className="text-gray-400">Altura:</span> <strong className="text-gray-800">{healthProfile.heightCm} cm</strong></div>
+        {healthProfile.hrResting && (
+          <div><span className="text-gray-400">FC reposo:</span> <strong className="text-gray-800">{healthProfile.hrResting} bpm</strong></div>
+        )}
+        {healthProfile.sport && (
+          <div><span className="text-gray-400">Deporte:</span> <strong className="text-gray-800">{SPORT_LABELS[healthProfile.sport] ?? healthProfile.sport}</strong></div>
+        )}
+        {healthProfile.experienceLevel && (
+          <div><span className="text-gray-400">Nivel:</span> <strong className="text-gray-800">{EXP_LABELS[healthProfile.experienceLevel] ?? healthProfile.experienceLevel}</strong></div>
+        )}
+        {healthProfile.weightGoalKg && (
+          <div><span className="text-gray-400">Meta peso:</span> <strong className="text-gray-800">{healthProfile.weightGoalKg} kg</strong></div>
+        )}
+        {healthProfile.ftp != null && (
+          <div><span className="text-gray-400">FTP:</span> <strong className="text-gray-800">{healthProfile.ftp} W</strong></div>
+        )}
+      </div>
+      {healthProfile.injuries.length > 0 && (
+        <div className="mt-3 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <span className="shrink-0">⚠</span>
+          <span>Lesiones reportadas: <strong>{healthProfile.injuries.join(', ')}</strong></span>
+        </div>
+      )}
+      {healthProfile.conditions.length > 0 && (
+        <div className="mt-2 flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span className="shrink-0">⚕</span>
+          <span>Condiciones médicas: <strong>{healthProfile.conditions.join(', ')}</strong></span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Discipline Cards (empty state) ────────────────────────────────────────
+
+function DisciplineCards({
+  athleteId, coachSpecialties, onSelectRunning, onSelectCopy, loadAvailablePlans, availablePlans,
+}: {
+  athleteId: string
+  coachSpecialties: string[]
+  onSelectRunning: () => void
+  onSelectCopy: () => void
+  loadAvailablePlans: () => void
+  availablePlans: { planId: string }[]
+}) {
+  const canRunning = coachCanDo(coachSpecialties, 'RUNNING')
+  const canGym = coachCanDo(coachSpecialties, 'GYM')
+  const canNutrition = coachCanDo(coachSpecialties, 'NUTRITION')
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8">
+      <div className="text-center mb-6">
+        <div className="text-4xl mb-3">📋</div>
+        <h2 className="text-lg font-semibold text-gray-700 mb-1">Sin plan activo</h2>
+        <p className="text-gray-400 text-sm">Elige qué tipo de programa quieres asignarle a este asesorado</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        {/* Running plan */}
+        {canRunning && (
+          <button
+            onClick={onSelectRunning}
+            className="group text-left bg-blue-50/50 hover:bg-blue-50 border border-blue-100 rounded-xl p-5 transition-colors"
+          >
+            <div className="text-2xl mb-2">🏃</div>
+            <h3 className="font-semibold text-gray-800 mb-1">Plan de Running</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Crea un plan periodizado por semanas con zonas FC, distancia y tempo runs
+            </p>
+            <span className="text-xs font-semibold text-[#ea580c] group-hover:underline">Seleccionar →</span>
+          </button>
+        )}
+
+        {/* Gym routine */}
+        {canGym && (
+          <Link
+            href={`/coach/gym?assign=${athleteId}`}
+            className="group text-left bg-purple-50/50 hover:bg-purple-50 border border-purple-100 rounded-xl p-5 transition-colors"
+          >
+            <div className="text-2xl mb-2">🏋️</div>
+            <h3 className="font-semibold text-gray-800 mb-1">Rutina de Fuerza</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Asigna una rutina de ejercicios con series, cargas y progresión automática
+            </p>
+            <span className="text-xs font-semibold text-[#ea580c] group-hover:underline">Ir a rutinas →</span>
+          </Link>
+        )}
+
+        {/* Nutrition plan */}
+        {canNutrition && (
+          <Link
+            href={`/coach/nutrition?assign=${athleteId}`}
+            className="group text-left bg-green-50/50 hover:bg-green-50 border border-green-100 rounded-xl p-5 transition-colors"
+          >
+            <div className="text-2xl mb-2">🍽️</div>
+            <h3 className="font-semibold text-gray-800 mb-1">Plan Nutricional</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Asigna una plantilla de alimentación adaptable al tipo de día del atleta
+            </p>
+            <span className="text-xs font-semibold text-[#ea580c] group-hover:underline">Ir a nutrición →</span>
+          </Link>
+        )}
+
+        {/* Copy from another athlete */}
+        <button
+          onClick={() => { onSelectCopy(); if (availablePlans.length === 0) loadAvailablePlans() }}
+          className="group text-left bg-amber-50/50 hover:bg-amber-50 border border-amber-100 rounded-xl p-5 transition-colors"
+        >
+          <div className="text-2xl mb-2">📋</div>
+          <h3 className="font-semibold text-gray-800 mb-1">Copiar de otro atleta</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Duplica un plan existente de otro asesorado, ajustando las fechas al nuevo inicio
+          </p>
+          <span className="text-xs font-semibold text-[#ea580c] group-hover:underline">Seleccionar →</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────
 
 export default function PlanTab({
   athleteId,
@@ -102,6 +253,7 @@ export default function PlanTab({
   handleNoteChange,
   handleSaveNote,
   handleSaveSession,
+  coachSpecialties,
 }: PlanTabProps) {
   return (
     <div className="space-y-6">
@@ -132,158 +284,131 @@ export default function PlanTab({
       </div>
 
       {!activePlan ? (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8">
+        <div className="space-y-4">
+          {/* Athlete profile — always visible in empty state */}
+          <AthleteProfileReference healthProfile={healthProfile} />
+
           {!creatingPlan ? (
-            <div className="text-center">
-              <div className="text-4xl mb-3">📋</div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-1">Sin plan activo</h2>
-              <p className="text-gray-400 text-sm mb-5">Crea el plan de entrenamiento para este asesorado</p>
-              <button
-                onClick={() => setCreatingPlan(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#1e3a5f' }}
-              >
-                + Crear plan
-              </button>
-            </div>
+            <DisciplineCards
+              athleteId={athleteId}
+              coachSpecialties={coachSpecialties}
+              onSelectRunning={() => { setPlanMode('template'); setCreatingPlan(true) }}
+              onSelectCopy={() => { setPlanMode('copy'); setCreatingPlan(true) }}
+              loadAvailablePlans={loadAvailablePlans}
+              availablePlans={availablePlans}
+            />
           ) : (
-            <div className="max-w-md mx-auto space-y-5">
-              <h2 className="font-semibold text-gray-900 text-lg">Crear plan de entrenamiento</h2>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8">
+              <div className="max-w-md mx-auto space-y-5">
+                <h2 className="font-semibold text-gray-900 text-lg">
+                  {planMode === 'template' ? 'Crear plan de entrenamiento' : 'Copiar plan de otro atleta'}
+                </h2>
 
-              {/* Mode toggle */}
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-                <button
-                  onClick={() => setPlanMode('template')}
-                  className="flex-1 py-2 font-medium transition-colors"
-                  style={planMode === 'template' ? { backgroundColor: '#1e3a5f', color: '#fff' } : { color: '#6b7280', backgroundColor: '#fff' }}
-                >
-                  Desde template
-                </button>
-                <button
-                  onClick={() => { setPlanMode('copy'); if (availablePlans.length === 0) loadAvailablePlans() }}
-                  className="flex-1 py-2 font-medium transition-colors border-l border-gray-200"
-                  style={planMode === 'copy' ? { backgroundColor: '#1e3a5f', color: '#fff' } : { color: '#6b7280', backgroundColor: '#fff' }}
-                >
-                  Copiar de otro atleta
-                </button>
-              </div>
-
-              {/* Perfil del atleta para referencia */}
-              {healthProfile && (
-                <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 grid grid-cols-2 gap-2">
-                  <span>Edad: <strong>{healthProfile.age} años</strong></span>
-                  <span>Peso: <strong>{healthProfile.weightKg} kg</strong></span>
-                  {healthProfile.hrResting && <span>FC reposo: <strong>{healthProfile.hrResting} bpm</strong></span>}
-                  {healthProfile.injuries.length > 0 && (
-                    <span className="col-span-2 text-amber-600">Lesiones: {healthProfile.injuries.join(', ')}</span>
-                  )}
-                </div>
-              )}
-
-              {planMode === 'template' ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo del plan</label>
-                    <select
-                      value={planGoalType}
-                      onChange={(e) => setPlanGoalType(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    >
-                      <option value="RACE_5K">Carrera 5K (8 semanas)</option>
-                      <option value="RACE_10K">Carrera 10K (12 semanas)</option>
-                      <option value="STRENGTH_TRAINING">Entrenamiento de fuerza</option>
-                      <option value="BODY_RECOMPOSITION">Recomposición corporal (16 semanas)</option>
-                      <option value="WEIGHT_LOSS">Pérdida de peso</option>
-                      <option value="GENERAL_FITNESS">Condición general</option>
-                    </select>
-                    {TEMPLATE_PREVIEW[planGoalType] && (() => {
-                      const info = TEMPLATE_PREVIEW[planGoalType]
-                      return (
-                        <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold text-[#1e3a5f]">{info.weeks} semanas</span>
-                            <span className="text-gray-400">·</span>
-                            <span className="text-gray-600 text-xs">{info.description}</span>
+                {planMode === 'template' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo del plan</label>
+                      <select
+                        value={planGoalType}
+                        onChange={(e) => setPlanGoalType(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      >
+                        <option value="RACE_5K">Carrera 5K (8 semanas)</option>
+                        <option value="RACE_10K">Carrera 10K (12 semanas)</option>
+                        <option value="STRENGTH_TRAINING">Entrenamiento de fuerza (12 semanas)</option>
+                        <option value="BODY_RECOMPOSITION">Recomposición corporal (12 semanas)</option>
+                        <option value="WEIGHT_LOSS">Pérdida de peso</option>
+                        <option value="GENERAL_FITNESS">Condición general</option>
+                      </select>
+                      {TEMPLATE_PREVIEW[planGoalType] && (() => {
+                        const info = TEMPLATE_PREVIEW[planGoalType]
+                        return (
+                          <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-semibold text-[#1e3a5f]">{info.weeks} semanas</span>
+                              <span className="text-gray-400">·</span>
+                              <span className="text-gray-600 text-xs">{info.description}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {info.phases.map(p => (
+                                <span key={p} className="text-[10px] px-2 py-0.5 bg-white border border-blue-100 rounded-full text-[#1e3a5f] font-medium">{p}</span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {info.phases.map(p => (
-                              <span key={p} className="text-[10px] px-2 py-0.5 bg-white border border-blue-100 rounded-full text-[#1e3a5f] font-medium">{p}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Días de entrenamiento por semana</label>
-                    <select
-                      value={planDaysPerWeek}
-                      onChange={(e) => setPlanDaysPerWeek(Number(e.target.value))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    >
-                      {[3, 4, 5, 6].map((d) => (
-                        <option key={d} value={d}>{d} días</option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {loadingPlans ? (
-                    <p className="text-sm text-gray-400 text-center py-4">Cargando planes disponibles...</p>
-                  ) : availablePlans.length === 0 ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                      No hay planes de otros atletas disponibles para copiar.
+                        )
+                      })()}
                     </div>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Plan de origen</label>
-                        <select
-                          value={copySourcePlanId}
-                          onChange={(e) => setCopySourcePlanId(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
-                        >
-                          {availablePlans.map((p) => (
-                            <option key={p.planId} value={p.planId}>
-                              {p.athleteName} — {p.planName} ({p.totalWeeks} sem{p.status === 'ACTIVE' ? ' · activo' : ''})
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1">El plan se copiará exactamente con las mismas sesiones, ajustando las fechas al nuevo inicio.</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
-                        <input
-                          type="date"
-                          value={copyStartDate}
-                          onChange={(e) => setCopyStartDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
-                        />
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
 
-              {planError && <p className="text-sm text-red-500">{planError}</p>}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Días de entrenamiento por semana</label>
+                      <select
+                        value={planDaysPerWeek}
+                        onChange={(e) => setPlanDaysPerWeek(Number(e.target.value))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      >
+                        {[3, 4, 5, 6].map((d) => (
+                          <option key={d} value={d}>{d} días</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {loadingPlans ? (
+                      <p className="text-sm text-gray-400 text-center py-4">Cargando planes disponibles...</p>
+                    ) : availablePlans.length === 0 ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                        No hay planes de otros atletas disponibles para copiar.
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Plan de origen</label>
+                          <select
+                            value={copySourcePlanId}
+                            onChange={(e) => setCopySourcePlanId(e.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
+                          >
+                            {availablePlans.map((p) => (
+                              <option key={p.planId} value={p.planId}>
+                                {p.athleteName} — {p.planName} ({p.totalWeeks} sem{p.status === 'ACTIVE' ? ' · activo' : ''})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">El plan se copiará exactamente con las mismas sesiones, ajustando las fechas al nuevo inicio.</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                          <input
+                            type="date"
+                            value={copyStartDate}
+                            onChange={(e) => setCopyStartDate(e.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCreatingPlan(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={planMode === 'template' ? handleCreatePlan : handleCopyPlan}
-                  disabled={planGenerating || (planMode === 'copy' && (!copySourcePlanId || availablePlans.length === 0))}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: '#1e3a5f' }}
-                >
-                  {planGenerating ? 'Generando...' : planMode === 'template' ? 'Generar plan' : 'Copiar plan →'}
-                </button>
+                {planError && <p className="text-sm text-red-500">{planError}</p>}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCreatingPlan(false)}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    onClick={planMode === 'template' ? handleCreatePlan : handleCopyPlan}
+                    disabled={planGenerating || (planMode === 'copy' && (!copySourcePlanId || availablePlans.length === 0))}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                    style={{ backgroundColor: '#1e3a5f' }}
+                  >
+                    {planGenerating ? 'Generando...' : planMode === 'template' ? 'Generar plan' : 'Copiar plan →'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -370,6 +370,7 @@ export default async function ProgressPage() {
             ))}
           </div>
         </div>
+
       </div>
     )
   }
