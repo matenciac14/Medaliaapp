@@ -1007,8 +1007,8 @@ async function main() {
     const checkInData = [
       { week: 1, date: '2026-07-05', weightKg: 62.0, rpe: 6 },
       { week: 2, date: '2026-07-12', weightKg: 61.6, rpe: 7 },
-      { week: 3, date: '2026-07-19', weightKg: 61.3, rpe: 7 },
-      { week: 4, date: '2026-07-26', weightKg: 60.8, rpe: 8 },
+      { week: 3, date: '2026-07-19', weightKg: 61.3 },
+      { week: 4, date: '2026-07-26', weightKg: 60.8 },
     ]
 
     for (const ci of checkInData) {
@@ -1018,8 +1018,7 @@ async function main() {
           weekNumber: ci.week,
           recordedAt: new Date(ci.date + 'T10:00:00.000Z'),
           weightKg: ci.weightKg,
-          rpe: ci.rpe,
-          hrResting: 60 - ci.week, // slight improvement over weeks
+          hrResting: 60 - ci.week,
           energyLevel: ci.week <= 2 ? 4 : 3,
         },
       }).catch(() => {}) // skip if duplicate
