@@ -3125,6 +3125,8 @@ export const GROUPS: RoadmapGroup[] = [
     period: 'Agosto 2026',
     phases: [
       {
+        id: 'security',
+        period: 'Agosto 2026',
         label: 'Security',
         items: [
           { title: 'SEC-01 — Feature gates en checkin + sessions endpoints', done: true, priority: 'P0', note: 'requireFeature(mobile.features, "checkin") en POST /api/mobile/checkin. requireFeature(mobile.features, "plan") en GET/PATCH /api/mobile/sessions/[sessionId]. Usuarios Free bloqueados correctamente.' },
@@ -3136,6 +3138,8 @@ export const GROUPS: RoadmapGroup[] = [
         ],
       },
       {
+        id: 'performance',
+        period: 'Agosto 2026',
         label: 'Performance',
         items: [
           { title: 'PERF-01 — Limit en weeklyCheckIn query (sin cap = scan completo)', done: true, priority: 'P1', note: 'api/mobile/progress/route.ts: weeklyCheckIn.findMany sin take → scan completo para atletas con 2+ años de datos. Añadido take: 104 (2 años). gymSession.findMany acotado a últimos 365 días.' },
