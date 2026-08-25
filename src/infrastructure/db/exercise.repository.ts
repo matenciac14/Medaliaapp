@@ -4,13 +4,10 @@
 import type { IExerciseRepository } from '@/domain/exercise/ports/exercise.repository'
 import type { Exercise, ExerciseFilters, UpsertExerciseData } from '@/domain/exercise/exercise.types'
 import { prisma } from '@/lib/db/prisma'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 const PAGE_SIZE_DEFAULT = 20
 const PAGE_SIZE_MAX = 100
-
-function resolveGif(gifStoredUrl: string | null, gifUrl: string | null): string {
-  return gifStoredUrl ?? gifUrl ?? ''
-}
 
 export class PrismaExerciseRepository implements IExerciseRepository {
   async findAll(filters: ExerciseFilters = {}): Promise<{ exercises: Exercise[]; total: number }> {
@@ -164,7 +161,7 @@ export class PrismaExerciseRepository implements IExerciseRepository {
       secondaryMuscles: row.secondaryMuscles,
       instructions: row.instructions,
       instructionsEs: row.instructionsEs,
-      gif: resolveGif(row.gifStoredUrl, row.gifUrl),
+      gif: resolveExerciseGifUrl(row.id, row.gifStoredUrl, row.gifUrl) ?? '',
       source: row.source,
       syncedAt: row.syncedAt ?? undefined,
     }

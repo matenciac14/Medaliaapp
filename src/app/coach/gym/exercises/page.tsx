@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 import ExerciseForm from './_components/ExerciseForm'
 import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
 import ExercisesGrid from './_components/ExercisesGrid'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 interface Props {
   searchParams: Promise<{ bodyPart?: string; q?: string; adding?: string; page?: string }>
@@ -218,7 +219,7 @@ export default async function ExercisesPage({ searchParams }: Props) {
             </p>
           </div>
         ) : (
-          <ExercisesGrid exercises={exercises} />
+          <ExercisesGrid exercises={exercises.map(ex => ({ ...ex, gif: resolveExerciseGifUrl(ex.id, ex.gifStoredUrl, ex.gifUrl) }))} />
         )}
 
         {/* Pagination */}

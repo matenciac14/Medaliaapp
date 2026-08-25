@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 export async function GET(
   req: NextRequest,
@@ -19,7 +20,7 @@ export async function GET(
         include: {
           workoutExercise: {
             include: {
-              exercise: { select: { name: true, bodyPart: true, target: true, equipment: true, gifUrl: true, gifStoredUrl: true } },
+              exercise: { select: { id: true, name: true, bodyPart: true, target: true, equipment: true, gifUrl: true, gifStoredUrl: true } },
             },
           },
         },
@@ -65,7 +66,12 @@ export async function GET(
       repsCompleted: sl.repsCompleted,
       completed: sl.completed,
       notes: sl.notes,
-      exercise: sl.workoutExercise?.exercise ?? { name: sl.exerciseName ?? 'Ejercicio', id: sl.workoutExerciseId ?? '' },
+      exercise: sl.workoutExercise?.exercise
+        ? {
+            ...sl.workoutExercise.exercise,
+            gif: resolveExerciseGifUrl(sl.workoutExercise.exercise.id, sl.workoutExercise.exercise.gifStoredUrl, sl.workoutExercise.exercise.gifUrl),
+          }
+        : { name: sl.exerciseName ?? 'Ejercicio', id: sl.workoutExerciseId ?? '' },
       workoutExerciseId: sl.workoutExerciseId,
     })),
   })

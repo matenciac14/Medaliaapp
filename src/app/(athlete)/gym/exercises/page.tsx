@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 import AthleteExercisesGrid from './_components/AthleteExercisesGrid'
 
 interface Props {
@@ -136,7 +137,7 @@ export default async function AthleteExercisesPage({ searchParams }: Props) {
             <p className="text-sm mt-1">Intenta con otros términos de búsqueda</p>
           </div>
         ) : (
-          <AthleteExercisesGrid exercises={exercises} />
+          <AthleteExercisesGrid exercises={exercises.map(ex => ({ ...ex, gif: resolveExerciseGifUrl(ex.id, ex.gifStoredUrl, ex.gifUrl) }))} />
         )}
 
         {/* Pagination */}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { translateMuscleGroup } from '@/lib/gym-labels'
+import MuscleMapWeb, { buildSessionMuscleData } from '@/components/MuscleMapWeb'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
@@ -672,6 +673,20 @@ export default function GymSessionPage() {
           <p className="text-xs text-gray-500">{completedSets}/{totalSets} series</p>
         </div>
       </div>
+
+      {/* Muscle map — músculos que trabaja esta sesión */}
+      {workoutDay?.muscleGroups && workoutDay.muscleGroups.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex justify-center">
+          <MuscleMapWeb
+            data={buildSessionMuscleData([
+              ...workoutDay.muscleGroups,
+              ...exercises.flatMap(we => we.exercise.muscleGroups),
+            ])}
+            mode="session"
+            compact={true}
+          />
+        </div>
+      )}
 
       {/* Progress bar */}
       <div>

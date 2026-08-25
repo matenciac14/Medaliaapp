@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { LazyGif } from '@/components/LazyGif'
 import type { Exercise } from '@/domain/exercise/exercise.types'
 
 type GridExercise = {
@@ -11,8 +12,7 @@ type GridExercise = {
   bodyPart: string
   target: string
   equipment: string
-  gifUrl: string | null
-  gifStoredUrl: string | null
+  gif: string | null
   coachId: string | null
 }
 
@@ -35,7 +35,7 @@ export default function ExercisesGrid({ exercises }: { exercises: GridExercise[]
       {/* Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {exercises.map(ex => {
-          const gif = ex.gifStoredUrl ?? ex.gifUrl ?? null
+          const gif = ex.gif
           return (
             <button
               key={ex.id}
@@ -45,11 +45,10 @@ export default function ExercisesGrid({ exercises }: { exercises: GridExercise[]
               {/* GIF thumbnail */}
               <div className="bg-gray-50 aspect-square overflow-hidden">
                 {gif ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <LazyGif
                     src={gif}
                     alt={ex.nameEs ?? ex.name}
-                    loading="lazy"
+                    containerClassName="w-full h-full"
                     className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

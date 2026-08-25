@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/db/prisma'
 import { translateBodyPart } from '@/lib/gym-labels'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       id: e.id,
       name: e.nameEs ?? e.name,
       bodyPart: translateBodyPart(e.bodyPart),
-      gif: e.gifStoredUrl ?? e.gifUrl ?? null,
+      gif: resolveExerciseGifUrl(e.id, e.gifStoredUrl, e.gifUrl),
     })),
   })
 }
