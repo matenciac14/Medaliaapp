@@ -80,7 +80,7 @@ export default function AthleteTabs({
     setToggling((p) => ({ ...p, [athleteId]: true }))
     setStatuses((p) => ({ ...p, [athleteId]: next }))
     try {
-      const res = await fetch(`/api/coach/athlete/${athleteId}/status`, {
+      const res = await fetch(`/api/coach/athletes/${athleteId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
@@ -398,7 +398,7 @@ export default function AthleteTabs({
                             onToggleStatus={() => handleToggleStatus(a.id)}
                           />
                           <Link
-                            href={`/coach/athlete/${a.id}`}
+                            href={`/coach/athletes/${a.id}`}
                             className="font-semibold text-white hover:opacity-90 transition-opacity whitespace-nowrap"
                             style={{ fontSize: 11, backgroundColor: '#1e3a5f', padding: '6px 10px', borderRadius: 6 }}
                           >
@@ -539,7 +539,7 @@ function MobileAthleteCard({
             {currentStatus === 'ACTIVE' ? 'ACTIVO' : 'PAUSADO'}
           </span>
           <Link
-            href={`/coach/athlete/${athlete.id}`}
+            href={`/coach/athletes/${athlete.id}`}
             className="font-semibold text-white hover:opacity-90"
             style={{ fontSize: 11, backgroundColor: '#1e3a5f', padding: '6px 10px', borderRadius: 6 }}
           >

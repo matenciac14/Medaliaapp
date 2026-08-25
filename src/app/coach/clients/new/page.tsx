@@ -256,7 +256,7 @@ export default function CreateAthletePage() {
               Agregar otro
             </button>
             <Link
-              href={`/coach/athlete/${athleteId}`}
+              href={`/coach/athletes/${athleteId}`}
               className="flex-1 py-2.5 text-sm font-semibold text-white rounded-lg text-center transition-colors hover:opacity-90"
               style={{ backgroundColor: '#1e3a5f' }}
             >

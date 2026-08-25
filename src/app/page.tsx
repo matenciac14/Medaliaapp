@@ -70,36 +70,19 @@ export default function Home() {
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <span className="text-2xl font-bold text-[#1e3a5f]">Medaliq</span>
+
+          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-            <a
-              href="#como-funciona"
-              className="hover:text-[#1e3a5f] transition-colors"
-            >
-              {l.nav.howItWorks}
-            </a>
-            <a
-              href="#precios"
-              className="hover:text-[#1e3a5f] transition-colors"
-            >
-              {l.nav.pricing}
-            </a>
-            <a
-              href="#entrenadores"
-              className="hover:text-[#1e3a5f] transition-colors"
-            >
-              {l.nav.forTrainers}
-            </a>
+            <a href="#como-funciona" className="hover:text-[#1e3a5f] transition-colors">{l.nav.howItWorks}</a>
+            <a href="#precios" className="hover:text-[#1e3a5f] transition-colors">{l.nav.pricing}</a>
+            <a href="#entrenadores" className="hover:text-[#1e3a5f] transition-colors">{l.nav.forTrainers}</a>
           </div>
+
+          {/* Right actions */}
           <div className="flex items-center gap-3">
             <LanguageSwitcher variant="light" />
-            <a
-              href="/login"
-              className="hidden sm:block text-xs text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              Iniciar sesión
-            </a>
-            <a href="/register" className="block w-full sm:w-auto">
-              <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold px-4 sm:px-5 py-2 rounded-lg transition-transform hover:scale-105 active:scale-95 text-sm whitespace-nowrap">
+            <a href="/login">
+              <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold rounded-lg transition-transform hover:scale-105 active:scale-95 whitespace-nowrap text-xs px-3 py-2 sm:text-sm sm:px-5">
                 <span className="sm:hidden">Reservar</span>
                 <span className="hidden sm:inline">{l.nav.cta}</span>
               </button>
@@ -163,10 +146,10 @@ export default function Home() {
               ).map(({ Icon, label }) => (
                 <span
                   key={label}
-                  className="flex items-center gap-[5px] bg-white/12 border border-white/25 text-white font-medium px-[12px] py-[5px] rounded-full backdrop-blur-sm"
+                  className="flex items-center gap-[5px] bg-white/[0.14] text-white font-medium px-[10px] py-[5px] rounded-full backdrop-blur-sm"
                 >
                   <Icon size={14} strokeWidth={2} className="shrink-0" />
-                  <span className="text-[12px]">{label}</span>
+                  <span className="text-[11px]">{label}</span>
                 </span>
               ))}
             </div>
@@ -178,8 +161,8 @@ export default function Home() {
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
-              <a href="/register" className="block w-full sm:w-auto">
-                <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold px-9 py-4 rounded-xl text-[18px] transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
+              <a href="/login" className="block w-full sm:w-auto">
+                <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-[18px] px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                   {l.hero.cta1}
                 </button>
               </a>
@@ -189,12 +172,9 @@ export default function Home() {
               >
                 {l.hero.cta2}
               </a>
-              <div className="flex items-center gap-2 mt-2 anim-fade-in delay-500">
-                <div className="flex items-center gap-2 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full">
-                  <span className="text-[#34d399] text-xs font-bold">✓ 0% de comisión</span>
-                  <span className="text-white/40 text-xs">·</span>
-                  <span className="text-blue-200 text-xs">tus ingresos son tuyos, siempre</span>
-                </div>
+              <div className="flex items-center gap-2 mt-1 anim-fade-in delay-500">
+                <span className="text-[#ea580c] text-xs">★★★★★</span>
+                <span className="text-blue-200 text-xs">8 entrenadores ya reservaron su lugar</span>
               </div>
             </div>
           </div>
@@ -316,15 +296,15 @@ export default function Home() {
       </section>
 
       {/* 2c · El caos de hoy */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-12 sm:py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
             <h2 className="text-[32px] sm:text-4xl font-bold text-[#1e3a5f] mb-4 max-w-2xl mx-auto leading-tight">
               {l.pain.title}
             </h2>
-            <p className="text-gray-500 text-base mb-12">{l.pain.subtitle}</p>
+            <p className="text-gray-500 text-base mb-8 sm:mb-12">{l.pain.subtitle}</p>
           </RevealOnScroll>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 mb-8 sm:mb-10">
             {[
               {
                 icon: <FileSpreadsheet size={20} />,
@@ -346,7 +326,7 @@ export default function Home() {
               },
             ].map((card) => (
               <RevealOnScroll key={card.title} delay={card.delay}>
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-left h-full">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 sm:p-6 text-left h-full">
                   <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4 text-red-400">
                     {card.icon}
                   </div>
@@ -372,13 +352,13 @@ export default function Home() {
       </section>
 
       {/* 3 · Profiles */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-12 sm:py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
               {l.profiles.title}
             </h2>
-            <p className="text-center text-gray-500 mb-12 text-base">
+            <p className="text-center text-gray-500 mb-8 sm:mb-12 text-base">
               {l.profiles.subtitle}
             </p>
           </RevealOnScroll>
@@ -405,10 +385,10 @@ export default function Home() {
       </section>
 
       {/* 4 · Para Entrenadores */}
-      <section id="entrenadores" className="py-20 px-4 bg-white">
+      <section id="entrenadores" className="py-12 sm:py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto">
           <RevealOnScroll>
-            <div className="text-center mb-12">
+            <div className="text-center mb-8 sm:mb-12">
               <div className="inline-block bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
                 {l.forCoaches.badge}
               </div>
@@ -421,7 +401,7 @@ export default function Home() {
             </div>
           </RevealOnScroll>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 mb-8 sm:mb-12">
             {[
               {
                 icon: <TrendingUp size={22} />,
@@ -443,7 +423,7 @@ export default function Home() {
               },
             ].map((card) => (
               <RevealOnScroll key={card.title} delay={card.delay}>
-                <div className="bg-gray-50 rounded-2xl p-6 text-left h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="bg-gray-50 rounded-2xl p-4 sm:p-6 text-left h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                   <div className="w-11 h-11 rounded-xl bg-[rgba(249,115,22,0.12)] flex items-center justify-center mb-4 text-[#ea580c]">
                     {card.icon}
                   </div>
@@ -768,7 +748,7 @@ export default function Home() {
 
           <RevealOnScroll delay={150}>
             <div className="text-center">
-              <a href="/register" className="block w-full sm:w-auto">
+              <a href="/login" className="block w-full sm:w-auto">
                 <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
                   {l.forCoaches.cta}
                 </button>
@@ -779,10 +759,10 @@ export default function Home() {
       </section>
 
       {/* 4b · Herramientas para coaches */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-12 sm:py-20 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <RevealOnScroll>
-            <div className="text-center mb-14">
+            <div className="text-center mb-8 sm:mb-14">
               <span className="inline-block bg-[#1e3a5f]/8 text-[#1e3a5f] text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-4">
                 Herramientas para coaches
               </span>
@@ -820,7 +800,7 @@ export default function Home() {
       </section>
 
       {/* 5 · Features */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-12 sm:py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4 leading-tight">
@@ -891,13 +871,13 @@ export default function Home() {
       </section>
 
       {/* 6 · Cómo funciona */}
-      <section id="como-funciona" className="py-20 px-4 bg-white">
+      <section id="como-funciona" className="py-12 sm:py-20 px-4 bg-white">
         <div className="max-w-3xl mx-auto">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a5f] mb-4">
               {l.howItWorks.title}
             </h2>
-            <p className="text-center text-gray-500 mb-14 text-base">
+            <p className="text-center text-gray-500 mb-8 sm:mb-14 text-base">
               {l.howItWorks.subtitle}
             </p>
           </RevealOnScroll>
@@ -951,10 +931,10 @@ export default function Home() {
       </section>
 
       {/* 6b · Flujo atleta B2C */}
-      <section className="py-20 px-4 bg-[#1e3a5f]">
+      <section className="py-12 sm:py-20 px-4 bg-[#1e3a5f]">
         <div className="max-w-5xl mx-auto">
           <RevealOnScroll>
-            <div className="text-center mb-12">
+            <div className="text-center mb-8 sm:mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 ¿Sin entrenador? Medaliq también es para ti.
               </h2>
@@ -982,7 +962,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/register" className="block mt-6">
+                <a href="/login" className="block mt-6">
                   <button className="w-full py-3 rounded-xl border border-white/30 text-white hover:bg-white/10 font-semibold transition-colors text-sm">
                     Crear cuenta gratis →
                   </button>
@@ -1007,7 +987,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/register" className="block mt-6">
+                <a href="/login" className="block mt-6">
                   <button className="w-full py-3 rounded-xl bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold transition-transform hover:scale-105 active:scale-95 text-sm anim-pulse-cta">
                     Probar Pro gratis →
                   </button>
@@ -1019,13 +999,13 @@ export default function Home() {
       </section>
 
       {/* 7b · Testimonios */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-12 sm:py-20 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
               {l.testimonials.title}
             </h2>
-            <p className="text-gray-500 text-base mb-12">
+            <p className="text-gray-500 text-base mb-8 sm:mb-12">
               {l.testimonials.subtitle}
             </p>
           </RevealOnScroll>
@@ -1092,7 +1072,7 @@ export default function Home() {
       </section>
 
       {/* ROI Calculator */}
-      <section className="py-16 px-4 bg-white">
+      <section className="py-10 sm:py-16 px-4 bg-white">
         <div className="max-w-3xl mx-auto">
           <RevealOnScroll>
             <ROICalculator />
@@ -1101,7 +1081,7 @@ export default function Home() {
       </section>
 
       {/* 7 · Pricing */}
-      <section id="precios" className="py-20 px-4 bg-gray-50">
+      <section id="precios" className="py-12 sm:py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto text-center">
           <RevealOnScroll>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f] mb-4">
@@ -1193,7 +1173,7 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="shrink-0">
-                  <a href="/register" className="block w-full sm:w-auto">
+                  <a href="/login" className="block w-full sm:w-auto">
                     <button className="border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg">
                       {l.pricing.coachCta}
                     </button>
@@ -1245,7 +1225,7 @@ export default function Home() {
                     <span>✗</span> {l.pricing.freeF5}
                   </li>
                 </ul>
-                <a href="/register" className="block w-full sm:w-auto">
+                <a href="/login" className="block w-full sm:w-auto">
                   <button className="w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors">
                     {l.pricing.freeCta}
                   </button>
@@ -1298,7 +1278,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/register" className="block w-full sm:w-auto">
+                <a href="/login" className="block w-full sm:w-auto">
                   <button className="w-full bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
                     {l.pricing.proCta}
                   </button>
@@ -1312,36 +1292,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8 · WhatsApp CTA */}
-      <section className="py-16 px-4 bg-[#1e3a5f]">
-        <div className="max-w-2xl mx-auto text-center">
-          <RevealOnScroll>
-            <p className="text-blue-300 text-xs font-semibold uppercase tracking-widest mb-4">
-              Hablemos
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-              ¿Tienes dudas? Escríbenos por WhatsApp
-            </h2>
-            <p className="text-blue-200 text-base mb-8">
-              Resolvemos tus preguntas en minutos — sin formularios, sin esperas.
-            </p>
-            <a
-              href="https://wa.me/573113630732?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Medaliq"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block"
-            >
-              <button className="inline-flex items-center gap-3 bg-[#25d366] hover:bg-[#1ebe5b] text-white font-bold px-8 py-4 rounded-xl text-base transition-transform hover:scale-105 active:scale-95">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 shrink-0">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.552 4.113 1.518 5.842L0 24l6.335-1.47A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.817 9.817 0 01-4.997-1.364l-.358-.213-3.758.871.909-3.652-.234-.375A9.817 9.817 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182c5.43 0 9.818 4.388 9.818 9.818 0 5.43-4.388 9.818-9.818 9.818z" />
-                </svg>
-                Escribir por WhatsApp
-              </button>
-            </a>
-          </RevealOnScroll>
-        </div>
-      </section>
 
       {/* Seguridad de datos */}
       <section className="py-12 px-4 bg-gray-50">
@@ -1365,7 +1315,7 @@ export default function Home() {
       </section>
 
       {/* 9b · Garantía + FAQ */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-12 sm:py-20 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
           <RevealOnScroll>
             <div className="flex justify-center mb-4">
@@ -1418,7 +1368,7 @@ export default function Home() {
       </section>
 
       {/* CTA final */}
-      <section className="py-20 px-4 bg-gradient-to-br from-[#1e3a5f] to-[#0f2240] text-white text-center">
+      <section className="py-12 sm:py-20 px-4 bg-gradient-to-br from-[#1e3a5f] to-[#0f2240] text-white text-center">
         <RevealOnScroll>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
             {l.finalCta.title}
@@ -1426,8 +1376,8 @@ export default function Home() {
           <p className="text-blue-200 mb-8 text-base max-w-md mx-auto">
             {l.finalCta.subtitle}
           </p>
-          <a href="/register" className="block w-full sm:w-auto">
-            <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold px-10 py-4 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
+          <a href="/login" className="block w-full sm:w-auto">
+            <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-lg px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
               {l.finalCta.cta}
             </button>
           </a>

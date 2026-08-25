@@ -127,10 +127,52 @@ export async function GET(req: NextRequest) {
     })),
   })
 
-  if (planIdToComplete) {
+  // When a plan just auto-completes, fetch stats to show the season-completed modal
+  let justCompletedPlan: { name: string; totalWeeks: number; totalSessions: number; totalKm: number | null; seasonNumber: number; adherencePct: number | null } | null = null
+
+  async function buildJustCompletedPlan(planId: string, name: string, totalWeeks: number, isNewCompletion: boolean) {
+    const [sessionCount, kmAgg, completedCount, plannedCount] = await Promise.all([
+      prisma.sessionLog.count({ where: { userId, plannedSession: { week: { planId } } } }),
+      prisma.sessionLog.aggregate({
+        where: { userId, plannedSession: { week: { planId } } },
+        _sum: { distanceKm: true },
+      }),
+      prisma.trainingPlan.count({ where: { userId, status: PlanStatus.COMPLETED } }),
+      prisma.plannedSession.count({ where: { week: { planId } } }),
+    ])
+    return {
+      name,
+      totalWeeks,
+      totalSessions: sessionCount,
+      totalKm: kmAgg._sum.distanceKm ? Math.round(kmAgg._sum.distanceKm) : null,
+      // isNewCompletion: plan not yet marked COMPLETED → +1 for the season number
+      seasonNumber: isNewCompletion ? completedCount + 1 : completedCount,
+      adherencePct: plannedCount > 0 ? Math.round((sessionCount / plannedCount) * 100) : null,
+    }
+  }
+
+  if (planIdToComplete && planMeta) {
+    justCompletedPlan = await buildJustCompletedPlan(planIdToComplete, planMeta.name, planMeta.totalWeeks, true)
     prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch((err) => {
       console.error('[dashboard] failed to auto-complete plan', planIdToComplete, err)
     })
+  }
+
+  // Gap fix: if no justCompletedPlan from this request, check for recently completed plans
+  // so the season modal still shows if the user opens the app after plan auto-completed on a previous request
+  if (!justCompletedPlan) {
+    const recentlyCompleted = await prisma.trainingPlan.findFirst({
+      where: {
+        userId,
+        status: PlanStatus.COMPLETED,
+        endDate: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { endDate: 'desc' },
+      select: { id: true, name: true, totalWeeks: true },
+    })
+    if (recentlyCompleted) {
+      justCompletedPlan = await buildJustCompletedPlan(recentlyCompleted.id, recentlyCompleted.name, recentlyCompleted.totalWeeks, false)
+    }
   }
 
   return NextResponse.json({
@@ -145,5 +187,6 @@ export async function GET(req: NextRequest) {
     } : null,
     isB2B: !!coachRelation,
     workoutName: assignedWorkoutRaw?.template.name ?? null,
+    justCompletedPlan,
   })
 }

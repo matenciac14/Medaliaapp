@@ -1,7 +1,5 @@
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
-import QuickLog from './QuickLog'
-import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 
 type TodaySession = {
   id: string
@@ -49,60 +47,6 @@ export default function DailySessionCard({
 }: Props) {
   return (
     <>
-      {/* TRAINING: detalle sesión de hoy */}
-      {dashboardMode === 'TRAINING' && isCurrentWeek && todaySession && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          {/* Row 1: Emoji + nombre + botones */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{SESSION_ICONS[todaySession.type] ?? '🏅'}</span>
-              <p className="text-sm font-semibold text-gray-900">
-                {SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link href="/plan" className="text-xs font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
-                Ver mi plan →
-              </Link>
-              {todaySession.completed ? (
-                <span className="flex items-center gap-1 text-white text-xs font-semibold bg-[#22c55e] px-4 py-2 rounded-xl">
-                  <CheckCircle2 size={14} /> Completada
-                </span>
-              ) : (
-                <QuickLog sessionId={todaySession.id} initialCompleted={false} />
-              )}
-            </div>
-          </div>
-          {/* Row 2: Pills de sesión */}
-          <div className="flex gap-1.5 flex-wrap mt-3">
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-              {todaySession.durationMin} min
-            </span>
-            {todaySession.zoneTarget && todaySession.zoneTarget !== '—' && todaySession.zoneTarget !== '' && todaySession.zoneTarget !== 'N/A' && (
-              <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                Zona {todaySession.zoneTarget}
-              </span>
-            )}
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-              Carrera
-            </span>
-            {isB2B && (
-              <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-[#1e3a5f]">
-                👤 COACH
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TRAINING: descanso de sport, pero puede haber gym */}
-      {dashboardMode === 'TRAINING' && isCurrentWeek && hasActivePlan && !todaySession && (
-        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
-          <span>😴</span>
-          <span>Descanso hoy</span>
-        </div>
-      )}
-
       {/* Gym hoy sin sesión de sport */}
       {isCurrentWeek && hasGymToday && !todaySession && todayGymDay && (
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">

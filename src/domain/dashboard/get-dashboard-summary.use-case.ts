@@ -80,6 +80,7 @@ export type DashboardSummary = {
   totalTraining: number
   checkinPending: boolean
   streakDays: number
+  weekStreak: number
   raceDays: number | null
   isRecomp: boolean
   formStatus: 'good' | 'moderate' | 'rest'
@@ -207,13 +208,28 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
 
   // ── GYM users: populate weekSessions from assignedWorkout ────────
   if (!activePlan && assignedWorkout) {
+    // Determine which days of the current week have gym completions
+    const thisWeekMonday = new Date(); thisWeekMonday.setHours(0, 0, 0, 0)
+    const currDow = thisWeekMonday.getDay() === 0 ? 6 : thisWeekMonday.getDay() - 1
+    thisWeekMonday.setDate(thisWeekMonday.getDate() - currDow)
+    const gymDoneThisWeek = new Set<number>()
+    for (const d of (input.gymCompletionDates ?? [])) {
+      const dt = new Date(d); dt.setHours(0, 0, 0, 0)
+      const diffDays = Math.round((dt.getTime() - thisWeekMonday.getTime()) / 86_400_000)
+      if (diffDays >= 0 && diffDays <= 6) gymDoneThisWeek.add(diffDays)
+    }
+
     for (const day of assignedWorkout.template.days) {
       const idx = day.dayOfWeek - 1  // our DOW 1=Mon → index 0
       if (idx >= 0 && idx < 7) {
         weekSessions[idx].type = day.isRestDay ? 'DESCANSO' : 'FUERZA'
-        weekSessions[idx].done = false
+        const done = !day.isRestDay && gymDoneThisWeek.has(idx)
+        weekSessions[idx].done = done
         weekSessions[idx].durationMin = day.isRestDay ? null : 60
-        if (!day.isRestDay) totalTraining++
+        if (!day.isRestDay) {
+          totalTraining++
+          if (done) completedCount++
+        }
       }
     }
   }
@@ -235,6 +251,28 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   for (let i = 0; i <= 59; i++) {
     const d = new Date(todayMidnight); d.setDate(d.getDate() - i)
     if (logDateSet.has(d.toDateString())) streakDays++
+    else break
+  }
+
+  // ── Week streak ──────────────────────────────────────────────────
+  // Consecutive weeks (Mon–Sun) with at least 1 session — for milestone celebrations
+  function getMondayKey(date: Date): string {
+    const d = new Date(date); d.setHours(0, 0, 0, 0)
+    const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
+    d.setDate(d.getDate() - dow)
+    return d.toDateString()
+  }
+  const weekSet = new Set([
+    ...recentLogs.map(l => getMondayKey(new Date(l.completedAt))),
+    ...(input.gymCompletionDates ?? []).map(d => getMondayKey(new Date(d))),
+  ])
+  let weekStreak = 0
+  const thisMonday = new Date(todayMidnight)
+  const thisDow = thisMonday.getDay() === 0 ? 6 : thisMonday.getDay() - 1
+  thisMonday.setDate(thisMonday.getDate() - thisDow)
+  for (let i = 0; i <= 51; i++) {
+    const weekStart = new Date(thisMonday); weekStart.setDate(thisMonday.getDate() - i * 7)
+    if (weekSet.has(weekStart.toDateString())) weekStreak++
     else break
   }
 
@@ -339,6 +377,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         return !lastCheckIn || lastCheckIn.weekNumber !== currentWeekNum
       })(),
       streakDays,
+      weekStreak,
       raceDays,
       isRecomp,
       formStatus,

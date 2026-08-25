@@ -20,9 +20,11 @@ interface Props {
   weekLabel?: string
   /** Registration/session count for mobile header */
   mobileCount?: string
+  /** B2B athlete — shows COACH badge in session detail */
+  isB2B?: boolean
 }
 
-export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '' }: Props) {
+export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '', isB2B = false }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const todayWeekIdx = jsToWeekIdx(new Date().getDay())
@@ -189,6 +191,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
             firstName={firstName}
             completedCount={stats.completed}
             totalSessions={stats.total}
+            isB2B={isB2B}
           />
         )}
       </div>
@@ -198,12 +201,13 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
 
 // ── Detail card for selected day ──────────────────────────────────────────────
 
-function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions }: {
+function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions, isB2B = false }: {
   day: CalendarDay
   dashboardMode: string
   firstName: string
   completedCount: number
   totalSessions: number
+  isB2B?: boolean
 }) {
   const { sport, gym, freeRun } = day
   const isRest = !!sport && sport.type === 'DESCANSO' && !gym
@@ -236,7 +240,7 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
             <Link href="/find-coach" className="text-xs font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0">
               Conecta con un entrenador →
             </Link>
-            <Link href="/routine/edit" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap shrink-0">
+            <Link href="/gym" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap shrink-0">
               Arma tu rutina →
             </Link>
           </>
@@ -280,7 +284,7 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
     ? gym!.rpe
     : freeRun?.rpe ?? null
 
-  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Entreno' : 'Carrera libre'
+  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Gym' : 'Carrera libre'
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">
@@ -330,6 +334,11 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
         {rpe && (
           <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
             RPE {rpe}
+          </span>
+        )}
+        {isB2B && (
+          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-[#1e3a5f]">
+            👤 COACH
           </span>
         )}
         {isFreeRun && freeRun!.distanceKm && (

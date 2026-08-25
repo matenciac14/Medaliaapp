@@ -3,6 +3,34 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  const athleteId = session?.user?.id
+  if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { id } = await params
+  const body = await req.json()
+
+  const gs = await prisma.gymSession.findFirst({
+    where: { id, athleteId },
+    select: { id: true },
+  })
+  if (!gs) return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+
+  const data: Record<string, unknown> = {}
+  if (['EXHAUSTED', 'NORMAL', 'ENERGIZED'].includes(body.energyState)) data.energyState = body.energyState
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Sin campos válidos' }, { status: 400 })
+  }
+
+  await prisma.gymSession.update({ where: { id }, data })
+  return NextResponse.json({ ok: true })
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

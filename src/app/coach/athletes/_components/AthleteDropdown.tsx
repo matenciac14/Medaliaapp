@@ -33,7 +33,7 @@ export default function AthleteDropdown({ athleteId, status, isToggling, onToggl
 
   function navigate(tab: string) {
     setOpen(false)
-    router.push(`/coach/athlete/${athleteId}?tab=${tab}`)
+    router.push(`/coach/athletes/${athleteId}?tab=${tab}`)
   }
 
   return (
@@ -64,7 +64,7 @@ export default function AthleteDropdown({ athleteId, status, isToggling, onToggl
 
           {/* Config */}
           <button
-            onClick={() => { setOpen(false); router.push(`/coach/athlete/${athleteId}/config`) }}
+            onClick={() => { setOpen(false); router.push(`/coach/athletes/${athleteId}/config`) }}
             className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors text-left"
           >
             <span className="text-sm w-5 text-center shrink-0">{'\u2699\uFE0F'}</span>

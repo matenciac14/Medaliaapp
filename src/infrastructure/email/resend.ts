@@ -445,7 +445,7 @@ export async function sendAthleteReadyEmail(to: string, coachName: string, athle
             <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6">
               Entra al panel, revisa su perfil y actívalo para que pueda empezar a entrenar.
             </p>
-            <a href="https://medaliq.com/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="https://medaliq.com/coach/athletes/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver perfil de ${athleteName} →
             </a>
             <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6">
@@ -505,7 +505,7 @@ export async function sendCoachCheckInEmail(
               <strong>${athleteName}</strong> acaba de completar su check-in semanal.
             </p>
             ${metrics ? `<p style="margin:0 0 24px;font-size:14px;color:#374151;background:#f8fafc;border-radius:10px;padding:14px 18px;line-height:1.8">${metrics}</p>` : ''}
-            <a href="${appUrl}/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${appUrl}/coach/athletes/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Ver resumen →
             </a>
           </td>
@@ -718,7 +718,7 @@ export async function sendCoachPendingAthleteEmail(
             <p style="margin:0 0 24px;font-size:14px;color:#374151;background:#fff7ed;border-left:3px solid #ea580c;border-radius:6px;padding:14px 18px;line-height:1.6">
               Tu asesorado no puede ver su plan ni empezar a entrenar hasta que lo actives desde tu panel.
             </p>
-            <a href="${appUrl}/coach/athlete/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
+            <a href="${appUrl}/coach/athletes/${athleteId}" style="display:inline-block;background:#ea580c;color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:14px 28px">
               Activar a ${athleteName} →
             </a>
           </td>

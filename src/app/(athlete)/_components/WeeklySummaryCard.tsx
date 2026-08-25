@@ -37,7 +37,7 @@ export default function WeeklySummaryCard({
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 relative">
             <div className="flex justify-between items-center mb-3">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Sesiones esta semana</p>
-              <span className="text-[8px] font-bold text-white bg-[#ea580c] px-1.5 py-0.5 rounded-full uppercase">PRO</span>
+              <span className="text-[8px] font-bold text-gray-400 uppercase">✓ datos de tu log</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
@@ -91,13 +91,15 @@ export default function WeeklySummaryCard({
         {isFree ? (
           weekSessionCount > 0 && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 relative">
-              <div className="flex justify-between items-center mb-3">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Carga Semanal</p>
-                <span className="text-[8px] font-bold text-white bg-[#ea580c] px-1.5 py-0.5 rounded-full uppercase">PRO</span>
-              </div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Sesiones Semana</p>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-2xl font-black text-[#1e3a5f]">{weekSessionCount}</span>
-                <span className="text-sm text-gray-400">sesiones</span>
+                <span className="text-sm text-gray-400">ses.</span>
+                {weekSessionDelta != null && (
+                  <span className={`text-xs font-semibold ${weekSessionDelta >= 0 ? 'text-[#22c55e]' : 'text-red-500'}`}>
+                    {weekSessionDelta >= 0 ? '↑' : '↓'} {Math.abs(weekSessionDelta)} {weekSessionDelta >= 0 ? 'más' : 'menos'} que semana anterior
+                  </span>
+                )}
               </div>
               <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
                 <div

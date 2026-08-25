@@ -19,6 +19,7 @@ import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
 import StreakShareButton from '../_components/StreakShareButton'
 import TodayLogCard from '../_components/TodayLogCard'
+import QuickSessionFeedback from '../_components/QuickSessionFeedback'
 
 const PHASE_COLORS: Record<string, string> = {
   BASE: 'bg-blue-100 text-blue-800',
@@ -114,7 +115,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       where: { athleteId: userId, completed: true },
       orderBy: { date: 'desc' },
       take: 60,
-      select: { date: true, durationMin: true, assignedWorkout: { select: { template: { select: { name: true } } } } },
+      select: { id: true, date: true, durationMin: true, energyState: true, assignedWorkout: { select: { template: { select: { name: true } } } } },
     }),
     prisma.checkInSuggestion.count({
       where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
@@ -212,7 +213,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const todayGymDay = assignedWorkout?.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
   const hasGymToday = !!(todayGymDay && !todayGymDay.isRestDay)
   const todayDateStr = new Date().toDateString()
-  const gymDoneToday = recentGymSessions.some((gs) => new Date(gs.date).toDateString() === todayDateStr)
+  const todayGymSession = recentGymSessions.find((gs) => new Date(gs.date).toDateString() === todayDateStr) ?? null
+  const gymDoneToday = !!todayGymSession
 
   // ── Self-directed: today's routine day + weekly session count ─────────────
   type RoutineDayConfig = { dow: number; activity: 'GYM' | 'RUN' | 'REST'; split?: string; runType?: string }
@@ -310,7 +312,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // ── Plan y semana actual ───────────────────────────────────────────────────
   let planData = { name: 'Sin plan', totalWeeks: 0, currentWeek: 0, phase: 'BASE' }
-  let todaySession: { id: string; type: string; intensity: string; durationMin: number; zoneTarget: string; detailText: string; completed: boolean } | null = null
+  let todaySession: { id: string; logId: string | null; type: string; intensity: string; durationMin: number; zoneTarget: string; detailText: string; completed: boolean; logType: 'session' | 'gym' } | null = null
   let currentWeekVolumeKm: number | null = null
   let weekOffset = rawWeekOffset
   let selectedWeekNum = 0
@@ -344,12 +346,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       if (todayPlanned && todayPlanned.type !== 'DESCANSO') {
         todaySession = {
           id: todayPlanned.id,
+          logId: todayPlanned.log?.id ?? null,
           type: todayPlanned.type,
           intensity: todayPlanned.intensity ?? 'MODERATE',
           durationMin: todayPlanned.durationMin,
           zoneTarget: todayPlanned.zoneTarget ?? 'Z2',
           detailText: todayPlanned.detailText ?? '',
           completed: !!todayPlanned.log,
+          logType: 'session',
         }
       }
     }
@@ -366,12 +370,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     if (todayFreeLog) {
       todaySession = {
         id: todayFreeLog.id,
+        logId: todayFreeLog.id,
         type: todayFreeLog.freeSessionType ?? 'OTRO',
         intensity: 'MODERATE',
         durationMin: todayFreeLog.durationMin ?? 0,
         zoneTarget: 'LIBRE',
         detailText: 'Sesión libre registrada',
         completed: true,
+        logType: 'session',
       }
     }
   }
@@ -631,7 +637,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </div>
               <span className="text-[11px] text-white/60">{SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ').toLowerCase()}</span>
             </div>
-            {!todaySession.completed && (
+            {todaySession.completed ? (
+              <div className="bg-white px-4 py-3">
+                <Link href={todaySession.logType === 'gym' ? '/gym/history' : '/progress'}
+                  className="block bg-[#1e3a5f] text-white text-[15px] font-bold text-center py-3.5 rounded-xl">
+                  Ver resumen →
+                </Link>
+              </div>
+            ) : (
               <div className="bg-white px-4 py-3">
                 <Link href={todaySession.id === 'gym-today' ? '/gym/session' : `/log/run?sessionId=${todaySession.id}&type=${todaySession.type}&duration=${todaySession.durationMin}&zone=${todaySession.zoneTarget}`}
                   className="block bg-[#ea580c] text-white text-[15px] font-bold text-center py-3.5 rounded-xl">
@@ -731,9 +744,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </div>
             </div>
             <div className="bg-white px-4 py-3">
-              <Link href="/gym/session" className="block bg-[#1e3a5f] text-white text-[15px] font-bold text-center py-3.5 rounded-xl">
-                {gymDoneToday ? '✓ Completada' : 'Empezar'}
-              </Link>
+              {gymDoneToday ? (
+                <Link href="/gym/history" className="block bg-[#1e3a5f] text-white text-[15px] font-bold text-center py-3.5 rounded-xl">
+                  Ver resumen →
+                </Link>
+              ) : (
+                <Link href="/gym/session" className="block bg-[#ea580c] text-white text-[15px] font-bold text-center py-3.5 rounded-xl">
+                  Empezar
+                </Link>
+              )}
             </div>
           </div>
         ) : (
@@ -915,16 +934,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     <span className="text-lg font-semibold text-[#3b6fdd]">{targetWeight} kg</span>
                   </div>
                   <p className="text-[11px] text-gray-500 mb-1.5">
-                    {weeklyWeightChange != null
-                      ? `~${Math.max(0, Math.ceil(Math.abs((currentWeight - targetWeight) / (Math.abs(weeklyWeightChange) || 0.5))))} semanas · ${weeklyWeightChange > 0 ? '+' : ''}${weeklyWeightChange.toFixed(1)} kg/sem`
-                      : 'registra check-ins para ver tendencia'}
+                    {dashboardMode === 'FREE'
+                      ? 'Meta configurada en tu perfil'
+                      : weeklyWeightChange != null
+                        ? `~${Math.max(0, Math.ceil(Math.abs((currentWeight - targetWeight) / (Math.abs(weeklyWeightChange) || 0.5))))} semanas al ritmo actual · ${weeklyWeightChange > 0 ? '+' : ''}${weeklyWeightChange.toFixed(1)} kg/sem`
+                        : 'Meta configurada en tu perfil'}
                   </p>
                   <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-1">
                     <div className="h-full bg-[#3b6fdd] rounded-full" style={{ width: `${weightProgressPct ?? 0}%` }} />
                   </div>
                   <div className="flex justify-between items-center">
-                    <p className="text-[10px] text-gray-400">{weightProgressPct ?? 0}% completado</p>
-                    <Link href="/progress" className="text-[10px] font-semibold text-[#3b6fdd]">Ver progreso →</Link>
+                    <p className="text-[10px] text-gray-400">
+                      {dashboardMode === 'FREE'
+                        ? 'Sin proyección · registra tu peso'
+                        : `${weightProgressPct ?? 0}% completado`}
+                    </p>
+                    <Link href="/progress" className="text-[10px] font-semibold text-[#3b6fdd]">
+                      {dashboardMode === 'FREE' ? 'Actualizar peso →' : 'Ver progreso →'}
+                    </Link>
                   </div>
                 </>
               ) : currentWeight ? (
@@ -961,7 +988,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 {dashSummary.nutritionTarget ? (
                   <>
                     <p className="text-base font-black text-[#1e3a5f] leading-none mb-0.5">{dashSummary.nutritionTarget.kcal} kcal</p>
-                    <p className="text-[10px] text-gray-400 mb-2">según tu perfil</p>
+                    <p className="text-[10px] text-gray-400 mb-2">de {nutritionPlan?.targetKcalHard ?? dashSummary.nutritionTarget.kcal} objetivo</p>
                     <div className="flex gap-2">
                       <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">P {dashSummary.nutritionTarget.proteinG}g</span>
                       <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">C {dashSummary.nutritionTarget.carbsG}g</span>
@@ -973,8 +1000,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </>
                 ) : (
                   <>
-                    <span className="text-2xl font-black text-[#1e3a5f] leading-none block mb-0.5">—</span>
-                    <p className="text-[11px] text-gray-500 mb-1.5">Sin registros nutricionales</p>
+                    <p className="text-base font-black text-[#1e3a5f] leading-none mb-0.5">Sin registros</p>
+                    <p className="text-[11px] text-gray-500 mb-1.5">nutricionales hoy</p>
                     <div className="flex justify-end">
                       <span className="text-[10px] font-semibold text-[#22c55e]">Registrar →</span>
                     </div>
@@ -1019,7 +1046,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       )}
                       {lastCheckIn.sleepHours != null && (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          Sueño ✓
+                          Sueño {lastCheckIn.sleepHours}h
                         </span>
                       )}
                       {dashSummary.metrics.hrResting != null && (
@@ -1101,7 +1128,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 firstName={firstName}
                 weekLabel={dashboardMode === 'TRAINING' ? `Semana ${selectedWeekNum || planData.currentWeek} · ${weekDateLabel}` : weekDateLabel}
                 mobileCount={dashboardMode === 'TRAINING' && totalTraining > 0 ? `${completedCount}/${totalTraining} sesiones` : dashboardMode === 'FREE' ? `${weekSessionCount} registros` : ''}
+                isB2B={session.user.isB2B ?? false}
               />
+
+              {dashboardMode === 'FREE' && !dashSummary.hasEverLogged && (
+                <div className="hidden sm:block mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1 h-10 bg-[#ea580c] rounded-full shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Tu espacio de entrenamiento está listo, {firstName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Anota tu actividad de hoy y empieza a construir tu historial.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link href="/find-coach" className="text-xs font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
+                        Conecta con un entrenador →
+                      </Link>
+                      <Link href="/gym" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap">
+                        Arma tu rutina →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {dashboardMode !== 'FREE' && (
                 <DailySessionCard
@@ -1135,6 +1185,43 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <>
                 {/* FREE: Tu Actividad */}
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Tu actividad</p>
+
+                {/* FREE: QuickSessionFeedback — cuando completó sesión hoy */}
+                {todaySession?.completed && todaySession.logId && (
+                  <QuickSessionFeedback
+                    logId={todaySession.logId}
+                    logType={todaySession.logType}
+                    sessionLabel={SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ')}
+                    sessionIcon={SESSION_ICONS[todaySession.type] ?? '🏅'}
+                    sessionMeta={` · ${todaySession.durationMin} min${todaySession.zoneTarget && todaySession.zoneTarget !== 'N/A' && todaySession.zoneTarget !== '—' ? ` · ${todaySession.zoneTarget}` : ''}`}
+                  />
+                )}
+                {/* FREE: QuickSessionFeedback — gym session completed today */}
+                {!todaySession?.completed && gymDoneToday && todayGymSession && !todayGymSession.energyState && (
+                  <QuickSessionFeedback
+                    logId={todayGymSession.id}
+                    logType="gym"
+                    sessionLabel={todayGymDay?.label ?? 'Fuerza'}
+                    sessionIcon="💪"
+                    sessionMeta={todayGymSession.durationMin ? ` · ${todayGymSession.durationMin} min` : ''}
+                  />
+                )}
+
+                {/* FREE: Insights Pro upsell — when user has logged data */}
+                {dashSummary.hasEverLogged && !todaySession?.completed && (
+                  <Link href="/pricing" className="block bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
+                    <div className="px-3.5 py-3">
+                      <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">✨ Insights Pro</p>
+                      <p className="text-[15px] font-semibold text-gray-900 mb-2">Desbloquea con Plan Pro</p>
+                      <div className="flex gap-2">
+                        <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">Check-in</span>
+                        <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">RPE</span>
+                        <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">Zonas</span>
+                      </div>
+                    </div>
+                  </Link>
+                )}
+
                 {dashSummary.hasEverLogged ? (
                   <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
                     <div className="h-[3px] bg-[#ea580c]" />
@@ -1293,25 +1380,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </Link>
                 )}
 
-                {/* B2B/Pro: Estado actual (fusión Forma + Último Check-in) */}
+                {/* B2B/Pro: Resumen rápido label */}
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Resumen rápido</p>
+
+                {/* B2B/Pro: Cómo llegas hoy (compact) */}
                 <Link href="/checkin" className={`block rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden
                   ${formStatus === 'good' ? 'bg-green-50' : formStatus === 'moderate' ? 'bg-amber-50' : 'bg-red-50'}`}>
-                  <div className={`h-[3px] ${formStatus === 'good' ? 'bg-green-500' : formStatus === 'moderate' ? 'bg-amber-500' : 'bg-red-500'}`} />
                   <div className="px-3.5 py-3">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <p className={`text-[9px] font-semibold uppercase tracking-widest
-                        ${formStatus === 'good' ? 'text-green-600' : formStatus === 'moderate' ? 'text-amber-600' : 'text-red-600'}`}>
-                        {formStatus === 'good' ? '⚡' : formStatus === 'moderate' ? '⚠️' : '😴'} Cómo llegás hoy
-                      </p>
-                      {formCheckInDate && <p className="text-[9px] text-gray-400">{formCheckInDate}</p>}
-                    </div>
+                    <p className={`text-[9px] font-semibold uppercase tracking-widest mb-1.5
+                      ${formStatus === 'good' ? 'text-green-600' : formStatus === 'moderate' ? 'text-amber-600' : 'text-red-600'}`}>
+                      ⚡ Cómo llegás hoy
+                    </p>
                     <p className="text-[14px] font-bold text-[#1e3a5f] leading-tight mb-2">{formMessage}</p>
                     {lastCheckIn && (
                       <div className="flex gap-1.5 flex-wrap">
                         {lastCheckIn.energyLevel != null && (
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
                             ${formStatus === 'good' ? 'bg-green-100 text-green-700' : formStatus === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                            Energía {lastCheckIn.energyLevel}/5
+                            Energía {lastCheckIn.energyLevel}/10
                           </span>
                         )}
                         {lastCheckIn.hardestSessionRpe != null && (
@@ -1319,25 +1405,45 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                             RPE {lastCheckIn.hardestSessionRpe}/10
                           </span>
                         )}
-                        {lastCheckIn.weightKg != null && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            {lastCheckIn.weightKg} kg
-                          </span>
-                        )}
                         {lastCheckIn.sleepHours != null && (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            Sueño ✓
-                          </span>
-                        )}
-                        {dashSummary.metrics.hrResting != null && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                            FC basal {dashSummary.metrics.hrResting} bpm
+                            Sueño {lastCheckIn.sleepHours}h
                           </span>
                         )}
                       </div>
                     )}
                   </div>
                 </Link>
+
+                {/* B2B/Pro: Último Check-in (separate card with colored boxes) */}
+                {lastCheckIn && (
+                  <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-3.5 py-3">
+                    <div className="flex justify-between items-center mb-3">
+                      <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">🔔 Último Check-in</p>
+                      {formCheckInDate && <p className="text-[9px] text-gray-400">{formCheckInDate}</p>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {lastCheckIn.hardestSessionRpe != null && (
+                        <div className="bg-orange-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#ea580c] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
+                          <p className="text-[10px] text-gray-500 mt-1">RPE</p>
+                        </div>
+                      )}
+                      {lastCheckIn.energyLevel != null && (
+                        <div className="bg-green-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/5 ★</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Energía</p>
+                        </div>
+                      )}
+                      {lastCheckIn.weightKg != null && (
+                        <div className="bg-blue-50 rounded-xl px-3 py-2">
+                          <p className="text-base font-semibold text-[#3b6fdd] leading-none">{lastCheckIn.weightKg} kg</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Peso</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* B2B/Pro: Tu Carrera / Tu Objetivo */}
                 <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
