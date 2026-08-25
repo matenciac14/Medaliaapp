@@ -15,6 +15,16 @@ export type AthleteSubscriptionTier = 'FREE' | 'PRO'
 
 export type CoachTier = 'STARTER' | 'GROWTH' | 'PRO' | 'SCALE'
 
+// Shape plana que espeja TierFeatureConfig DB — sin importar Prisma en el dominio
+export type TierFeatureConfigShape = {
+  featurePlan:      boolean
+  featureCheckin:   boolean
+  featureNutrition: boolean
+  featureProgress:  boolean
+  featureLog:       boolean
+  featureGym:       boolean
+}
+
 export type AthleteFeatures = {
   plan:      boolean
   checkin:   boolean
@@ -58,6 +68,22 @@ export function computeAthleteFeatures(tier: AthleteSubscriptionTier): AthleteFe
         coach:     false,
         gym:       true,
       }
+  }
+}
+
+/**
+ * Convierte una fila de TierFeatureConfig (leída desde DB) a AthleteFeatures del dominio.
+ * Usado por el sistema al activar/pausar atletas para aplicar la config vigente del admin.
+ */
+export function configToAthleteFeatures(config: TierFeatureConfigShape): AthleteFeatures {
+  return {
+    plan:      config.featurePlan,
+    checkin:   config.featureCheckin,
+    nutrition: config.featureNutrition,
+    progress:  config.featureProgress,
+    log:       config.featureLog,
+    coach:     false, // nunca true para atletas
+    gym:       config.featureGym,
   }
 }
 

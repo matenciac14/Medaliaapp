@@ -15,11 +15,14 @@ type UpgradeTier = {
 type Props = {
   currentTier: CoachTier
   currentTierName: string
+  currentPriceCOP: number
+  currentPriceUSD: number
   athleteCount: number
   maxAthletes: number
   currentPeriodEnd: string | null
   gateway: string | null
   upgradeTiers: UpgradeTier[]
+  trmDate: string | null
   billingStatus: string | null
 }
 
@@ -44,10 +47,13 @@ const POLL_INTERVAL_MS  = 2_000
 export default function CoachPlanClient({
   currentTier,
   currentTierName,
+  currentPriceCOP,
+  currentPriceUSD,
   athleteCount,
   maxAthletes,
   currentPeriodEnd,
   upgradeTiers,
+  trmDate,
   billingStatus,
 }: Props) {
   const router = useRouter()
@@ -201,6 +207,19 @@ export default function CoachPlanClient({
             </li>
           ))}
         </ul>
+
+        {/* Precio del plan actual */}
+        <div className="mt-5 pt-4 border-t border-gray-100">
+          <p className="text-xs text-gray-400 mb-0.5">Valor de tu suscripción</p>
+          <p className="text-lg font-bold text-[#1e3a5f]">
+            {currentPriceUSD === 0 ? 'Gratis' : `$${currentPriceCOP.toLocaleString('es-CO')} COP/mes`}
+          </p>
+          {currentPriceUSD > 0 && (
+            <p className="text-xs text-gray-400">
+              ~${currentPriceUSD} USD{trmDate ? ` · TRM ${trmDate}` : ''}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Opciones de upgrade */}
@@ -227,7 +246,10 @@ export default function CoachPlanClient({
                   <div className="text-right flex-shrink-0 ml-4">
                     <p className="font-bold text-[#1e3a5f] text-base">{formatCOP(t.priceCOP)}</p>
                     {t.priceUSD > 0 && (
-                      <p className="text-xs text-gray-400">(~${t.priceUSD} USD)</p>
+                      <p className="text-xs text-gray-400">~${t.priceUSD} USD</p>
+                    )}
+                    {trmDate && (
+                      <p className="text-xs text-gray-400">TRM {trmDate}</p>
                     )}
                     <button
                       onClick={() => handleUpgrade(t.tier)}

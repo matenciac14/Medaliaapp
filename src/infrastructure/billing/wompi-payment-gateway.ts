@@ -18,9 +18,11 @@ import type {
   WebhookEvent,
 } from '@/domain/billing/billing.types'
 import {
-  COACH_TIER_PRICES_COP,
-  ATHLETE_PRO_PRICE_COP,
+  COACH_TIER_PRICES_USD,
+  ATHLETE_PRO_PRICE_USD,
+  usdToCopCents,
 } from '@/domain/billing/billing.types'
+import { getTrm } from './trm'
 
 type WompiPaymentLinkResponse = {
   data: { id: string; url: string }
@@ -104,7 +106,7 @@ function verifyIntegrity(
 export class WompiPaymentGateway implements IPaymentGateway {
   async createCoachCheckout(input: CoachCheckoutInput): Promise<CheckoutOutput> {
     const reference = `coach-${input.userId}-${input.targetTier}-${Date.now()}`
-    const amountInCents = COACH_TIER_PRICES_COP[input.targetTier] * 100
+    const amountInCents = usdToCopCents(COACH_TIER_PRICES_USD[input.targetTier], await getTrm())
 
     const { url } = await createPaymentLink(reference, amountInCents, {
       userId: input.userId,
@@ -118,7 +120,7 @@ export class WompiPaymentGateway implements IPaymentGateway {
 
   async createAthleteCheckout(input: AthleteCheckoutInput): Promise<CheckoutOutput> {
     const reference = `athlete-${input.userId}-pro-${Date.now()}`
-    const amountInCents = ATHLETE_PRO_PRICE_COP * 100
+    const amountInCents = usdToCopCents(ATHLETE_PRO_PRICE_USD, await getTrm())
 
     const { url } = await createPaymentLink(reference, amountInCents, {
       userId: input.userId,
