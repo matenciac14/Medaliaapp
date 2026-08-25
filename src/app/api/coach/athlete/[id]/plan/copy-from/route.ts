@@ -95,20 +95,8 @@ export async function POST(
       })
 
       // Copy weeks + sessions with recalculated dates
-      const allSessionsData: {
-        weekId: string
-        dayOfWeek: number
-        type: typeof sourcePlan.weeks[0]['sessions'][0]['type']
-        intensity: typeof sourcePlan.weeks[0]['sessions'][0]['intensity']
-        durationMin: number | null
-        zoneTarget: string | null
-        structure: string | null
-        detailText: string | null
-        sportLabel: string | null
-        coachNote: null
-        date: Date
-        workoutDayId: string | null
-      }[] = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allSessionsData: any[] = []
 
       for (const week of sourcePlan.weeks) {
         const weekStart = addDays(newStartDate, (week.weekNumber - 1) * 7)
@@ -129,18 +117,17 @@ export async function POST(
 
         for (const s of week.sessions) {
           allSessionsData.push({
-            weekId:      newWeek.id,
-            dayOfWeek:   s.dayOfWeek,
-            type:        s.type,
-            intensity:   s.intensity,
-            durationMin: s.durationMin,
-            zoneTarget:  s.zoneTarget,
-            structure:   s.structure,
-            detailText:  s.detailText,
-            sportLabel:  s.sportLabel,
-            coachNote:   null, // don't copy coach notes — they're athlete-specific
-            date:        addDays(weekStart, s.dayOfWeek - 1),
-            workoutDayId: s.workoutDayId,
+            weekId:       newWeek.id,
+            dayOfWeek:    s.dayOfWeek,
+            type:         s.type,
+            intensity:    s.intensity,
+            durationMin:  s.durationMin ?? undefined,
+            zoneTarget:   s.zoneTarget ?? undefined,
+            structure:    s.structure ?? undefined,
+            detailText:   s.detailText ?? undefined,
+            sportLabel:   s.sportLabel ?? undefined,
+            date:         addDays(weekStart, s.dayOfWeek - 1),
+            workoutDayId: s.workoutDayId ?? undefined,
           })
         }
       }

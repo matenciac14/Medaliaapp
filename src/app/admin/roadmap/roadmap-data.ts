@@ -3152,6 +3152,8 @@ export const GROUPS: RoadmapGroup[] = [
         ],
       },
       {
+        id: 'infraestructura',
+        period: 'Agosto 2026',
         label: 'Infraestructura',
         items: [
           { title: 'INFRA-01 — Neon pgbouncer (connection pooling serverless-safe)', done: false, priority: 'P2', note: 'Prerequisito: PERF-03. Cambiar DATABASE_URL a Neon Pro con pgbouncer en modo transaction. Costo: $69/mes. Activar cuando usuarios concurrentes superen 200.' },
@@ -3178,12 +3180,16 @@ export const GROUPS: RoadmapGroup[] = [
     period: 'Sprint agosto 2026',
     phases: [
       {
+        id: 'share-diseno',
+        period: 'Sprint agosto 2026',
         label: 'Diseño',
         items: [
           { title: 'SHARE-D01 — Share cards en Design System Figma (5 variantes)', done: true, priority: 'P1', note: 'Diseñadas en página Design System (2697:31), sección "Share Cards — Mobile · Variants" (node 5034:31). 6 cards: ① PR Fuerza (navy + trofeo + 1RM hero), ② Sesión Completada (dark navy + stats 3-col), ③ Racha Semanal (warm dark + fire + dot grid), ④ Temporada Completada (extra dark + gold + 2×2 stats), ⑤ Resumen Semanal (7-day activity grid + metric boxes), ⑥ Transparent Mode (glass overlay navy 82% sobre foto del usuario — BlurView expo-blur). Todos los valores son placeholder — el componente RN los recibe como props. Dimensiones: 390×693 en Figma → 1080×1920 en producción (scale 2.77x con ViewShot).' },
         ],
       },
       {
+        id: 'share-sprint-1',
+        period: 'Sprint agosto 2026',
         label: 'Sprint 1 — Tarjetas',
         items: [
           { title: 'SHARE-01 — ShareCard.tsx — componente con 6 variantes', done: true, priority: 'P1', note: 'src/components/ShareCard.tsx — 6 variantes: pr_gym · session · streak · season · weekly · transparent (glass overlay). Props tipadas en ShareCardProps. Dimensiones 360×640pt (= 1080×1920px en 3x DPI). StyleSheet nativo, fuentes Inter_*. Sub-components compartidos: TopBar, Footer, Pill, StatCell, SeasonStat, MiniStat.' },
@@ -3192,6 +3198,8 @@ export const GROUPS: RoadmapGroup[] = [
         ],
       },
       {
+        id: 'share-sprint-2',
+        period: 'Sprint agosto 2026',
         label: 'Sprint 2 — Integración en flujos',
         items: [
           { title: 'SHARE-04 — Integrar en modal post-sesión gym (PR)', done: true, priority: 'P1', note: 'gym-session.tsx: PRModal recibe onShare(pr: PRResult) prop. "Compartir 📤" ahora abre SharePreviewModal con card variant=pr_gym. handleSharePR() mapea PRResult → ShareCardProps (ejercicioNombre, weightKg, estimatedOneRM desde gymPRs query, fecha de hoy). SharePreviewModal se monta sobre el PRModal — al cerrarlo vuelve al PRModal. Imports: SharePreviewModal + ShareCardProps.' },
@@ -3202,6 +3210,8 @@ export const GROUPS: RoadmapGroup[] = [
         ],
       },
       {
+        id: 'share-sprint-3',
+        period: 'Sprint agosto 2026',
         label: 'Sprint 3 — Mecanismos de hábito social',
         items: [
           { title: 'SHARE-09 — Racha visible en dashboard (streak counter)', done: false, priority: 'P1', note: 'Número de semanas consecutivas con plan adherido siempre visible en dashboard mobile. Icono de fuego 🔥 + número. Al romper racha: badge "Racha rota" con CTA para recuperar. Dato ya calculable desde WeeklyCheckIn.' },
