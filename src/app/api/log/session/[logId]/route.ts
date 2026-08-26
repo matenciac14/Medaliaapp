@@ -29,6 +29,7 @@ export async function PATCH(
   if (typeof body.notes === 'string') data.notes = body.notes.trim() || null
   if (typeof body.distanceKm === 'number' && body.distanceKm > 0) data.distanceKm = body.distanceKm
   if (body.distanceKm === null) data.distanceKm = null
+  if (['EXHAUSTED', 'NORMAL', 'ENERGIZED'].includes(body.energyState)) data.energyState = body.energyState
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'Sin campos válidos' }, { status: 400 })

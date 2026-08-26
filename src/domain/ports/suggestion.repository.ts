@@ -1,4 +1,4 @@
-import type { SuggestionDraft } from '@/domain/check-in/generate-suggestions'
+import type { SuggestionDraft } from '@/domain/checkin/generate-suggestions'
 
 export type PendingSuggestion = {
   id: string

@@ -42,7 +42,6 @@ export default function AdminSettingsPage() {
               { label: 'Framework',     value: 'Next.js 16 App Router' },
               { label: 'Base de datos', value: 'PostgreSQL · Neon serverless · Prisma 7' },
               { label: 'Auth',          value: 'Auth.js v5 (JWT)' },
-              { label: 'AI',            value: 'Claude Sonnet 4.6 — en pausa, listo para reactivar' },
               { label: 'Deploy',        value: 'Vercel (producción activa) · DNS Route 53' },
               { label: 'Email',         value: 'Resend · dominio medaliq.com verificado' },
               { label: 'Mobile',        value: 'React Native · Expo ~54 · NativeWind v4' },

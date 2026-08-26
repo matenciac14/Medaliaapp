@@ -7,7 +7,7 @@
  *
  * Flujo cubierto:
  *   - generatePlanUseCase → template.weeks.flatMap → sessionDate + getSessionIntensity
- *   - /coach/athlete/[id]/plan/build → buildScheduledSessions
+ *   - /coach/athletes/[id]/plan/build → buildScheduledSessions
  *   - NutritionPlan sync: getSessionIntensity es la fuente de intensidad del día
  *
  * Cómo correr:

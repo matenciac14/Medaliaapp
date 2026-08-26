@@ -28,19 +28,19 @@ describe('AthleteDropdown — action mapping', () => {
 
   it('genera URLs correctas para cada accion de navegacion', () => {
     const athleteId = 'abc123'
-    const urls = NAV_ITEMS.map(item => `/coach/athlete/${athleteId}?tab=${item.tab}`)
+    const urls = NAV_ITEMS.map(item => `/coach/athletes/${athleteId}?tab=${item.tab}`)
     expect(urls).toEqual([
-      '/coach/athlete/abc123?tab=mensajes',
-      '/coach/athlete/abc123?tab=plan',
-      '/coach/athlete/abc123?tab=nutricion',
-      '/coach/athlete/abc123?tab=resumen',
+      '/coach/athletes/abc123?tab=mensajes',
+      '/coach/athletes/abc123?tab=plan',
+      '/coach/athletes/abc123?tab=nutricion',
+      '/coach/athletes/abc123?tab=resumen',
     ])
   })
 
   it('config features navega a ruta separada sin query param', () => {
     const athleteId = 'abc123'
-    const configUrl = `/coach/athlete/${athleteId}/config`
-    expect(configUrl).toBe('/coach/athlete/abc123/config')
+    const configUrl = `/coach/athletes/${athleteId}/config`
+    expect(configUrl).toBe('/coach/athletes/abc123/config')
   })
 
   it('pausar/reactivar label depende del status actual', () => {

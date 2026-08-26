@@ -499,7 +499,7 @@ export default async function CoachDashboardPage() {
                       hace {a.lastCheckInDaysAgo >= 999 ? '?' : a.lastCheckInDaysAgo}d
                     </span>
                     <a
-                      href={`/coach/athlete/${a.id}`}
+                      href={`/coach/athletes/${a.id}`}
                       className="shrink-0 text-[10px] font-semibold text-white px-2.5 py-1 rounded-md"
                       style={{ backgroundColor: '#1f3b5e' }}
                     >
@@ -579,7 +579,7 @@ export default async function CoachDashboardPage() {
                       </span>
                       {p.athleteId && (
                         <a
-                          href={`/coach/athlete/${p.athleteId}`}
+                          href={`/coach/athletes/${p.athleteId}`}
                           className="shrink-0 text-[10px] font-semibold text-white px-2.5 py-1 rounded-md"
                           style={{ backgroundColor: '#ea580c' }}
                         >
@@ -618,7 +618,7 @@ export default async function CoachDashboardPage() {
                           </div>
                           {isLate && <span className="text-[9px] font-medium shrink-0" style={{ color: '#ea580c' }}>Más de 48h</span>}
                           <a
-                            href={`/coach/athlete/${rel.athleteId}`}
+                            href={`/coach/athletes/${rel.athleteId}`}
                             className="text-[10px] font-medium shrink-0"
                             style={{ color: '#ea580c' }}
                           >
@@ -639,7 +639,7 @@ export default async function CoachDashboardPage() {
                       <div key={a.id} className="flex items-center gap-3">
                         <p className="flex-1 text-[11px] truncate" style={{ color: '#4d5966' }}>{a.name}</p>
                         <p className="text-[10px] shrink-0" style={{ color: '#808c99' }}>{a.sport ? SPORT_LABELS[a.sport]?.replace(/^.\s/, '') ?? a.sport : 'Sin deporte'}</p>
-                        <a href={`/coach/athlete/${a.id}`} className="text-[10px] font-medium shrink-0" style={{ color: '#ea580c' }}>
+                        <a href={`/coach/athletes/${a.id}`} className="text-[10px] font-medium shrink-0" style={{ color: '#ea580c' }}>
                           Asignar plan →
                         </a>
                       </div>

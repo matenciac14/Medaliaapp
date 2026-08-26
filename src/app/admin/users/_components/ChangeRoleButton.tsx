@@ -19,7 +19,7 @@ export function ChangeRoleButton({ userId, currentRole }: Props) {
     if (!window.confirm(`¿Cambiar rol de ${currentRole} → ${newRole}? Esto actualizará las features del usuario.`)) return
     setLoading(true)
     try {
-      await fetch(`/api/admin/user/${userId}/role`, {
+      await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),

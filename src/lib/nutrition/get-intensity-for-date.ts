@@ -1,36 +1,12 @@
 // ---------------------------------------------------------------------------
-// get-intensity-for-date.ts — Determina la intensidad de entrenamiento de un día
+// get-intensity-for-date.ts — DB query: intensity map for a date range
+// Pure domain logic (mapSessionToIntensity) lives in @/domain/nutrition/session-intensity
 // ---------------------------------------------------------------------------
 
 import { prisma } from '@/lib/db/prisma'
+import { mapSessionToIntensity, intensityRank } from '@/domain/nutrition/session-intensity'
 
-/**
- * Mapea el tipo de sesión / intensidad de PlannedSession al intensity string
- * que usa getDailyNutritionTarget.
- *
- * - INTERVALOS, TEMPO, TIRADA_LARGA, FARTLEK, TEST, SIMULACRO → HIGH
- * - RODAJE_Z2, FUERZA → MODERATE
- * - DESCANSO → REST
- * - Sin sesión → REST
- */
-export function mapSessionToIntensity(
-  session: { intensity?: string | null; type?: string | null } | null
-): string {
-  if (!session) return 'REST'
-
-  // Si ya tiene intensity definida, usarla directamente
-  if (session.intensity) return session.intensity
-
-  // Fallback por type
-  const highTypes = ['INTERVALOS', 'TEMPO', 'TIRADA_LARGA', 'FARTLEK', 'TEST', 'SIMULACRO']
-  const moderateTypes = ['RODAJE_Z2', 'FUERZA']
-
-  if (session.type && highTypes.includes(session.type)) return 'HIGH'
-  if (session.type && moderateTypes.includes(session.type)) return 'MODERATE'
-  if (session.type === 'DESCANSO') return 'REST'
-
-  return 'REST'
-}
+export { mapSessionToIntensity } from '@/domain/nutrition/session-intensity'
 
 /**
  * Dado un userId y un rango de fechas, devuelve un Map<dateKey, intensity>
@@ -94,11 +70,4 @@ export async function getIntensityMapForDateRange(
   }
 
   return intensityMap
-}
-
-/** Ranking numérico para resolver conflictos: HIGH > MODERATE > REST */
-function intensityRank(intensity: string): number {
-  if (intensity === 'HIGH') return 3
-  if (intensity === 'MODERATE') return 2
-  return 1
 }

@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 
 const SOURCE_LABEL: Record<string, string> = {
-  AI: 'IA',
   COACH: 'Coach',
-  AI_COACH_APPROVED: 'IA (aprobado)',
 }
 
 export default async function AdminPlansPage() {

@@ -4,7 +4,7 @@ import { rateLimitAsync } from '@/lib/rate-limit'
 import { prisma } from '@/lib/db/prisma'
 import { PrismaSuggestionRepository } from '@/infrastructure/db/suggestion.repository'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
-import { applySessionAdjustments } from '@/domain/check-in/process-check-in.use-case'
+import { applySessionAdjustments } from '@/domain/checkin/process-check-in.use-case'
 
 export async function POST(
   req: NextRequest,

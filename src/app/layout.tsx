@@ -5,7 +5,6 @@ import { getServerLocale } from "@/lib/i18n/server";
 import Providers from "./_components/Providers";
 import ServiceWorkerRegistration from "./_components/ServiceWorkerRegistration";
 import CookieConsent from "./_components/CookieConsent";
-import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 import { JsonLd } from "@/components/seo/json-ld";
 
 const geistSans = Geist({
@@ -87,7 +86,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <JsonLd data={{
           '@context': 'https://schema.org',
           '@type': 'WebSite',
@@ -105,7 +104,6 @@ export default async function RootLayout({
         </Providers>
         <ServiceWorkerRegistration />
         <CookieConsent />
-        <WhatsAppButton />
       </body>
     </html>
   );

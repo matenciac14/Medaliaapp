@@ -81,10 +81,8 @@ const PLAN_STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Activo', PAUSED: 'Pausado', COMPLETED: 'Completado', ABANDONED: 'Abandonado',
 }
 
-const GENERATED_BY_LABEL: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  AI:                { label: 'Generado por Medaliq', bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
-  COACH:             { label: 'Creado por coach',   bg: '#f0fdf4', text: '#14532d', border: '#bbf7d0' },
-  AI_COACH_APPROVED: { label: 'Aprobado por coach', bg: '#f0fdf4', text: '#14532d', border: '#86efac' },
+const GENERATED_BY_LABEL: { label: string; bg: string; text: string; border: string } = {
+  label: 'Creado por coach', bg: '#f0fdf4', text: '#14532d', border: '#bbf7d0',
 }
 
 const PHASES = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
@@ -122,12 +120,6 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
     return map
   })
 
-  // Approve state
-  const [approving, setApproving]   = useState(false)
-  const [approved, setApproved]     = useState(plan.generatedBy === 'AI_COACH_APPROVED')
-  const [feedback, setFeedback]     = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-  const [showAdjustForm, setShowAdjustForm] = useState(false)
-  const [adjustComment, setAdjustComment]   = useState('')
 
   const weeksByPhase = PHASES
     .map((phase) => ({ phase, weeks: plan.weeks.filter((w) => w.phase === phase) }))
@@ -199,50 +191,9 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
     }
   }
 
-  async function handleApprove() {
-    setApproving(true); setFeedback(null)
-    try {
-      const res = await fetch(`/api/coach/plan/${plan.id}/approve`, { method: 'PATCH' })
-      const data = await res.json() as { ok: boolean }
-      if (res.ok && data.ok) {
-        setApproved(true)
-        setFeedback({ type: 'success', message: 'Plan aprobado. El atleta puede verlo en su dashboard.' })
-      } else {
-        setFeedback({ type: 'error', message: 'Error al aprobar. Intenta de nuevo.' })
-      }
-    } catch {
-      setFeedback({ type: 'error', message: 'Error de conexión.' })
-    } finally {
-      setApproving(false)
-    }
-  }
-
-  async function handleRequestAdjustment() {
-    if (!adjustComment.trim()) return
-    setApproving(true); setFeedback(null)
-    try {
-      const res = await fetch(`/api/coach/plan/${plan.id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'request_adjustment', comment: adjustComment }),
-      })
-      const data = await res.json() as { ok: boolean }
-      if (res.ok && data.ok) {
-        setShowAdjustForm(false); setAdjustComment('')
-        setFeedback({ type: 'success', message: 'Solicitud de ajuste registrada.' })
-      } else {
-        setFeedback({ type: 'error', message: 'Error al enviar la solicitud.' })
-      }
-    } catch {
-      setFeedback({ type: 'error', message: 'Error de conexión.' })
-    } finally {
-      setApproving(false)
-    }
-  }
-
   const athleteName = plan.user.name ?? plan.user.email
   const initials    = athleteName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-  const statusCfg   = GENERATED_BY_LABEL[approved ? 'AI_COACH_APPROVED' : plan.generatedBy] ?? GENERATED_BY_LABEL.AI
+  const statusCfg   = GENERATED_BY_LABEL
   const startDate   = new Date(plan.startDate).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
   const endDate     = new Date(plan.endDate).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 
@@ -253,7 +204,7 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <Link href={`/coach/athlete/${athleteId}`} className="flex-shrink-0 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            <Link href={`/coach/athletes/${athleteId}`} className="flex-shrink-0 text-sm text-gray-500 hover:text-gray-800 transition-colors">
               ← Volver
             </Link>
             <div className="flex items-center gap-3 min-w-0">
@@ -284,12 +235,6 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
           </div>
         </div>
 
-        {/* Feedback banner */}
-        {feedback && (
-          <div className="mb-6 px-4 py-3 rounded-lg text-sm font-medium" style={{ backgroundColor: feedback.type === 'success' ? '#dcfce7' : '#fee2e2', color: feedback.type === 'success' ? '#14532d' : '#7f1d1d' }}>
-            {feedback.message}
-          </div>
-        )}
 
         {/* ── Phases + weeks ─────────────────────────────────────────────────── */}
         <div className="space-y-4">
@@ -477,40 +422,6 @@ export default function PlanReviewClient({ plan, athleteId }: { plan: PlanData; 
         </div>
       </div>
 
-      {/* ── Sticky footer — oculto mientras se edita una sesión ───────────────── */}
-      {!editingSession && <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 shadow-lg">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          {showAdjustForm ? (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">Comentario para el atleta</label>
-              <textarea
-                rows={2}
-                placeholder="Describe los ajustes necesarios..."
-                value={adjustComment}
-                onChange={(e) => setAdjustComment(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 text-gray-700 placeholder-gray-400"
-              />
-              <div className="flex gap-3">
-                <button onClick={() => { setShowAdjustForm(false); setAdjustComment('') }} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
-                  Cancelar
-                </button>
-                <button onClick={handleRequestAdjustment} disabled={approving || !adjustComment.trim()} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50" style={{ backgroundColor: '#dc2626' }}>
-                  {approving ? 'Enviando...' : 'Enviar solicitud'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-3">
-              <button onClick={() => setShowAdjustForm(true)} disabled={approving || approved} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors disabled:opacity-40" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
-                Solicitar ajuste
-              </button>
-              <button onClick={handleApprove} disabled={approving || approved} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: approved ? '#16a34a' : '#1e3a5f' }}>
-                {approving ? 'Aprobando...' : approved ? '✓ Plan aprobado' : 'Aprobar plan'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>}
     </div>
   )
 }

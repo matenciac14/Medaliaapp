@@ -1,4 +1,4 @@
-import type { CheckInInput, PreviousCheckIn } from '@/domain/check-in/check-in.types'
+import type { CheckInInput, PreviousCheckIn } from '@/domain/checkin/check-in.types'
 
 export type SaveCheckInPayload = CheckInInput & {
   trainingAdherence: number    // calculated server-side from session logs

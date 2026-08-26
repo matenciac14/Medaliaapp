@@ -49,7 +49,7 @@ export class PrismaPlanRepository implements IPlanRepository {
       phase: weekData?.phase ?? 'BASE',
       startDate: plan.startDate,
       sessions,
-      source: plan.generatedBy as 'AI' | 'COACH' | 'AI_COACH_APPROVED',
+      source: 'COACH',
     }
   }
 
@@ -117,8 +117,7 @@ export class PrismaPlanRepository implements IPlanRepository {
         goalType: (data.goalType as GoalType | undefined) ?? null,
         totalWeeks: data.totalWeeks,
         status: 'ACTIVE',
-        // 'TEMPLATE' is not in PlanSource enum — map to 'AI' as closest equivalent
-        generatedBy: data.generatedBy === 'TEMPLATE' ? 'AI' : data.generatedBy,
+        generatedBy: 'COACH',
         startDate: data.startDate,
         endDate: data.endDate,
         hrZones: data.hrZones as unknown as Prisma.InputJsonValue,

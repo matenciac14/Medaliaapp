@@ -10,6 +10,8 @@ import WeekDayStrip from './WeekDayStrip'
 import { jsToWeekIdx } from '@/lib/core/date-utils'
 import { SESSION_ICONS } from '@/lib/constants/sessions'
 
+const DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
 interface Props {
   weekOffset: number
   /** Dashboard mode — determines detail card behavior */
@@ -20,9 +22,11 @@ interface Props {
   weekLabel?: string
   /** Registration/session count for mobile header */
   mobileCount?: string
+  /** B2B athlete — shows COACH badge in session detail */
+  isB2B?: boolean
 }
 
-export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '' }: Props) {
+export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '', isB2B = false }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const todayWeekIdx = jsToWeekIdx(new Date().getDay())
@@ -89,83 +93,77 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
 
   return (
     <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-      {/* Mobile: Figma-style card with header + nav + dots */}
-      <div className="sm:hidden space-y-3">
-        {/* Header row */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-bold text-gray-900 uppercase tracking-wide">ESTA SEMANA</h2>
-          <span className="text-[11px] font-semibold text-gray-400">{mobileCount}</span>
-        </div>
-        {/* Week nav row — arrows at edges, label centered */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigateWeek(-1)}
-            className="w-7 h-7 rounded-[8px] bg-gray-100 flex items-center justify-center text-gray-400 text-sm"
-          >
-            ‹
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-semibold text-gray-700">{weekLabel}</span>
-            {!isCurrentWeek && (
-              <button
-                onClick={() => router.push(pathname)}
-                className="text-[11px] font-semibold text-[#ea580c] bg-[#fff7ed] px-2.5 py-1 rounded-lg"
-              >
-                Hoy
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => navigateWeek(1)}
-            className="w-7 h-7 rounded-[8px] bg-gray-100 flex items-center justify-center text-gray-400 text-sm"
-          >
-            ›
-          </button>
-        </div>
+      {/* Mobile: flat CalendarStrip matching Figma — no header/nav (already in main header) */}
+      <div className="sm:hidden">
         {/* Progress bar */}
         {stats.total > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-[5px] bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#22c55e] rounded-full transition-all duration-500"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <span className="text-[10px] font-semibold text-gray-400 tabular-nums shrink-0">
-              {stats.completed}/{stats.total}
-            </span>
+          <div className="mx-4 mt-3 h-[2px] bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#22c55e] rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
         )}
-        {/* Dot strip */}
-        <WeekDayStrip
-          cells={cells}
-          variant="dots"
-          selectedIdx={selectedIdx ?? undefined}
-          todayIdx={isCurrentWeek ? todayWeekIdx : -1}
-          onCellClick={(idx) => {
-            setSelectedIdx(idx)
-            if (!isCurrentWeek) return
-            const cell = cells[idx]
-            if (!cell || cell.done || !cell.sessionType || cell.sessionType === 'DESCANSO') return
-            if (idx >= todayWeekIdx) return
-            // Past unlogged session — navigate to log
-            const day = days.find(d => d.weekIdx === idx)
-            if (!day?.sport) return
-            const params = new URLSearchParams({
-              sessionId: day.sport.sessionId,
-              type: day.sport.type,
-              duration: String(day.sport.durationMin),
-              zone: day.sport.zoneTarget ?? '2',
-            })
-            router.push(`/log/run?${params}`)
-          }}
-        />
-        {/* Hint for past unlogged sessions */}
-        {isCurrentWeek && cells.some(c => c.idx < todayWeekIdx && c.sessionType && c.sessionType !== 'DESCANSO' && !c.done) && (
-          <p className="text-[9px] text-[#f97316] text-center">
-            Toca ! para registrar sesiones pasadas
-          </p>
-        )}
+        {/* Day circles */}
+        <div className="grid grid-cols-7 pt-2 pb-4">
+          {cells.map(cell => {
+            const hasSession = !!cell.sessionType && cell.sessionType !== 'DESCANSO'
+            const isPast = isCurrentWeek && todayWeekIdx >= 0 && cell.idx < todayWeekIdx
+            const isPastUnlogged = isPast && hasSession && !cell.done
+            const isFuture = isCurrentWeek && todayWeekIdx >= 0 && cell.idx > todayWeekIdx
+
+            const circleBg = cell.done && hasSession ? 'bg-[#22c55e]'
+              : cell.isToday ? 'bg-[#f97316]'
+              : isPastUnlogged ? 'bg-[#fff7ed]'
+              : 'bg-transparent'
+
+            const borderClass = (selectedIdx === cell.idx && !cell.isToday) ? 'ring-2 ring-[#1e3a5f]'
+              : cell.isToday ? 'ring-2 ring-[#f97316]/35'
+              : isPastUnlogged ? 'ring-[1.5px] ring-[#f97316]'
+              : ''
+
+            const numColor = cell.done && hasSession ? 'text-white'
+              : cell.isToday ? 'text-white'
+              : isPastUnlogged ? 'text-[#f97316]'
+              : 'text-gray-500'
+
+            const letterColor = cell.isToday ? 'text-[#f97316] font-bold' : selectedIdx === cell.idx ? 'text-[#1e3a5f] font-bold' : 'text-gray-400'
+
+            return (
+              <button
+                key={cell.idx}
+                onClick={() => {
+                  setSelectedIdx(cell.idx)
+                  if (!isCurrentWeek) return
+                  if (isPastUnlogged) {
+                    const day = days.find(d => d.weekIdx === cell.idx)
+                    if (!day?.sport) return
+                    const params = new URLSearchParams({
+                      sessionId: day.sport.sessionId,
+                      type: day.sport.type,
+                      duration: String(day.sport.durationMin),
+                      zone: day.sport.zoneTarget ?? '2',
+                    })
+                    router.push(`/log/run?${params}`)
+                  }
+                }}
+                className={`flex flex-col items-center gap-1 ${isFuture && hasSession ? 'opacity-40' : ''}`}
+              >
+                <span className={`text-[10px] font-medium ${letterColor}`}>
+                  {DAY_LETTERS[cell.idx]}
+                </span>
+                <div className={`w-[34px] h-[34px] rounded-full flex items-center justify-center ${circleBg} ${borderClass}`}>
+                  {cell.done && hasSession ? (
+                    <span className="text-white text-sm">✓</span>
+                  ) : (
+                    <span className={`text-[13px] font-bold ${numColor}`}>{cell.dateNum}</span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <div className="h-px bg-gray-200" />
         {/* Detail card — mobile */}
         {selectedDay && (
           <MobileDotDetail day={selectedDay} />
@@ -189,6 +187,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
             firstName={firstName}
             completedCount={stats.completed}
             totalSessions={stats.total}
+            isB2B={isB2B}
           />
         )}
       </div>
@@ -198,12 +197,13 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
 
 // ── Detail card for selected day ──────────────────────────────────────────────
 
-function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions }: {
+function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions, isB2B = false }: {
   day: CalendarDay
   dashboardMode: string
   firstName: string
   completedCount: number
   totalSessions: number
+  isB2B?: boolean
 }) {
   const { sport, gym, freeRun } = day
   const isRest = !!sport && sport.type === 'DESCANSO' && !gym
@@ -236,7 +236,7 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
             <Link href="/find-coach" className="text-xs font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0">
               Conecta con un entrenador →
             </Link>
-            <Link href="/routine/edit" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap shrink-0">
+            <Link href="/gym" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap shrink-0">
               Arma tu rutina →
             </Link>
           </>
@@ -280,7 +280,7 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
     ? gym!.rpe
     : freeRun?.rpe ?? null
 
-  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Entreno' : 'Carrera libre'
+  const sessionCategory = isSportPrimary ? 'Carrera' : isGymPrimary ? 'Gym' : 'Carrera libre'
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">
@@ -330,6 +330,11 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
         {rpe && (
           <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
             RPE {rpe}
+          </span>
+        )}
+        {isB2B && (
+          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-[#1e3a5f]">
+            👤 COACH
           </span>
         )}
         {isFreeRun && freeRun!.distanceKm && (

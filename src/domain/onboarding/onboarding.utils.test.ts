@@ -11,7 +11,7 @@
  *
  * Flujo cubierto:
  *   - onboarding/new-goal → generatePlanUseCase → resolveSportConfig → completeOnboarding
- *   - /coach/athlete/[id]/plan → POST con targetTime → timeStringToSecs → predictRaceTime
+ *   - /coach/athletes/[id]/plan → POST con targetTime → timeStringToSecs → predictRaceTime
  *
  * Cómo correr:
  *   pnpm test src/domain/onboarding/onboarding.utils.test.ts

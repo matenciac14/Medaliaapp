@@ -23,10 +23,10 @@
  *   pnpm test src/domain/plan/generate-plan.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { getTemplate } from '@/lib/plan/templates'
-import { estimateHRMax, calculateHRZones, calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
-import { getSessionIntensity } from '@/lib/plan/intensity'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+import { getTemplate } from '@/domain/plan/templates'
+import { estimateHRMax, calculateHRZones, calculateTDEE, calculateMacros } from '@/domain/plan/formulas'
+import { getSessionIntensity } from '@/domain/plan/intensity'
+import { getDailyNutritionTarget } from '@/domain/nutrition/daily-target'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
 import { resolveWorkoutDayId, generatePlanUseCase, computePaceHints } from './generate-plan.use-case'
 

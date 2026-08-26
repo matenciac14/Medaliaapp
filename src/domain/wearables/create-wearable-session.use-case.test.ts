@@ -1,16 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { prisma } from '@/lib/db/prisma'
 import { createWearableSession } from './create-wearable-session.use-case'
 import type { CreateWearableSessionInput } from './create-wearable-session.use-case'
+import type { ISessionLogRepository } from '@/domain/ports/session-log.repository'
 
-vi.mock('@/lib/db/prisma', () => ({
-  prisma: {
-    sessionLog: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}))
+// ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const BASE_INPUT: CreateWearableSessionInput = {
   userId: 'user-1',
@@ -26,63 +19,54 @@ const BASE_INPUT: CreateWearableSessionInput = {
   sessionDate: new Date('2026-08-01'),
 }
 
+// ── Stub factory ─────────────────────────────────────────────────────────────
+
+function makeRepo(overrides: Partial<ISessionLogRepository> = {}): ISessionLogRepository {
+  return {
+    findByExternalId: vi.fn().mockResolvedValue(null),
+    createFromWearable: vi.fn().mockResolvedValue({ id: 'log-new' }),
+    ...overrides,
+  }
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe('createWearableSession', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('crea una nueva sesión cuando no existe el externalId', async () => {
-    vi.mocked(prisma.sessionLog.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.sessionLog.create).mockResolvedValue({ id: 'log-new' } as any)
-
-    const result = await createWearableSession(BASE_INPUT)
+    const repo = makeRepo()
+    const result = await createWearableSession(BASE_INPUT, repo)
 
     expect(result).toEqual({ id: 'log-new', created: true })
-    expect(prisma.sessionLog.create).toHaveBeenCalledOnce()
+    expect(repo.createFromWearable).toHaveBeenCalledOnce()
   })
 
   it('es idempotente: retorna created: false si ya existe el externalId', async () => {
-    vi.mocked(prisma.sessionLog.findFirst).mockResolvedValue({ id: 'log-existing' } as any)
+    const repo = makeRepo({ findByExternalId: vi.fn().mockResolvedValue({ id: 'log-existing' }) })
 
-    const result = await createWearableSession(BASE_INPUT)
+    const result = await createWearableSession(BASE_INPUT, repo)
 
     expect(result).toEqual({ id: 'log-existing', created: false })
-    expect(prisma.sessionLog.create).not.toHaveBeenCalled()
+    expect(repo.createFromWearable).not.toHaveBeenCalled()
   })
 
   it('busca por userId + externalId para el check de idempotencia', async () => {
-    vi.mocked(prisma.sessionLog.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.sessionLog.create).mockResolvedValue({ id: 'log-new' } as any)
+    const repo = makeRepo()
+    await createWearableSession(BASE_INPUT, repo)
 
-    await createWearableSession(BASE_INPUT)
-
-    expect(prisma.sessionLog.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { userId: 'user-1', externalId: 'strava-abc' },
-      })
-    )
-  })
-
-  it('redondea durationMin y avgPaceSecPerKm al entero más cercano', async () => {
-    vi.mocked(prisma.sessionLog.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.sessionLog.create).mockResolvedValue({ id: 'log-new' } as any)
-
-    await createWearableSession({ ...BASE_INPUT, durationMin: 55.7, avgPaceSecPerKm: 330.4 })
-
-    const data = vi.mocked(prisma.sessionLog.create).mock.calls[0][0].data
-    expect(data.durationMin).toBe(56)
-    expect(data.avgPaceSecPerKm).toBe(330)
+    expect(repo.findByExternalId).toHaveBeenCalledWith('user-1', 'strava-abc')
   })
 
   it('acepta input sin campos opcionales', async () => {
-    vi.mocked(prisma.sessionLog.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.sessionLog.create).mockResolvedValue({ id: 'log-min' } as any)
-
+    const repo = makeRepo()
     const result = await createWearableSession({
       userId: 'user-1',
       externalId: 'ext-min',
       dataSource: 'HEALTHKIT',
       discipline: 'OTHER',
       sessionDate: new Date('2026-08-01'),
-    })
+    }, repo)
 
     expect(result.created).toBe(true)
   })

@@ -124,6 +124,40 @@ export function computeProgressionUpdates(
   return updates
 }
 
+// ── Calorie estimation ────────────────────────────────────────────────────────
+
+/**
+ * Estimates calories burned from session duration and average calories-per-minute
+ * across exercises. Falls back to 5 kcal/min (~MET 4 for strength, 70 kg person).
+ */
+export function estimateCalories(
+  durMin: number | undefined,
+  caloriesPerMinuteValues: (number | null | undefined)[],
+): number | null {
+  if (!durMin || durMin <= 0) return null
+  const cpmValues = caloriesPerMinuteValues.filter((v): v is number => v != null)
+  const avgCpm = cpmValues.length > 0
+    ? cpmValues.reduce((a, b) => a + b, 0) / cpmValues.length
+    : 5.0
+  return Math.round(durMin * avgCpm)
+}
+
+// ── WeId sanitization ─────────────────────────────────────────────────────────
+
+/**
+ * Validates a workoutExerciseId against the locally-fetched maps.
+ * Returns null when the ID is absent or not found in the DB-fetched maps —
+ * preventing FK constraint errors when the coach deletes+recreates template exercises.
+ */
+export function sanitizeWeId(
+  weId: string | undefined,
+  weNameMap: WeNameMap,
+  weExIdMap: WeToExIdMap,
+): string | null {
+  if (!weId) return null
+  return weNameMap.has(weId) || weExIdMap.has(weId) ? weId : null
+}
+
 // ── PR summary ────────────────────────────────────────────────────────────────
 
 export type PRRecord = {

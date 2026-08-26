@@ -3,6 +3,8 @@ import { wearableRepository } from '@/infrastructure/db/wearable.repository'
 import { refreshStravaTokenIfNeeded, fetchStravaActivity } from '@/infrastructure/wearable/strava.service'
 import { stravaActivityToSessionLog } from '@/infrastructure/wearable/strava.mapper'
 import { createWearableSession } from '@/domain/wearables/create-wearable-session.use-case'
+import { PrismaSessionLogRepository } from '@/infrastructure/db/session-log.repository'
+import { prisma } from '@/lib/db/prisma'
 
 interface StravaWebhookEvent {
   aspect_type:     string
@@ -64,7 +66,8 @@ async function processStravaEvent(event: StravaWebhookEvent): Promise<void> {
   if (!activity) return
 
   const input = stravaActivityToSessionLog(activity, conn.userId)
-  const { id, created } = await createWearableSession(input)
+  const sessionLogRepo = new PrismaSessionLogRepository(prisma)
+  const { id, created } = await createWearableSession(input, sessionLogRepo)
 
   if (created) {
     console.log('[strava webhook] session created', id, 'for user', conn.userId)

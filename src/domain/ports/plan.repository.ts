@@ -11,7 +11,7 @@ export type ActivePlanContext = {
   phase: string
   startDate: Date
   sessions: PlannedSession[]
-  source: 'AI' | 'COACH' | 'AI_COACH_APPROVED'
+  source: 'COACH'
 }
 
 export type CreatePlanData = {
@@ -22,7 +22,7 @@ export type CreatePlanData = {
   startDate: Date
   endDate: Date
   hrZones: HRZones
-  generatedBy: 'AI' | 'COACH' | 'TEMPLATE'
+  generatedBy: 'COACH'
 }
 
 export type CreateWeekData = {

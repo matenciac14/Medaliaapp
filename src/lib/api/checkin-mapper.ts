@@ -18,12 +18,12 @@
  *   stressLevel       →  stressLevel  (×2)
  *
  * Al agregar un campo nuevo al check-in:
- *   1. Añadir al CheckInInput en domain/check-in/check-in.types.ts (nombre dominio)
+ *   1. Añadir al CheckInInput en domain/checkin/check-in.types.ts (nombre dominio)
  *   2. Añadir aquí en la función que corresponda (web y/o mobile)
  *   3. Añadir al check-in.repository.ts (nombre DB)
  */
 
-import type { CheckInInput } from '@/domain/check-in/check-in.types'
+import type { CheckInInput } from '@/domain/checkin/check-in.types'
 
 // ── Escala mobile 1–5 → dominio 1–10 ─────────────────────────────────────────
 
