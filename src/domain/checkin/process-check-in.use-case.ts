@@ -28,7 +28,7 @@ import type { CheckInInput, PlanContext } from './check-in.types'
 import { CHECK_IN_THRESHOLDS } from './check-in.types'
 import { evaluateCheckInRules, buildSessionAdjustments } from './evaluate-rules'
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { calculateTDEE, calculateMacros } from '@/domain/plan/formulas'
 import { calcAge } from '@/lib/utils/calc-age'
 import { PrismaCheckInRepository } from '@/infrastructure/db/checkin.repository'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
@@ -189,19 +189,6 @@ export async function processCheckIn(
           await txSuggestion.createMany(userId, checkInId, suggestions)
           pendingSuggestions = suggestions.length
         }
-      }
-    }
-
-    // 2b. AI/template plan → auto-apply session adjustments
-    if (activePlan && activePlan.source !== 'COACH' && triggers.length > 0) {
-      const nextWeek = activePlan.currentWeek + 1
-      if (nextWeek <= activePlan.totalWeeks) {
-        sessionsAdjusted = await applySessionAdjustments(
-          activePlan.id,
-          nextWeek,
-          triggers,
-          txPlan
-        )
       }
     }
 

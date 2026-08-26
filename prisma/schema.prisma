@@ -294,21 +294,24 @@ enum GoalType {
 // ─── PLAN DE ENTRENAMIENTO ──────────────────────────────────────────────────
 
 model TrainingPlan {
-  id          String     @id @default(cuid())
-  userId      String
-  name        String
-  goalType    GoalType?  // enum constraint — antes era String?
-  totalWeeks  Int
-  startDate   DateTime
-  endDate     DateTime
-  status      PlanStatus @default(ACTIVE)
-  hrZones     Json
-  generatedBy PlanSource @default(AI)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                   String     @id @default(cuid())
+  userId               String
+  name                 String
+  goalType             GoalType?  // enum constraint — antes era String?
+  totalWeeks           Int
+  startDate            DateTime
+  endDate              DateTime
+  status               PlanStatus @default(ACTIVE)
+  hrZones              Json
+  generatedBy          PlanSource @default(COACH)
+  // BUILDER-02: template nutricional vinculado al plan (opcional)
+  nutritionTemplateId  String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weeks PlanWeek[]
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weeks              PlanWeek[]
+  nutritionTemplate  NutritionTemplate? @relation(fields: [nutritionTemplateId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
 }
@@ -321,8 +324,9 @@ enum PlanStatus {
 }
 
 enum PlanSource {
-  AI
   COACH
+  // Reserved — not implemented yet (PostgreSQL enum values cannot be dropped without data migration):
+  AI
   AI_COACH_APPROVED
   ATHLETE
 }
@@ -1124,6 +1128,7 @@ model NutritionTemplate {
   athlete     User?                   @relation("AthleteNutritionTemplates", fields: [athleteId], references: [id], onDelete: Cascade)
   days        NutritionTemplateDay[]
   assignments AssignedNutritionPlan[]
+  trainingPlans TrainingPlan[]
 
   @@index([coachId])
   @@index([athleteId])

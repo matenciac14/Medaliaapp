@@ -85,7 +85,6 @@ export default function AdminHelpPage() {
             ['DB', 'PostgreSQL — Neon (serverless)'],
             ['ORM', 'Prisma 7'],
             ['Auth', 'Auth.js v5 (JWT)'],
-            ['AI', 'Claude Sonnet 4.6 (Anthropic)'],
             ['Deploy', 'Vercel — auto-deploy desde main'],
             ['Dominio', 'medaliq.com → Route 53 → Vercel'],
             ['Repo', 'github.com/matenciac14/Medaliq'],

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { generatePlan } from '@/lib/plan/generator'
-import { PLAN_TEMPLATES } from '@/lib/plan/templates'
+import { generatePlanUseCase } from '@/domain/plan/generate-plan.use-case'
+import { PLAN_TEMPLATES } from '@/domain/plan/templates'
+import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
+import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 
 const VALID_GOAL_TYPES = Object.keys(PLAN_TEMPLATES)
 const VALID_DAYS_PER_WEEK = [3, 4, 5, 6] as const
@@ -70,24 +72,31 @@ export async function POST(
     select: { value: true },
   })
 
-  const result = await generatePlan({
-    userId: athleteId,
-    goalType,
-    daysPerWeek: daysPerWeek ?? 4,
-    hoursPerSession: hoursPerSession ?? 1,
-    age: profile.age ?? 30,
-    heightCm: profile.heightCm ?? 170,
-    weightKg: profile.weightKg ?? 70,
-    gender: (profile.gender ?? 'male') as 'male' | 'female',
-    hrResting: profile.hrResting ?? undefined,
-    hrMax: profile.hrMax ?? undefined,
-    injuries: (profile?.injuries as string[]) ?? [],
-    conditions: (profile?.conditions as string[]) ?? [],
-    nutritionCommitment: 'moderate',
-    weightGoalKg: profile?.weightGoalKg ?? undefined,
-    generatedBy: 'COACH',
-    recentBenchmark5KSecs: benchmark5K ? Number(benchmark5K.value) : undefined,
-  })
+  const result = await generatePlanUseCase(
+    {
+      userId: athleteId,
+      goalType,
+      daysPerWeek: daysPerWeek ?? 4,
+      hoursPerSession: hoursPerSession ?? 1,
+      age: profile.age ?? 30,
+      heightCm: profile.heightCm ?? 170,
+      weightKg: profile.weightKg ?? 70,
+      gender: (profile.gender ?? 'male') as 'male' | 'female',
+      hrResting: profile.hrResting ?? undefined,
+      hrMax: profile.hrMax ?? undefined,
+      injuries: (profile?.injuries as string[]) ?? [],
+      conditions: (profile?.conditions as string[]) ?? [],
+      nutritionCommitment: 'moderate',
+      weightGoalKg: profile?.weightGoalKg ?? undefined,
+      generatedBy: 'COACH',
+      recentBenchmark5KSecs: benchmark5K ? Number(benchmark5K.value) : undefined,
+    },
+    {
+      db: prisma,
+      planRepo: new PrismaPlanRepository(),
+      userRepo: new PrismaUserRepository(),
+    },
+  )
 
   return NextResponse.json({ success: true, planId: result.planId })
 }

@@ -106,6 +106,8 @@ type Props = {
   gymTemplates: GymTemplate[]
   nutritionPlan: NutritionPlanData | null
   assignedRoutine: AssignedRoutine | null
+  coachNutritionTemplates: { id: string; name: string }[]
+  linkedNutritionTemplateId: string | null
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -122,6 +124,11 @@ const SESSION_TYPES = [
   { type: 'DESCANSO',     label: 'Descanso',     color: '#9ca3af', sub: null },
   { type: 'TEST',         label: 'Test',         color: '#6366f1', sub: null },
 ]
+
+type Discipline = 'Todas' | 'Running' | 'Fuerza'
+
+const DISCIPLINE_RUNNING = new Set(['RODAJE_Z2', 'FARTLEK', 'TEMPO', 'TIRADA_LARGA', 'INTERVALOS', 'TEST'])
+const DISCIPLINE_FUERZA  = new Set(['FUERZA'])
 
 const INTENSITY_MAP: Record<string, { label: string; color: string; bg: string }> = {
   RODAJE_Z2:    { label: 'MOD',  color: '#ea580c', bg: '#ea580c1a' },
@@ -201,7 +208,7 @@ const PHASE_COLORS: Record<string, string> = {
   BASE: '#1e3a5f', DESARROLLO: '#ea580c', ESPECIFICO: '#dc2626', AFINAMIENTO: '#7c3aed',
 }
 
-export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates, nutritionPlan, assignedRoutine }: Props) {
+export default function PlanBuilderClient({ athleteId, athleteName, initialPlan, gymTemplates, nutritionPlan, assignedRoutine, coachNutritionTemplates, linkedNutritionTemplateId }: Props) {
   const [plan, setPlan] = useState<BuilderPlan | null>(initialPlan)
 
   // ── Estado para crear plan ────────────────────────────────────────────────
@@ -274,6 +281,9 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
   const [weekEdit, setWeekEdit] = useState<WeekEditState | null>(null)
   const [saving, setSaving] = useState(false)
   const [copyModal, setCopyModal] = useState<CopyModalState | null>(null)
+  const [discipline, setDiscipline] = useState<Discipline>('Todas')
+  const [linkedTemplate, setLinkedTemplate] = useState<string | null>(linkedNutritionTemplateId)
+  const [linkingTemplate, setLinkingTemplate] = useState(false)
 
   async function handleCopySession(targetWeekId: string, dayOfWeek: number) {
     if (!copyModal || !plan) return
@@ -419,6 +429,23 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
       alert(err instanceof Error ? err.message : 'Error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleLinkTemplate(templateId: string | null) {
+    setLinkingTemplate(true)
+    try {
+      const res = await fetch(`/api/coach/athletes/${athleteId}/plan/nutrition-template`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nutritionTemplateId: templateId }),
+      })
+      if (!res.ok) throw new Error('Error al vincular template')
+      setLinkedTemplate(templateId)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setLinkingTemplate(false)
     }
   }
 
@@ -668,11 +695,35 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel */}
         <aside className="w-56 border-r border-gray-200 bg-white overflow-y-auto p-4 shrink-0 hidden lg:block">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
             Tipos de sesión
           </p>
+
+          {/* Discipline filter pills */}
+          <div className="flex gap-0.5 mb-3 bg-gray-100 rounded-lg p-0.5">
+            {(['Todas', 'Running', 'Fuerza'] as Discipline[]).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDiscipline(d)}
+                className={`flex-1 text-[10px] font-semibold py-1 rounded-md transition-colors ${
+                  discipline === d
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-0.5">
-            {SESSION_TYPES.map((st) => (
+            {SESSION_TYPES.filter((st) =>
+              discipline === 'Todas'
+                ? true
+                : discipline === 'Running'
+                ? DISCIPLINE_RUNNING.has(st.type)
+                : DISCIPLINE_FUERZA.has(st.type)
+            ).map((st) => (
               <button
                 key={st.type}
                 onClick={() => week && openAddModal(week.id, 0, st.type)}
@@ -745,6 +796,32 @@ export default function PlanBuilderClient({ athleteId, athleteName, initialPlan,
               >
                 Notificar al atleta
               </button>
+            </div>
+          )}
+
+          {/* BUILDER-02: Template nutricional vinculado */}
+          {coachNutritionTemplates.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-[9px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#667382' }}>
+                Template nutricional
+              </p>
+              <select
+                value={linkedTemplate ?? ''}
+                onChange={(e) => handleLinkTemplate(e.target.value || null)}
+                disabled={linkingTemplate}
+                className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-200 disabled:opacity-50 bg-white"
+                style={{ color: linkedTemplate ? '#1f2938' : '#8c949e' }}
+              >
+                <option value="">Sin template</option>
+                {coachNutritionTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {linkedTemplate && (
+                <p className="text-[9px] mt-1" style={{ color: '#16a34a' }}>
+                  ✓ Vinculado
+                </p>
+              )}
             </div>
           )}
         </aside>

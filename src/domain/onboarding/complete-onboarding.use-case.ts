@@ -15,7 +15,7 @@ import type { IHealthProfileRepository } from '@/domain/ports/health-profile.rep
 import type { IUserRepository } from '@/domain/ports/user.repository'
 import type { IPlanRepository } from '@/domain/ports/plan.repository'
 import type { WizardData } from '@/domain/onboarding/onboarding.types'
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { calculateTDEE, calculateMacros } from '@/domain/plan/formulas'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

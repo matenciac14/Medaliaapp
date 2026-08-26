@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildStaticMealPlan, computeNutritionTargets, parseMealPlanData, type MacroTargets } from './generate-meal-plan'
-import { calculateMacros } from '@/lib/plan/formulas'
+import { calculateMacros } from '@/domain/plan/formulas'
 
 // ---------------------------------------------------------------------------
 // Helpers

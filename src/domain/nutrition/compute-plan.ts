@@ -1,4 +1,4 @@
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { calculateTDEE, calculateMacros } from '@/domain/plan/formulas'
 
 type HealthProfileInput = {
   weightKg: number

@@ -99,7 +99,7 @@ export function sessionDate(planStart: Date, weekIndex: number, dayOfWeek: numbe
 }
 
 /** Maps session type string to intensity enum. */
-export { getSessionIntensity } from '@/lib/plan/intensity'
+export { getSessionIntensity } from '@/domain/plan/intensity'
 
 /** Returns the sets×reps scheme for a given training phase. */
 export function getSetsRepsScheme(phase: string): string {

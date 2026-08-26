@@ -12,6 +12,8 @@ import {
   computeProgressionUpdates,
   collectPRsByWeId,
   collectPRsByName,
+  estimateCalories,
+  sanitizeWeId as sanitizeWeIdPure,
   type WeNameToWeIdMap,
 } from '@/domain/gym/complete-gym-session.use-case'
 import { createNotification } from '@/infrastructure/db/notification'
@@ -94,16 +96,7 @@ export async function POST(req: NextRequest) {
   const weNameToWeIdMap: WeNameToWeIdMap = new Map(workoutExercises.map(we => [we.exercise.name, we.id]))
 
   // EX-18: estimate calories from session duration × avg caloriesPerMinute across exercises
-  function estimateCalories(durMin?: number): number | null {
-    if (!durMin || durMin <= 0) return null
-    const cpmValues = workoutExercises
-      .map(we => we.exercise.caloriesPerMinute)
-      .filter((v): v is number => v != null)
-    const avgCpm = cpmValues.length > 0
-      ? cpmValues.reduce((a, b) => a + b, 0) / cpmValues.length
-      : 5.0 // fallback: ~5 kcal/min (MET ~4 para fuerza, persona ~70kg)
-    return Math.round(durMin * avgCpm)
-  }
+  const exerciseCpmValues = workoutExercises.map(we => we.exercise.caloriesPerMinute)
 
   // ── PR detection: max weightKg per exercise across all sessions ──────────────
   const exerciseIds = [...new Set(workoutExercises.map(we => we.exerciseId))]
@@ -172,14 +165,9 @@ export async function POST(req: NextRequest) {
     return isPRSet(weId, weightKg, completed, weExIdMap, maxPerExercise)
   }
 
-  /**
-   * GYM-GAP-05: sanitize a set's workoutExerciseId before persisting.
-   * If the ID is not found in the DB (coach deleted+recreated the template),
-   * null it out so we avoid a FK constraint error (P2003).
-   */
+  // GYM-GAP-05: sanitize a set's workoutExerciseId before persisting — nulls stale IDs
   function sanitizeWeId(weId: string | undefined): string | null {
-    if (!weId) return null
-    return weNameMap.has(weId) || weExIdMap.has(weId) ? weId : null
+    return sanitizeWeIdPure(weId, weNameMap, weExIdMap)
   }
 
   function persistProgression(completedSets: SetPayload[]) {
@@ -247,7 +235,7 @@ export async function POST(req: NextRequest) {
           rpe: rpe ?? null,
           energyState: energyState ?? null,
           discomfort: discomfort ?? null,
-          caloriesBurned: estimateCalories(durationMin),
+          caloriesBurned: estimateCalories(durationMin, exerciseCpmValues),
           notes: notes ?? null,
           completed: true,
           exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,
@@ -312,7 +300,7 @@ export async function POST(req: NextRequest) {
         rpe: rpe ?? null,
         energyState: energyState ?? null,
         discomfort: discomfort ?? null,
-        caloriesBurned: estimateCalories(durationMin),
+        caloriesBurned: estimateCalories(durationMin, exerciseCpmValues),
         notes: notes ?? null,
         completed: true,
         setLogs: {
@@ -375,7 +363,7 @@ export async function POST(req: NextRequest) {
         rpe: rpe ?? null,
         energyState: energyState ?? null,
         discomfort: discomfort ?? null,
-        caloriesBurned: estimateCalories(durationMin),
+        caloriesBurned: estimateCalories(durationMin, exerciseCpmValues),
         notes: notes ?? null,
         completed: true,
         exerciseOverrides: exerciseOverrides ? exerciseOverrides : undefined,

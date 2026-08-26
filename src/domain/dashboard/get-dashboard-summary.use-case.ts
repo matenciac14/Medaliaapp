@@ -9,8 +9,8 @@
  */
 
 import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { getSessionIntensity } from '@/lib/plan/intensity'
+import { getDailyNutritionTarget } from '@/domain/nutrition/daily-target'
+import { getSessionIntensity } from '@/domain/plan/intensity'
 import { jsToOurDow } from '@/lib/core/date-utils'
 
 // ── Input types ───────────────────────────────────────────────────────────────
@@ -173,7 +173,9 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         durationMin: 60,
         zoneTarget: '',
         detailText: '',
-        completed: false,
+        completed: (input.gymCompletionDates ?? []).some(
+          d => new Date(d).toDateString() === new Date().toDateString(),
+        ),
       }
     }
   }

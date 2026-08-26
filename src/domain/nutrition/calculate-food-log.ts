@@ -2,7 +2,7 @@
  * Shared nutrition log logic — used by web and mobile log routes.
  */
 
-import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
+import { intensityToDayType, type DayType } from '@/domain/nutrition/day-type'
 
 export const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK', 'PRE_WORKOUT', 'POST_WORKOUT'] as const
 export type MealType = typeof VALID_MEAL_TYPES[number]

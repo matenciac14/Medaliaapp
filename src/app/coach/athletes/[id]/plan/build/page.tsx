@@ -25,7 +25,7 @@ export default async function PlanBuildPage({
   })
   if (!athlete) redirect('/coach/athletes')
 
-  const [plan, gymTemplates, nutritionPlan, assignedWorkout] = await Promise.all([
+  const [plan, gymTemplates, nutritionPlan, assignedWorkout, coachNutritionTemplates] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId: athleteId, status: 'ACTIVE' },
       include: {
@@ -75,6 +75,11 @@ export default async function PlanBuildPage({
           },
         },
       },
+    }),
+    prisma.nutritionTemplate.findMany({
+      where: { coachId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true },
     }),
   ])
 
@@ -152,6 +157,8 @@ export default async function PlanBuildPage({
       gymTemplates={gymTemplatesData}
       nutritionPlan={nutritionPlan}
       assignedRoutine={assignedRoutineData}
+      coachNutritionTemplates={coachNutritionTemplates}
+      linkedNutritionTemplateId={plan?.nutritionTemplateId ?? null}
     />
   )
 }

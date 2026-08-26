@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ProgressBar from './ui/ProgressBar'
 
 type CheckInSummary = {
   hardestSessionRpe: number | null
@@ -101,12 +102,7 @@ export default function WeeklySummaryCard({
                   </span>
                 )}
               </div>
-              <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
-                <div
-                  className="h-full bg-[#ea580c] rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((weekSessionCount / Math.max(weekSessionTarget, 1)) * 100))}%` }}
-                />
-              </div>
+              <ProgressBar pct={Math.round((weekSessionCount / Math.max(weekSessionTarget, 1)) * 100)} className="mt-3" />
               <p className="text-[10px] text-gray-400 mt-1">
                 {weekSessionCount}/{weekSessionTarget} del objetivo semanal
               </p>
@@ -123,12 +119,7 @@ export default function WeeklySummaryCard({
                 </span>
               )}
             </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
-              <div
-                className="h-full bg-[#ea580c] rounded-full"
-                style={{ width: `${Math.min(100, Math.round((completedCount / Math.max(totalTraining, 1)) * 100))}%` }}
-              />
-            </div>
+            <ProgressBar pct={Math.round((completedCount / Math.max(totalTraining, 1)) * 100)} className="mt-3" />
             <p className="text-[10px] text-gray-400 mt-1">
               {Math.round((completedCount / Math.max(totalTraining, 1)) * 100)}% del objetivo semanal
             </p>

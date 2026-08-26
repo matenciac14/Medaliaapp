@@ -1,4 +1,12 @@
-import { prisma } from '@/lib/db/prisma'
+/**
+ * Use Case: Create Wearable Session
+ *
+ * Idempotent upsert — deduplicates by (userId, externalId).
+ * Called by Strava and HealthKit webhook routes.
+ *
+ * Pure domain — no Prisma imports. Depends on ISessionLogRepository.
+ */
+import type { ISessionLogRepository } from '@/domain/ports/session-log.repository'
 
 export type WearableDataSource = 'STRAVA' | 'GARMIN' | 'HEALTHKIT'
 export type WearableDiscipline = 'RUNNING' | 'STRENGTH' | 'CYCLING' | 'SWIMMING' | 'OTHER'
@@ -18,41 +26,13 @@ export interface CreateWearableSessionInput {
   notes?: string | null
 }
 
-/**
- * Idempotente: upsert por (userId, externalId).
- * Strava y HealthKit llaman este use case — no duplicar lógica de insert.
- */
 export async function createWearableSession(
-  input: CreateWearableSessionInput
+  input: CreateWearableSessionInput,
+  sessionLogRepo: ISessionLogRepository,
 ): Promise<{ id: string; created: boolean }> {
-  const existing = await prisma.sessionLog.findFirst({
-    where: { userId: input.userId, externalId: input.externalId },
-    select: { id: true },
-  })
+  const existing = await sessionLogRepo.findByExternalId(input.userId, input.externalId)
+  if (existing) return { id: existing.id, created: false }
 
-  if (existing) {
-    return { id: existing.id, created: false }
-  }
-
-  const log = await prisma.sessionLog.create({
-    data: {
-      userId:          input.userId,
-      externalId:      input.externalId,
-      dataSource:      input.dataSource,
-      discipline:      input.discipline as any,
-      freeSessionType: null,
-      distanceKm:      input.distanceKm ?? undefined,
-      durationMin:     input.durationMin ? Math.round(input.durationMin) : undefined,
-      hrAvg:           input.hrAvg ?? undefined,
-      hrMax:           input.hrMax ?? undefined,
-      caloriesBurned:  input.caloriesBurned ? Math.round(input.caloriesBurned) : undefined,
-      avgPaceSecPerKm: input.avgPaceSecPerKm ? Math.round(input.avgPaceSecPerKm) : undefined,
-      notes:           input.notes ?? undefined,
-      completedAt:     input.sessionDate,
-      plannedSessionId: null,
-    },
-    select: { id: true },
-  })
-
+  const log = await sessionLogRepo.createFromWearable(input)
   return { id: log.id, created: true }
 }

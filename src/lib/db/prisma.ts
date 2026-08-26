@@ -1,3 +1,7 @@
+// INTENTIONAL EXCEPTION to hexagonal architecture:
+// 302+ importers make moving this to infrastructure/db/ infeasible without a migration sprint.
+// This is the single source of truth for the Prisma singleton — do not duplicate it.
+// infrastructure/db/ repositories import from here.
 import { PrismaClient } from '../../generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 

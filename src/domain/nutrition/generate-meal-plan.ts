@@ -6,7 +6,7 @@
  *  - parseMealPlanData()    — validates raw DB Json before passing to components
  */
 
-import { calculateTDEE, calculateMacros } from '@/lib/plan/formulas'
+import { calculateTDEE, calculateMacros } from '@/domain/plan/formulas'
 
 export type GenerateMealsInput = {
   availableFoods: string[]

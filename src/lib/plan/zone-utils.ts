@@ -1,9 +1,3 @@
-/** Determina si debe mostrarse el chip de zona para una sesión */
-export function shouldShowZone(
-  sessionType: string | null | undefined,
-  zoneTarget: string | null | undefined
-): boolean {
-  if (!zoneTarget || zoneTarget === 'N/A' || zoneTarget === '—' || zoneTarget === '') return false
-  if (sessionType === 'FUERZA') return false
-  return true
-}
+// Re-export shim — domain source of truth is @/domain/plan/zone-utils
+// New code should import directly from @/domain/plan/zone-utils
+export * from '@/domain/plan/zone-utils'

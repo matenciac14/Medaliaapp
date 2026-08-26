@@ -40,7 +40,7 @@ const HEALTHY_INPUT: CheckInInput = {
   heartRate: 55,
 }
 
-const AI_PLAN = {
+const BASE_PLAN = {
   id: 'plan-1',
   userId: 'user-1',
   goalType: 'RACE_10K',
@@ -49,10 +49,10 @@ const AI_PLAN = {
   phase: 'BASE',
   startDate: new Date('2026-01-01'),
   sessions: [],
-  source: 'AI' as const,
+  source: 'COACH' as const,
 }
 
-const COACH_PLAN = { ...AI_PLAN, source: 'COACH' as const }
+
 
 // ── Stub factories ──────────────────────────────────────────────────────────
 
@@ -154,42 +154,6 @@ describe('processCheckIn — sin plan activo', () => {
   })
 })
 
-describe('processCheckIn — plan AI activo con triggers', () => {
-  it('auto-aplica ajustes a sesiones (no crea sugerencias)', async () => {
-    const ciStub = makeCheckInStub()
-    const planStub = makePlanStub({
-      findWeekSessions: vi.fn().mockResolvedValue([
-        { id: 's-1', type: 'INTERVALOS', intensity: 'HIGH', durationMin: 60, zone: 'Z4', coachNotes: null },
-      ]),
-    })
-    const suggStub = makeSuggestionStub()
-
-    vi.mocked(PrismaCheckInRepository).mockImplementation(function() { return ciStub } as any)
-    vi.mocked(PrismaPlanRepository).mockImplementation(function() { return planStub } as any)
-    vi.mocked(PrismaHealthProfileRepository).mockImplementation(function() { return makeHealthStub() } as any)
-    vi.mocked(PrismaUserRepository).mockImplementation(function() { return makeUserStub() } as any)
-    vi.mocked(PrismaSuggestionRepository).mockImplementation(function() { return suggStub } as any)
-
-    const db = makeDb()
-    const highRpeInput: CheckInInput = { ...HEALTHY_INPUT, rpe: 9 } // triggers rpe_excesivo en BASE
-
-    const result = await processCheckIn(
-      { userId: 'user-1', data: highRpeInput },
-      {
-        db,
-        checkInRepo: { findLatest: vi.fn().mockResolvedValue(null), save: vi.fn().mockResolvedValue({ id: 'ci-1' }), count: vi.fn().mockResolvedValue(1) } as any,
-        planRepo: { findActive: vi.fn().mockResolvedValue(AI_PLAN), getTrainingAdherence: vi.fn().mockResolvedValue(80) } as any,
-        healthProfileRepo: makeHealthStub() as any,
-        userRepo: makeUserStub() as any,
-      }
-    )
-
-    expect(result.triggers).toContain('rpe_excesivo')
-    expect(result.sessionsAdjusted).toBeGreaterThanOrEqual(0) // updateSession may or may not fire based on zone
-    expect(result.pendingSuggestions).toBe(0)
-    expect(suggStub.createMany).not.toHaveBeenCalled()
-  })
-})
 
 describe('processCheckIn — plan COACH con triggers', () => {
   it('crea sugerencias en lugar de auto-aplicar ajustes', async () => {
@@ -211,7 +175,7 @@ describe('processCheckIn — plan COACH con triggers', () => {
       {
         db,
         checkInRepo: { findLatest: vi.fn().mockResolvedValue(null), save: vi.fn().mockResolvedValue({ id: 'ci-1' }), count: vi.fn().mockResolvedValue(2) } as any,
-        planRepo: { findActive: vi.fn().mockResolvedValue(COACH_PLAN), getTrainingAdherence: vi.fn().mockResolvedValue(60) } as any,
+        planRepo: { findActive: vi.fn().mockResolvedValue(BASE_PLAN), getTrainingAdherence: vi.fn().mockResolvedValue(60) } as any,
         healthProfileRepo: makeHealthStub() as any,
         userRepo: makeUserStub() as any,
       }

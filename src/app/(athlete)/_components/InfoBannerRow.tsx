@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import NutritionSnapshot from './ui/NutritionSnapshot'
 
 type NutritionInfo = {
   targetKcal: number
@@ -25,30 +26,10 @@ export default function InfoBannerRow({ nutrition, coach, checkinPending, hasAct
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
       {/* Nutrición Hoy */}
-      <Link href="/nutrition" className="px-4 py-2.5 hover:bg-gray-50/50 transition-colors block">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-xs">🍎</span>
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Nutrición hoy</span>
-          {nutrition && (
-            <span className="text-[9px] font-bold text-white bg-[#ea580c] px-1.5 py-0.5 rounded-full uppercase ml-auto">
-              {nutrition.intensityLabel}
-            </span>
-          )}
-        </div>
-        {nutrition ? (
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <p className="text-base font-black text-[#1e3a5f] leading-none">{nutrition.targetKcal} kcal</p>
-            <span className="text-[10px] text-gray-400">ajustado por sesión</span>
-            <div className="flex gap-1.5 w-full mt-1">
-              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">P {nutrition.proteinG}g</span>
-              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">C {nutrition.carbsG}g</span>
-              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">G {nutrition.fatG}g</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-gray-400 mt-1">Configura tu plan nutricional</p>
-        )}
-      </Link>
+      <NutritionSnapshot
+        data={nutrition ? { kcal: nutrition.targetKcal, proteinG: nutrition.proteinG, carbsG: nutrition.carbsG, fatG: nutrition.fatG, label: nutrition.intensityLabel } : null}
+        variant="banner"
+      />
 
       {/* Coach */}
       {coach ? (

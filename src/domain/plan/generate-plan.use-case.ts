@@ -21,8 +21,8 @@ import {
   getSessionIntensity,
   sessionDate,
 } from '@/domain/plan/session-builder'
-import { calculateHRZones, calculateMacros, calculateTDEE, estimateHRMax } from '@/lib/plan/formulas'
-import { getTemplate } from '@/lib/plan/templates'
+import { calculateHRZones, calculateMacros, calculateTDEE, estimateHRMax } from '@/domain/plan/formulas'
+import { getTemplate } from '@/domain/plan/templates'
 import { resolveSportConfig } from '@/domain/onboarding/onboarding.utils'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import type { PrismaDbClient } from '@/lib/db/prisma-client'
@@ -132,7 +132,7 @@ export type GeneratePlanInput = {
   injuries: string[]
   conditions: string[]
   nutritionCommitment: string
-  generatedBy?: 'AI' | 'COACH'
+  generatedBy?: 'COACH'
   experienceLevel?: string
   /** Recent 5K time in seconds — used to calibrate pace hints in running sessions. */
   recentBenchmark5KSecs?: number
@@ -178,8 +178,6 @@ export async function generatePlanUseCase(
     ? computePaceHints(input.recentBenchmark5KSecs)
     : null
 
-  const isB2C = input.generatedBy !== 'COACH'
-
   // ── Phase 2: all writes inside $transaction ───────────────────────────────
 
   const planId = await deps.db.$transaction(async (tx) => {
@@ -196,7 +194,7 @@ export async function generatePlanUseCase(
       startDate: planStart,
       endDate: planEnd,
       hrZones,
-      generatedBy: input.generatedBy === 'COACH' ? 'COACH' : 'AI',
+      generatedBy: 'COACH',
     })
 
     {
@@ -274,7 +272,7 @@ export async function generatePlanUseCase(
 
   await Promise.all([
     deps.userRepo.completeOnboarding(input.userId, {
-      features: isB2C ? { plan: true, checkin: true, nutrition: true, progress: true, log: true, gym: true } : undefined,
+      features: undefined,
       onboarding: { completed: true, completedAt: new Date().toISOString() },
       sport: { type: sportType, goal: sportGoal },
     }),

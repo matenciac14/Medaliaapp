@@ -13,9 +13,7 @@ const ROLE_BADGE: Record<string, string> = {
 import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum-labels'
 
 const SOURCE_LABEL: Record<string, string> = {
-  AI:                 'IA generado',
-  COACH:              'Coach',
-  AI_COACH_APPROVED:  'IA (aprobado por coach)',
+  COACH: 'Coach',
 }
 
 export default async function AdminUserProfilePage({ params }: { params: Promise<{ id: string }> }) {
