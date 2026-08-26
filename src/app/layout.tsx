@@ -38,7 +38,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Medaliq',
-    startupImage: [],
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
   formatDetection: { telephone: false },
   alternates: {
@@ -86,6 +88,9 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <JsonLd data={{
           '@context': 'https://schema.org',
