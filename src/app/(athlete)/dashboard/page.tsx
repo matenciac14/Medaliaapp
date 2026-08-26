@@ -38,8 +38,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         streakDays={d.streakDays}
       />
 
-      {/* PWA install banner — tablet only */}
-      <div className="lg:hidden hidden sm:block">
+      {/* PWA install banner — mobile + tablet (hidden on desktop) */}
+      <div className="lg:hidden">
         <InstallPWABanner />
       </div>
 
