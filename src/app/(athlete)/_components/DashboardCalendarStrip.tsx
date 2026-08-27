@@ -93,7 +93,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
   return (
     <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
       {/* Mobile: day pills — no card wrapper, full width, matches plan page */}
-      <div className="sm:hidden">
+      <div className="sm:hidden py-3">
         {/* Segmented progress bar — green per completed day */}
         <div className="flex gap-[3px] mb-2">
           {cells.map(cell => {
@@ -102,7 +102,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
             return (
               <div
                 key={`bar-${cell.idx}`}
-                className={`h-[3px] flex-1 rounded-full ${isDone ? 'bg-[#22c55e]' : 'bg-gray-200'}`}
+                className={`h-[3px] flex-1 rounded-full ${isDone ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`}
               />
             )
           })}
@@ -130,7 +130,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
                   : cell.done && hasSession ? 'bg-[#22c55e] text-white'
                   : isSelected ? 'border-2 border-[#1e3a5f] text-[#1e3a5f] bg-white'
                   : hasSession ? 'bg-[#1e3a5f] text-white'
-                  : 'bg-white text-gray-400 border border-gray-200'
+                  : 'bg-[#f1f5f9] text-gray-400 border border-[#cbd5e1]'
                 }`}>
                   {cell.done && hasSession && !cell.isToday ? '✓' : cell.dateNum}
                 </div>
