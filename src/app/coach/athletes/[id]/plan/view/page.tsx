@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -52,10 +53,7 @@ export default async function PlanViewPage({ params }: { params: Promise<{ id: s
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="font-black text-lg tracking-tight">
-            <span style={{ color: '#1e3a5f' }}>Medal</span>
-            <span style={{ color: '#ea580c' }}>iq</span>
-          </span>
+          <MedaliqLogo variant="light" size="sm" />
           <span className="text-gray-300">·</span>
           <span className="text-sm text-gray-500">Vista atleta</span>
           <span className="text-gray-300">·</span>

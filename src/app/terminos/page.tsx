@@ -1,3 +1,5 @@
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
+
 export const metadata = {
   title: 'Términos y Condiciones — Medaliq',
   description: 'Términos y condiciones de uso de la plataforma Medaliq.',
@@ -153,7 +155,7 @@ export default function TerminosPage() {
       {/* Footer */}
       <footer className="bg-[#1e3a5f] text-blue-200 py-8 px-4 mt-16">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-white font-bold text-lg">Medaliq</span>
+          <MedaliqLogo variant="dark" size="sm" />
           <div className="flex gap-6 text-sm">
             <a href="/terminos" className="text-white font-medium">Términos de uso</a>
             <a href="/privacidad" className="hover:text-white transition-colors">Privacidad</a>

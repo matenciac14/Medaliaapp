@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { signOut } from 'next-auth/react'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -111,9 +112,8 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
       {/* ── Sidebar desktop ── */}
       <aside className="hidden lg:flex lg:flex-col lg:w-60 bg-[#1e3a5f] text-white shrink-0 sticky top-0 h-screen">
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#ea580c] flex items-center justify-center font-bold text-white text-sm">M</div>
-            <span className="text-xl font-bold tracking-tight">Medaliq</span>
+          <Link href="/dashboard">
+            <MedaliqLogo variant="dark" size="md" />
           </Link>
           <Link href="/notifications" className="relative flex items-center justify-center min-w-[32px] min-h-[32px] text-white/60 hover:text-white transition-colors">
             <Bell size={18} />
@@ -180,9 +180,8 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
 
       {/* ── Mobile top bar — hidden on phone (<sm), visible on tablet (sm–lg) ── */}
       <header className="hidden sm:flex lg:hidden fixed top-0 left-0 right-0 z-30 items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-[#ea580c] flex items-center justify-center font-bold text-white text-xs">M</div>
-          <span className="text-base font-bold">Medaliq</span>
+        <Link href="/dashboard">
+          <MedaliqLogo variant="dark" size="sm" />
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />

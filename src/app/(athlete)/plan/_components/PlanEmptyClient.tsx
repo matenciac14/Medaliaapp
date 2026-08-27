@@ -52,20 +52,32 @@ export default function PlanEmptyClient({ isB2B, showGymBuilder = false }: Props
         </div>
 
         {/* Week Nav */}
-        <div className="flex items-center justify-between bg-white/10 rounded-xl px-1 py-1">
-          <button
-            onClick={() => { setWeekOffset(w => w - 1); setSelectedDow(1) }}
-            className="w-8 h-8 flex items-center justify-center text-white/70"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span className="text-[13px] font-semibold text-white">{weekNavLabel}</span>
-          <button
-            onClick={() => { setWeekOffset(w => w + 1); setSelectedDow(1) }}
-            className="w-8 h-8 flex items-center justify-center text-white/70"
-          >
-            <ChevronRight size={18} />
-          </button>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center bg-white/10 rounded-xl h-10">
+            <button
+              onClick={() => { setWeekOffset(w => w - 1); setSelectedDow(1) }}
+              className="w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="flex-1 text-[13px] font-semibold text-white text-center whitespace-nowrap">
+              {weekNavLabel}
+            </span>
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => { setWeekOffset(0); setSelectedDow(todayDow) }}
+                className="text-[12px] font-bold text-white bg-[#ea580c] px-3 py-1 rounded-full transition-colors hover:bg-[#d14d07]"
+              >
+                Hoy
+              </button>
+            )}
+            <button
+              onClick={() => { setWeekOffset(w => w + 1); setSelectedDow(1) }}
+              className="w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 

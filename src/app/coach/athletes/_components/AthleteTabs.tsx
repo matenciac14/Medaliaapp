@@ -158,9 +158,9 @@ export default function AthleteTabs({
         }}
       />
 
-      {/* Tabs row — standalone, outside the table card */}
-      <div className="flex flex-col">
-        <div className="flex items-end overflow-x-auto" style={{ gap: 28, paddingBottom: 10 }}>
+      {/* Tabs row */}
+      <div className="relative">
+        <div className="flex overflow-x-auto" style={{ gap: 0 }}>
           {TABS.map((t) => {
             const active = tab === t.key
             const label = t.count !== null ? `${t.label} (${t.count})` : t.label
@@ -168,27 +168,33 @@ export default function AthleteTabs({
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className="flex flex-col items-start shrink-0 transition-colors"
-                style={{ gap: 6 }}
+                className="relative shrink-0 cursor-pointer transition-colors duration-150"
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 13,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? '#1e3a5f' : '#6b737d',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = '#1e3a5f' }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = '#6b737d' }}
               >
+                <span className="whitespace-nowrap">{label}</span>
                 <span
-                  className="whitespace-nowrap"
+                  className="absolute bottom-0 left-4 right-4 transition-all duration-200"
                   style={{
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 500,
-                    color: active ? '#1e3a5f' : '#6b737d',
+                    height: 2,
+                    backgroundColor: '#ea580c',
+                    borderRadius: 1,
+                    opacity: active ? 1 : 0,
+                    transform: active ? 'scaleX(1)' : 'scaleX(0)',
                   }}
-                >
-                  {label}
-                </span>
-                {active && (
-                  <div style={{ height: 2, width: '100%', backgroundColor: '#ea580c', borderRadius: 1 }} />
-                )}
+                />
               </button>
             )
           })}
         </div>
-        {/* Tab separator */}
         <div style={{ height: 1, backgroundColor: '#e5e8eb', width: '100%' }} />
       </div>
 

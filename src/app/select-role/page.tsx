@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -37,11 +38,8 @@ export default function SelectRolePage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center px-4">
       {/* Logo */}
-      <div className="mb-10 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center">
-          <span className="text-white font-bold text-sm">M</span>
-        </div>
-        <span className="text-xl font-bold text-[#1e3a5f]">Medaliq</span>
+      <div className="mb-10">
+        <MedaliqLogo variant="light" size="md" />
       </div>
 
       <div className="w-full max-w-md">

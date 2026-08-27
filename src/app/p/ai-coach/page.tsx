@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { auth } from '@/auth'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 
 export const metadata = {
   title: 'Coach AI — Medaliq',
@@ -15,7 +16,7 @@ export default async function AICoachProfilePage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>Medaliq</Link>
+          <Link href="/"><MedaliqLogo variant="light" size="md" /></Link>
           <div className="flex items-center gap-3">
             <Link href="/coaches" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
               Ver todos los coaches

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   // PERF-01 Phase 1: plan metadata sin sesiones
   const todayUtc = new Date(); todayUtc.setHours(0, 0, 0, 0)
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation] = await Promise.all([
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation, pendingSuggestionsCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -75,6 +75,9 @@ export async function GET(req: NextRequest) {
           },
         },
       },
+    }),
+    prisma.checkInSuggestion.count({
+      where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
     }),
   ])
 
@@ -188,5 +191,6 @@ export async function GET(req: NextRequest) {
     isB2B: !!coachRelation,
     workoutName: assignedWorkoutRaw?.template.name ?? null,
     justCompletedPlan,
+    pendingSuggestionsCount,
   })
 }

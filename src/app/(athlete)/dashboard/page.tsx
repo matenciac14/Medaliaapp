@@ -97,7 +97,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="space-y-4">
 
           {/* Mobile: flat CalendarStrip before TodaySession per Figma */}
-          <div className="sm:hidden -mx-4">
+          <div className="sm:hidden">
             <DashboardCalendarStrip
               weekOffset={d.weekOffset}
               dashboardMode={d.dashboardMode}
@@ -208,7 +208,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             hasGymToday={d.hasGymToday}
             gymDoneToday={d.gymDoneToday}
             assignedWorkoutName={d.assignedWorkout?.template.name ?? null}
-            lastCompletedPlanName={d.lastCompletedPlanInfo?.name ?? null}
+            lastCompletedPlanInfo={d.lastCompletedPlanInfo ? {
+              name: d.lastCompletedPlanInfo.name,
+              totalWeeks: d.lastCompletedPlanInfo.totalWeeks,
+              sessionsLogged: d.lastCompletedPlanInfo.sessionsLogged,
+              sessionsTotal: d.lastCompletedPlanInfo.sessionsTotal,
+            } : null}
             recoveryDaysSinceEnd={d.recoveryDaysSinceEnd}
           />
 
@@ -216,7 +221,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <MobileCardsSection
             dashboardMode={d.dashboardMode}
             dashSummary={d.dashSummary}
-            todaySession={d.todaySession}
             hasEverLogged={d.hasEverLogged}
             currentWeight={d.currentWeight}
             targetWeight={d.targetWeight}
@@ -224,18 +228,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             weightProgressPct={d.weightProgressPct}
             currentVolume={d.currentWeekVolumeKm}
             volumeDeltaPct={d.volumeDeltaPct}
-            coachRelation={d.coachRelation}
             lastCheckIn={d.lastCheckIn}
             formCheckInDate={d.formCheckInDate}
             formStatus={d.formStatus}
             formMessage={d.formMessage}
-            checkinPending={d.checkinPending}
             isRecomp={d.isRecomp}
             raceDays={d.raceDays}
-            gymDoneToday={d.gymDoneToday}
-            todayGymSession={d.todayGymSession}
-            todayGymDay={d.todayGymDay}
             todayLogRaw={d.todayLogRaw}
+            weekSessionCount={d.weekSessionCount}
+            weekSessionTarget={d.weekSessionTarget}
+            streakDays={d.streakDays}
           />
 
           {/* Desktop: Info banner row */}

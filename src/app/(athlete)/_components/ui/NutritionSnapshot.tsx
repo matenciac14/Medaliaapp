@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import MacroPills from './MacroPills'
 
 type NutritionData = {
   kcal: number
@@ -21,18 +20,126 @@ export default function NutritionSnapshot({ data, variant, targetKcalHard }: Pro
   return <CardVariant data={data} targetKcalHard={targetKcalHard ?? null} />
 }
 
+// -- Compact: Figma ⑧ NUTRICIÓN (mobile dashboard) ---------------------------
+
+function CompactVariant({ data }: { data: NutritionData | null }) {
+  if (!data) return null
+
+  const targetKcal = data.kcal
+  const consumed = Math.round(targetKcal * 0.59) // placeholder — wire to real consumed when available
+  const remaining = targetKcal - consumed
+  const pct = Math.min(consumed / targetKcal, 1)
+
+  return (
+    <Link href="/nutrition" className="block">
+      <div className="bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5">
+        <div className="flex items-center justify-center gap-5">
+          {/* Donut chart */}
+          <DonutChart remaining={remaining} pct={pct} size={110} />
+
+          {/* Right side */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Calorias de hoy</p>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-[28px] font-black text-[#1e3a5f] leading-none tracking-tight">{targetKcal.toLocaleString('es')}</span>
+              <span className="text-[11px] text-gray-400">kcal objetivo</span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">{consumed.toLocaleString('es')} kcal consumidas</p>
+
+            {/* Macro rings */}
+            <div className="flex items-center justify-between mt-3 pr-2">
+              <MacroRing value={data.proteinG} label="Prot" color="#3b82f6" />
+              <MacroRing value={data.carbsG} label="Carbs" color="#f59e0b" />
+              <MacroRing value={data.fatG} label="Grasas" color="#22c55e" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// -- Donut chart (SVG) --------------------------------------------------------
+
+function DonutChart({ remaining, pct, size }: { remaining: number; pct: number; size: number }) {
+  const stroke = 8
+  const radius = (size - stroke) / 2
+  const cx = size / 2
+  const cy = size / 2
+  const circumference = 2 * Math.PI * radius
+  const dashOffset = circumference * (1 - pct)
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* Background ring */}
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+        {/* Progress ring */}
+        <circle
+          cx={cx} cy={cy} r={radius} fill="none"
+          stroke="#ef4444" strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={dashOffset}
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      </svg>
+      {/* Center text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[17px] font-black text-[#1e3a5f] leading-none">{remaining.toLocaleString('es')}</span>
+        <span className="text-[8px] text-gray-400 mt-0.5">restantes</span>
+      </div>
+    </div>
+  )
+}
+
+// -- Macro ring (small colored circle + value) --------------------------------
+
+function MacroRing({ value, label, color }: { value: number; label: string; color: string }) {
+  const size = 36
+  const stroke = 3
+  const radius = (size - stroke) / 2
+  const cx = size / 2
+  const cy = size / 2
+  const circumference = 2 * Math.PI * radius
+  const fillPct = 0.65 // placeholder — wire to real target ratio when available
+  const dashOffset = circumference * (1 - fillPct)
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+          <circle
+            cx={cx} cy={cy} r={radius} fill="none"
+            stroke={color} strokeWidth={stroke} strokeLinecap="round"
+            strokeDasharray={circumference} strokeDashoffset={dashOffset}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
+        </svg>
+      </div>
+      <span className="text-[11px] font-bold text-[#1e3a5f]">{value}g</span>
+      <span className="text-[9px] text-gray-400">{label}</span>
+    </div>
+  )
+}
+
+// -- Card variant (desktop hero) ----------------------------------------------
+
 function CardVariant({ data, targetKcalHard }: { data: NutritionData | null; targetKcalHard: number | null }) {
   return (
     <Link href="/nutrition" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden block transition-shadow hover:shadow-md">
       <div className="flex h-full">
         <div className="w-1 bg-[#22c55e] shrink-0" />
         <div className="flex-1 px-4 py-3">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">NUTRICIÓN HOY</p>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">NUTRICION HOY</p>
           {data ? (
             <>
               <p className="text-base font-black text-[#1e3a5f] leading-none mb-0.5">{data.kcal} kcal</p>
               <p className="text-[10px] text-gray-400 mb-2">de {targetKcalHard ?? data.kcal} objetivo</p>
-              <MacroPills proteinG={data.proteinG} carbsG={data.carbsG} fatG={data.fatG} />
+              <div className="flex gap-2">
+                <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">P {data.proteinG}g</span>
+                <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">C {data.carbsG}g</span>
+                <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">G {data.fatG}g</span>
+              </div>
               <div className="flex justify-end mt-2">
                 <span className="text-[10px] font-semibold text-[#22c55e]">Ver detalle →</span>
               </div>
@@ -52,35 +159,14 @@ function CardVariant({ data, targetKcalHard }: { data: NutritionData | null; tar
   )
 }
 
-function CompactVariant({ data }: { data: NutritionData | null }) {
-  if (!data) return null
-  return (
-    <Link href="/nutrition" className="block bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-3.5 py-3">
-      <div className="flex items-center mb-2">
-        <span className="text-sm">🍽️</span>
-        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest ml-1.5 flex-1">Nutrición hoy</p>
-        {data.label && (
-          <span className="text-[9px] font-bold text-white bg-[#ea580c] px-2 py-0.5 rounded-full uppercase">
-            {data.label}
-          </span>
-        )}
-      </div>
-      <div className="flex items-baseline gap-1 mb-2">
-        <span className="text-2xl font-black text-[#1e3a5f] tracking-tight">{data.kcal}</span>
-        <span className="text-sm font-semibold text-gray-400">kcal</span>
-        {data.label && <span className="text-[10px] text-gray-400 ml-1">ajustado por sesión</span>}
-      </div>
-      <MacroPills proteinG={data.proteinG} carbsG={data.carbsG} fatG={data.fatG} size="md" />
-    </Link>
-  )
-}
+// -- Banner variant (desktop info row) ----------------------------------------
 
 function BannerVariant({ data }: { data: NutritionData | null }) {
   return (
     <Link href="/nutrition" className="px-4 py-2.5 hover:bg-gray-50/50 transition-colors block">
       <div className="flex items-center gap-1.5 mb-1">
         <span className="text-xs">🍎</span>
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Nutrición hoy</span>
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Nutricion hoy</span>
         {data?.label && (
           <span className="text-[9px] font-bold text-white bg-[#ea580c] px-1.5 py-0.5 rounded-full uppercase ml-auto">
             {data.label}
@@ -90,9 +176,13 @@ function BannerVariant({ data }: { data: NutritionData | null }) {
       {data ? (
         <div className="flex items-baseline gap-2 flex-wrap">
           <p className="text-base font-black text-[#1e3a5f] leading-none">{data.kcal} kcal</p>
-          <span className="text-[10px] text-gray-400">ajustado por sesión</span>
+          <span className="text-[10px] text-gray-400">ajustado por sesion</span>
           <div className="w-full mt-1">
-            <MacroPills proteinG={data.proteinG} carbsG={data.carbsG} fatG={data.fatG} />
+            <div className="flex gap-2">
+              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">P {data.proteinG}g</span>
+              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">C {data.carbsG}g</span>
+              <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">G {data.fatG}g</span>
+            </div>
           </div>
         </div>
       ) : (
