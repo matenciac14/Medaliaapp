@@ -1,16 +1,15 @@
-/** @format */
+'use client'
 
-"use client";
-
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from 'next/navigation'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface WeekNavBarProps {
-  weekLabel: string;
-  weekOffset: number;
-  canGoPrev: boolean;
-  canGoNext: boolean;
+  weekLabel: string
+  weekOffset: number
+  canGoPrev: boolean
+  canGoNext: boolean
   /** 'light' = white bg (default), 'dark' = navy bg for gradient headers */
-  variant?: "light" | "dark";
+  variant?: 'light' | 'dark'
 }
 
 export default function WeekNavBar({
@@ -18,26 +17,26 @@ export default function WeekNavBar({
   weekOffset,
   canGoPrev,
   canGoNext,
-  variant = "light",
+  variant = 'light',
 }: WeekNavBarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const router = useRouter()
+  const pathname = usePathname()
 
   function navigate(delta: number) {
-    const next = weekOffset + delta;
-    router.push(next === 0 ? pathname : `${pathname}?weekOffset=${next}`);
+    const next = weekOffset + delta
+    router.push(next === 0 ? pathname : `${pathname}?weekOffset=${next}`)
   }
 
-  const isCurrentWeek = weekOffset === 0;
-  const isDark = variant === "dark";
+  const isCurrentWeek = weekOffset === 0
+  const isDark = variant === 'dark'
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2">
       <div
         className={
           isDark
-            ? "inline-flex items-center rounded-lg bg-[#1e3a5f] w-full"
-            : "inline-flex items-center border border-[rgba(30,58,95,0.15)] rounded-[14px] bg-white"
+            ? 'inline-flex items-center rounded-xl bg-white/10 w-full h-10'
+            : 'inline-flex items-center border border-[rgba(30,58,95,0.15)] rounded-xl bg-white h-10'
         }
       >
         <button
@@ -45,43 +44,51 @@ export default function WeekNavBar({
           disabled={!canGoPrev}
           className={
             isDark
-              ? "w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-[13px] text-white/70 disabled:opacity-30 transition-colors"
-              : "w-7 h-7 flex items-center justify-center rounded-[14px] bg-[rgba(30,58,95,0.06)] text-[13px] text-[#1e3a5f] disabled:opacity-30 hover:bg-[rgba(30,58,95,0.12)] transition-colors"
+              ? 'w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70 disabled:opacity-30 transition-colors'
+              : 'w-9 h-9 flex items-center justify-center rounded-[10px] bg-[rgba(30,58,95,0.06)] text-[#1e3a5f] disabled:opacity-30 hover:bg-[rgba(30,58,95,0.12)] transition-colors ml-0.5'
           }
           aria-label="Semana anterior"
         >
-          ←
+          <ChevronLeft size={16} />
         </button>
         <span
           className={
             isDark
-              ? "flex-1 text-xs font-medium text-white whitespace-nowrap text-center py-1"
-              : "px-10 text-xs font-medium text-[#1e3a5f] whitespace-nowrap text-center"
+              ? 'flex-1 text-[13px] font-semibold text-white whitespace-nowrap text-center'
+              : 'flex-1 text-[13px] font-semibold text-[#1e3a5f] whitespace-nowrap text-center px-4'
           }
         >
           {weekLabel}
         </span>
+        {!isCurrentWeek && isDark && (
+          <button
+            onClick={() => router.push(pathname)}
+            className="text-[12px] font-bold text-white bg-[#ea580c] px-3 py-1 rounded-full transition-colors hover:bg-[#d14d07]"
+          >
+            Hoy
+          </button>
+        )}
         <button
           onClick={() => navigate(1)}
           disabled={!canGoNext}
           className={
             isDark
-              ? "w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-[13px] text-white/70 disabled:opacity-30 transition-colors"
-              : "w-7 h-7 flex items-center justify-center rounded-[14px] bg-[rgba(30,58,95,0.06)] text-[13px] text-[#1e3a5f] disabled:opacity-30 hover:bg-[rgba(30,58,95,0.12)] transition-colors"
+              ? 'w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70 disabled:opacity-30 transition-colors'
+              : 'w-9 h-9 flex items-center justify-center rounded-[10px] bg-[rgba(30,58,95,0.06)] text-[#1e3a5f] disabled:opacity-30 hover:bg-[rgba(30,58,95,0.12)] transition-colors mr-0.5'
           }
           aria-label="Semana siguiente"
         >
-          →
+          <ChevronRight size={16} />
         </button>
       </div>
       {!isCurrentWeek && !isDark && (
         <button
           onClick={() => router.push(pathname)}
-          className="ml-2 text-xs font-semibold text-[#ea580c] hover:text-[#ea6c0a] transition-colors px-2 py-1 rounded-lg hover:bg-orange-50"
+          className="text-[12px] font-bold text-[#ea580c] border border-[#ea580c]/30 px-3 py-1 rounded-full transition-colors hover:bg-orange-50 whitespace-nowrap"
         >
           Hoy
         </button>
       )}
     </div>
-  );
+  )
 }

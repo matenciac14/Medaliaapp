@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import { auth } from '@/auth'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { JoinProgramButton } from '@/app/p/_components/JoinProgramButton'
@@ -129,7 +130,7 @@ export default async function CoachProfilePage({
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-[#1e3a5f]">Medaliq</Link>
+          <Link href="/"><MedaliqLogo variant="light" size="md" /></Link>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
             <Link href="/coaches" className="hover:text-[#1e3a5f] transition-colors">Coaches</Link>
             {isLoggedIn ? (

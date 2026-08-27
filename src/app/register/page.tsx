@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 
 type Role = 'ATHLETE' | 'COACH'
 
@@ -61,10 +62,7 @@ function RegisterForm() {
         <Image src="/hero-auth.jpg" alt="" fill className="object-cover opacity-60" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-[#162B45]/30 via-[#162B45]/60 to-[#162B45]/80" />
         <div className="relative z-10 flex flex-col items-center justify-center h-full">
-          <div className="flex items-center gap-0.5">
-            <span className="text-[32px] font-extrabold text-white">Medal</span>
-            <span className="text-[32px] font-extrabold text-[#ea580c]">iq</span>
-          </div>
+          <MedaliqLogo variant="dark" size="lg" />
           <p className="text-[13px] text-white/70 mt-2">Empieza gratis, sin tarjeta.</p>
         </div>
       </div>
@@ -74,10 +72,7 @@ function RegisterForm() {
         <Image src="/hero-auth.jpg" alt="" fill className="object-cover opacity-60" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-[#162B45] via-[#162B45]/60 to-[#162B45]/30" />
         <div className="relative z-10 flex flex-col justify-between p-12 h-full">
-          <div className="flex items-center gap-1">
-            <span className="text-2xl font-bold text-white">Medal</span>
-            <span className="text-2xl font-bold text-[#ea580c]">iq</span>
-          </div>
+          <MedaliqLogo variant="dark" size="md" />
           <div>
             <div className="w-12 h-1 bg-[#ea580c] mb-4 rounded-full" />
             <p className="text-xs font-medium text-white/50 tracking-widest uppercase mb-2">Plataforma de entrenamiento</p>
@@ -105,10 +100,7 @@ function RegisterForm() {
 
           {/* Logo — desktop only */}
           <div className="hidden lg:block mb-8 text-center">
-            <div className="flex items-center justify-center gap-0.5">
-              <span className="text-2xl font-bold text-[#1e3a5f]">Medal</span>
-              <span className="text-2xl font-bold text-[#ea580c]">iq</span>
-            </div>
+            <MedaliqLogo variant="light" size="md" />
           </div>
 
           <h1 className="text-[22px] lg:text-2xl font-bold text-[#1e3a5f] mb-1 text-center">Crea tu cuenta</h1>

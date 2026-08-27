@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import Link from 'next/link'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 
 export const metadata: Metadata = {
   title: 'Entrenadores certificados | Medaliq',
@@ -102,7 +103,7 @@ export default async function CoachesPage({
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-[#1e3a5f]">Medaliq</Link>
+          <Link href="/"><MedaliqLogo variant="light" size="md" /></Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <Link href="/#como-funciona" className="hover:text-[#1e3a5f] transition-colors">Cómo funciona</Link>
             <Link href="/#entrenadores" className="hover:text-[#1e3a5f] transition-colors">Para entrenadores</Link>

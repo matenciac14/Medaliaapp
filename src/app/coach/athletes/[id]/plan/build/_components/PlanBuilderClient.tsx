@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import Link from 'next/link'
 import { X, ChevronLeft, ChevronRight, Pencil, Copy } from 'lucide-react'
 import { getInitialWeekIdx } from '@/lib/core/week-number'
@@ -1206,9 +1207,8 @@ function BuilderHeader({
   return (
     <header className="flex items-center justify-between px-6 h-16 border-b border-gray-200 bg-white shrink-0">
       <div className="flex items-center gap-2.5 min-w-0">
-        <Link href="/coach/athletes" className="font-black text-xl tracking-tight shrink-0">
-          <span style={{ color: '#1e3a5f' }}>Medal</span>
-          <span style={{ color: '#ea580c' }}>iq</span>
+        <Link href="/coach/athletes">
+          <MedaliqLogo variant="light" size="sm" />
         </Link>
         <span className="text-gray-300">·</span>
         <span className="text-sm text-gray-400 shrink-0">Constructor de planes</span>

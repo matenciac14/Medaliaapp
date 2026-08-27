@@ -69,7 +69,14 @@ export default function Home() {
       {/* 1 · Navbar */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <span className="text-2xl font-bold text-[#1e3a5f]">Medaliq</span>
+          <a href="/" className="flex items-center gap-2.5">
+            <svg width="28" height="28" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="120" height="120" rx="24" fill="#1e3a5f"/>
+              <polygon points="60,26 92,58 74,58 60,44 46,58 28,58" fill="#ea580c"/>
+              <polygon points="60,58 92,90 74,90 60,76 46,90 28,90" fill="#f7f6f4"/>
+            </svg>
+            <span className="text-xl font-extrabold text-[#1e3a5f] tracking-tight">Medal<span className="text-[#c2410c]">IQ</span></span>
+          </a>
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">

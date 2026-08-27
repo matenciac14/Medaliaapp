@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 
 export default function Error({
   error,
@@ -13,7 +14,7 @@ export default function Error({
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
         <div className="mb-8">
-          <span className="text-2xl font-bold" style={{ color: '#1e3a5f' }}>Medaliq</span>
+          <MedaliqLogo variant="light" size="md" />
         </div>
 
         <h1 className="text-8xl font-bold mb-4" style={{ color: '#1e3a5f' }}>500</h1>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import { useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
@@ -570,7 +571,7 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <span className="text-xl font-bold text-[#1e3a5f]">Medaliq</span>
+          <MedaliqLogo variant="light" size="sm" />
           <span className="text-gray-300">·</span>
           <span className="text-gray-500 text-sm flex-1">
             Paso {stepIndex + 1} de {totalSteps} — {STEP_LABELS[currentStepId]}

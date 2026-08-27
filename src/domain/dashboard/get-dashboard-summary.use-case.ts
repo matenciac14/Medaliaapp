@@ -65,6 +65,7 @@ export type DashboardSummary = {
   firstName: string
   todaySession: {
     id: string
+    logId: string | null
     type: string
     intensity: string | null
     durationMin: number | null
@@ -155,6 +156,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     if (session && session.type !== 'DESCANSO') {
       todaySession = {
         id: session.id,
+        logId: session.log?.id ?? null,
         type: session.type,
         intensity: session.intensity ?? null,
         durationMin: session.durationMin,
@@ -168,6 +170,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     if (todayGymDay && !todayGymDay.isRestDay) {
       todaySession = {
         id: 'gym-today',
+        logId: null,
         type: 'FUERZA',
         intensity: 'MODERATE',
         durationMin: 60,

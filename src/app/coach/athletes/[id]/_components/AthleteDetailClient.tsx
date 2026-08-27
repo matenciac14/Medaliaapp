@@ -519,7 +519,7 @@ export default function AthleteDetailClient({
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="px-4 py-4 lg:p-6 max-w-4xl mx-auto">
+    <div className="px-4 py-4 lg:p-6 max-w-6xl mx-auto">
       <Link
         href="/coach/athletes"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
@@ -528,47 +528,56 @@ export default function AthleteDetailClient({
       </Link>
 
       {/* Athlete header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
-          style={{ backgroundColor: '#1e3a5f' }}
-        >
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-            <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={
-                athleteStatus === 'ACTIVE'
-                  ? { backgroundColor: '#dcfce7', color: '#15803d' }
-                  : { backgroundColor: '#fef3c7', color: '#92400e' }
-              }
-            >
-              {athleteStatus === 'ACTIVE' ? 'Activo' : 'Pausado'}
-            </span>
-            {healthProfile?.sport && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                {healthProfile.sport === 'RUNNING' ? 'Running' : healthProfile.sport === 'STRENGTH' ? 'Fuerza' : healthProfile.sport}
-                {healthProfile.experienceLevel && ` · ${healthProfile.experienceLevel === 'BEGINNER' ? 'Principiante' : healthProfile.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' : healthProfile.experienceLevel === 'ADVANCED' ? 'Avanzado' : healthProfile.experienceLevel}`}
-              </span>
-            )}
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
+            style={{ backgroundColor: '#1e3a5f' }}
+          >
+            {initials}
           </div>
-          <p className="text-sm text-gray-500">{athlete.email}</p>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={
+                  athleteStatus === 'ACTIVE'
+                    ? { backgroundColor: '#dcfce7', color: '#15803d' }
+                    : { backgroundColor: '#fef3c7', color: '#92400e' }
+                }
+              >
+                {athleteStatus === 'ACTIVE' ? 'Activo' : 'Pausado'}
+              </span>
+              {healthProfile?.sport && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  {healthProfile.sport === 'RUNNING' ? 'Running' : healthProfile.sport === 'STRENGTH' ? 'Fuerza' : healthProfile.sport}
+                  {healthProfile.experienceLevel && ` · ${healthProfile.experienceLevel === 'BEGINNER' ? 'Principiante' : healthProfile.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' : healthProfile.experienceLevel === 'ADVANCED' ? 'Avanzado' : healthProfile.experienceLevel}`}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <button
-          onClick={handleToggleStatus}
-          disabled={togglingStatus}
-          className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50"
-          style={
-            athleteStatus === 'ACTIVE'
-              ? { borderColor: '#d1d5db', color: '#6b7280' }
-              : { borderColor: '#1e3a5f', color: '#1e3a5f' }
-          }
-        >
-          {togglingStatus ? '...' : athleteStatus === 'ACTIVE' ? 'Pausar' : 'Reactivar'}
-        </button>
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm text-gray-500">{athlete.email}</p>
+            <p className="text-xs text-gray-400">
+              Cliente desde {new Date(athlete.createdAt).toLocaleDateString('es', { month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+          <button
+            onClick={handleToggleStatus}
+            disabled={togglingStatus}
+            className="shrink-0 text-xs font-medium px-4 py-2 rounded-lg border transition-colors disabled:opacity-50"
+            style={
+              athleteStatus === 'ACTIVE'
+                ? { borderColor: '#d1d5db', color: '#6b7280' }
+                : { borderColor: '#1e3a5f', color: '#1e3a5f' }
+            }
+          >
+            {togglingStatus ? '...' : athleteStatus === 'ACTIVE' ? 'Pausar' : 'Reactivar'}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -595,14 +604,6 @@ export default function AthleteDetailClient({
           athlete={athlete}
           healthProfile={healthProfile}
           activePlan={activePlan}
-          activated={activated}
-          togglingStatus={togglingStatus}
-          handleToggleStatus={handleToggleStatus}
-          resettingPwd={resettingPwd}
-          resetLink={resetLink}
-          pwdCopied={pwdCopied}
-          handleResetPassword={handleResetPassword}
-          handleCopyPassword={handleCopyPassword}
           coachGoal={coachGoal}
           setCoachGoal={setCoachGoal}
           privateNotes={privateNotes}

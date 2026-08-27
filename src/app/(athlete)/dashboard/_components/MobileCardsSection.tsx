@@ -1,18 +1,15 @@
 import Link from 'next/link'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
-import QuickSessionFeedback from '../../_components/QuickSessionFeedback'
 import TodayLogCard from '../../_components/TodayLogCard'
 import NutritionSnapshot from '../../_components/ui/NutritionSnapshot'
-import type { DashboardMode, TodaySessionData } from '../_lib/get-dashboard-data'
+import HydrationWidget from '../../nutrition/_components/HydrationWidget'
+import MealSlotsWidget from './MealSlotsWidget'
+import type { DashboardMode } from '../_lib/get-dashboard-data'
 import type { DashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
 
 type Props = {
   dashboardMode: DashboardMode
   dashSummary: DashboardSummary
-  todaySession: TodaySessionData | null
-
-  // FREE mode
-  hasEverLogged: boolean
 
   // Weight
   currentWeight: number | null
@@ -24,173 +21,46 @@ type Props = {
   currentVolume: number | null
   volumeDeltaPct: number | null
 
-  // Coach
-  coachRelation: {
-    coach: {
-      name: string | null
-      coachProfile: { headline: string | null; specialties: string[] | null } | null
-    }
-  } | null
-
-  // Check-in
+  // Check-in (B2B/Pro)
   lastCheckIn: { hardestSessionRpe: number | null; energyLevel: number | null; weightKg: number | null; sleepHours: number | null } | null
   formCheckInDate: string | null
   formStatus: 'good' | 'moderate' | 'rest'
   formMessage: string
-  checkinPending: boolean
   isRecomp: boolean
   raceDays: number | null
 
-  // Gym
-  gymDoneToday: boolean
-  todayGymSession: { id: string; durationMin: number | null; energyState: string | null } | null
-  todayGymDay: { label?: string } | null
-
   // Today log
   todayLogRaw: { weightKg: number | null; energyLevel: number | null } | null
+
+  // Weekly activity (FREE mode)
+  weekSessionCount: number
+  weekSessionTarget: number
+  streakDays: number
+
+  // Flags
+  hasEverLogged: boolean
 }
 
 export default function MobileCardsSection(props: Props) {
   return (
     <div className="sm:hidden space-y-3">
-      {props.dashboardMode === 'FREE' ? (
+      {props.dashboardMode === 'FREE' || props.dashboardMode === 'GYM' ? (
         <FreeMobileCards {...props} />
       ) : (
-        <B2BMobileCards {...props} />
+        <ProMobileCards {...props} />
       )}
     </div>
   )
 }
 
-// ── FREE Mode Cards ──────────────────────────────────────────────────────────
+// -- FREE / GYM Mode --------------------------------------------------------
 
 function FreeMobileCards(props: Props) {
-  const { todaySession, gymDoneToday, todayGymSession, todayGymDay, dashSummary, hasEverLogged, currentWeight, targetWeight, weeklyWeightChange, weightProgressPct, todayLogRaw } = props
+  const { dashSummary, hasEverLogged, currentWeight, targetWeight, weeklyWeightChange, weightProgressPct, todayLogRaw } = props
 
   return (
     <>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Tu actividad</p>
-
-      {/* QuickSessionFeedback — session completed today */}
-      {todaySession?.completed && todaySession.logId && (
-        <QuickSessionFeedback
-          logId={todaySession.logId}
-          logType={todaySession.logType}
-          sessionLabel={SESSION_NAMES[todaySession.type] ?? todaySession.type.replace(/_/g, ' ')}
-          sessionIcon={SESSION_ICONS[todaySession.type] ?? '🏅'}
-          sessionMeta={` · ${todaySession.durationMin} min${todaySession.zoneTarget && todaySession.zoneTarget !== 'N/A' && todaySession.zoneTarget !== '—' ? ` · ${todaySession.zoneTarget}` : ''}`}
-        />
-      )}
-
-      {/* QuickSessionFeedback — gym completed today */}
-      {!todaySession?.completed && gymDoneToday && todayGymSession && !todayGymSession.energyState && (
-        <QuickSessionFeedback
-          logId={todayGymSession.id}
-          logType="gym"
-          sessionLabel={todayGymDay?.label ?? 'Fuerza'}
-          sessionIcon="💪"
-          sessionMeta={todayGymSession.durationMin ? ` · ${todayGymSession.durationMin} min` : ''}
-        />
-      )}
-
-      {/* Insights Pro upsell */}
-      {hasEverLogged && !todaySession?.completed && (
-        <Link href="/pricing" className="block bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="px-3.5 py-3">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">✨ Insights Pro</p>
-            <p className="text-[15px] font-semibold text-gray-900 mb-2">Desbloquea con Plan Pro</p>
-            <div className="flex gap-2">
-              <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">Check-in</span>
-              <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">RPE</span>
-              <span className="text-[11px] text-gray-500 border border-gray-200 rounded-full px-2.5 py-1">Zonas</span>
-            </div>
-          </div>
-        </Link>
-      )}
-
-      {/* Recent activity */}
-      {hasEverLogged ? (
-        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="h-[3px] bg-[#ea580c]" />
-          {dashSummary.recentActivity.slice(0, 3).map((a, i) => (
-            <div key={i} className={`flex items-center gap-3 px-3.5 py-2.5 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
-              <span className="text-[22px]">{SESSION_ICONS[a.type] ?? '🏅'}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold text-gray-900">{SESSION_NAMES[a.type] ?? a.type.replace(/_/g, ' ')}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  {new Date(a.completedAt).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  {a.durationMin ? ` · ${a.durationMin} min` : ''}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="h-[3px] bg-[#ea580c]" />
-          <div className="px-3.5 py-3">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">📋 Última actividad</p>
-            <div className="flex items-center gap-2.5">
-              <span className="text-[28px]">📝</span>
-              <div className="flex-1">
-                <p className="text-[15px] font-semibold text-gray-900">Registra tu primera sesión</p>
-                <p className="text-[12px] text-[#ea580c] mt-0.5">
-                  <Link href="/log/run">Running</Link> · <Link href="/gym">Entreno</Link> · Lo que practiques →
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Meta de Peso */}
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Meta de peso</p>
-      <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="h-[3px] bg-[#3b82f6]" />
-        <div className="px-3.5 py-3 flex items-start">
-          <div className="flex-1">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">META DE PESO</p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-[#1e3a5f] tracking-tight leading-none">
-                {currentWeight ? currentWeight.toFixed(1) : '—'}
-              </span>
-              <span className="text-sm text-gray-400">kg</span>
-              {targetWeight && (
-                <span className="text-xs font-semibold text-[#22c55e]">→ {targetWeight} kg</span>
-              )}
-            </div>
-            {!currentWeight && (
-              <Link href="/progress" className="text-[11px] font-semibold text-[#ea580c] mt-1.5 block">Configura tu meta →</Link>
-            )}
-            {weeklyWeightChange != null && (
-              <p className={`text-[10px] mt-1 ${
-                (() => {
-                  const losing = (currentWeight ?? 0) > (targetWeight ?? 0)
-                  return losing
-                    ? (weeklyWeightChange < 0 ? 'text-[#22c55e]' : 'text-red-500')
-                    : (weeklyWeightChange > 0 ? 'text-[#22c55e]' : 'text-red-500')
-                })()
-              }`}>
-                {weeklyWeightChange > 0 ? '+' : ''}{weeklyWeightChange} kg esta semana
-              </p>
-            )}
-          </div>
-          {weightProgressPct != null ? (
-            <div className="bg-green-50 rounded-xl p-2.5 text-center min-w-[60px]">
-              <p className="text-lg font-black text-[#22c55e]">{weightProgressPct}%</p>
-              <p className="text-[9px] text-gray-400">del objetivo</p>
-            </div>
-          ) : (
-            <div className="bg-gray-50 rounded-xl p-2.5 text-center min-w-[60px]">
-              <p className="text-lg font-black text-gray-300">0%</p>
-              <p className="text-[9px] text-gray-400">sin datos aún</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Nutrición Hoy */}
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Nutrición hoy</p>
+      {/* Nutricion */}
       {dashSummary.nutritionTarget && (
         <NutritionSnapshot
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG }}
@@ -198,193 +68,46 @@ function FreeMobileCards(props: Props) {
         />
       )}
 
+      {/* Hidratación */}
+      <HydrationWidget />
+
+      {/* Alimentación */}
+      <MealSlotsWidget />
+
+      {/* Metricas — peso */}
+      <FreeMetricsCard
+        currentWeight={currentWeight}
+        targetWeight={targetWeight}
+        weeklyWeightChange={weeklyWeightChange}
+        weightProgressPct={weightProgressPct}
+      />
+
+      {/* Registro diario */}
       <TodayLogCard initial={todayLogRaw ?? null} />
 
-      {/* Desbloquea Plan Pro */}
-      <UpsellBannerPro />
+      {/* Actividad reciente */}
+      <RecentActivityCard recentActivity={dashSummary.recentActivity} hasEverLogged={hasEverLogged} streakDays={props.streakDays} />
 
-      {/* Encuentra tu entrenador */}
+      {/* CTAs */}
+      <UpsellBannerPro />
       <FindCoachBanner />
     </>
   )
 }
 
-// ── B2B/Pro Mode Cards ───────────────────────────────────────────────────────
+// -- Pro / B2B Mode ----------------------------------------------------------
 
-function B2BMobileCards(props: Props) {
+function ProMobileCards(props: Props) {
   const {
-    coachRelation, checkinPending, formStatus, formMessage, lastCheckIn,
-    formCheckInDate, isRecomp, currentWeight, targetWeight, raceDays,
+    formStatus, formMessage, lastCheckIn, formCheckInDate,
+    isRecomp, currentWeight, targetWeight, raceDays,
     weeklyWeightChange, weightProgressPct, currentVolume, volumeDeltaPct,
     dashSummary, todayLogRaw,
   } = props
 
   return (
     <>
-      {/* Coach card */}
-      {coachRelation && (
-        <Link href="/messages" className="flex items-center bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="w-1 h-14 bg-[#ea580c] shrink-0" />
-          <div className="flex-1 flex items-center gap-3 px-3 py-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#ea580c] flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {(coachRelation.coach.name ?? 'C').charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#1e3a5f] truncate">Coach {(coachRelation.coach.name ?? '').split(' ')[0]}</p>
-              <p className="text-[11px] text-gray-500 truncate">{coachRelation.coach.coachProfile?.headline ?? 'Entrenador personal'}</p>
-            </div>
-            <span className="text-sm text-gray-300">›</span>
-          </div>
-        </Link>
-      )}
-
-      {/* Check-in pendiente */}
-      {checkinPending && (
-        <Link href="/checkin" className="flex items-center bg-orange-50 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="w-1 bg-[#ea580c] shrink-0 self-stretch" />
-          <div className="flex-1 px-3.5 py-3">
-            <p className="text-xs font-semibold text-orange-900">Check-in semanal pendiente</p>
-            <p className="text-[10px] text-orange-700 mt-1">Registra métricas · tu plan se ajusta automáticamente →</p>
-          </div>
-        </Link>
-      )}
-
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pt-1 border-t border-gray-100">Resumen rápido</p>
-
-      {/* Como llegas hoy */}
-      <Link href="/checkin" className={`block rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden
-        ${formStatus === 'good' ? 'bg-green-50' : formStatus === 'moderate' ? 'bg-amber-50' : 'bg-red-50'}`}>
-        <div className="px-3.5 py-3">
-          <p className={`text-[9px] font-semibold uppercase tracking-widest mb-1.5
-            ${formStatus === 'good' ? 'text-green-600' : formStatus === 'moderate' ? 'text-amber-600' : 'text-red-600'}`}>
-            ⚡ Cómo llegas hoy
-          </p>
-          <p className="text-[14px] font-bold text-[#1e3a5f] leading-tight mb-2">{formMessage}</p>
-          {lastCheckIn && (
-            <div className="flex gap-1.5 flex-wrap">
-              {lastCheckIn.energyLevel != null && (
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
-                  ${formStatus === 'good' ? 'bg-green-100 text-green-700' : formStatus === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                  Energía{lastCheckIn.energyLevel}/10
-                </span>
-              )}
-              {lastCheckIn.hardestSessionRpe != null && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                  RPE {lastCheckIn.hardestSessionRpe}/10
-                </span>
-              )}
-              {lastCheckIn.sleepHours != null && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                  Sueño{lastCheckIn.sleepHours}h
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </Link>
-
-      {/* Último Check-in */}
-      {lastCheckIn && (
-        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-3.5 py-3">
-          <div className="flex justify-between items-center mb-3">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">🔔 Último Check-in</p>
-            {formCheckInDate && <p className="text-[9px] text-gray-400">{formCheckInDate}</p>}
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {lastCheckIn.hardestSessionRpe != null && (
-              <div className="bg-orange-50 rounded-xl px-3 py-2">
-                <p className="text-base font-semibold text-[#ea580c] leading-none">{lastCheckIn.hardestSessionRpe}/10</p>
-                <p className="text-[10px] text-gray-500 mt-1">RPE</p>
-              </div>
-            )}
-            {lastCheckIn.energyLevel != null && (
-              <div className="bg-green-50 rounded-xl px-3 py-2">
-                <p className="text-base font-semibold text-[#22c55e] leading-none">{lastCheckIn.energyLevel}/5 ★</p>
-                <p className="text-[10px] text-gray-500 mt-1">Energia</p>
-              </div>
-            )}
-            {lastCheckIn.weightKg != null && (
-              <div className="bg-blue-50 rounded-xl px-3 py-2">
-                <p className="text-base font-semibold text-[#3b6fdd] leading-none">{lastCheckIn.weightKg} kg</p>
-                <p className="text-[10px] text-gray-500 mt-1">Peso</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Tu Carrera / Tu Objetivo */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="h-[3px] bg-[#ea580c]" />
-        <div className="px-3.5 py-3">
-          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
-            {isRecomp ? '🎯 Tu Objetivo' : '🏁 Tu Carrera'}
-          </p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-black text-[#ea580c] tracking-tight leading-none">
-              {isRecomp
-                ? (currentWeight && targetWeight ? Math.abs(currentWeight - targetWeight).toFixed(1) : '—')
-                : (raceDays != null && raceDays > 0 ? raceDays : '—')}
-            </span>
-            <span className="text-sm font-semibold text-gray-400">
-              {isRecomp ? 'kg restantes' : 'días'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Meta de Peso */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="h-[3px] bg-[#3b6fdd]" />
-        <div className="px-3.5 py-3 flex items-start">
-          <div className="flex-1">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">⚖️ Meta de peso</p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-[#1e3a5f] tracking-tight leading-none">
-                {currentWeight ? currentWeight.toFixed(1) : '—'}
-              </span>
-              <span className="text-sm text-gray-400">kg</span>
-              {targetWeight && (
-                <span className="text-sm font-semibold text-[#22c55e]">→ {targetWeight} kg</span>
-              )}
-            </div>
-            {weeklyWeightChange != null && (
-              <p className={`text-[10px] mt-1 ${weeklyWeightChange < 0 ? 'text-green-600' : 'text-red-500'}`}>
-                {weeklyWeightChange > 0 ? '+' : ''}{weeklyWeightChange.toFixed(1)} kg esta semana
-              </p>
-            )}
-          </div>
-          {weightProgressPct != null && (
-            <div className="bg-green-50 rounded-xl p-2.5 text-center min-w-[60px]">
-              <p className="text-lg font-black text-[#22c55e]">{weightProgressPct}%</p>
-              <p className="text-[9px] text-gray-400">del objetivo</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Carga Semanal */}
-      {currentVolume != null && (
-        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="h-[3px] bg-[#ea580c]" />
-          <div className="px-3.5 py-3 flex items-start">
-            <div className="flex-1">
-              <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">🏃 Carga semanal</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-[#ea580c] tracking-tight leading-none">{currentVolume}</span>
-                <span className="text-sm font-semibold text-gray-400">km</span>
-                {volumeDeltaPct != null && (
-                  <span className={`text-xs font-semibold ml-1 ${volumeDeltaPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {volumeDeltaPct >= 0 ? '↑' : '↓'} {Math.abs(volumeDeltaPct)}% vs sem. anterior
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Nutrición Hoy */}
+      {/* Nutricion */}
       {dashSummary.nutritionTarget && (
         <NutritionSnapshot
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG, label: dashSummary.nutritionTarget.label }}
@@ -392,44 +115,201 @@ function B2BMobileCards(props: Props) {
         />
       )}
 
+      {/* Hidratación */}
+      <HydrationWidget />
+
+      {/* Alimentación */}
+      <MealSlotsWidget />
+
+      {/* MetricsCard consolidado */}
+      <ProMetricsCard
+        formStatus={formStatus}
+        formMessage={formMessage}
+        lastCheckIn={lastCheckIn}
+        formCheckInDate={formCheckInDate}
+        currentWeight={currentWeight}
+        targetWeight={targetWeight}
+        weeklyWeightChange={weeklyWeightChange}
+        weightProgressPct={weightProgressPct}
+        currentVolume={currentVolume}
+        volumeDeltaPct={volumeDeltaPct}
+        isRecomp={isRecomp}
+        raceDays={raceDays}
+      />
+
+      {/* Registro diario */}
       <TodayLogCard initial={todayLogRaw ?? null} />
 
       {/* Actividad reciente */}
-      {(dashSummary.recentActivity?.length ?? 0) > 0 && (
-        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="px-3.5 pt-3.5 pb-1 flex justify-between items-center">
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Actividad reciente</p>
-            {dashSummary.streakDays > 0 && (
-              <p className="text-[10px] text-[#f97316]">🔥 {dashSummary.streakDays} días de racha</p>
-            )}
-          </div>
-          {dashSummary.recentActivity.slice(0, 5).map((a, i) => (
-            <div key={i} className={`flex items-center gap-3 px-3.5 py-2.5 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
-              <span className="text-[22px]">{SESSION_ICONS[a.type] ?? '🏅'}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-900">{SESSION_NAMES[a.type] ?? a.type.replace(/_/g, ' ')}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  {new Date(a.completedAt).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  {a.durationMin ? ` · ${a.durationMin} min` : ''}
-                </p>
-              </div>
-              {a.rpe != null && (
-                <span className="text-[11px] font-semibold text-[#1e3a5f] bg-gray-100 rounded-lg px-2 py-1">RPE {a.rpe}</span>
-              )}
-            </div>
-          ))}
-          <div className="px-3.5 pb-3 pt-1">
-            <Link href="/log/run" className="block bg-gray-100 rounded-[10px] py-2.5 text-center text-[13px] font-semibold text-[#1e3a5f] hover:bg-gray-200 transition-colors">
-              + Registrar actividad
-            </Link>
-          </div>
-        </div>
-      )}
+      <RecentActivityCard recentActivity={dashSummary.recentActivity} hasEverLogged={true} streakDays={props.streakDays} />
     </>
   )
 }
 
-// ── Shared banner components ─────────────────────────────────────────────────
+// -- MetricsCard Pro/B2B (consolidado: forma + checkin + peso + carga + race) -
+
+function ProMetricsCard({ formStatus, formMessage, lastCheckIn, formCheckInDate, currentWeight, targetWeight, weeklyWeightChange, weightProgressPct, currentVolume, volumeDeltaPct, isRecomp, raceDays }: {
+  formStatus: 'good' | 'moderate' | 'rest'
+  formMessage: string
+  lastCheckIn: { hardestSessionRpe: number | null; energyLevel: number | null; weightKg: number | null; sleepHours: number | null } | null
+  formCheckInDate: string | null
+  currentWeight: number | null
+  targetWeight: number | null
+  weeklyWeightChange: number | null
+  weightProgressPct: number | null
+  currentVolume: number | null
+  volumeDeltaPct: number | null
+  isRecomp: boolean
+  raceDays: number | null
+}) {
+  const accentColor = formStatus === 'good' ? 'bg-green-500' : formStatus === 'moderate' ? 'bg-amber-500' : 'bg-red-500'
+  const statusColor = formStatus === 'good' ? 'text-green-800' : formStatus === 'moderate' ? 'text-amber-800' : 'text-red-800'
+  const chipBg = formStatus === 'good' ? 'bg-green-100 text-green-700' : formStatus === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+
+  return (
+    <div className="bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className={`h-[3px] ${accentColor}`} />
+      <div className="px-4 pt-3 pb-3.5 space-y-2.5">
+
+        {/* Row 1: status + chip + ago */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className={`text-[15px] font-bold ${statusColor}`}>{formMessage}</p>
+            <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${chipBg}`}>
+              {formStatus === 'good' ? 'Buena forma' : formStatus === 'moderate' ? 'Moderado' : 'Descanso'}
+            </span>
+          </div>
+          {formCheckInDate && <p className="text-[9px] text-gray-400">{formCheckInDate}</p>}
+        </div>
+
+        {/* Row 2: 4 metrics */}
+        <div className="grid grid-cols-4 gap-1">
+          <MetricCol label="Peso" value={currentWeight ? currentWeight.toFixed(1) : '--'} unit="kg" color="text-[#1e3a5f]" />
+          <MetricCol label="RPE" value={lastCheckIn?.hardestSessionRpe != null ? String(lastCheckIn.hardestSessionRpe) : '--'} unit="/10" color="text-[#ea580c]" />
+          <MetricCol label="Energia" value={lastCheckIn?.energyLevel != null ? `${lastCheckIn.energyLevel}/5` : '--'} unit="" color="text-[#22c55e]" />
+          <MetricCol label="Carga" value={currentVolume != null ? String(currentVolume) : '--'} unit="km" color="text-[#1e3a5f]" />
+        </div>
+
+        {/* Row 3: race countdown or weight progress (conditional) */}
+        {raceDays != null && raceDays > 0 && !isRecomp && (
+          <div className="flex items-center gap-1.5 bg-blue-50 rounded-[10px] px-2.5 py-1.5">
+            <span className="text-xs">🏁</span>
+            <p className="text-[11px] font-semibold text-[#1e3a5f] flex-1">{raceDays} dias para tu carrera</p>
+            {weightProgressPct != null && (
+              <p className="text-[10px] text-gray-400">Peso {weightProgressPct}%</p>
+            )}
+          </div>
+        )}
+
+        {isRecomp && currentWeight && targetWeight && (
+          <div className="flex items-center gap-1.5 bg-blue-50 rounded-[10px] px-2.5 py-1.5">
+            <span className="text-xs">🎯</span>
+            <p className="text-[11px] font-semibold text-[#1e3a5f] flex-1">
+              {Math.abs(currentWeight - targetWeight).toFixed(1)} kg restantes
+            </p>
+            {weeklyWeightChange != null && (
+              <p className={`text-[10px] ${weeklyWeightChange < 0 ? 'text-green-600' : 'text-red-500'}`}>
+                {weeklyWeightChange > 0 ? '+' : ''}{weeklyWeightChange.toFixed(1)} kg/sem
+              </p>
+            )}
+          </div>
+        )}
+
+        {volumeDeltaPct != null && (
+          <p className={`text-[10px] ${volumeDeltaPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {volumeDeltaPct >= 0 ? '↑' : '↓'} {Math.abs(volumeDeltaPct)}% carga vs sem. anterior
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// -- MetricsCard FREE (solo peso) --------------------------------------------
+
+function FreeMetricsCard({ currentWeight, targetWeight, weeklyWeightChange, weightProgressPct }: {
+  currentWeight: number | null
+  targetWeight: number | null
+  weeklyWeightChange: number | null
+  weightProgressPct: number | null
+}) {
+  return (
+    <div className="bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="h-[3px] bg-[#1e3a5f]" />
+      <div className="px-4 pt-3 pb-3.5 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-bold text-[#1e3a5f]">Tu progreso</p>
+          {weeklyWeightChange != null && (
+            <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${weeklyWeightChange < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-500'}`}>
+              {weeklyWeightChange > 0 ? '+' : ''}{weeklyWeightChange.toFixed(1)} kg/sem
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          <MetricCol label="Peso" value={currentWeight ? currentWeight.toFixed(1) : '--'} unit="kg" color="text-[#1e3a5f]" />
+          <MetricCol label="Meta" value={targetWeight ? String(targetWeight) : '--'} unit="kg" color="text-[#22c55e]" />
+          <MetricCol label="Progreso" value={weightProgressPct != null ? String(weightProgressPct) : '--'} unit="%" color="text-[#1e3a5f]" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// -- MetricCol (reusable) ----------------------------------------------------
+
+function MetricCol({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
+  return (
+    <div>
+      <div className="flex items-baseline gap-0.5">
+        <span className={`text-lg font-bold ${color}`}>{value}</span>
+        {unit && <span className="text-[11px] text-gray-400">{unit}</span>}
+      </div>
+      <p className="text-[10px] text-gray-400">{label}</p>
+    </div>
+  )
+}
+
+// -- RecentActivityCard (4 items max, scrollbar, no CTA) ---------------------
+
+function RecentActivityCard({ recentActivity, hasEverLogged, streakDays }: {
+  recentActivity: { type: string; completedAt: string; durationMin: number | null; rpe: number | null }[]
+  hasEverLogged: boolean
+  streakDays: number
+}) {
+  if (!hasEverLogged || recentActivity.length === 0) return null
+
+  return (
+    <div className="bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="h-[3px] bg-[#ea580c]" />
+      <div className="px-3.5 pt-3 pb-1 flex justify-between items-center">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Actividad reciente</p>
+        {streakDays > 0 && (
+          <span className="text-[11px] font-semibold text-[#ea580c]">🔥 {streakDays} dias de racha</span>
+        )}
+      </div>
+      <div className="max-h-[205px] overflow-y-auto">
+        {recentActivity.slice(0, 4).map((a, i) => (
+          <div key={i} className={`flex items-center gap-3 px-3.5 py-2.5 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
+            <span className="text-[22px]">{SESSION_ICONS[a.type] ?? '🏅'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-gray-900">{SESSION_NAMES[a.type] ?? a.type.replace(/_/g, ' ')}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                {new Date(a.completedAt).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
+                {a.durationMin ? ` · ${a.durationMin} min` : ''}
+              </p>
+            </div>
+            {a.rpe != null && (
+              <span className="text-[11px] font-semibold text-[#1e3a5f] bg-gray-100 rounded-lg px-2 py-1">RPE {a.rpe}</span>
+            )}
+            <Link href="/progress" className="text-[11px] font-semibold text-[#ea580c]">Ver →</Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// -- Shared banners ----------------------------------------------------------
 
 function UpsellBannerPro() {
   return (

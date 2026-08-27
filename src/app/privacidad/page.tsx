@@ -1,3 +1,5 @@
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
+
 export const metadata = {
   title: 'Política de privacidad — Medaliq',
   description: 'Política de privacidad y tratamiento de datos personales de Medaliq.',
@@ -190,7 +192,7 @@ export default function PrivacidadPage() {
       {/* Footer */}
       <footer className="bg-[#1e3a5f] text-blue-200 py-8 px-4 mt-16">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-white font-bold text-lg">Medaliq</span>
+          <MedaliqLogo variant="dark" size="sm" />
           <div className="flex gap-6 text-sm">
             <a href="/terminos" className="hover:text-white transition-colors">Términos de uso</a>
             <a href="/privacidad" className="text-white font-medium">Privacidad</a>

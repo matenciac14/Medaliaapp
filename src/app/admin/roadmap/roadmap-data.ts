@@ -2583,6 +2583,30 @@ export const GROUPS: RoadmapGroup[] = [
             priority: 'P1',
             note: 'DONE (2026-08-25). 4 fixes: (1) getDashboardSummary gym-today completed ahora detecta gymCompletionDates dinámicamente (antes hardcoded false). (2) Mobile nativo: gym zone badge, workout name, completed CTA "Ver resumen →". (3) InsightsProCard + TodayLogCard añadidos al path FREE en mobile nativo (dashboard.tsx). (4) Post-onboarding orientación removida de path no-FREE (solo visible en FREE). Figma: InsightsProCard (5196:44) añadido a frame B2C Free 3404:46. 74 tests pass.',
           },
+          {
+            title: 'UX-DASH-05 — NutritionProgressCard: reemplazar Banner-Nutricion-HOY con widget de progreso vivo (consumido vs objetivo)',
+            done: false,
+            priority: 'P1',
+            note: 'Figma actualizado (2026-08-26): KcalHeroCard/[Progress] reemplaza Banner-Nutricion-HOY en 7 frames de dashboard. Implementacion requiere 3 subtareas: (1) Backend: agregar todayFoodTotals {kcal,proteinG,carbsG,fatG} al GET /api/mobile/dashboard — query FoodLog WHERE date=today + aggregate sum. (2) Mobile: crear NutritionProgressCard.tsx reutilizable con CalorieRing (react-native-svg donut) + MacroRings (3 mini progress circles P/C/G). Props: target+consumed. (3) Mobile: reemplazar NutritionBanner por NutritionProgressCard en dashboard.tsx. El mismo componente debe reutilizarse en nutrition.tsx reemplazando el bloque inline "Tu objetivo de hoy".',
+          },
+          {
+            title: 'UX-DASH-05a — Backend: agregar todayFoodTotals al endpoint /api/mobile/dashboard',
+            done: false,
+            priority: 'P1',
+            note: 'Agregar al Promise.all del dashboard: prisma.foodLog.aggregate({ where: { userId, date: todayUtc }, _sum: { kcalLogged, proteinLogged, carbsLogged, fatLogged } }). Retornar todayFoodTotals: { kcal, proteinG, carbsG, fatG } junto al nutritionTarget existente. Actualizar DashboardData type en mobile/src/api/dashboard.ts.',
+          },
+          {
+            title: 'UX-DASH-05b — Mobile: crear NutritionProgressCard con CalorieRing + MacroRings (react-native-svg)',
+            done: false,
+            priority: 'P1',
+            note: 'Componente reutilizable en src/components/dashboard/NutritionProgressCard.tsx. Props: target {kcal,proteinG,carbsG,fatG}, consumed {kcal,proteinG,carbsG,fatG}, onPress. Donut ring SVG (120x120, strokeWidth 10, naranja #ea5807). 3 mini macro rings (Prot azul #3b82f6, Carbs amarillo #eab308, Grasas verde #22c55e). Texto central: remaining kcal + "restantes". Referencia Figma: KcalHeroCard/[Progress] node 4670:43.',
+          },
+          {
+            title: 'UX-DASH-05c — Mobile: integrar NutritionProgressCard en dashboard y reutilizar en nutrition tab',
+            done: false,
+            priority: 'P2',
+            note: 'Dashboard: reemplazar <NutritionBanner> por <NutritionProgressCard target={nutritionTarget} consumed={todayFoodTotals}>. Nutrition tab: reemplazar bloque inline "Tu objetivo de hoy" (L1034-1073) por el mismo componente. Eliminar NutritionBanner.tsx cuando ya no se use.',
+          },
         ],
       },
 

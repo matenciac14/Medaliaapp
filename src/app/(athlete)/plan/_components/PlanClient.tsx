@@ -462,36 +462,59 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
   const [todayActive, setTodayActive] = useState(false)
   const pct = totalTraining > 0 ? (completedCount / totalTraining) * 100 : 0
 
+  // Pre-compute day data for both mobile and desktop views
+  const dayData = Array.from({ length: 7 }, (_, i) => {
+    const dow = i + 1
+    const session = week?.sessions.find(s => s.dayOfWeek === dow) ?? null
+    const calDay = calendarDays?.find(d => d.dow === dow) ?? null
+    const gymLabel = calDay?.gym?.label ?? null
+    const gymDone = calDay?.gym?.done ?? false
+    const dateObj = new Date(weekMonday.getTime() + i * 86400000)
+    const isToday = isCurrentWeek && dow === todayDow
+    const isSelected = dow === selectedDow
+    const isRest = !session || session.type === 'DESCANSO'
+    const isDone = (session?.done || (session ? loggedIds.has(session.id) : false)) ?? false
+    const hasSession = !!session && !isRest
+    return { i, dow, session, gymLabel, gymDone, dateObj, isToday, isSelected, isRest, isDone, hasSession }
+  })
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-100">
-        <div className="h-full bg-green-400 transition-all duration-500" style={{ width: `${pct}%` }} />
+    <div className="mb-5">
+      {/* Mobile: day pills — no card wrapper, full width */}
+      <div className="sm:hidden flex justify-between">
+        {dayData.map(({ i, dow, isToday, isSelected, isDone, isRest, hasSession, dateObj }) => (
+          <button
+            key={dow}
+            onClick={() => onSelect(dow)}
+            className="flex flex-col items-center gap-1"
+          >
+            <span className={cn('text-[11px] font-semibold',
+              isToday ? 'text-[#ea580c]' : isSelected ? 'text-[#1e3a5f]' : 'text-gray-400'
+            )}>
+              {WEEK_DAYS_SHORT[i]}
+            </span>
+            <div className={cn('w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors',
+              isToday ? 'bg-[#ea580c] text-white' :
+              isDone && !isRest ? 'bg-[#22c55e] text-white' :
+              isSelected ? 'border-2 border-[#1e3a5f] text-[#1e3a5f] bg-white' :
+              hasSession ? 'bg-[#1e3a5f] text-white' :
+              'bg-white text-gray-400 border border-gray-200'
+            )}>
+              {isDone && !isRest && !isToday ? '✓' : dateObj.getDate()}
+            </div>
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-7 divide-x divide-gray-50">
-        {Array.from({ length: 7 }, (_, i) => {
-          const dow = i + 1
-          const session = week?.sessions.find(s => s.dayOfWeek === dow) ?? null
-          const calDay = calendarDays?.find(d => d.dow === dow) ?? null
-          const gymLabel = calDay?.gym?.label ?? null
-          const gymDone = calDay?.gym?.done ?? false
-          const dateObj = new Date(weekMonday.getTime() + i * 86400000)
-          const isToday = isCurrentWeek && dow === todayDow
-          const isSelected = dow === selectedDow
-          const isRest = !session || session.type === 'DESCANSO'
-          const isDone = (session?.done || (session ? loggedIds.has(session.id) : false)) ?? false
-
-          // Barra-Top-Estado: naranja HOY/selected, verde done, gris default
+      {/* Desktop: rich column strip */}
+      <div className="hidden sm:grid grid-cols-7 divide-x divide-gray-50">
+        {dayData.map(({ i, dow, session, gymLabel, gymDone, dateObj, isToday, isSelected, isRest, isDone }) => {
           const barColor = isToday || isSelected ? 'bg-[#ea580c]' : isDone && !isRest ? 'bg-[#22c55e]' : 'bg-gray-200'
-
-          // Card background — Figma DayCard states
           const cardBg = isToday
             ? 'bg-[#1e3a5f]'
             : isSelected ? 'bg-orange-50'
             : isDone && !isRest ? 'bg-green-50/60'
             : 'bg-[#f5f7fa] hover:bg-gray-100'
-
           const isInverted = isToday
 
           return (
@@ -500,10 +523,7 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
               onClick={() => onSelect(dow)}
               className={cn('flex flex-col items-center py-3.5 px-1 transition-colors text-center relative', cardBg)}
             >
-              {/* Barra-Top-Estado — 3px */}
               <div className={cn('absolute top-0 left-0 right-0 h-[3px]', barColor)} />
-
-              {/* Label-Dia */}
               <span className={cn('text-[11px] font-semibold mb-1',
                 isInverted ? 'text-white/70' :
                 isToday || isSelected ? 'text-[#ea580c] font-bold' :
@@ -511,8 +531,6 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
               )}>
                 {WEEK_DAYS_SHORT[i]}
               </span>
-
-              {/* Label-Fecha + HOY badge */}
               <div className="flex items-center gap-1 mb-2">
                 <span className={cn('text-[22px] font-black leading-none',
                   isInverted ? 'text-white' :
@@ -529,15 +547,11 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
                   </span>
                 )}
               </div>
-
-              {/* Icono-Estado */}
               <span className="text-lg mb-1.5">
                 {isDone && !isRest
                   ? <CheckCircle2 size={18} className={isInverted ? 'text-green-300 mx-auto' : 'text-green-500 mx-auto'} />
                   : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : (gymLabel ? null : ''))}
               </span>
-
-              {/* Label-Sesion */}
               <span className={cn('text-[12px] font-semibold leading-tight px-0.5',
                 isInverted ? 'text-white' :
                 isToday && !isSelected ? 'text-gray-700' :
@@ -547,19 +561,14 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
                   ? (gymLabel ?? 'Sin sesión')
                   : isRest ? 'Descanso' : (SESSION_LABELS[session.type] ?? session.type)}
               </span>
-
-              {/* Duration + Zone sub-label */}
               {!isRest && session && (
                 <span className={cn('text-[10px] mt-0.5',
-                  isInverted ? 'text-white/60' :
-                  isToday ? 'text-gray-400' : 'text-gray-400'
+                  isInverted ? 'text-white/60' : 'text-gray-400'
                 )}>
                   {session.durationMin} min
                   {session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== 'N/A' ? ` · ${session.zoneTarget}` : ''}
                 </span>
               )}
-
-              {/* Gym badge */}
               {gymLabel && (
                 <span className={cn('text-[8px] font-bold rounded-full px-1 py-0.5 leading-none mt-0.5',
                   gymDone ? 'bg-green-600 text-white' :
@@ -1291,30 +1300,52 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
         </div>
 
         {/* Week Nav */}
-        <div className="flex items-center justify-between bg-white/10 rounded-xl px-1 py-1">
-          <button
-            onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
-            disabled={selectedWeekNum <= 1}
-            className="w-8 h-8 flex items-center justify-center text-white/70 disabled:opacity-30"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span className="text-[13px] font-semibold text-white">
-            Semana {selectedWeekNum} · {weekLabel}
-          </span>
-          <button
-            onClick={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
-            disabled={selectedWeekNum >= plan.totalWeeks}
-            className="w-8 h-8 flex items-center justify-center text-white/70 disabled:opacity-30"
-          >
-            <ChevronRight size={18} />
-          </button>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center bg-white/10 rounded-xl h-10">
+            <button
+              onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
+              disabled={selectedWeekNum <= 1}
+              className="w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70 disabled:opacity-30"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="flex-1 text-[13px] font-semibold text-white text-center whitespace-nowrap">
+              Semana {selectedWeekNum} · {weekLabel}
+            </span>
+            {!isCurrentWeek && (
+              <button
+                onClick={() => { setSelectedWeekNum(plan.currentWeek); setSelectedDow(todayDow) }}
+                className="text-[12px] font-bold text-white bg-[#ea580c] px-3 py-1 rounded-full transition-colors hover:bg-[#d14d07]"
+              >
+                Hoy
+              </button>
+            )}
+            <button
+              onClick={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
+              disabled={selectedWeekNum >= plan.totalWeeks}
+              className="w-9 h-9 flex items-center justify-center rounded-[10px] text-white/70 disabled:opacity-30"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Day Pills */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex justify-between">
+      <div className="px-4 pt-4 pb-4">
+        {/* Segmented progress bar */}
+        <div className="flex gap-[3px] mb-2">
+          {Array.from({ length: 7 }, (_, i) => {
+            const dow = i + 1
+            const s = week?.sessions.find(x => x.dayOfWeek === dow) ?? null
+            const isRest = !s || s.type === 'DESCANSO'
+            const isDone = (s?.done || (s ? loggedIds.has(s.id) : false)) ?? false
+            return (
+              <div key={`bar-${i}`} className={`h-[3px] flex-1 rounded-full ${isDone && !isRest ? 'bg-[#22c55e]' : 'bg-gray-200'}`} />
+            )
+          })}
+        </div>
+        <div className="flex justify-between py-3">
           {Array.from({ length: 7 }, (_, i) => {
             const dow = i + 1
             const s = week?.sessions.find(x => x.dayOfWeek === dow) ?? null

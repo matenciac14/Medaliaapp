@@ -34,6 +34,16 @@ export const metadata: Metadata = {
   title: META_TITLE,
   description: META_DESCRIPTION,
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/brand/svg/medaliq-favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/png/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/png/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/brand/png/apple-touch-icon-180.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

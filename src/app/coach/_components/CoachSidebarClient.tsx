@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import { Users, Dumbbell, Globe, Settings, LogOut, Plus, UserPlus, LayoutDashboard, Wallet, Salad } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/app/_components/LanguageContext'
@@ -59,9 +60,8 @@ export default function CoachSidebarClient({ coachName, specialties }: Props) {
         style={{ backgroundColor: '#1e3a5f' }}
       >
         <div className="px-6 py-5 border-b border-white/10">
-          <Link href="/coach/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: '#ea580c' }}>M</div>
-            <span className="text-white font-bold text-lg tracking-tight">Medaliq</span>
+          <Link href="/coach/dashboard">
+            <MedaliqLogo variant="dark" size="md" />
           </Link>
         </div>
 
@@ -110,9 +110,8 @@ export default function CoachSidebarClient({ coachName, specialties }: Props) {
 
       {/* ── Mobile top bar ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#1e3a5f' }}>
-        <Link href="/coach/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-xs" style={{ backgroundColor: '#ea580c' }}>M</div>
-          <span className="text-white font-bold text-base">Medaliq Coach</span>
+        <Link href="/coach/dashboard">
+          <MedaliqLogo variant="dark" size="sm" />
         </Link>
         <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dark" />

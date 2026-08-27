@@ -868,6 +868,7 @@ describe('CONTRACT — output field names (mobile API shape)', () => {
     expect(summary.todaySession).not.toBeNull()
     // Campos que la mobile app lee por nombre — NO renombrar
     expect(summary.todaySession).toHaveProperty('id')
+    expect(summary.todaySession).toHaveProperty('logId')
     expect(summary.todaySession).toHaveProperty('type')
     expect(summary.todaySession).toHaveProperty('intensity')
     expect(summary.todaySession).toHaveProperty('durationMin')
