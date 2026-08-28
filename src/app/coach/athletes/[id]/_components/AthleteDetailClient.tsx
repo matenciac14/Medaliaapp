@@ -96,6 +96,27 @@ export type NutritionPlanData = {
   fatG: number
 } | null
 
+export type PaymentData = {
+  amount: number
+  currency: string
+  status: 'PAID' | 'PENDING' | 'OVERDUE'
+  paidAt: Date | null
+  dueDate: Date
+} | null
+
+export type PRRecord = {
+  exerciseName: string
+  weightKg: number
+  date: Date
+}
+
+export type GymRoutineData = {
+  name: string
+  goal: string | null
+  daysPerWeek: number
+  lastSessionDate: Date | null
+} | null
+
 export type AthleteStatus = 'ACTIVE' | 'PAUSED'
 
 // ─── Local types (not exported — used for state only) ────────────────────────
@@ -139,6 +160,10 @@ interface AthleteDetailClientProps {
   coachGoal: string | null
   privateNotes: string | null
   coachSpecialties: string[]
+  latestPayment: PaymentData
+  prRecords: PRRecord[]
+  gymRoutine: GymRoutineData
+  volumeTotalKg: number
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -154,6 +179,10 @@ export default function AthleteDetailClient({
   coachGoal: initialCoachGoal,
   privateNotes: initialPrivateNotes,
   coachSpecialties,
+  latestPayment,
+  prRecords,
+  gymRoutine,
+  volumeTotalKg,
 }: AthleteDetailClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -488,11 +517,30 @@ export default function AthleteDetailClient({
   const alerts: string[] = []
   if (recentCheckIns.length === 0) alerts.push('Sin check-ins registrados aún')
   if (lastCheckInDaysAgo !== null && lastCheckInDaysAgo >= 7) alerts.push(`Check-in pendiente hace ${lastCheckInDaysAgo} días`)
-  if (latestCheckIn?.painFlag) alerts.push('Reporte de dolor en el último check-in')
+
+  // RPE + dolor descriptivo (Figma: "RPE 7.5 + dolor reportado en S5")
+  const rpeHigh = latestCheckIn?.hardestSessionRpe != null && latestCheckIn.hardestSessionRpe >= 7
+  const hasPain = latestCheckIn?.painFlag
+  if (rpeHigh && hasPain) {
+    alerts.push(`RPE ${latestCheckIn!.hardestSessionRpe} + dolor reportado en S${latestCheckIn!.weekNumber}`)
+  } else if (rpeHigh) {
+    alerts.push(`RPE ${latestCheckIn!.hardestSessionRpe} en S${latestCheckIn!.weekNumber}`)
+  } else if (hasPain) {
+    alerts.push(`Dolor reportado en S${latestCheckIn!.weekNumber}`)
+  }
+
   if (latestCheckIn?.hrResting !== null && latestCheckIn?.hrResting !== undefined &&
       healthProfile?.hrResting !== null && healthProfile?.hrResting !== undefined &&
       latestCheckIn.hrResting > healthProfile.hrResting + 10) {
     alerts.push('FC reposo elevada respecto al valor basal')
+  }
+
+  // Sueño bajo consecutivo (Figma: "Sueño < 7h por 3 semanas")
+  const lowSleepWeeks = recentCheckIns
+    .filter((c) => c.sleepScore != null && Math.round(c.sleepScore / 100 * 8) < 7)
+    .length
+  if (lowSleepWeeks >= 3) {
+    alerts.push(`Sueño < 7h por ${lowSleepWeeks} semanas`)
   }
 
   const displayName = athlete.name ?? athlete.email
@@ -617,6 +665,10 @@ export default function AthleteDetailClient({
           lastCheckInDaysAgo={lastCheckInDaysAgo}
           alerts={alerts}
           dailyLogs={dailyLogs}
+          latestPayment={latestPayment}
+          prRecords={prRecords}
+          gymRoutine={gymRoutine}
+          volumeTotalKg={volumeTotalKg}
         />
       )}
 

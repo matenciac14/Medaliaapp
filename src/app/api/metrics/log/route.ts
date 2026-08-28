@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { z } from 'zod'
+
+const DailyLogSchema = z.object({
+  weightKg:    z.number().positive().max(500).optional(),
+  energyLevel: z.number().int().min(1).max(5).optional(),
+  hrResting:   z.number().int().min(20).max(250).optional(),
+  sleepHours:  z.number().min(0).max(24).optional(),
+  notes:       z.string().max(500).optional(),
+})
 
 // GET — últimos 30 registros del usuario
 export async function GET() {
@@ -21,32 +30,30 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
-  const { date, weightKg, hrResting, sleepHours, energyLevel, notes } = body
+  const parsed = DailyLogSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Body inválido' }, { status: 400 })
 
-  if (!date) return NextResponse.json({ error: 'date requerido' }, { status: 400 })
+  const { weightKg, energyLevel, hrResting, sleepHours, notes } = parsed.data
 
-  // PERSIST-10: solo sobreescribir campos que vienen definidos en el body
-  const updateData = {
-    ...(weightKg   !== undefined && { weightKg }),
-    ...(hrResting  !== undefined && { hrResting }),
-    ...(sleepHours !== undefined && { sleepHours }),
-    ...(energyLevel !== undefined && { energyLevel }),
-    ...(notes      !== undefined && { notes }),
+  if (weightKg == null && energyLevel == null && hrResting == null && sleepHours == null) {
+    return NextResponse.json({ error: 'Al menos un campo requerido.' }, { status: 400 })
   }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
   const log = await prisma.dailyLog.upsert({
-    where: { userId_date: { userId: session.user.id, date: new Date(date) } },
-    create: {
-      userId: session.user.id,
-      date: new Date(date),
-      weightKg: weightKg ?? null,
-      hrResting: hrResting ?? null,
-      sleepHours: sleepHours ?? null,
-      energyLevel: energyLevel ?? null,
-      notes: notes ?? null,
+    where: { userId_date: { userId: session.user.id, date: today } },
+    create: { userId: session.user.id, date: today, weightKg, energyLevel, hrResting, sleepHours, notes },
+    update: {
+      ...(weightKg    != null && { weightKg }),
+      ...(energyLevel != null && { energyLevel }),
+      ...(hrResting   != null && { hrResting }),
+      ...(sleepHours  != null && { sleepHours }),
+      ...(notes       != null && { notes }),
     },
-    update: updateData,
+    select: { weightKg: true, energyLevel: true, hrResting: true, sleepHours: true, date: true },
   })
 
-  return NextResponse.json(log)
+  return NextResponse.json({ log }, { status: 200 })
 }

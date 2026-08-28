@@ -147,12 +147,11 @@ export default function ProfileClient({ user }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          date: form.date,
-          weightKg: form.weightKg ? parseFloat(form.weightKg) : null,
-          hrResting: form.hrResting ? parseInt(form.hrResting) : null,
-          sleepHours: form.sleepHours ? parseFloat(form.sleepHours) : null,
-          energyLevel: form.energyLevel ? parseInt(form.energyLevel) : null,
-          notes: form.notes || null,
+          ...(form.weightKg && { weightKg: parseFloat(form.weightKg) }),
+          ...(form.hrResting && { hrResting: parseInt(form.hrResting) }),
+          ...(form.sleepHours && { sleepHours: parseFloat(form.sleepHours) }),
+          ...(form.energyLevel && { energyLevel: parseInt(form.energyLevel) }),
+          ...(form.notes && { notes: form.notes }),
         }),
       })
       setSaved(true)

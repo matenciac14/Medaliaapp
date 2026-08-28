@@ -14,8 +14,13 @@ export default async function AthleteDetailPage({
   if (!session?.user?.id) redirect('/login')
 
   // ─── Parallel DB queries ──────────────────────────────────────────────────
-  const [athlete, healthProfile, activePlan, recentCheckIns, nutritionPlan, coachRelation, coachProfile] =
-    await Promise.all([
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000)
+
+  const [
+    athlete, healthProfile, activePlan, recentCheckIns, nutritionPlan,
+    coachRelation, coachProfile, latestPayment, prRecords,
+    activeGymRoutine, lastGymSession, volumeAgg,
+  ] = await Promise.all([
       // Basic user data
       prisma.user.findUnique({
         where: { id: athleteId },
@@ -65,6 +70,54 @@ export default async function AthleteDetailPage({
         where: { coachId: session.user.id },
         select: { specialties: true },
       }),
+
+      // Latest payment for this athlete
+      prisma.payment.findFirst({
+        where: { coachId: session.user.id, athleteId },
+        orderBy: { paidAt: 'desc' },
+        select: { id: true, amount: true, currency: true, status: true, paidAt: true, dueDate: true },
+      }),
+
+      // PR records (SetLog with isPR: true)
+      prisma.setLog.findMany({
+        where: { session: { athleteId }, isPR: true, setLogType: 'WORK' },
+        orderBy: { session: { date: 'desc' } },
+        take: 5,
+        select: {
+          exerciseName: true, weightKg: true,
+          session: { select: { date: true } },
+        },
+      }),
+
+      // Active gym routine (AssignedWorkout + template)
+      prisma.assignedWorkout.findFirst({
+        where: { athleteId, isActive: true },
+        orderBy: { startDate: 'desc' },
+        select: {
+          id: true,
+          template: { select: { name: true, goal: true, daysPerWeek: true } },
+        },
+      }),
+
+      // Last completed gym session
+      prisma.gymSession.findFirst({
+        where: { athleteId, completed: true },
+        orderBy: { date: 'desc' },
+        select: { date: true },
+      }),
+
+      // Volume total last 7 days (sum of weightKg * repsCompleted)
+      prisma.$queryRaw<{ total: number }[]>`
+        SELECT COALESCE(SUM(sl."weightKg" * sl."repsCompleted"), 0)::float AS total
+        FROM "SetLog" sl
+        JOIN "GymSession" gs ON gs.id = sl."sessionId"
+        WHERE gs."athleteId" = ${athleteId}
+          AND gs.completed = true
+          AND gs.date >= ${sevenDaysAgo}
+          AND sl."setLogType" = 'WORK'
+          AND sl."weightKg" IS NOT NULL
+          AND sl."repsCompleted" IS NOT NULL
+      `,
     ])
 
   // Security: coach can only view their own athletes
@@ -160,6 +213,33 @@ export default async function AthleteDetailPage({
       }
     : null
 
+  const paymentData = latestPayment
+    ? {
+        amount: Number(latestPayment.amount),
+        currency: latestPayment.currency,
+        status: latestPayment.status as 'PAID' | 'PENDING' | 'OVERDUE',
+        paidAt: latestPayment.paidAt,
+        dueDate: latestPayment.dueDate,
+      }
+    : null
+
+  const prData = prRecords.map((pr) => ({
+    exerciseName: pr.exerciseName ?? 'Ejercicio',
+    weightKg: pr.weightKg ?? 0,
+    date: pr.session.date,
+  }))
+
+  const gymRoutineData = activeGymRoutine
+    ? {
+        name: activeGymRoutine.template.name,
+        goal: activeGymRoutine.template.goal,
+        daysPerWeek: activeGymRoutine.template.daysPerWeek,
+        lastSessionDate: lastGymSession?.date ?? null,
+      }
+    : null
+
+  const volumeTotalKg = volumeAgg[0]?.total ?? 0
+
   return (
     <AthleteDetailClient
       athleteId={athleteId}
@@ -172,6 +252,10 @@ export default async function AthleteDetailPage({
       coachGoal={coachRelation.coachGoal ?? null}
       privateNotes={coachRelation.privateNotes ?? null}
       coachSpecialties={coachProfile?.specialties ?? []}
+      latestPayment={paymentData}
+      prRecords={prData}
+      gymRoutine={gymRoutineData}
+      volumeTotalKg={volumeTotalKg}
     />
   )
 }

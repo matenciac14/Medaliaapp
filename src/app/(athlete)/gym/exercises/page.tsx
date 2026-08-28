@@ -35,7 +35,11 @@ export default async function AthleteExercisesPage({ searchParams }: Props) {
   const [exercises, total] = await Promise.all([
     prisma.exercise.findMany({
       where,
-      orderBy: [{ popularityRank: 'asc' }, { name: 'asc' }],
+      orderBy: [
+        { gifStoredUrl: { sort: 'asc', nulls: 'last' } },
+        { popularityRank: { sort: 'asc', nulls: 'last' } },
+        { name: 'asc' },
+      ],
       skip,
       take: PAGE_SIZE,
       select: {

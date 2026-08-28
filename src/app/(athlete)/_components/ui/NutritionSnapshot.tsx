@@ -8,27 +8,35 @@ type NutritionData = {
   label?: string
 }
 
+type ConsumedData = {
+  kcal: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+}
+
 type Props = {
   data: NutritionData | null
   variant: 'card' | 'compact' | 'banner'
   targetKcalHard?: number | null
+  consumed?: ConsumedData | null
 }
 
-export default function NutritionSnapshot({ data, variant, targetKcalHard }: Props) {
+export default function NutritionSnapshot({ data, variant, targetKcalHard, consumed }: Props) {
   if (variant === 'banner') return <BannerVariant data={data} />
-  if (variant === 'compact') return <CompactVariant data={data} />
+  if (variant === 'compact') return <CompactVariant data={data} consumed={consumed ?? null} />
   return <CardVariant data={data} targetKcalHard={targetKcalHard ?? null} />
 }
 
 // -- Compact: Figma ⑧ NUTRICIÓN (mobile dashboard) ---------------------------
 
-function CompactVariant({ data }: { data: NutritionData | null }) {
+function CompactVariant({ data, consumed: consumedData }: { data: NutritionData | null; consumed: ConsumedData | null }) {
   if (!data) return null
 
   const targetKcal = data.kcal
-  const consumed = Math.round(targetKcal * 0.59) // placeholder — wire to real consumed when available
-  const remaining = targetKcal - consumed
-  const pct = Math.min(consumed / targetKcal, 1)
+  const consumed = consumedData?.kcal ?? 0
+  const remaining = Math.max(0, targetKcal - consumed)
+  const pct = targetKcal > 0 ? Math.min(consumed / targetKcal, 1) : 0
 
   return (
     <Link href="/nutrition" className="block">
@@ -48,9 +56,9 @@ function CompactVariant({ data }: { data: NutritionData | null }) {
 
             {/* Macro rings */}
             <div className="flex items-center justify-between mt-3 pr-2">
-              <MacroRing value={data.proteinG} label="Prot" color="#3b82f6" />
-              <MacroRing value={data.carbsG} label="Carbs" color="#f59e0b" />
-              <MacroRing value={data.fatG} label="Grasas" color="#22c55e" />
+              <MacroRing current={consumedData?.proteinG ?? 0} target={data.proteinG} label="Prot" color="#3b82f6" bgColor="#edf2ff" />
+              <MacroRing current={consumedData?.carbsG ?? 0} target={data.carbsG} label="Carbs" color="#f59e0b" bgColor="#fef9c3" />
+              <MacroRing current={consumedData?.fatG ?? 0} target={data.fatG} label="Grasas" color="#22c55e" bgColor="#dcfce7" />
             </div>
           </div>
         </div>
@@ -77,7 +85,7 @@ function DonutChart({ remaining, pct, size }: { remaining: number; pct: number; 
         {/* Progress ring */}
         <circle
           cx={cx} cy={cy} r={radius} fill="none"
-          stroke="#ef4444" strokeWidth={stroke} strokeLinecap="round"
+          stroke="#f97316" strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={circumference} strokeDashoffset={dashOffset}
           transform={`rotate(-90 ${cx} ${cy})`}
         />
@@ -93,21 +101,21 @@ function DonutChart({ remaining, pct, size }: { remaining: number; pct: number; 
 
 // -- Macro ring (small colored circle + value) --------------------------------
 
-function MacroRing({ value, label, color }: { value: number; label: string; color: string }) {
+function MacroRing({ current, target, label, color, bgColor = '#f3f4f6' }: { current: number; target: number; label: string; color: string; bgColor?: string }) {
   const size = 36
   const stroke = 3
   const radius = (size - stroke) / 2
   const cx = size / 2
   const cy = size / 2
   const circumference = 2 * Math.PI * radius
-  const fillPct = 0.65 // placeholder — wire to real target ratio when available
+  const fillPct = target > 0 ? Math.min(current / target, 1) : 0
   const dashOffset = circumference * (1 - fillPct)
 
   return (
     <div className="flex flex-col items-center gap-0.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+          <circle cx={cx} cy={cy} r={radius} fill="none" stroke={bgColor} strokeWidth={stroke} />
           <circle
             cx={cx} cy={cy} r={radius} fill="none"
             stroke={color} strokeWidth={stroke} strokeLinecap="round"
@@ -116,7 +124,7 @@ function MacroRing({ value, label, color }: { value: number; label: string; colo
           />
         </svg>
       </div>
-      <span className="text-[11px] font-bold text-[#1e3a5f]">{value}g</span>
+      <span className="text-[11px] font-bold text-[#1e3a5f]">{current}g</span>
       <span className="text-[9px] text-gray-400">{label}</span>
     </div>
   )
