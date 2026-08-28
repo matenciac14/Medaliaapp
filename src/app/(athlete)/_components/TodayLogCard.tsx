@@ -19,11 +19,10 @@ export default function TodayLogCard({ initial }: Props) {
     if (!weightKg && !energy) return
     setSaving(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
       await fetch('/api/metrics/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: today, ...(weightKg && { weightKg }), ...(energy && { energyLevel: energy }) }),
+        body: JSON.stringify({ ...(weightKg && { weightKg }), ...(energy && { energyLevel: energy }) }),
       })
       setSaved(true)
       setOpen(false)

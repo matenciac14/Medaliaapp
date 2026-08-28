@@ -24,9 +24,9 @@ export function MobileHeader({ firstName, timezone, weekLabel, weekOffset, canGo
           </h1>
           <div className="flex items-center gap-2.5 shrink-0">
             {streakDays >= 2 ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border border-[#f97316]/50 text-[13px]">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border border-[#ea580c]/50 text-[13px]">
                 <span className="text-[11px]">🔥</span>
-                <span className="font-bold text-[#f97316]">{streakDays}</span>
+                <span className="font-bold text-[#ea580c]">{streakDays}</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border border-white/20 text-[13px]">

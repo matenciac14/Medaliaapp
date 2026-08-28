@@ -37,6 +37,9 @@ type Props = {
   weekSessionTarget: number
   streakDays: number
 
+  // Nutrition consumed
+  todayConsumed: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null
+
   // Flags
   hasEverLogged: boolean
 }
@@ -56,7 +59,7 @@ export default function MobileCardsSection(props: Props) {
 // -- FREE / GYM Mode --------------------------------------------------------
 
 function FreeMobileCards(props: Props) {
-  const { dashSummary, hasEverLogged, currentWeight, targetWeight, weeklyWeightChange, weightProgressPct, todayLogRaw } = props
+  const { dashSummary, hasEverLogged, currentWeight, targetWeight, weeklyWeightChange, weightProgressPct, todayLogRaw, todayConsumed } = props
 
   return (
     <>
@@ -65,6 +68,7 @@ function FreeMobileCards(props: Props) {
         <NutritionSnapshot
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG }}
           variant="compact"
+          consumed={todayConsumed}
         />
       )}
 
@@ -102,7 +106,7 @@ function ProMobileCards(props: Props) {
     formStatus, formMessage, lastCheckIn, formCheckInDate,
     isRecomp, currentWeight, targetWeight, raceDays,
     weeklyWeightChange, weightProgressPct, currentVolume, volumeDeltaPct,
-    dashSummary, todayLogRaw,
+    dashSummary, todayLogRaw, todayConsumed,
   } = props
 
   return (
@@ -112,6 +116,7 @@ function ProMobileCards(props: Props) {
         <NutritionSnapshot
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG, label: dashSummary.nutritionTarget.label }}
           variant="compact"
+          consumed={todayConsumed}
         />
       )}
 
@@ -321,7 +326,7 @@ function UpsellBannerPro() {
         </div>
         <p className="text-[11px] text-[#8c4d1a] mt-0.5">Check-in · zonas · progreso</p>
       </div>
-      <span className="text-xs font-semibold text-white bg-[#ea5909] px-3 py-2 rounded-lg shrink-0">Ver Pro</span>
+      <span className="text-xs font-semibold text-white bg-[#ea580c] px-3 py-2 rounded-lg shrink-0">Ver Pro</span>
     </Link>
   )
 }
@@ -329,12 +334,12 @@ function UpsellBannerPro() {
 function FindCoachBanner() {
   return (
     <Link href="/find-coach" className="flex items-center gap-2.5 bg-[#1e3a5f] rounded-lg overflow-hidden pr-3.5">
-      <div className="w-1 self-stretch bg-[#ea5809] shrink-0" />
+      <div className="w-1 self-stretch bg-[#ea580c] shrink-0" />
       <div className="flex-1 min-w-0 py-2.5">
         <p className="text-[13px] font-semibold text-white">🎯  Encuentra tu entrenador</p>
         <p className="text-[11px] text-[#b2cce5] mt-0.5">Planes personalizados con un experto</p>
       </div>
-      <span className="text-xs font-semibold text-[#ea5809] shrink-0">Ver coaches →</span>
+      <span className="text-xs font-semibold text-[#ea580c] shrink-0">Ver coaches →</span>
     </Link>
   )
 }

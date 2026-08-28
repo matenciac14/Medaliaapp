@@ -238,6 +238,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             weekSessionCount={d.weekSessionCount}
             weekSessionTarget={d.weekSessionTarget}
             streakDays={d.streakDays}
+            todayConsumed={d.todayConsumed}
           />
 
           {/* Desktop: Info banner row */}

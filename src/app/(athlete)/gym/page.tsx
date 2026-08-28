@@ -110,12 +110,15 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
         select: { sport: true },
       }),
       prisma.exercise.findMany({
-        where: { coachId: null, gifUrl: { not: null } },
+        where: { coachId: null, OR: [{ gifUrl: { not: null } }, { gifStoredUrl: { not: null } }] },
         select: {
           id: true, name: true, nameEs: true, bodyPart: true, target: true,
           gifUrl: true, gifStoredUrl: true,
         },
-        orderBy: { popularityRank: 'asc' },
+        orderBy: [
+          { gifStoredUrl: { sort: 'asc', nulls: 'last' } },
+          { popularityRank: { sort: 'asc', nulls: 'last' } },
+        ],
         take: 6,
       }),
       prisma.setLog.findMany({

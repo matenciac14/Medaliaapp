@@ -46,7 +46,10 @@ export interface ExerciseFilters {
 // gifUrl reemplaza gif (raw URL vs URL resuelta), syncedAt es requerido,
 // instructionsEs es opcional (custom exercises del coach no la proveen).
 export type UpsertExerciseData = Omit<Exercise, 'gif' | 'syncedAt' | 'instructionsEs'> & {
-  gifUrl: string
+  /** URL que requiere proxy (WorkoutX). Dejar vacío si el GIF es público. */
+  gifUrl?: string
+  /** URL pública directa (CDN sin auth). Toma prioridad sobre gifUrl — sin proxy. */
+  gifStoredUrl?: string
   syncedAt: Date
   instructionsEs?: string[]
 }

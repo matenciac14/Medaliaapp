@@ -118,6 +118,7 @@ export type DashboardData = {
 
   // Nutrition
   nutritionPlan: { targetKcalHard: number } | null
+  todayConsumed: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null
 
   // Suggestions
   pendingSuggestionsCount: number
@@ -162,7 +163,7 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
   const todayDow = jsToOurDow(new Date().getDay())
 
   // ── Parallel DB fetch ────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount, todayLogRaw] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount, todayLogRaw, todayFoodLogs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -216,6 +217,16 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
       return prisma.dailyLog.findFirst({
         where: { userId, date: { gte: todayStart } },
         select: { weightKg: true, energyLevel: true },
+      })
+    })(),
+    (() => {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+      return prisma.foodLog.findMany({
+        where: { userId, date: { gte: todayStart, lte: todayEnd } },
+        select: { kcalLogged: true, proteinLogged: true, carbsLogged: true, fatLogged: true },
       })
     })(),
   ])
@@ -617,6 +628,17 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
     todayRoutineDay,
 
     nutritionPlan: nutritionPlan ? { targetKcalHard: nutritionPlan.targetKcalHard } : null,
+    todayConsumed: todayFoodLogs.length > 0
+      ? todayFoodLogs.reduce(
+          (acc, l) => ({
+            kcal: acc.kcal + Math.round(l.kcalLogged ?? 0),
+            proteinG: acc.proteinG + Math.round(l.proteinLogged ?? 0),
+            carbsG: acc.carbsG + Math.round(l.carbsLogged ?? 0),
+            fatG: acc.fatG + Math.round(l.fatLogged ?? 0),
+          }),
+          { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+        )
+      : null,
 
     pendingSuggestionsCount,
 

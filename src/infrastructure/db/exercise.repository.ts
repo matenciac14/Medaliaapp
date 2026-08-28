@@ -101,7 +101,8 @@ export class PrismaExerciseRepository implements IExerciseRepository {
               secondaryMuscles: ex.secondaryMuscles,
               instructions: ex.instructions,
               instructionsEs: ex.instructionsEs ?? [],
-              gifUrl: ex.gifUrl,
+              gifUrl: ex.gifUrl ?? null,
+              gifStoredUrl: ex.gifStoredUrl ?? null,
               source: ex.source,
               syncedAt: ex.syncedAt,
             }
