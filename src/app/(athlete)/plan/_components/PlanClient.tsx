@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/core/date-utils'
-import { WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
+import { WEEK_DAYS_SHORT, SESSION_NAMES } from '@/lib/constants/sessions'
 import type { CalendarWeek } from '@/domain/calendar/calendar.types'
+import type { WeekDayCell } from '../../_components/week-day-cells'
+import WeekDayStrip from '../../_components/WeekDayStrip'
+import PageTopBar from '../../_components/PageTopBar'
+import WeekNavBar from '../../_components/WeekNavBar'
+import SessionDetailCard from './SessionDetailCard'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -52,18 +56,12 @@ interface PlanClientProps {
   weeks: PlanClientWeek[]
   nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null
   weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null
+  checkInData?: { energyLevel: number | null; sleepHours: number | null; stressLevel: number | null; motivationLevel: number | null; recordedAt: string } | null
+  bodyMeasures?: { waistCm: number | null; hipsCm: number | null; armsCm: number | null; thighsCm: number | null } | null
+  hrZones?: { z1: { min: number; max: number }; z2: { min: number; max: number }; z3: { min: number; max: number }; z4: { min: number; max: number }; z5: { min: number; max: number } } | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-const RUNNING_TYPES = new Set(['RODAJE_Z2','FARTLEK','TEMPO','INTERVALOS','TIRADA_LARGA','SIMULACRO','TEST'])
-
-function formatPace(distanceKm: number, durationMin: number): string {
-  const secPerKm = (durationMin * 60) / distanceKm
-  const min = Math.floor(secPerKm / 60)
-  const sec = Math.round(secPerKm % 60)
-  return `${min}:${String(sec).padStart(2, '0')} /km`
-}
 
 // ── Constants ─────────────────────────────────────────────────────────
 
@@ -91,36 +89,7 @@ const PLAN_NAME_MAP: Record<string, string> = {
   FIVE_K_8W: '5K', BODY_RECOMPOSITION_16W: 'Recomposición Corporal',
 }
 
-const INTENSITY_BADGE: Record<string, { bg: string; label: string }> = {
-  HIGH:     { bg: 'bg-orange-50 text-orange-600 border-orange-100', label: '🔥 ALTA intensidad' },
-  MODERATE: { bg: 'bg-amber-50 text-amber-600 border-amber-100',    label: '💪 MODERADA'        },
-  LOW:      { bg: 'bg-green-50 text-green-700 border-green-100',    label: '🌿 BAJA intensidad' },
-  REST:     { bg: 'bg-gray-100 text-gray-500 border-gray-200',      label: '😴 Descanso'        },
-}
-
-const ZONE_COLORS: Record<string, string> = {
-  Z1: '#22c55e', Z2: '#3b82f6', Z3: '#eab308', Z4: '#ea580c', Z5: '#ef4444',
-}
-
 const PHASES_ORDER = ['BASE', 'DESARROLLO', 'ESPECIFICO', 'AFINAMIENTO']
-const PHASE_DISPLAY: Record<string, string> = {
-  BASE: 'BASE', DESARROLLO: 'DESARRO', ESPECIFICO: 'ESPECÍF.', AFINAMIENTO: 'AFIN.',
-}
-const PHASE_DISPLAY_GYM: Record<string, string> = {
-  BASE: 'ADAPT.', DESARROLLO: 'VOLUMEN', ESPECIFICO: 'INTENS.', AFINAMIENTO: 'PICO',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-function getIntensityKey(type: string, intensityField: string | null): string {
-  if (intensityField) return intensityField
-  // Fallback mirrors generator.ts getSessionIntensity()
-  if (['INTERVALOS', 'TIRADA_LARGA', 'SIMULACRO', 'TEST'].includes(type)) return 'HIGH'
-  if (['TEMPO', 'FARTLEK', 'CICLA', 'NATACION', 'FUERZA', 'OTRO'].includes(type)) return 'MODERATE'
-  if (type === 'RODAJE_Z2') return 'LOW'
-  if (type === 'DESCANSO') return 'REST'
-  return 'MODERATE'
-}
 
 function getWeekMonday(currentWeekNum: number, activeWeekNum: number): Date {
   const today = new Date()
@@ -147,307 +116,9 @@ function formatPlanName(name: string): string {
   return PLAN_NAME_MAP[base] ?? base
 }
 
-// Parse a detailText line — supports new format "zone|durationMin|text" and old plain-text format
-function parseStructureBlock(line: string): { zone: string | null; color: string; durationMin: number | null; text: string } {
-  const parts = line.split('|')
-  if (parts.length === 3) {
-    const zone = parts[0].trim().toUpperCase()
-    const durationMin = parseInt(parts[1].trim(), 10) || null
-    const text = parts[2].trim()
-    return { zone, color: ZONE_COLORS[zone] ?? '#9ca3af', durationMin, text }
-  }
-  // Old plain-text format fallback
-  const match = line.match(/\b(Z[1-5])\b/i)
-  if (!match) return { zone: null, color: '#d1d5db', durationMin: null, text: line }
-  const zone = match[1].toUpperCase()
-  return { zone, color: ZONE_COLORS[zone] ?? '#9ca3af', durationMin: null, text: line }
-}
-
-// ── EditModal ─────────────────────────────────────────────────────────
-
-const SESSION_TYPE_OPTIONS = [
-  { value: 'RODAJE_Z2',    label: 'Rodaje Z2' },
-  { value: 'FARTLEK',      label: 'Fartlek' },
-  { value: 'TEMPO',        label: 'Tempo' },
-  { value: 'INTERVALOS',   label: 'Intervalos' },
-  { value: 'TIRADA_LARGA', label: 'Tirada Larga' },
-  { value: 'FUERZA',       label: 'Fuerza' },
-  { value: 'CICLA',        label: 'Cicla' },
-  { value: 'NATACION',     label: 'Natación' },
-  { value: 'SIMULACRO',    label: 'Simulacro' },
-  { value: 'DESCANSO',     label: 'Descanso' },
-  { value: 'OTRO',         label: 'Otro' },
-]
-
-function EditModal({ session, onClose, onSaved }: {
-  session: PlanClientWeekSession
-  onClose: () => void
-  onSaved: (updates: Partial<PlanClientWeekSession>) => void
-}) {
-  const isLogged = !!session.logId
-
-  // Planned session fields
-  const [type, setType]             = useState(session.type)
-  const [durationMin, setDuration]  = useState(String(session.durationMin))
-  const [zoneTarget, setZone]       = useState(session.zoneTarget)
-  const [detailText, setDetail]     = useState(session.detailText)
-
-  const isEditRunning = RUNNING_TYPES.has(type)
-
-  // Log fields
-  const [logDuration, setLogDuration] = useState(String(session.logDurationMin ?? ''))
-  const [logDistance, setLogDistance] = useState(String(session.logDistanceKm ?? ''))
-  const [rpe, setRpe]                 = useState(session.logRpe ?? 0)
-  const [hrAvg, setHrAvg]             = useState(String(session.logHrAvg ?? ''))
-  const [logNotes, setLogNotes]       = useState(session.logNotes ?? '')
-
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
-
-  async function handleSave() {
-    setLoading(true)
-    setError('')
-    try {
-      const sessionUpdates: Record<string, unknown> = {}
-      if (type !== session.type) sessionUpdates.type = type
-      if (parseInt(durationMin) !== session.durationMin) sessionUpdates.durationMin = parseInt(durationMin)
-      if (zoneTarget !== session.zoneTarget) sessionUpdates.zoneTarget = zoneTarget
-      if (detailText !== session.detailText) sessionUpdates.detailText = detailText
-
-      const logUpdates: Record<string, unknown> = {}
-      if (isLogged) {
-        const ld = logDuration ? parseInt(logDuration) : null
-        if (ld !== session.logDurationMin) logUpdates.durationMin = ld
-        const r = rpe > 0 ? rpe : null
-        if (r !== session.logRpe) logUpdates.rpe = r
-        const hr = hrAvg ? parseInt(hrAvg) : null
-        if (hr !== session.logHrAvg) logUpdates.hrAvg = hr
-        if (logNotes.trim() !== (session.logNotes ?? '')) logUpdates.notes = logNotes.trim() || null
-        if (isEditRunning) {
-          const dist = logDistance ? parseFloat(logDistance) : null
-          if (dist !== session.logDistanceKm) logUpdates.distanceKm = dist
-        }
-      }
-
-      const [sessionRes, logRes] = await Promise.all([
-        Object.keys(sessionUpdates).length > 0
-          ? fetch(`/api/athlete/sessions/${session.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(sessionUpdates),
-            })
-          : Promise.resolve(null),
-        isLogged && Object.keys(logUpdates).length > 0
-          ? fetch(`/api/log/session/${session.logId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(logUpdates),
-            })
-          : Promise.resolve(null),
-      ])
-
-      if (sessionRes && !sessionRes.ok) { setError('Error al guardar sesión.'); return }
-      if (logRes && !logRes.ok) { setError('Error al guardar registro.'); return }
-
-      // Build merged updates for optimistic state
-      const merged: Partial<PlanClientWeekSession> = {
-        ...sessionUpdates as Partial<PlanClientWeekSession>,
-        ...(isLogged ? {
-          logDurationMin:  logUpdates.durationMin  as number ?? session.logDurationMin,
-          logRpe:          logUpdates.rpe          as number ?? session.logRpe,
-          logHrAvg:        logUpdates.hrAvg        as number ?? session.logHrAvg,
-          logNotes:        logUpdates.notes        as string ?? session.logNotes,
-          logDistanceKm:   logUpdates.distanceKm  as number ?? session.logDistanceKm,
-        } : {}),
-      }
-      onSaved(merged)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
-            <div>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Editar sesión</p>
-              <p className="font-black text-gray-900">{SESSION_LABELS[session.type] ?? session.type}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>
-        </div>
-
-        <div className="p-6 space-y-6">
-
-          {/* ── Sesión planificada ── */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sesión planificada</p>
-
-            {/* Tipo */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-600">Tipo de sesión</label>
-              <select
-                value={type}
-                onChange={e => setType(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f] bg-white"
-              >
-                {SESSION_TYPE_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Duración + Zona */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-600">Duración (min)</label>
-                <input
-                  type="number"
-                  value={durationMin}
-                  onChange={e => setDuration(e.target.value)}
-                  min={1}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-600">Zona objetivo</label>
-                <input
-                  type="text"
-                  value={zoneTarget}
-                  onChange={e => setZone(e.target.value)}
-                  placeholder="Z2, Z3-Z4…"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                />
-              </div>
-            </div>
-
-            {/* Descripción */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-600">Descripción / estructura</label>
-              <textarea
-                value={detailText}
-                onChange={e => setDetail(e.target.value)}
-                rows={3}
-                placeholder="Describe la sesión…"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
-              />
-            </div>
-          </div>
-
-          {/* ── Registro ── */}
-          {isLogged && (
-            <div className="space-y-3 pt-2 border-t border-gray-100">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Registro de sesión</p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">Duración real (min)</label>
-                  <input
-                    type="number"
-                    value={logDuration}
-                    onChange={e => setLogDuration(e.target.value)}
-                    placeholder={String(session.durationMin)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">FC media (bpm)</label>
-                  <input
-                    type="number"
-                    value={hrAvg}
-                    onChange={e => setHrAvg(e.target.value)}
-                    placeholder="148"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                </div>
-              </div>
-
-              {isEditRunning && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">Distancia (km)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={logDistance}
-                    onChange={e => setLogDistance(e.target.value)}
-                    placeholder="8.5"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                  {logDistance && parseFloat(logDistance) > 0 && logDuration && parseInt(logDuration) > 0 && (
-                    <p className="text-xs text-[#1e3a5f] font-medium">
-                      Ritmo: {formatPace(parseFloat(logDistance), parseInt(logDuration))}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* RPE */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-gray-600">RPE — Esfuerzo percibido</p>
-                  <span className="text-base font-black text-[#ea580c]">{rpe > 0 ? rpe : '–'}</span>
-                </div>
-                <div className="flex gap-1">
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setRpe(rpe === n ? 0 : n)}
-                      className={cn(
-                        'flex-1 h-8 rounded-lg text-[11px] font-bold border transition-colors',
-                        rpe === n
-                          ? 'bg-[#ea580c] border-[#ea580c] text-white'
-                          : n < rpe
-                          ? 'bg-orange-50 border-[#ea580c] text-[#ea580c]'
-                          : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                      )}
-                    >{n}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notas */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-600">Notas</label>
-                <textarea
-                  value={logNotes}
-                  onChange={e => setLogNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Cómo te sentiste, condiciones…"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
-                />
-              </div>
-            </div>
-          )}
-
-          {error && <p className="text-xs text-red-500">{error}</p>}
-
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-[#1e3a5f] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
-          >
-            {loading ? 'Guardando…' : 'Guardar cambios'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── CalendarStrip ─────────────────────────────────────────────────────
 
-function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, completedCount, totalTraining, loggedIds }: {
+function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, isCurrentWeek, onSelect, loggedIds }: {
   week: PlanClientWeek | null
   calendarDays: CalendarWeek['days'] | null
   weekMonday: Date
@@ -455,31 +126,25 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
   todayDow: number
   isCurrentWeek: boolean
   onSelect: (dow: number) => void
-  completedCount: number
-  totalTraining: number
   loggedIds: Set<string>
 }) {
-  const [todayActive, setTodayActive] = useState(false)
-  const pct = totalTraining > 0 ? (completedCount / totalTraining) * 100 : 0
-
   // Pre-compute day data for both mobile and desktop views
   const dayData = Array.from({ length: 7 }, (_, i) => {
     const dow = i + 1
     const session = week?.sessions.find(s => s.dayOfWeek === dow) ?? null
     const calDay = calendarDays?.find(d => d.dow === dow) ?? null
     const gymLabel = calDay?.gym?.label ?? null
-    const gymDone = calDay?.gym?.done ?? false
     const dateObj = new Date(weekMonday.getTime() + i * 86400000)
     const isToday = isCurrentWeek && dow === todayDow
     const isSelected = dow === selectedDow
     const isRest = !session || session.type === 'DESCANSO'
     const isDone = (session?.done || (session ? loggedIds.has(session.id) : false)) ?? false
     const hasSession = !!session && !isRest
-    return { i, dow, session, gymLabel, gymDone, dateObj, isToday, isSelected, isRest, isDone, hasSession }
+    return { i, dow, session, gymLabel, dateObj, isToday, isSelected, isRest, isDone, hasSession }
   })
 
   return (
-    <div className="mb-5">
+    <div>
       {/* Mobile: day pills — no card wrapper, full width */}
       <div className="sm:hidden flex justify-between">
         {dayData.map(({ i, dow, isToday, isSelected, isDone, isRest, hasSession, dateObj }) => (
@@ -506,513 +171,163 @@ function CalendarStrip({ week, calendarDays, weekMonday, selectedDow, todayDow, 
         ))}
       </div>
 
-      {/* Desktop: rich column strip */}
-      <div className="hidden sm:grid grid-cols-7 divide-x divide-gray-50">
-        {dayData.map(({ i, dow, session, gymLabel, gymDone, dateObj, isToday, isSelected, isRest, isDone }) => {
-          const barColor = isToday || isSelected ? 'bg-[#ea580c]' : isDone && !isRest ? 'bg-[#22c55e]' : 'bg-gray-200'
-          const cardBg = isToday
-            ? 'bg-[#1e3a5f]'
-            : isSelected ? 'bg-orange-50'
-            : isDone && !isRest ? 'bg-green-50/60'
-            : 'bg-[#f5f7fa] hover:bg-gray-100'
-          const isInverted = isToday
-
-          return (
-            <button
-              key={dow}
-              onClick={() => onSelect(dow)}
-              className={cn('flex flex-col items-center py-3.5 px-1 transition-colors text-center relative', cardBg)}
-            >
-              <div className={cn('absolute top-0 left-0 right-0 h-[3px]', barColor)} />
-              <span className={cn('text-[11px] font-semibold mb-1',
-                isInverted ? 'text-white/70' :
-                isToday || isSelected ? 'text-[#ea580c] font-bold' :
-                'text-gray-400'
-              )}>
-                {WEEK_DAYS_SHORT[i]}
-              </span>
-              <div className="flex items-center gap-1 mb-2">
-                <span className={cn('text-[22px] font-black leading-none',
-                  isInverted ? 'text-white' :
-                  isToday || isSelected ? 'text-[#ea580c]' :
-                  isDone && !isRest ? 'text-green-600' :
-                  isRest ? 'text-gray-300' :
-                  'text-gray-800'
-                )}>
-                  {dateObj.getDate()}
-                </span>
-                {isToday && (
-                  <span className="text-[8px] font-bold bg-[#ea580c] text-white px-1.5 py-0.5 rounded-full leading-none">
-                    HOY
-                  </span>
-                )}
-              </div>
-              <span className="text-lg mb-1.5">
-                {isDone && !isRest
-                  ? <CheckCircle2 size={18} className={isInverted ? 'text-green-300 mx-auto' : 'text-green-500 mx-auto'} />
-                  : SESSION_ICONS[session?.type ?? ''] ?? (isRest ? '😴' : (gymLabel ? null : ''))}
-              </span>
-              <span className={cn('text-[12px] font-semibold leading-tight px-0.5',
-                isInverted ? 'text-white' :
-                isToday && !isSelected ? 'text-gray-700' :
-                isRest ? 'text-gray-400' : 'text-gray-700'
-              )}>
-                {!session
-                  ? (gymLabel ?? 'Sin sesión')
-                  : isRest ? 'Descanso' : (SESSION_LABELS[session.type] ?? session.type)}
-              </span>
-              {!isRest && session && (
-                <span className={cn('text-[10px] mt-0.5',
-                  isInverted ? 'text-white/60' : 'text-gray-400'
-                )}>
-                  {session.durationMin} min
-                  {session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== 'N/A' ? ` · ${session.zoneTarget}` : ''}
-                </span>
-              )}
-              {gymLabel && (
-                <span className={cn('text-[8px] font-bold rounded-full px-1 py-0.5 leading-none mt-0.5',
-                  gymDone ? 'bg-green-600 text-white' :
-                  isInverted ? 'bg-purple-700 text-white' : 'text-purple-600 bg-purple-50'
-                )}>
-                  {gymDone ? '✓' : '💪'}{isRest ? ` ${gymLabel}` : ''}
-                </span>
-              )}
-            </button>
-          )
-        })}
+      {/* Desktop: unified DashboardCard strip */}
+      <div className="hidden sm:block">
+        <WeekDayStrip
+          variant="cards"
+          cells={dayData.map(({ i, session, gymLabel, dateObj, isToday, isRest, isDone }) => ({
+            idx: i,
+            dateNum: dateObj.getDate(),
+            isToday,
+            sessionType: session ? session.type : null,
+            done: isDone,
+            durationMin: session?.durationMin ?? 0,
+            zoneTarget: session?.zoneTarget ?? '',
+            label: session && !isRest
+              ? (SESSION_NAMES[session.type] ?? SESSION_LABELS[session.type] ?? session.type) + (gymLabel ? ' + Gym' : '')
+              : gymLabel ?? null,
+            hasGym: !!gymLabel,
+          } as WeekDayCell))}
+          selectedIdx={selectedDow - 1}
+          onCellClick={(idx) => onSelect(idx + 1)}
+        />
       </div>
     </div>
   )
 }
 
-// ── LogModal ──────────────────────────────────────────────────────────
 
-function LogModal({ session, onClose, onSuccess }: {
-  session: PlanClientWeekSession
-  onClose: () => void
-  onSuccess: () => void
-}) {
-  const isRunning  = RUNNING_TYPES.has(session.type)
-  const isStrength = session.type === 'FUERZA'
+// ── NutritionCard (donut ring + mini macro rings) ────────────────────
 
-  const [completed, setCompleted] = useState<boolean | null>(null)
-  const [actualDuration, setActualDuration] = useState(String(session.durationMin))
-  const [distanceKm, setDistanceKm] = useState('')
-  const [rpe, setRpe] = useState(0)
-  const [hrAvg, setHrAvg] = useState('')
-  const [notes, setNotes] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+const RING_SIZE = 110
+const STROKE_WIDTH = 8
+const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
-  async function handleSubmit() {
-    if (completed === null) { setError('¿Completaste la sesión?'); return }
-    // "No la hice" — acknowledge without creating a log entry
-    if (!completed) { onSuccess(); return }
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/log/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plannedSessionId: session.id,
-          completed: true,
-          durationMin: actualDuration ? parseInt(actualDuration) : undefined,
-          rpe: rpe > 0 ? rpe : undefined,
-          hrAvg: hrAvg ? parseInt(hrAvg) : undefined,
-          distanceKm: isRunning && distanceKm ? parseFloat(distanceKm) : undefined,
-          notes: notes.trim() || undefined,
-        }),
-      })
-      if (!res.ok) { setError('No se pudo guardar. Intenta de nuevo.'); return }
-      onSuccess()
-    } finally {
-      setLoading(false)
-    }
-  }
+const MINI_RING_SIZE = 36
+const MINI_STROKE = 3
+const MINI_RADIUS = (MINI_RING_SIZE - MINI_STROKE) / 2
+const MINI_CIRCUM = 2 * Math.PI * MINI_RADIUS
+
+function CalorieRingSvg({ consumed, target }: { consumed: number; target: number }) {
+  const pct = target > 0 ? Math.min(1, consumed / target) : 0
+  const offset = CIRCUMFERENCE * (1 - pct)
+  const remaining = Math.max(0, target - consumed)
+  const over = consumed > target
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
-            <div>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Registrar sesión</p>
-              <p className="font-black text-gray-900">{session.durationMin} min · {SESSION_LABELS[session.type] ?? session.type}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>
-        </div>
-
-        <div className="p-6 space-y-5">
-
-          {/* ¿Completaste? */}
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-800">¿Completaste la sesión?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCompleted(true)}
-                className={cn('flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-colors',
-                  completed === true
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : 'border-gray-200 text-gray-700 hover:border-green-300'
-                )}
-              >✓ Sí, la hice</button>
-              <button
-                onClick={() => setCompleted(false)}
-                className={cn('flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-colors',
-                  completed === false
-                    ? 'bg-red-500 border-red-500 text-white'
-                    : 'border-gray-200 text-gray-700 hover:border-red-300'
-                )}
-              >✗ No la hice</button>
-            </div>
-          </div>
-
-          {completed && (
-            <>
-              {/* Datos reales */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">Duración real (min)</label>
-                  <input
-                    type="number"
-                    value={actualDuration}
-                    onChange={e => setActualDuration(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">FC media (bpm)</label>
-                  <input
-                    type="number"
-                    value={hrAvg}
-                    onChange={e => setHrAvg(e.target.value)}
-                    placeholder="148"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                </div>
-              </div>
-
-              {/* Distancia + ritmo — solo sesiones de running */}
-              {isRunning && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-600">Distancia (km)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={distanceKm}
-                    onChange={e => setDistanceKm(e.target.value)}
-                    placeholder="8.5"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1e3a5f]"
-                  />
-                  {distanceKm && parseFloat(distanceKm) > 0 && actualDuration && parseInt(actualDuration) > 0 && (
-                    <p className="text-xs text-[#1e3a5f] font-semibold">
-                      Ritmo: {formatPace(parseFloat(distanceKm), parseInt(actualDuration))}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Gym — solo FUERZA */}
-              {isStrength && (
-                <div className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
-                  <span className="text-xl">💪</span>
-                  <div>
-                    <p className="text-xs font-semibold text-purple-800">¿Quieres registrar series y reps?</p>
-                    <a href="/gym" className="text-xs text-purple-600 underline hover:text-purple-800">
-                      Ir al módulo de Ejercicios →
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* RPE */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-800">RPE — Esfuerzo percibido</p>
-                  <span className="text-lg font-black text-[#ea580c]">{rpe > 0 ? rpe : '–'}</span>
-                </div>
-                <div className="flex gap-1">
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setRpe(n)}
-                      className={cn(
-                        'flex-1 h-9 rounded-lg text-[11px] font-bold border transition-colors',
-                        rpe === n
-                          ? 'bg-[#ea580c] border-[#ea580c] text-white'
-                          : n < rpe
-                          ? 'bg-orange-50 border-[#ea580c] text-[#ea580c]'
-                          : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex justify-between text-[10px] text-gray-400">
-                  <span>Muy fácil</span><span>Máximo</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Notas */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-gray-600">Notas (opcional)</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Cómo te sentiste, condiciones, ajustes..."
-              rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-[#1e3a5f]"
-            />
-          </div>
-
-          {error && <p className="text-xs text-red-500">{error}</p>}
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-[#ea580c] hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition-opacity disabled:opacity-60"
-          >
-            {loading ? 'Guardando...' : 'Guardar sesión'}
-          </button>
-        </div>
+    <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
+      <svg width={RING_SIZE} height={RING_SIZE} className="absolute inset-0">
+        <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} stroke="#f3f4f6" strokeWidth={STROKE_WIDTH} fill="none" />
+        <circle
+          cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
+          stroke={over ? '#ef4444' : '#ea5807'}
+          strokeWidth={STROKE_WIDTH} fill="none"
+          strokeDasharray={CIRCUMFERENCE} strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {consumed === 0 ? (
+          <>
+            <span className="text-[18px] font-black leading-none text-[#b3b3b3]">0</span>
+            <span className="text-[8px] font-medium text-[#8c99a6] text-center leading-tight mt-0.5">kcal</span>
+          </>
+        ) : (
+          <>
+            <span className={cn('text-[18px] font-black leading-none', over ? 'text-red-500' : 'text-[#1e3a5f]')}>
+              {(remaining > 0 ? remaining : Math.round(consumed - target)).toLocaleString('es')}
+            </span>
+            <span className="text-[8px] font-medium text-gray-400 text-center leading-tight mt-0.5">
+              {remaining > 0 ? 'kcal\nrestantes' : 'kcal\nextra'}
+            </span>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-// ── SessionDetailCard ─────────────────────────────────────────────────
-
-function SessionDetailCard({ session, isToday, isLogged, onLogged, onEdited }: {
-  session: PlanClientWeekSession
-  isToday: boolean
-  isLogged: boolean
-  onLogged: () => void
-  onEdited: (updates: Partial<PlanClientWeekSession>) => void
-}) {
-  const router = useRouter()
-  const [logDone, setLogDone] = useState(session.done || isLogged)
-  const [showModal, setShowModal] = useState(false)
-  const [showEdit, setShowEdit] = useState(false)
-
-  // Sync if parent's optimistic state arrives after mount (e.g. navigating back to a logged day)
-  if (!logDone && isLogged) setLogDone(true)
-
-  if (session.type === 'DESCANSO') {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
-        <span className="text-4xl">😴</span>
-        <div>
-          <p className="text-[18px] font-bold text-gray-700">Día de descanso</p>
-          <p className="text-[12px] text-gray-400 mt-0.5">Aprovecha para recuperar bien hoy</p>
-        </div>
-      </div>
-    )
-  }
-
-  const intensityKey = getIntensityKey(session.type, session.intensity)
-  const badge = INTENSITY_BADGE[intensityKey] ?? INTENSITY_BADGE.MODERATE
-  const isGym = session.type === 'FUERZA'
-  const accentColor = isToday
-    ? 'bg-[#ea580c]'
-    : logDone ? 'bg-green-400'
-    : isGym ? 'bg-purple-500'
-    : 'bg-[#1e3a5f]'
-  const showZone = session.zoneTarget && session.zoneTarget !== '—' && session.zoneTarget !== '' && session.zoneTarget !== 'N/A'
-  const structureLines = (session.structure || session.detailText)
-    ? (session.structure ?? session.detailText!).split('\n').filter(Boolean)
-    : []
-
+function MiniMacroRingSvg({ value, max, color, label, bgColor = '#f3f4f6' }: { value: number; max: number; color: string; label: string; bgColor?: string }) {
+  const pct = max > 0 ? Math.min(1, value / max) : 0
+  const offset = MINI_CIRCUM * (1 - pct)
   return (
-    <>
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex">
-        <div className={cn('w-1.5 shrink-0', accentColor)} />
-        <div className="flex-1 p-6 space-y-4">
-
-          {/* Title */}
-          <div className="flex items-center gap-3">
-            <span className="text-[22px]">{SESSION_ICONS[session.type] ?? '🏅'}</span>
-            <h3 className="text-[22px] font-black text-gray-900 leading-tight">
-              {SESSION_LABELS[session.type] ?? session.type}
-            </h3>
-            {isToday && (
-              <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
-                HOY
-              </span>
-            )}
-            {logDone && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600">
-                <CheckCircle2 size={11} /> Completada
-              </span>
-            )}
-          </div>
-
-          {/* Badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
-              {session.durationMin} min
-            </span>
-            {showZone && !isGym && (
-              <span className="text-[12px] font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">
-                Zona {session.zoneTarget}
-              </span>
-            )}
-            <span className={cn('text-[12px] font-semibold px-3 py-1.5 rounded-full border', badge.bg)}>
-              {badge.label}
-            </span>
-          </div>
-
-          {/* Structure / Exercises */}
-          {structureLines.length > 0 && (
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  {isGym ? 'Ejercicios' : 'Estructura'}
-                </span>
-                <div className="flex-1 h-px bg-gray-100" />
-              </div>
-              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                {structureLines.map((line, idx) => {
-                  const { zone, color, durationMin, text } = parseStructureBlock(line)
-                  return (
-                    <div key={idx} className="flex items-start gap-2.5">
-                      {/* Zone dot + label */}
-                      <div className="flex items-center gap-1 shrink-0 pt-1">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-[11px] font-bold w-5 leading-none" style={{ color }}>
-                          {zone ?? ''}
-                        </span>
-                      </div>
-                      {/* Duration */}
-                      {durationMin != null && (
-                        <span className="text-[12px] font-bold text-gray-800 shrink-0 w-12 pt-px">
-                          {durationMin} min
-                        </span>
-                      )}
-                      {/* Description */}
-                      <p className="text-[12px] text-gray-600 leading-relaxed flex-1">{text}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* CTA buttons */}
-          <div className="flex items-center gap-3 pt-1 border-t border-gray-50">
-            {logDone ? (
-              <>
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
-                  <CheckCircle2 size={16} className="text-green-500" />
-                  <span className="text-[13px] font-semibold text-green-700">Completada</span>
-                </div>
-                <button
-                  onClick={() => setShowEdit(true)}
-                  className="px-4 py-2.5 border border-gray-200 text-gray-600 text-[13px] font-medium rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Editar sesión ✏️
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#ea580c] hover:opacity-90 text-white text-[14px] font-bold px-4 py-3 rounded-xl transition-opacity whitespace-nowrap"
-                >
-                  Registrar sesión →
-                </button>
-                <button
-                  onClick={() => setShowEdit(true)}
-                  className="px-4 py-3 border border-gray-200 text-gray-600 text-[13px] font-medium rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
-                >
-                  Editar sesión ✏️
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="relative" style={{ width: MINI_RING_SIZE, height: MINI_RING_SIZE }}>
+        <svg width={MINI_RING_SIZE} height={MINI_RING_SIZE} viewBox={`0 0 ${MINI_RING_SIZE} ${MINI_RING_SIZE}`}>
+          <circle cx={MINI_RING_SIZE / 2} cy={MINI_RING_SIZE / 2} r={MINI_RADIUS} stroke={bgColor} strokeWidth={MINI_STROKE} fill="none" />
+          <circle
+            cx={MINI_RING_SIZE / 2} cy={MINI_RING_SIZE / 2} r={MINI_RADIUS}
+            stroke={color} strokeWidth={MINI_STROKE} fill="none"
+            strokeDasharray={MINI_CIRCUM} strokeDashoffset={offset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${MINI_RING_SIZE / 2} ${MINI_RING_SIZE / 2})`}
+          />
+        </svg>
       </div>
+      <span className="text-[11px] font-bold text-[#1e3a5f]">{Math.round(value)}g</span>
+      <span className="text-[9px] text-gray-400">{label}</span>
     </div>
-
-    {showModal && (
-      <LogModal
-        session={session}
-        onClose={() => setShowModal(false)}
-        onSuccess={() => {
-          setShowModal(false)
-          setLogDone(true)
-          onLogged()
-          router.refresh()
-        }}
-      />
-    )}
-    {showEdit && (
-      <EditModal
-        session={session}
-        onClose={() => setShowEdit(false)}
-        onSaved={(updates) => {
-          setShowEdit(false)
-          onEdited(updates)
-          router.refresh()
-        }}
-      />
-    )}
-    </>
   )
 }
-
-// ── NutritionCard ─────────────────────────────────────────────────────
 
 function NutritionCard({ nt }: { nt: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } }) {
   const macros = [
-    { label: 'Proteína', value: nt.proteinG, bar: 'bg-blue-500',    labelColor: 'text-blue-600'   },
-    { label: 'Carbos',   value: nt.carbsG,   bar: 'bg-[#ea580c]',   labelColor: 'text-[#ea580c]'  },
-    { label: 'Grasas',   value: nt.fatG,     bar: 'bg-green-500',   labelColor: 'text-green-600'  },
+    { label: 'Proteína', value: `${nt.proteinG} g`, color: '#3b82f6' },
+    { label: 'Carbos', value: `${nt.carbsG} g`, color: '#22c55e' },
+    { label: 'Grasas', value: `${nt.fatG} g`, color: '#f97316' },
+    { label: 'Agua', value: '2.5 L', color: '#06b6d4' },
   ]
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex">
-        <div className="w-1 shrink-0 bg-green-400" />
-        <div className="flex-1 p-5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-            Nutrición hoy
-          </p>
-          <div className="flex items-end gap-4">
-            <div className="shrink-0">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[32px] font-black text-[#ea580c] leading-none">
-                  {nt.kcal.toLocaleString('es')}
-                </span>
-                <span className="text-[13px] font-medium text-gray-400">kcal</span>
-              </div>
-              <p className="text-[12px] text-gray-400 mt-1">{nt.label}</p>
+    <a href="/nutrition" className="block bg-white rounded-[20px] border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 hover:shadow-lg transition-shadow">
+      {/* Desktop: barras de color (Figma web) */}
+      <div className="hidden sm:block">
+        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Nutrición hoy</p>
+        <div className="flex items-end gap-6">
+          <div className="shrink-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[28px] font-black text-[#1e3a5f] leading-none">
+                {nt.kcal.toLocaleString('es')}
+              </span>
+              <span className="text-[12px] text-gray-400">kcal</span>
             </div>
-            <div className="flex gap-2 flex-1 min-w-0">
-              {macros.map(m => (
-                <div key={m.label} className="flex-1 min-w-0 bg-green-50/50 rounded-xl px-2 py-2.5 text-center">
-                  <p className={cn('text-[10px] font-medium mb-1 truncate', m.labelColor)}>{m.label}</p>
-                  <p className="text-base lg:text-lg font-black text-gray-900 whitespace-nowrap">{m.value} g</p>
-                  <div className={cn('h-0.5 rounded-full mt-2', m.bar)} />
-                </div>
-              ))}
+            <p className="text-[10px] text-gray-400 mt-0.5">{nt.label}</p>
+          </div>
+          <div className="flex flex-1 gap-3">
+            {macros.map(m => (
+              <div key={m.label} className="flex-1 text-center">
+                <p className="text-[9px] font-semibold mb-1" style={{ color: m.color }}>{m.label}</p>
+                <p className="text-[15px] font-bold text-gray-900">{m.value}</p>
+                <div className="w-full h-[3px] rounded-full mt-1.5" style={{ backgroundColor: m.color }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Mobile: donut + mini rings */}
+      <div className="sm:hidden">
+        <div className="flex items-center justify-center gap-5">
+          <CalorieRingSvg consumed={0} target={nt.kcal} />
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Objetivo diario</p>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-[28px] font-black text-[#1e3a5f] leading-none tracking-tight">
+                {nt.kcal.toLocaleString('es')}
+              </span>
+              <span className="text-[11px] text-gray-400">kcal objetivo</span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Sin registros hoy</p>
+            <div className="flex items-center justify-between mt-3 pr-2">
+              <MiniMacroRingSvg value={0} max={nt.proteinG} color="#3b82f6" bgColor="#edf2ff" label="Prot" />
+              <MiniMacroRingSvg value={0} max={nt.carbsG} color="#eab308" bgColor="#fef9c3" label="Carbs" />
+              <MiniMacroRingSvg value={0} max={nt.fatG} color="#22c55e" bgColor="#dcfce7" label="Grasas" />
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </a>
   )
 }
 
@@ -1047,48 +362,58 @@ function KPICards({ completed, total, volumeLabel, adherencePct, isGym }: {
   )
 }
 
-// ── PhaseBar ──────────────────────────────────────────────────────────
+// ── PhaseProgress (colored segment bars — matches Figma) ─────────────
+
+const PHASE_COLORS: Record<string, string> = {
+  BASE: '#3b82f6', DESARROLLO: '#22c55e', ESPECIFICO: '#f97316', AFINAMIENTO: '#ef4444',
+}
+const PHASE_LABELS: Record<string, string> = {
+  BASE: 'Base', DESARROLLO: 'Desarrollo', ESPECIFICO: 'Específico', AFINAMIENTO: 'Afinamiento',
+}
+const PHASE_LABELS_GYM: Record<string, string> = {
+  BASE: 'Adaptación', DESARROLLO: 'Volumen', ESPECIFICO: 'Intensidad', AFINAMIENTO: 'Pico',
+}
 
 function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, isGymPlan }: {
   allPhases: string[]; currentPhase: string; currentWeekNum: number; totalWeeks: number; weeks: PlanClientWeek[]; isGymPlan?: boolean
 }) {
-  const display = PHASES_ORDER.filter(p => allPhases.includes(p))
-  if (display.length === 0) return null
+  // Always show all 4 phases — highlight those present in the plan
+  const display = PHASES_ORDER
   const pct = Math.round((currentWeekNum / totalWeeks) * 100)
-
-  // Week count per phase for proportional pill widths
-  const phaseCounts = display.map(phase => ({
-    phase,
-    count: weeks.filter(w => w.phase === phase).length || 1,
-  }))
-
-  // Determine index of active phase to classify past vs future
   const activeIdx = display.indexOf(currentPhase)
+  const labels = isGymPlan ? PHASE_LABELS_GYM : PHASE_LABELS
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[12px] font-bold text-gray-900">Progreso del plan</span>
+        <span className="text-[13px] font-bold text-gray-900">Progreso del plan</span>
         <span className="text-[11px] text-gray-400">Sem. {currentWeekNum}/{totalWeeks} · {pct}%</span>
       </div>
-      <div className="flex gap-1.5">
-        {phaseCounts.map(({ phase, count }, idx) => {
+      {/* Phase pills — Figma style */}
+      <div className="flex gap-2">
+        {display.map((phase, idx) => {
           const isActive = idx === activeIdx
-          const isDone   = idx < activeIdx
+          const isDone = idx < activeIdx
+          const count = weeks.filter(w => w.phase === phase).length || 1
+          const color = PHASE_COLORS[phase] ?? '#9ca3af'
+          const shortLabel = (labels[phase] ?? phase).length > 8
+            ? (labels[phase] ?? phase).slice(0, 7) + '.'
+            : labels[phase] ?? phase
+          const pillStyle = isActive || isDone
+            ? { flex: count, backgroundColor: color }
+            : { flex: count }
           return (
             <div
               key={phase}
-              style={{ flex: count }}
+              style={pillStyle}
               className={cn(
-                'rounded-lg py-2 text-center transition-all min-w-0',
-                isActive ? 'bg-[#1e3a5f] text-white' :
-                isDone   ? 'bg-green-100 text-green-700' :
-                           'bg-gray-100 text-gray-400'
+                'py-2 rounded-lg text-center text-[11px] font-semibold transition-colors',
+                isActive && 'text-white',
+                isDone && 'text-white opacity-70',
+                !isActive && !isDone && 'border border-gray-200 text-gray-400',
               )}
             >
-              <span className="text-[9px] font-bold truncate block px-1">
-                {isDone ? '✓ ' : ''}{(isGymPlan ? PHASE_DISPLAY_GYM : PHASE_DISPLAY)[phase] ?? phase}
-              </span>
+              {isDone ? '✓ ' : ''}{shortLabel}
             </div>
           )
         })}
@@ -1097,55 +422,82 @@ function PhaseBar({ allPhases, currentPhase, currentWeekNum, totalWeeks, weeks, 
   )
 }
 
-// ── AdherenceChart ────────────────────────────────────────────────────
+// ── AdherenceCompact (7-day blocks — matches Figma) ──────────────────
+
+const DAY_LABELS_COMPACT = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds }: {
   weeks: PlanClientWeek[]; currentWeekNum: number; totalWeeks: number; todayDow: number; loggedIds: Set<string>
 }) {
-  // Always show 5 slots: up to 2 before current + current + up to 2 after
-  const startWeek = Math.max(1, Math.min(currentWeekNum - 2, totalWeeks - 4))
-  const slots = Array.from({ length: 5 }, (_, i) => {
-    const weekNum = startWeek + i
-    if (weekNum > totalWeeks) return null
-    const weekData = weeks.find(w => w.weekNumber === weekNum)
-    const isFuture  = weekNum > currentWeekNum
-    const isCurrent = weekNum === currentWeekNum
-    if (!weekData || isFuture) return { weekNum, pct: 0, isCurrent, isFuture: true }
-    // For the current week only count sessions up to today — future days of the week don't penalize
-    const sessions = isCurrent
-      ? weekData.sessions.filter(s => s.dayOfWeek <= todayDow)
-      : weekData.sessions
-    const t = sessions.filter(s => s.type !== 'DESCANSO').length
-    const c = sessions.filter(s => (s.done || (isCurrent && loggedIds.has(s.id))) && s.type !== 'DESCANSO').length
-    // BUG-059: t===0 → null (sin sesiones planificadas) en lugar de 0% (mal desempeño)
-    return { weekNum, pct: t > 0 ? (c / t) * 100 : null, isCurrent, isFuture: false }
-  }).filter(Boolean) as { weekNum: number; pct: number | null; isCurrent: boolean; isFuture: boolean }[]
+  const currentWeek = weeks.find(w => w.weekNumber === currentWeekNum)
 
-  if (slots.length === 0) return null
+  // Empty state — no sessions for this week
+  if (!currentWeek || currentWeek.sessions.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-[13px] font-bold text-gray-900">Adherencia semanal</span>
+          <span className="text-[11px] text-gray-400">Sin datos</span>
+        </div>
+        <div className="flex gap-1.5">
+          {DAY_LABELS_COMPACT.map(d => (
+            <div key={d} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full h-[22px] rounded-md bg-gray-100" />
+              <span className="text-[10px] font-medium text-gray-400">{d}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-  const pastSlots = slots.filter(s => !s.isFuture)
-  const validPastSlots = pastSlots.filter(s => s.pct !== null)
-  const avgPct = validPastSlots.length > 0
-    ? Math.round(validPastSlots.reduce((sum, s) => sum + (s.pct ?? 0), 0) / validPastSlots.length)
-    : null
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const dow = i + 1
+    const session = currentWeek.sessions.find(s => s.dayOfWeek === dow)
+    const isRest = !session || session.type === 'DESCANSO'
+    const isFuture = dow > todayDow
+    const isToday = dow === todayDow
+    const isDone = session?.done || loggedIds.has(session?.id ?? '')
+
+    let status: 'done' | 'missed' | 'rest' | 'future' | 'today'
+    if (isRest) status = 'rest'
+    else if (isFuture) status = 'future'
+    else if (isToday && !isDone) status = 'today'
+    else if (isDone) status = 'done'
+    else status = 'missed'
+
+    return { dow, label: DAY_LABELS_COMPACT[i], status }
+  })
+
+  const completedDays = days.filter(d => d.status === 'done').length
+  const trainingDays = days.filter(d => d.status !== 'rest' && d.status !== 'future').length
+  const pct = trainingDays > 0 ? Math.round((completedDays / trainingDays) * 100) : 0
+
+  const statusColors: Record<string, string> = {
+    done: '#22c55e', missed: '#ef4444', rest: '#e5e7eb', future: '#f3f4f6', today: '#f97316',
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2.5">
         <span className="text-[12px] font-bold text-gray-900">Adherencia semanal</span>
-        <span className="text-[11px] text-gray-400">{avgPct !== null ? `Promedio ${avgPct}%` : ''}</span>
+        <span className="text-[11px] text-gray-400">{pct}%</span>
       </div>
-      <div className="flex items-end gap-2 h-16">
-        {slots.map(({ weekNum, pct, isCurrent, isFuture }) => (
-          <div key={weekNum} className="flex-1 flex flex-col items-center gap-1.5">
+      <div className="flex gap-1.5">
+        {days.map(({ dow, label, status }) => (
+          <div key={dow} className="flex-1 flex flex-col items-center gap-1">
             <div
-              className="w-full rounded-md transition-all duration-500"
-              style={{
-                height: isFuture || pct === null ? '6px' : pct === 0 ? '4px' : `${Math.max(12, pct * 0.56)}px`,
-                backgroundColor: isFuture || pct === null ? '#e5e7eb' : pct === 0 ? '#d1d5db' : isCurrent ? '#ea580c' : '#3b82f6',
-              }}
+              className="w-full rounded-md"
+              style={{ height: 22, backgroundColor: statusColors[status] }}
             />
-            <span className="text-[10px] text-gray-400">S{weekNum}</span>
+            <span className={cn(
+              'text-[10px] font-medium',
+              status === 'done' ? 'text-green-600' :
+              status === 'today' ? 'text-[#ea580c]' :
+              'text-gray-400'
+            )}>
+              {label}
+            </span>
           </div>
         ))}
       </div>
@@ -1155,56 +507,151 @@ function AdherenceChart({ weeks, currentWeekNum, totalWeeks, todayDow, loggedIds
 
 // ── BodyCompositionCard ───────────────────────────────────────────────
 
-function BodyCompositionCard({ weightData }: {
+function BodyCompositionCard({ weightData, bodyMeasures }: {
   weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null
+  bodyMeasures?: { waistCm: number | null; hipsCm: number | null; armsCm: number | null; thighsCm: number | null } | null
 }) {
-  if (!weightData?.currentKg) return null
-  const { currentKg, goalKg, progressPct, weeklyChange } = weightData
-  const delta = goalKg ? Math.round((currentKg - goalKg) * 10) / 10 : null
+  const hasData = weightData?.currentKg != null || bodyMeasures != null
+  const { currentKg, goalKg, weeklyChange } = weightData ?? { currentKg: null, goalKg: null, weeklyChange: null }
+
+  const changeBadge = weeklyChange !== null && weeklyChange !== 0
+    ? {
+        label: `${weeklyChange > 0 ? '+' : ''}${weeklyChange.toFixed(1)} kg/sem · ${Math.abs(weeklyChange) <= 1 ? 'ritmo ideal' : 'ritmo alto'}`,
+        color: weeklyChange < 0 ? 'text-green-600' : weeklyChange > 0.5 ? 'text-red-500' : 'text-orange-500',
+        bg: weeklyChange < 0 ? 'bg-green-50' : weeklyChange > 0.5 ? 'bg-red-50' : 'bg-orange-50',
+      }
+    : null
+
+  const allMeasures = [
+    { label: 'Cintura', value: bodyMeasures?.waistCm ?? null },
+    { label: 'Cadera', value: bodyMeasures?.hipsCm ?? null },
+    { label: 'Brazos', value: bodyMeasures?.armsCm ?? null },
+    { label: 'Muslo', value: bodyMeasures?.thighsCm ?? null },
+  ]
+  const measures = hasData ? allMeasures.filter(m => m.value != null) : allMeasures
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-bold text-gray-900">Composición corporal</span>
-        {weeklyChange !== null && weeklyChange < 0 && (
-          <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-            ↓ {Math.abs(weeklyChange)} kg/sem · ritmo ideal
+        <span className="text-[13px] font-bold text-gray-900">Composición corporal</span>
+        {changeBadge && (
+          <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', changeBadge.color, changeBadge.bg)}>
+            ↓ {changeBadge.label}
           </span>
         )}
       </div>
 
       <div className="flex items-baseline gap-2 mb-3">
-        <span className="text-[20px] font-black text-gray-900">{currentKg} kg</span>
-        {goalKg && <span className="text-[13px] text-gray-400">→ meta {goalKg} kg</span>}
+        <span className="text-[24px] font-black text-gray-900 tracking-tight">
+          {currentKg != null ? `${currentKg} kg` : '— kg'}
+        </span>
+        {goalKg != null && <span className="text-[12px] text-gray-400">→ meta {goalKg} kg</span>}
+        {!hasData && <span className="text-[11px] text-gray-300">Sin datos registrados</span>}
       </div>
 
-      {/* Progress bar */}
-      {goalKg && progressPct !== null && (
-        <div className="mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-400 shrink-0">{Math.round(goalKg + (currentKg - goalKg))} kg</span>
-            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#3b82f6] rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, progressPct)}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-gray-400 shrink-0">{progressPct}%</span>
-            <span className="text-[10px] text-gray-500 font-medium shrink-0">{delta !== null ? `${delta > 0 ? '+' : ''}${delta} kg` : ''}</span>
+      <div className="flex gap-2">
+        {measures.map(m => (
+          <div key={m.label} className="flex-1 text-center">
+            <span className="text-[15px] font-bold text-gray-900">
+              {m.value != null ? `${m.value} cm` : '— cm'}
+            </span>
+            <p className="text-[9px] text-gray-400 mt-0.5">{m.label}</p>
           </div>
-        </div>
-      )}
-
-      {goalKg && weeklyChange !== null && weeklyChange < 0 && (
-        <p className="text-[10px] text-green-600 font-medium">✓ vas bien</p>
-      )}
+        ))}
+      </div>
     </div>
+  )
+}
+
+// ── EstadoSemana (check-in metrics) ──────────────────────────────────
+
+function EstadoSemana({ checkInData }: {
+  checkInData: { energyLevel: number | null; sleepHours: number | null; stressLevel: number | null; motivationLevel: number | null } | null
+}) {
+  const { energyLevel, sleepHours, stressLevel, motivationLevel } = checkInData ?? {}
+
+  const items = [
+    { label: 'Energía', value: energyLevel ? `${energyLevel}/5` : '—', icon: '⚡' },
+    { label: 'Sueño', value: sleepHours ? `${sleepHours}h` : '—', icon: '😴' },
+    { label: 'Estrés', value: stressLevel ? `${stressLevel}/5` : '—', icon: '😤' },
+    { label: 'Motiv.', value: motivationLevel ? `${motivationLevel}/5` : '—', icon: '💪' },
+  ]
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <span className="text-[13px] font-bold text-gray-900 block mb-3">Tu estado esta semana</span>
+      <div className="flex gap-3">
+        {items.map(i => (
+          <div key={i.label} className="flex-1 text-center">
+            <span className="text-[16px] block mb-1">{i.icon}</span>
+            <span className="text-[14px] font-bold text-gray-900 block">{i.value}</span>
+            <span className="text-[9px] text-gray-400">{i.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── ZonasFC (heart rate zones) ───────────────────────────────────────
+
+type HRZoneData = { z1: { min: number; max: number }; z2: { min: number; max: number }; z3: { min: number; max: number }; z4: { min: number; max: number }; z5: { min: number; max: number } }
+
+function ZonasFC({ hrZones }: { hrZones: HRZoneData | null | undefined }) {
+  const defaultColors = ['#3b82f6', '#22c55e', '#f97316', '#ef4444', '#dc2626']
+  const zones = hrZones
+    ? [
+        { label: 'Z1', range: `${hrZones.z1.min}-${hrZones.z1.max}`, color: '#3b82f6' },
+        { label: 'Z2', range: `${hrZones.z2.min}-${hrZones.z2.max}`, color: '#22c55e' },
+        { label: 'Z3', range: `${hrZones.z3.min}-${hrZones.z3.max}`, color: '#f97316' },
+        { label: 'Z4', range: `${hrZones.z4.min}-${hrZones.z4.max}`, color: '#ef4444' },
+        { label: 'Z5', range: `${hrZones.z5.min}+`, color: '#dc2626' },
+      ]
+    : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((l, i) => ({ label: l, range: '— bpm', color: defaultColors[i] }))
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <span className="text-[13px] font-bold text-gray-900 block mb-3">Zonas FC</span>
+      {!hrZones && <p className="text-[10px] text-gray-300 -mt-1 mb-2">Completa tu perfil con FC máx para calcular tus zonas</p>}
+      <div className="flex gap-2">
+        {zones.map(z => (
+          <div key={z.label} className="flex-1 text-center">
+            <div className={cn('w-2.5 h-2.5 rounded-full mx-auto mb-1.5', !hrZones && 'opacity-30')} style={{ backgroundColor: z.color }} />
+            <span className="text-[11px] font-bold text-gray-900 block">{z.label}</span>
+            <span className={cn('text-[9px]', hrZones ? 'text-gray-400' : 'text-gray-300')}>{z.range}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── CheckInBanner ────────────────────────────────────────────────────
+
+function CheckInBanner({ recordedAt }: { recordedAt: string | null }) {
+  if (!recordedAt) {
+    return (
+      <a href="/checkin" className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-gray-500 transition-colors mt-2">
+        <span>📊</span>
+        <span>Sin check-ins registrados · Haz tu primer check-in semanal</span>
+      </a>
+    )
+  }
+  const d = new Date(recordedAt)
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  const label = `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`
+  return (
+    <a href="/checkin" className="flex items-center gap-2 text-[11px] text-gray-400 hover:text-gray-600 transition-colors mt-2">
+      <span>📊</span>
+      <span>Último check-in: {label} · Datos del check-in semanal</span>
+    </a>
   )
 }
 
 // ── PlanClient ────────────────────────────────────────────────────────
 
-export default function PlanClient({ plan, weeks, nutritionTarget, weightData }: PlanClientProps) {
+export default function PlanClient({ plan, weeks, nutritionTarget, weightData, checkInData, bodyMeasures, hrZones }: PlanClientProps) {
   const todayDow = useMemo(() => {
     const d = new Date().getDay()
     return d === 0 ? 7 : d
@@ -1392,7 +839,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             onLogged={() => markLogged(selectedSession.id)}
             onEdited={(updates) => applyEdit(selectedSession.id, updates)}
           />
-        ) : !week ? (
+        ) : (!week || week.sessions.filter(s => s.type !== 'DESCANSO').length === 0) ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-3">
             <span className="text-3xl">📋</span>
             <div>
@@ -1420,78 +867,93 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
           isGym={isGym}
         />
 
+        {/* Figma order: KPI → Phase → Adherence → Nutrition → Body */}
+        <PhaseBar
+          allPhases={allPhases}
+          currentPhase={realCurrentPhase}
+          currentWeekNum={plan.currentWeek}
+          totalWeeks={plan.totalWeeks}
+          weeks={weeks}
+          isGymPlan={isGym}
+        />
+
+        <AdherenceChart
+          weeks={weeks}
+          currentWeekNum={plan.currentWeek}
+          totalWeeks={plan.totalWeeks}
+          todayDow={todayDow}
+          loggedIds={loggedIds}
+        />
+
         {nutritionTarget && <NutritionCard nt={nutritionTarget} />}
 
-        {/* Phase — compact mobile pill (Figma) */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fase actual</span>
-          <span className="w-2 h-2 rounded-full bg-[#1e3a5f]" />
-          <span className="text-[12px] font-bold text-[#1e3a5f]">{realCurrentPhase}</span>
-          <span className="text-[11px] text-gray-400 ml-auto">Semana {plan.currentWeek} de {plan.totalWeeks}</span>
-        </div>
+        <BodyCompositionCard weightData={weightData} bodyMeasures={bodyMeasures} />
+
+        <EstadoSemana checkInData={checkInData ?? null} />
+
+        <ZonasFC hrZones={hrZones} />
+
+        <CheckInBanner recordedAt={checkInData?.recordedAt ?? null} />
       </div>
     </div>
 
     {/* ══════ DESKTOP (sm+) ══════ */}
-    <div className="hidden sm:block px-4 py-6 md:px-8 max-w-7xl mx-auto">
+    <div className="hidden sm:block px-4 py-6 md:px-8 max-w-7xl mx-auto space-y-5">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="min-w-0">
-          <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
-            Mi Plan
-          </h1>
-          <p className="text-[12px] text-gray-400 mt-0.5">Plan {formatPlanName(plan.name)} · {plan.totalWeeks} semanas</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isCurrentWeek && (
-            <button
-              onClick={() => { setSelectedWeekNum(plan.currentWeek); setSelectedDow(todayDow) }}
-              className="text-[12px] font-bold text-[#ea580c] hover:text-[#c2410c] transition-colors whitespace-nowrap"
-            >
-              Hoy
-            </button>
-          )}
-          <div className="flex items-center bg-[#f1f5f9] rounded-[10px] overflow-hidden">
-            <button
-              onClick={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
-              disabled={selectedWeekNum <= 1}
-              className="w-8 h-8 flex items-center justify-center bg-white rounded-lg mx-1 text-[14px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors"
-            >
-              ←
-            </button>
-            <span className="px-4 text-[13px] font-semibold text-[#1e3a5f] whitespace-nowrap">
-              {weekLabel}
+      {/* ── WeekSection card (Figma: TopBar + ProgressBar + DaysRow + Footer) ── */}
+      <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <PageTopBar
+          title="Mi Plan"
+          subtitle={`${formatPlanName(plan.name)} · ${plan.totalWeeks} semanas`}
+          center={
+            <WeekNavBar
+              weekLabel={weekLabel}
+              canGoPrev={selectedWeekNum > 1}
+              canGoNext={selectedWeekNum < plan.totalWeeks}
+              onPrev={() => { setSelectedWeekNum(w => Math.max(1, w - 1)); setSelectedDow(todayDow) }}
+              onNext={() => { setSelectedWeekNum(w => Math.min(plan.totalWeeks, w + 1)); setSelectedDow(1) }}
+              onToday={() => { setSelectedWeekNum(plan.currentWeek); setSelectedDow(todayDow) }}
+              showToday={!isCurrentWeek}
+            />
+          }
+          right={
+            <span className="inline-flex items-center bg-[#1e3a5f] text-white px-3.5 py-1.5 rounded-[20px] text-[11px] font-semibold whitespace-nowrap">
+              {realCurrentPhase} · {selectedWeekNum} / {plan.totalWeeks}
             </span>
-            <button
-              onClick={() => { setSelectedWeekNum(w => w + 1); setSelectedDow(1) }}
-              disabled={selectedWeekNum >= plan.totalWeeks}
-              className="w-8 h-8 flex items-center justify-center bg-white rounded-lg mx-1 text-[14px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors"
-            >
-              →
-            </button>
+          }
+        />
+
+        {/* Progress bar */}
+        <div className="px-5">
+          <div className="h-[3px] bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#ea580c] rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((plan.currentWeek / plan.totalWeeks) * 100)}%` }}
+            />
           </div>
         </div>
 
-        <div className="hidden md:flex items-center bg-[#1e3a5f] text-white px-3.5 py-1.5 rounded-[20px] text-[11px] font-semibold whitespace-nowrap">
-          {realCurrentPhase} · {plan.currentWeek} / {plan.totalWeeks}
+        {/* Calendar Strip */}
+        <div className="px-3 pt-3">
+          <CalendarStrip
+            week={week}
+            calendarDays={calWeek?.days ?? null}
+            weekMonday={weekMonday}
+            selectedDow={selectedDow}
+            todayDow={todayDow}
+            isCurrentWeek={isCurrentWeek}
+            onSelect={setSelectedDow}
+            loggedIds={loggedIds}
+          />
+        </div>
+
+        {/* Footer — session count */}
+        <div className="px-5 pb-3 flex justify-end">
+          <span className="text-[12px] text-gray-400 font-medium">
+            {completedCount} / {totalTraining} sesiones
+          </span>
         </div>
       </div>
-
-      {/* ── Calendar Strip ── */}
-      <CalendarStrip
-        week={week}
-        calendarDays={calWeek?.days ?? null}
-        weekMonday={weekMonday}
-        selectedDow={selectedDow}
-        todayDow={todayDow}
-        isCurrentWeek={isCurrentWeek}
-        onSelect={setSelectedDow}
-        completedCount={completedCount}
-        totalTraining={totalTraining}
-        loggedIds={loggedIds}
-      />
 
       {/* ── Two-column layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-5">
@@ -1511,7 +973,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
               onLogged={() => markLogged(selectedSession.id)}
               onEdited={(updates) => { applyEdit(selectedSession.id, updates) }}
             />
-          ) : !week ? (
+          ) : (!week || week.sessions.filter(s => s.type !== 'DESCANSO').length === 0) ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
               <span className="text-4xl">📋</span>
               <div>
@@ -1529,7 +991,6 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             </div>
           )}
 
-          {nutritionTarget && <NutritionCard nt={nutritionTarget} />}
         </div>
 
         {/* Right (2/5) */}
@@ -1546,6 +1007,7 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             isGym={isGym}
           />
 
+          {/* Figma order: KPI → Phase → Adherence → Nutrition → Body */}
           <PhaseBar
             allPhases={allPhases}
             currentPhase={realCurrentPhase}
@@ -1563,9 +1025,18 @@ export default function PlanClient({ plan, weeks, nutritionTarget, weightData }:
             loggedIds={loggedIds}
           />
 
-          <BodyCompositionCard weightData={weightData} />
+          {nutritionTarget && <NutritionCard nt={nutritionTarget} />}
+
+          <BodyCompositionCard weightData={weightData} bodyMeasures={bodyMeasures} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <EstadoSemana checkInData={checkInData ?? null} />
+            <ZonasFC hrZones={hrZones} />
+          </div>
         </div>
       </div>
+
+      <CheckInBanner recordedAt={checkInData?.recordedAt ?? null} />
     </div>
     </>
   )
