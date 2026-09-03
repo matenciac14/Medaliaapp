@@ -15,7 +15,7 @@ interface ProfileTabsProps {
   ctaHref?: string
 }
 
-export default function ProfileTabs({ tabs, ctaLabel, ctaHref = '/onboarding' }: ProfileTabsProps) {
+export default function ProfileTabs({ tabs, ctaLabel, ctaHref = '/login' }: ProfileTabsProps) {
   const [active, setActive] = useState(0)
   const current = tabs[active]
 

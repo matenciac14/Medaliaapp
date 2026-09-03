@@ -7,9 +7,12 @@
  * Solo inserta alimentos que no existen por nombre (safe re-run).
  */
 
+import 'dotenv/config'
 import { PrismaClient } from '../src/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 
-const prisma = new PrismaClient()
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter } as any)
 
 const LATAM_FOODS = [
   // ── ARGENTINA ──

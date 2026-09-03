@@ -1,6 +1,6 @@
 # Medaliq — Web + Backend
 
-SaaS de coaching deportivo con AI para LatAm. Este directorio contiene el backend y la web app.
+SaaS de coaching deportivo para LatAm. Este directorio contiene el backend y la web app.
 
 ## Stack
 
@@ -8,7 +8,6 @@ SaaS de coaching deportivo con AI para LatAm. Este directorio contiene el backen
 - PostgreSQL (Neon serverless) + Prisma 7
 - Tailwind CSS v4 + shadcn/ui
 - Auth.js v5 — JWT strategy
-- Claude API (Anthropic) — Haiku + Sonnet
 - Resend — emails transaccionales
 - pnpm
 
@@ -20,7 +19,7 @@ pnpm install
 
 # 2. Variables de entorno
 cp .env.example .env.local
-# Rellenar DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY
+# Rellenar DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, RESEND_API_KEY
 
 # 3. Migraciones + seed
 pnpm prisma migrate dev
@@ -35,9 +34,9 @@ pnpm dev
 | Email | Password | Rol |
 |-------|----------|-----|
 | `admin@medaliq.com` | `admin123!` | ADMIN |
-| `coach@medaliq.com` | `coach123` | COACH |
-| `miguel@medaliq.com` | `atleta123` | ATHLETE (con plan + coach) |
-| `ana@medaliq.com` | `atleta123` | ATHLETE (B2C, sin coach) |
+| `coach@medaliq.com` | `Coach2026!` | COACH |
+| `miguel@medaliq.com` | `Atleta2026!` | ATHLETE (B2C, con plan) |
+| `ana@medaliq.com` | `Atleta2026!` | ATHLETE (B2B, con coach) |
 
 ## Rutas principales
 

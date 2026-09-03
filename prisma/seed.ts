@@ -155,7 +155,7 @@ async function main() {
       startDate: plan1Start,
       endDate: addDays(plan1Start, 18 * 7),
       status: PlanStatus.ACTIVE,
-      generatedBy: PlanSource.AI,
+      generatedBy: PlanSource.COACH,
       goalType: GoalType.RACE_HALF_MARATHON,
       hrZones: { z1: { min: 95, max: 114 }, z2: { min: 115, max: 133 }, z3: { min: 134, max: 152 }, z4: { min: 153, max: 171 }, z5: { min: 172, max: 185 } },
     },
@@ -1176,7 +1176,7 @@ async function seedRunningPlan(
     create: {
       id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
-      status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
+      status: PlanStatus.ACTIVE, generatedBy: PlanSource.COACH,
       hrZones: { z1: { min: 90, max: 115 }, z2: { min: 116, max: 135 }, z3: { min: 136, max: 155 }, z4: { min: 156, max: 172 }, z5: { min: 173, max: 195 } },
     },
   })
@@ -1259,7 +1259,7 @@ async function seedBodyPlan(
     create: {
       id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
-      status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
+      status: PlanStatus.ACTIVE, generatedBy: PlanSource.COACH,
       hrZones: {},
     },
   })
@@ -1342,7 +1342,7 @@ async function seedCyclingPlan(
     create: {
       id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
-      status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
+      status: PlanStatus.ACTIVE, generatedBy: PlanSource.COACH,
       hrZones: { z1: { min: 88, max: 110 }, z2: { min: 111, max: 130 }, z3: { min: 131, max: 150 }, z4: { min: 151, max: 168 }, z5: { min: 169, max: 190 } },
     },
   })
@@ -1432,7 +1432,7 @@ async function seedTriathlonPlan(
     create: {
       id: planId, userId, name, totalWeeks,
       startDate, endDate: addDays(startDate, totalWeeks * 7),
-      status: PlanStatus.ACTIVE, generatedBy: PlanSource.AI,
+      status: PlanStatus.ACTIVE, generatedBy: PlanSource.COACH,
       hrZones: { z1: { min: 88, max: 111 }, z2: { min: 112, max: 131 }, z3: { min: 132, max: 151 }, z4: { min: 152, max: 170 }, z5: { min: 171, max: 190 } },
     },
   })

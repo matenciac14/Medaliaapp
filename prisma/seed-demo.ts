@@ -278,7 +278,7 @@ async function main() {
   const runPlanEnd = new Date('2026-08-17T23:59:59.999Z')
 
   const runningAthletes = [
-    { email: 'valentina_run@medaliq.com', name: 'Plan Running — Valentina', source: PlanSource.ATHLETE },
+    { email: 'valentina_run@medaliq.com', name: 'Plan Running — Valentina', source: PlanSource.COACH },
     { email: 'felipe_run@medaliq.com', name: 'Plan Running 10K — Felipe', source: PlanSource.COACH },
   ]
 
