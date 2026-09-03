@@ -325,10 +325,6 @@ enum PlanStatus {
 
 enum PlanSource {
   COACH
-  // Reserved — not implemented yet (PostgreSQL enum values cannot be dropped without data migration):
-  AI
-  AI_COACH_APPROVED
-  ATHLETE
 }
 
 model PlanWeek {
@@ -792,7 +788,6 @@ enum NutritionSource {
 /// Singleton — siempre un solo registro con id = "singleton"
 model SystemConfig {
   id           String    @id @default("singleton")
-  aiProfile    Json      @default("{}")   // AIProfile — perfil de la AI para planes y chat
   updatedAt    DateTime  @updatedAt
 }
 
