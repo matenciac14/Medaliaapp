@@ -24,7 +24,7 @@ export default async function AthleteDetailPage({
       // Basic user data
       prisma.user.findUnique({
         where: { id: athleteId },
-        select: { id: true, name: true, email: true, createdAt: true },
+        select: { id: true, name: true, email: true, createdAt: true, onboardingCompleted: true },
       }),
 
       // Health profile
@@ -32,7 +32,7 @@ export default async function AthleteDetailPage({
         where: { userId: athleteId },
       }),
 
-      // Active training plan with weeks and sessions
+      // Active training plan with weeks, sessions, and completion data
       prisma.trainingPlan.findFirst({
         where: { userId: athleteId, status: 'ACTIVE' },
         include: {
@@ -41,6 +41,27 @@ export default async function AthleteDetailPage({
             include: {
               sessions: {
                 orderBy: { dayOfWeek: 'asc' },
+                include: {
+                  log: {
+                    select: { rpe: true, distanceKm: true, durationMin: true, hrAvg: true, avgPaceSecPerKm: true, completedAt: true },
+                  },
+                  gymSession: {
+                    select: {
+                      rpe: true, durationMin: true, completed: true,
+                      setLogs: {
+                        where: { setLogType: 'WORK' },
+                        select: { weightKg: true, repsCompleted: true, isPR: true, exerciseName: true },
+                      },
+                    },
+                  },
+                  workoutDay: {
+                    select: {
+                      label: true,
+                      muscleGroups: true,
+                      exercises: { orderBy: { order: 'asc' }, select: { sets: true, exercise: { select: { name: true } } } },
+                    },
+                  },
+                },
               },
             },
           },
@@ -89,13 +110,27 @@ export default async function AthleteDetailPage({
         },
       }),
 
-      // Active gym routine (AssignedWorkout + template)
+      // Active gym routine (AssignedWorkout + template + workout days)
       prisma.assignedWorkout.findFirst({
         where: { athleteId, isActive: true },
         orderBy: { startDate: 'desc' },
         select: {
           id: true,
-          template: { select: { name: true, goal: true, daysPerWeek: true } },
+          template: {
+            select: {
+              name: true, goal: true, daysPerWeek: true,
+              days: {
+                orderBy: { order: 'asc' },
+                select: {
+                  label: true, dayOfWeek: true, muscleGroups: true, isRestDay: true,
+                  exercises: {
+                    orderBy: { order: 'asc' },
+                    select: { sets: true, repsScheme: true, exercise: { select: { name: true } } },
+                  },
+                },
+              },
+            },
+          },
         },
       }),
 
@@ -132,6 +167,7 @@ export default async function AthleteDetailPage({
     name: athlete.name,
     email: athlete.email,
     createdAt: athlete.createdAt,
+    onboardingCompleted: athlete.onboardingCompleted,
   }
 
   const healthProfileData = healthProfile
@@ -173,6 +209,28 @@ export default async function AthleteDetailPage({
             structure: s.structure,
             intensity: s.intensity ?? 'MODERATE',
             date: s.date,
+            log: s.log
+              ? { rpe: s.log.rpe, distanceKm: s.log.distanceKm, durationMin: s.log.durationMin, hrAvg: s.log.hrAvg, paceSecPerKm: s.log.avgPaceSecPerKm }
+              : null,
+            gymLog: s.gymSession
+              ? {
+                  rpe: s.gymSession.rpe,
+                  durationMin: s.gymSession.durationMin,
+                  completed: s.gymSession.completed,
+                  totalSets: s.gymSession.setLogs.length,
+                  totalVolume: Math.round(s.gymSession.setLogs.reduce((sum, sl) => sum + (sl.weightKg ?? 0) * (sl.repsCompleted ?? 0), 0)),
+                  exerciseCount: new Set(s.gymSession.setLogs.map(sl => sl.exerciseName)).size,
+                  prs: s.gymSession.setLogs.filter(sl => sl.isPR).map(sl => ({ name: sl.exerciseName ?? '', kg: sl.weightKg ?? 0 })),
+                }
+              : null,
+            workoutDay: s.workoutDay
+              ? {
+                  label: s.workoutDay.label,
+                  muscleGroups: s.workoutDay.muscleGroups as string[],
+                  exerciseCount: s.workoutDay.exercises.length,
+                  totalSets: s.workoutDay.exercises.reduce((sum, e) => sum + e.sets, 0),
+                }
+              : null,
           })),
         })),
       }
@@ -235,6 +293,18 @@ export default async function AthleteDetailPage({
         goal: activeGymRoutine.template.goal,
         daysPerWeek: activeGymRoutine.template.daysPerWeek,
         lastSessionDate: lastGymSession?.date ?? null,
+        days: activeGymRoutine.template.days
+          .filter(d => !d.isRestDay)
+          .map(d => ({
+            label: d.label,
+            dayOfWeek: d.dayOfWeek,
+            muscleGroups: d.muscleGroups,
+            exercises: d.exercises.map(e => ({
+              name: e.exercise.name,
+              sets: e.sets,
+              repsScheme: e.repsScheme,
+            })),
+          })),
       }
     : null
 
