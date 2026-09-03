@@ -495,57 +495,102 @@ describe('nutritionTarget', () => {
 // ── formStatus ────────────────────────────────────────────────────────────────
 
 describe('formStatus', () => {
-  it('good + "Listo para entrenar fuerte" cuando energía alta, RPE bajo, sueño ok', () => {
+  const freshCheckIn = (overrides: Partial<{
+    energyLevel: number; hardestSessionRpe: number; sleepHours: number
+  }> = {}) => ({
+    recordedAt: daysAgo(2),  // fresco — dentro de 7 días
+    weekNumber: 1,
+    weightKg: 70,
+    hrResting: 55,
+    sleepHours: 7.5,
+    energyLevel: 5,
+    hardestSessionRpe: 6,
+    ...overrides,
+  })
+
+  // Plan con sesión hoy para que no sea "día libre"
+  const planWithTodaySession = makePlanWithSessions(
+    [makeSession(TODAY_DOW, 'RODAJE_Z2')], 0,
+  )
+
+  it('good + "entrenar fuerte" con check-in fresco y sesión hoy', () => {
     const { summary } = getDashboardSummary(baseInput({
-      checkIns: [{
-        recordedAt: daysAgo(7),
-        weekNumber: 1,
-        weightKg: 70,
-        hrResting: 55,
-        sleepHours: 7.5,
-        energyLevel: 5,
-        hardestSessionRpe: 6,
-      }],
+      activePlanRaw: planWithTodaySession,
+      checkIns: [freshCheckIn()],
     }))
     expect(summary.formStatus).toBe('good')
     expect(summary.formMessage).toContain('fuerte')
   })
 
-  it('moderate + "Carga moderada" cuando energía media o RPE alto', () => {
+  it('good + "buen momento para descansar" con check-in fresco y día libre', () => {
     const { summary } = getDashboardSummary(baseInput({
-      checkIns: [{
-        recordedAt: daysAgo(7),
-        weekNumber: 1,
-        weightKg: 70,
-        hrResting: 55,
-        sleepHours: 7,
-        energyLevel: 3,
-        hardestSessionRpe: 7,
-      }],
+      checkIns: [freshCheckIn()],
     }))
-    expect(summary.formStatus).toBe('moderate')
+    expect(summary.formStatus).toBe('good')
+    expect(summary.formMessage).toContain('descansar')
   })
 
-  it('rest + "Prioriza la recuperación" cuando energía baja o sueño insuficiente', () => {
+  it('moderate con check-in fresco y energía media', () => {
     const { summary } = getDashboardSummary(baseInput({
-      checkIns: [{
-        recordedAt: daysAgo(7),
-        weekNumber: 1,
-        weightKg: 70,
-        hrResting: 55,
-        sleepHours: 5.5,  // < 6.5h
-        energyLevel: 2,
-        hardestSessionRpe: 9,
-      }],
+      activePlanRaw: planWithTodaySession,
+      checkIns: [freshCheckIn({ energyLevel: 3, hardestSessionRpe: 7 })],
+    }))
+    expect(summary.formStatus).toBe('moderate')
+    expect(summary.formMessage).toContain('intensidad')
+  })
+
+  it('rest con check-in fresco y fatiga alta', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      activePlanRaw: planWithTodaySession,
+      checkIns: [freshCheckIn({ energyLevel: 2, hardestSessionRpe: 9, sleepHours: 5.5 })],
     }))
     expect(summary.formStatus).toBe('rest')
-    expect(summary.formMessage).toContain('recuperación')
+    expect(summary.formMessage).toContain('suave')
+  })
+
+  it('rest + "descansar" en día libre con fatiga alta', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      checkIns: [freshCheckIn({ energyLevel: 2, hardestSessionRpe: 9, sleepHours: 5.5 })],
+    }))
+    expect(summary.formStatus).toBe('rest')
+    expect(summary.formMessage).toContain('descansar')
   })
 
   it('good + "Sin datos de check-in" cuando no hay checkIns', () => {
     const { summary } = getDashboardSummary(baseInput({ checkIns: [] }))
     expect(summary.formStatus).toBe('good')
     expect(summary.formMessage).toBe('Sin datos de check-in')
+  })
+
+  it('good + "Haz tu check-in semanal" cuando check-in tiene >7 días', () => {
+    const stale = freshCheckIn({ energyLevel: 2, hardestSessionRpe: 9, sleepHours: 5.5 })
+    stale.recordedAt = daysAgo(10)
+    const { summary } = getDashboardSummary(baseInput({ checkIns: [stale] }))
+    expect(summary.formStatus).toBe('good')
+    expect(summary.formMessage).toBe('Haz tu check-in semanal')
+  })
+
+  it('moderate → rest cuando hay spike de volumen >20%', () => {
+    // Plan con 2 semanas: semana 1 = 30km, semana 2 (actual) = 40km (+33%)
+    const plan = makePlanWithSessions([makeSession(TODAY_DOW, 'RODAJE_Z2')], 7, 8)
+    plan.weeks = [
+      { weekNumber: 1, phase: 'BASE', volumeKm: 30, sessions: [] },
+      { weekNumber: 2, phase: 'BASE', volumeKm: 40, sessions: [makeSession(TODAY_DOW, 'RODAJE_Z2')] },
+    ]
+    const { summary } = getDashboardSummary(baseInput({
+      activePlanRaw: plan,
+      checkIns: [freshCheckIn({ energyLevel: 3, hardestSessionRpe: 8 })],
+    }))
+    expect(summary.formStatus).toBe('rest')
+  })
+
+  it('rest en modo RECOVERY independiente del check-in', () => {
+    const { summary } = getDashboardSummary(baseInput({
+      lastCompletedPlan: { name: 'Plan Test', endDate: daysAgo(3) },
+      checkIns: [freshCheckIn()],  // buen estado — pero recovery manda
+    }))
+    expect(summary.formStatus).toBe('rest')
+    expect(summary.formMessage).toContain('recuperacion')
   })
 })
 

@@ -180,6 +180,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
         ? {
             workoutDayId: gymDay.id,
             label: gymDay.label,
+            templateName: assignedWorkout?.template.name ?? null,
             gymSessionId: gymSession?.id ?? null,
             done: gymSession?.completed ?? false,
             durationMin: gymSession?.durationMin ?? null,
@@ -189,6 +190,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
         ? {
             workoutDayId: null,
             label: gymSession.notes ?? 'Fuerza',
+            templateName: assignedWorkout?.template.name ?? null,
             gymSessionId: gymSession.id,
             done: gymSession.completed,
             durationMin: gymSession.durationMin ?? null,

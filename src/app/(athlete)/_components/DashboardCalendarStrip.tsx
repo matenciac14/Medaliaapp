@@ -8,7 +8,7 @@ import type { CalendarWeek, CalendarDay } from '@/domain/calendar/calendar.types
 import { calendarDaysToWeekCells, type WeekDayCell } from './week-day-cells'
 import WeekDayStrip from './WeekDayStrip'
 import { jsToWeekIdx } from '@/lib/core/date-utils'
-import { SESSION_ICONS, WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
+import { SESSION_ICONS, SESSION_NAMES, WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
 
 
 interface Props {
@@ -23,9 +23,19 @@ interface Props {
   mobileCount?: string
   /** B2B athlete — shows COACH badge in session detail */
   isB2B?: boolean
+  /** Plan phase display name (e.g. "BASE", "BUILD") — for BadgesRow */
+  planPhase?: string | null
+  /** Current plan week number — for BadgesRow */
+  planWeekNum?: number | null
+  /** Total plan weeks — for BadgesRow */
+  planTotalWeeks?: number | null
+  /** Coach name — for B2B BadgesRow */
+  coachName?: string | null
+  /** Pre-computed calendar week from server — eliminates client-side fetch flash */
+  initialCalendarWeek?: CalendarWeek | null
 }
 
-export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '', isB2B = false }: Props) {
+export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FREE', firstName = '', weekLabel = '', mobileCount = '', isB2B = false, planPhase = null, planWeekNum = null, planTotalWeeks = null, coachName = null, initialCalendarWeek = null }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const todayWeekIdx = jsToWeekIdx(new Date().getDay())
@@ -36,26 +46,37 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
     router.push(next === 0 ? pathname : `${pathname}?weekOffset=${next}`)
   }
 
-  const [cells, setCells] = useState<WeekDayCell[]>(() =>
-    Array.from({ length: 7 }, (_, idx) => ({
-      idx,
-      dateNum: 0,
-      isToday: isCurrentWeek && idx === todayWeekIdx,
-      sessionType: null,
-      done: false,
-      durationMin: 0,
-      zoneTarget: '',
-      label: null,
-      gymOverlay: null,
-      gymOverlayDone: false,
-    }))
-  )
-  const [days, setDays] = useState<CalendarDay[]>([])
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ completed: 0, total: 0 })
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  // Initialize from server data when available — eliminates the "zeros flash"
+  const hasInitialData = !!initialCalendarWeek
+  const initialCells = hasInitialData
+    ? calendarDaysToWeekCells(initialCalendarWeek.days, isCurrentWeek ? todayWeekIdx : -1)
+    : Array.from({ length: 7 }, (_, idx) => ({
+        idx, dateNum: 0, isToday: isCurrentWeek && idx === todayWeekIdx,
+        sessionType: null, done: false, durationMin: 0, zoneTarget: '',
+        label: null, hasGym: false,
+      }))
+  const initialStats = hasInitialData
+    ? (() => {
+        const training = initialCells.filter(c => c.sessionType && c.sessionType !== 'DESCANSO')
+        return { completed: training.filter(c => c.done).length, total: training.length }
+      })()
+    : { completed: 0, total: 0 }
+  const initialSelectedIdx = hasInitialData
+    ? (isCurrentWeek ? todayWeekIdx : (() => { const i = initialCells.findIndex(c => c.sessionType && c.sessionType !== 'DESCANSO'); return i >= 0 ? i : 0 })())
+    : null
+
+  const [cells, setCells] = useState<WeekDayCell[]>(initialCells)
+  const [days, setDays] = useState<CalendarDay[]>(initialCalendarWeek?.days ?? [])
+  const [loading, setLoading] = useState(!hasInitialData)
+  const [stats, setStats] = useState(initialStats)
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(initialSelectedIdx)
+  // Track which weekOffset has been initialized server-side to skip redundant fetch
+  const [initializedOffset] = useState(hasInitialData ? weekOffset : null)
 
   useEffect(() => {
+    // Skip client fetch if server already provided data for this weekOffset
+    if (weekOffset === initializedOffset) return
+
     setLoading(true)
     fetch(`/api/athlete/calendar?weekOffset=${weekOffset}`)
       .then(r => r.json())
@@ -71,7 +92,6 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
           total: training.length,
         })
 
-        // Auto-select today if current week, otherwise first day with a session
         if (isCurrentWeek) {
           setSelectedIdx(todayIdx)
         } else {
@@ -81,7 +101,7 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [weekOffset])
+  }, [weekOffset, initializedOffset])
 
   const progressPct = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0
 
@@ -138,13 +158,22 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
             )
           })}
         </div>
-        {/* Detail card — mobile */}
+        {/* Mobile: session detail for selected day */}
         {selectedDay && (
-          <MobileDotDetail day={selectedDay} />
+          <MobileSelectedDayCard day={selectedDay} isToday={selectedIdx === todayWeekIdx && isCurrentWeek} />
         )}
       </div>
-      {/* Desktop: rich card columns */}
+      {/* Desktop: progress bar + rich card columns */}
       <div className="hidden sm:block">
+        {/* Progress bar — green fill proportional to completed sessions (Figma Barra-Progreso) */}
+        {stats.total > 0 && (
+          <div className="h-[3px] rounded-full bg-gray-200 mb-2">
+            <div
+              className="h-[3px] rounded-full bg-[#22c55e] transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        )}
         <WeekDayStrip
           cells={cells}
           variant="cards"
@@ -162,6 +191,10 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
             completedCount={stats.completed}
             totalSessions={stats.total}
             isB2B={isB2B}
+            planPhase={planPhase}
+            planWeekNum={planWeekNum}
+            planTotalWeeks={planTotalWeeks}
+            coachName={coachName}
           />
         )}
       </div>
@@ -171,13 +204,17 @@ export default function DashboardCalendarStrip({ weekOffset, dashboardMode = 'FR
 
 // ── Detail card for selected day ──────────────────────────────────────────────
 
-function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions, isB2B = false }: {
+function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, totalSessions, isB2B = false, planPhase = null, planWeekNum = null, planTotalWeeks = null, coachName = null }: {
   day: CalendarDay
   dashboardMode: string
   firstName: string
   completedCount: number
   totalSessions: number
   isB2B?: boolean
+  planPhase?: string | null
+  planWeekNum?: number | null
+  planTotalWeeks?: number | null
+  coachName?: string | null
 }) {
   const { sport, gym, freeRun } = day
   const isRest = !!sport && sport.type === 'DESCANSO' && !gym
@@ -258,69 +295,208 @@ function SelectedDayDetail({ day, dashboardMode, firstName, completedCount, tota
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">
-      {/* Row 1: Emoji + name + CTAs */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{emoji}</span>
-          <p className="text-sm font-semibold text-gray-900">{sessionName}</p>
+      {/* Row 1: Accent bar + emoji + name — Buttons right (Figma layout) */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-2.5">
+          <div className="w-[3px] h-[50px] bg-[#1e3a5f] rounded-full shrink-0 mt-0.5" />
+          <span className="text-[28px] leading-none">{emoji}</span>
+          <div>
+            <p className="text-[18px] font-black text-gray-900 leading-tight">{sessionName}</p>
+            {/* PillsRow */}
+            <div className="flex gap-1.5 flex-wrap items-center mt-1.5">
+              {durationMin > 0 && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                  {durationMin} min
+                </span>
+              )}
+              {isSportPrimary && sport!.zoneTarget && sport!.zoneTarget !== 'N/A' && sport!.zoneTarget !== '—' && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Zona {sport!.zoneTarget}
+                </span>
+              )}
+              <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
+                {sessionCategory}
+              </span>
+              {rpe && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                  RPE {rpe}
+                </span>
+              )}
+              {isB2B && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 text-[#1e3a5f]">
+                  👤 COACH
+                </span>
+              )}
+              {isFreeRun && freeRun!.distanceKm && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                  {freeRun!.distanceKm} km
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isSportPrimary && (
-            <Link href="/plan" className="text-[11px] font-semibold text-[#1e3a5f] border border-gray-200 px-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
-              Ver plan →
-            </Link>
-          )}
-          {isGymPrimary && (
-            <Link href="/gym" className="text-[11px] font-semibold text-[#1e3a5f] border border-gray-200 px-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
+        {/* Buttons — right-aligned */}
+        <div className="flex items-center gap-2 shrink-0">
+          {(isSportPrimary || isGymPrimary) && (
+            <Link href={isSportPrimary ? '/plan' : '/gym'} className="text-[12px] font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
               Ver plan →
             </Link>
           )}
           {done ? (
-            <span className="flex items-center gap-1 text-white text-[11px] font-semibold bg-[#22c55e] px-3 py-1.5 rounded-xl">
-              <CheckCircle2 size={13} /> Completada
+            <span className="flex items-center gap-1 text-white text-[12px] font-semibold bg-[#22c55e] px-4 py-2 rounded-xl">
+              <CheckCircle2 size={14} /> Completada
             </span>
           ) : (
-            <Link href={isGymPrimary ? '/gym/session' : '/log/run'} className="text-[11px] font-semibold text-white bg-[#ea580c] px-3 py-1.5 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap">
+            <Link href={isGymPrimary ? '/gym/session' : '/log/run'} className="text-[12px] font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap">
               Realizar sesión →
             </Link>
           )}
         </div>
       </div>
-      {/* Row 2: Pills */}
-      <div className="flex gap-1.5 flex-wrap items-center mt-2">
-        {durationMin > 0 && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-            {durationMin} min
+      {/* BadgesRow — phase + week + completion/coach (Figma BadgesRow) */}
+      {(totalSessions > 0 || planPhase) && (
+        <div className="flex gap-1.5 items-center mt-2.5 ml-[15px]">
+          {planPhase && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-[#1e3a5f] text-white">
+              Fase {planPhase}
+            </span>
+          )}
+          {planWeekNum && planTotalWeeks && (
+            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-gray-100 text-gray-600">
+              Semana {planWeekNum}/{planTotalWeeks}
+            </span>
+          )}
+          {totalSessions > 0 && (
+            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-gray-100 text-gray-600">
+              {completedCount}/{totalSessions} completadas
+            </span>
+          )}
+          {isB2B && coachName && (
+            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-gray-100 text-gray-600">
+              Coach: {coachName}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Mobile selected-day card (replaces TodaySessionMobile — synced with CalendarStrip) ──
+
+function MobileSelectedDayCard({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
+  const { sport, gym, freeRun } = day
+  const isRest = !!sport && sport.type === 'DESCANSO' && !gym
+  const hasSport = !!sport && sport.type !== 'DESCANSO'
+  const hasGym = !!gym
+  const hasFree = !!freeRun
+  const hasSession = hasSport || hasGym || hasFree
+
+  // Rest day
+  if (isRest && !hasGym) {
+    return (
+      <div className="bg-white rounded-[20px] p-[18px] flex items-center gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <span className="text-[28px]">😴</span>
+        <div>
+          <p className="text-[15px] font-semibold text-gray-900">Día de descanso</p>
+          <p className="text-[13px] text-gray-500 mt-0.5">Recupera bien hoy</p>
+        </div>
+      </div>
+    )
+  }
+
+  // No session at all
+  if (!hasSession) {
+    return (
+      <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="h-[3px] bg-[#ea580c]" />
+        <div className="px-4 pt-3.5 pb-3.5 space-y-2">
+          <span className="text-[10px] font-semibold text-[#ea580c] tracking-widest uppercase">
+            {isToday ? '● HOY' : `● ${WEEK_DAYS_SHORT[day.weekIdx].toUpperCase()}`}
           </span>
-        )}
-        {isSportPrimary && sport!.zoneTarget && sport!.zoneTarget !== 'N/A' && sport!.zoneTarget !== '—' && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-            Zona {sport!.zoneTarget}
+          <div className="flex items-center gap-2.5">
+            <span className="text-[28px]">🎯</span>
+            <span className="text-[28px] font-black text-[#1e3a5f] tracking-tight leading-none">Sin sesión</span>
+          </div>
+          <p className="text-[15px] font-semibold text-gray-900">Sin sesión planificada</p>
+          <p className="text-[12px] text-gray-500">Registra tu entrenamiento</p>
+          <div className="pt-2">
+            <Link href="/log/run" className="block bg-[#ea580c] text-white text-[13px] font-semibold text-center py-2.5 rounded-[10px]">
+              Registrar actividad →
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine primary session
+  const isSportPrimary = hasSport
+  const isGymPrimary = hasGym && !hasSport
+
+  const sessionType = isSportPrimary ? sport!.type : isGymPrimary ? 'FUERZA' : freeRun!.type
+  const sessionName = isSportPrimary
+    ? (SESSION_NAMES[sport!.type] ?? sport!.type.replace(/_/g, ' '))
+    : isGymPrimary
+    ? (gym!.templateName ?? gym!.label)
+    : (SESSION_NAMES[freeRun!.type] ?? freeRun!.type.replace(/_/g, ' '))
+
+  const emoji = isSportPrimary
+    ? (SESSION_ICONS[sport!.type] ?? '🏃')
+    : isGymPrimary ? '💪' : (SESSION_ICONS[freeRun!.type] ?? '🏃')
+
+  const durationMin = isSportPrimary
+    ? sport!.durationMin
+    : isGymPrimary ? (gym!.durationMin ?? 0) : (freeRun!.durationMin ?? 0)
+
+  const done = isSportPrimary ? sport!.done : isGymPrimary ? gym!.done : true
+  const zone = isSportPrimary ? sport!.zoneTarget : null
+  const detailText = isSportPrimary ? sport!.detailText : isGymPrimary ? gym!.label : 'Sesión libre'
+
+  const accentColor = 'bg-[#22c55e]'
+
+  return (
+    <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+      <div className={`h-[3px] ${accentColor}`} />
+      <div className="px-4 pt-3.5 pb-3.5 space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-semibold text-[#ea580c] tracking-widest uppercase">
+            {isToday ? '● HOY' : `● ${WEEK_DAYS_SHORT[day.weekIdx].toUpperCase()}`}
           </span>
-        )}
-        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-          {sessionCategory}
-        </span>
-        {rpe && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-            RPE {rpe}
+          {done ? (
+            <span className="bg-green-500 text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-lg">Completada</span>
+          ) : zone && zone !== 'N/A' ? (
+            <span className="bg-green-100 text-green-700 text-[11px] font-semibold px-2 py-0.5 rounded-lg">
+              Zona {zone}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[28px]">{done ? '✓' : emoji}</span>
+          <span className="text-[28px] font-black text-[#1e3a5f] tracking-tight leading-none">
+            {durationMin > 0 ? `${durationMin} min` : sessionName}
           </span>
+        </div>
+        <p className="text-[15px] font-semibold text-gray-900">{sessionName}</p>
+        {detailText && (
+          <p className="text-[12px] text-gray-500">{detailText}</p>
         )}
-        {isB2B && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-[#1e3a5f]">
-            👤 COACH
-          </span>
-        )}
-        {isFreeRun && freeRun!.distanceKm && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-            {freeRun!.distanceKm} km
-          </span>
-        )}
-        {totalSessions > 0 && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-            {completedCount}/{totalSessions} completadas
-          </span>
-        )}
+        <div className="pt-2">
+          {done ? (
+            <Link href={isGymPrimary ? '/gym/history' : '/progress'}
+              className="block bg-[#1e3a5f] text-white text-[13px] font-semibold text-center py-2.5 rounded-[10px]">
+              Ver resumen →
+            </Link>
+          ) : (
+            <Link href={isGymPrimary ? '/gym/session' : isSportPrimary ? `/log/run?sessionId=${sport!.sessionId}&type=${sport!.type}&duration=${sport!.durationMin}&zone=${sport!.zoneTarget}` : '/log/run'}
+              className="block bg-[#1e3a5f] text-white text-[13px] font-semibold text-center py-2.5 rounded-[10px]">
+              {isGymPrimary ? 'Ir al Gym →' : 'Iniciar →'}
+            </Link>
+          )}
+        </div>
+        <Link href="/log/run" className="block text-center text-[12px] font-medium text-gray-500">
+          + Agregar otra actividad
+        </Link>
       </div>
     </div>
   )
@@ -340,7 +516,7 @@ function MobileDotDetail({ day }: { day: CalendarDay }) {
     : sport && sport.type !== 'DESCANSO'
     ? (sport.detailText ?? sport.type.replace(/_/g, ' '))
     : gym
-    ? gym.label
+    ? (gym.templateName ?? gym.label)
     : freeRun!.type.replace(/_/g, ' ')
 
   const emoji = isRest

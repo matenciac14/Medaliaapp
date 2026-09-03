@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
 import TodayLogCard from '../../_components/TodayLogCard'
-import NutritionSnapshot from '../../_components/ui/NutritionSnapshot'
+import NutritionProgressCard from '../../_components/ui/NutritionProgressCard'
 import HydrationWidget from '../../nutrition/_components/HydrationWidget'
 import MealSlotsWidget from './MealSlotsWidget'
 import type { DashboardMode } from '../_lib/get-dashboard-data'
@@ -40,6 +40,12 @@ type Props = {
   // Nutrition consumed
   todayConsumed: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null
 
+  // Water (pre-fetched from server)
+  initialWater: { mlLogged: number; waterMlTarget: number }
+
+  // Meal slot logs (pre-fetched from server)
+  initialMealSlotLogs: { mealType: string; kcal: number }[]
+
   // Flags
   hasEverLogged: boolean
 }
@@ -65,7 +71,7 @@ function FreeMobileCards(props: Props) {
     <>
       {/* Nutricion */}
       {dashSummary.nutritionTarget && (
-        <NutritionSnapshot
+        <NutritionProgressCard
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG }}
           variant="compact"
           consumed={todayConsumed}
@@ -73,10 +79,10 @@ function FreeMobileCards(props: Props) {
       )}
 
       {/* Hidratación */}
-      <HydrationWidget />
+      <HydrationWidget initialMl={props.initialWater.mlLogged} initialTarget={props.initialWater.waterMlTarget} />
 
       {/* Alimentación */}
-      <MealSlotsWidget />
+      <MealSlotsWidget initialLogs={props.initialMealSlotLogs} />
 
       {/* Metricas — peso */}
       <FreeMetricsCard
@@ -113,7 +119,7 @@ function ProMobileCards(props: Props) {
     <>
       {/* Nutricion */}
       {dashSummary.nutritionTarget && (
-        <NutritionSnapshot
+        <NutritionProgressCard
           data={{ kcal: dashSummary.nutritionTarget.kcal, proteinG: dashSummary.nutritionTarget.proteinG, carbsG: dashSummary.nutritionTarget.carbsG, fatG: dashSummary.nutritionTarget.fatG, label: dashSummary.nutritionTarget.label }}
           variant="compact"
           consumed={todayConsumed}
@@ -121,10 +127,10 @@ function ProMobileCards(props: Props) {
       )}
 
       {/* Hidratación */}
-      <HydrationWidget />
+      <HydrationWidget initialMl={props.initialWater.mlLogged} initialTarget={props.initialWater.waterMlTarget} />
 
       {/* Alimentación */}
-      <MealSlotsWidget />
+      <MealSlotsWidget initialLogs={props.initialMealSlotLogs} />
 
       {/* MetricsCard consolidado */}
       <ProMetricsCard

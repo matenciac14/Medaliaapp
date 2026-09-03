@@ -63,7 +63,7 @@ function PlannedSessionCard({ session }: { session: TodaySessionData }) {
 
   return (
     <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-      <div className="h-[3px] bg-[#1e3a5f]" />
+      <div className="h-[3px] bg-[#22c55e]" />
       <div className="px-4 pt-3.5 pb-3.5 space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-[10px] font-semibold text-[#ea580c] tracking-widest uppercase">● HOY</span>
@@ -189,7 +189,7 @@ function FreeModeTodayCard({ todayRoutineDay }: { todayRoutineDay: RoutineDayCon
         <p className="text-[15px] font-semibold text-gray-900">Sin sesion planificada</p>
         <p className="text-[12px] text-gray-500">Registra tu entrenamiento de hoy</p>
         <div className="pt-2">
-          <Link href="/log/run" className="block bg-[#1e3a5f] text-white text-[13px] font-semibold text-center py-2.5 rounded-[10px]">
+          <Link href="/log/run" className="block bg-[#ea580c] text-white text-[13px] font-semibold text-center py-2.5 rounded-[10px]">
             Registrar actividad →
           </Link>
         </div>

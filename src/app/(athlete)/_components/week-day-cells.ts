@@ -14,15 +14,14 @@ export type WeekDayCell = {
   durationMin: number
   zoneTarget: string
   label: string | null
-  gymOverlay: string | null
-  gymOverlayDone: boolean
+  hasGym: boolean
 }
 
 /**
  * Converts CalendarDay[] (from /api/athlete/calendar) to WeekDayCell[].
  *
  * Coexistence rules:
- *   sport (non-rest) + gym  → sport is primary, gym is overlay with done state
+ *   sport (non-rest) + gym  → sport is primary, label appends "+ Gym"
  *   sport (non-rest) only   → sport is primary, no overlay
  *   DESCANSO + gym          → gym is primary (rest day means no sport, not no gym)
  *   gym only                → gym is primary (type=FUERZA)
@@ -46,18 +45,15 @@ export function calendarDaysToWeekCells(
     let durationMin = 0
     let zoneTarget = ''
     let label: string | null = null
-    let gymOverlay: string | null = null
-    let gymOverlayDone = false
+    let cellHasGym = false
 
     if (hasSport && hasGym) {
-      // Sport is primary; gym badge shown as overlay
-      sessionType    = sport!.type
-      done           = sport!.done
-      durationMin    = sport!.durationMin
-      zoneTarget     = sport!.zoneTarget ?? ''
-      label          = sport!.detailText?.slice(0, 28) ?? sport!.type
-      gymOverlay     = gym!.label
-      gymOverlayDone = gym!.done
+      sessionType = sport!.type
+      done        = sport!.done
+      durationMin = sport!.durationMin
+      zoneTarget  = sport!.zoneTarget ?? ''
+      label       = (sport!.detailText?.slice(0, 22) ?? sport!.type) + ' + Gym'
+      cellHasGym  = true
     } else if (hasSport) {
       sessionType = sport!.type
       done        = sport!.done
@@ -89,8 +85,7 @@ export function calendarDaysToWeekCells(
       durationMin,
       zoneTarget,
       label,
-      gymOverlay,
-      gymOverlayDone,
+      hasGym: cellHasGym,
     }
   })
 }
@@ -98,16 +93,17 @@ export function calendarDaysToWeekCells(
 export function buildWeekDayCells({
   weekDayDates,
   sessionMap,
-  gymOverlayMap,
+  gymDays,
   todayWeekIdx,
 }: {
   weekDayDates: Record<number, number>
   sessionMap: Record<number, { type: string; label: string; done: boolean; durationMin: number; zoneTarget: string }>
-  gymOverlayMap: Record<number, string>
+  gymDays: Set<number>
   todayWeekIdx: number
 }): WeekDayCell[] {
   return Array.from({ length: 7 }, (_, idx) => {
     const s = sessionMap[idx] ?? null
+    const hasGym = gymDays.has(idx)
     return {
       idx,
       dateNum: weekDayDates[idx] ?? 0,
@@ -116,9 +112,8 @@ export function buildWeekDayCells({
       done: s?.done ?? false,
       durationMin: s?.durationMin ?? 0,
       zoneTarget: s?.zoneTarget ?? '',
-      label: s?.label ?? null,
-      gymOverlay: gymOverlayMap[idx] ?? null,
-      gymOverlayDone: false,
+      label: s && hasGym ? (s.label.slice(0, 22) + ' + Gym') : s?.label ?? null,
+      hasGym,
     }
   })
 }

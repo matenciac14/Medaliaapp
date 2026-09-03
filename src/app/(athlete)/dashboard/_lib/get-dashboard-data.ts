@@ -4,6 +4,8 @@ import { selectActivePlan } from '@/lib/plan/active-plan'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 import { jsToOurDow } from '@/lib/core/date-utils'
 import { getDashboardSummary, type DashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import { buildCalendarWeek } from '@/infrastructure/db/calendar'
+import type { CalendarWeek } from '@/domain/calendar/calendar.types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,6 +131,15 @@ export type DashboardData = {
   // Dashboard-level flags
   hasEverLogged: boolean
   phaseDisplay: string
+
+  // Pre-computed calendar week (eliminates client-side fetch flash)
+  initialCalendarWeek: CalendarWeek
+
+  // Pre-fetched water log (eliminates zeros flash in HydrationWidget)
+  initialWater: { mlLogged: number; waterMlTarget: number }
+
+  // Pre-fetched meal slot logs (eliminates zeros flash in MealSlotsWidget)
+  initialMealSlotLogs: { mealType: string; kcal: number }[]
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -163,7 +174,7 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
   const todayDow = jsToOurDow(new Date().getDay())
 
   // ── Parallel DB fetch ────────────────────────────────────────────────────
-  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount, todayLogRaw, todayFoodLogs] = await Promise.all([
+  const [dbUser, activePlansRaw, coachRelationRaw, assignedWorkoutRaw, nutritionPlan, recentLogs, weeklyRoutine, recentGymSessions, pendingSuggestionsCount, todayLogRaw, todayFoodLogs, initialCalendarWeek, todayWaterLog] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -226,8 +237,24 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
       todayEnd.setHours(23, 59, 59, 999)
       return prisma.foodLog.findMany({
         where: { userId, date: { gte: todayStart, lte: todayEnd } },
-        select: { kcalLogged: true, proteinLogged: true, carbsLogged: true, fatLogged: true },
+        select: {
+          grams:         true,
+          mealType:      true,
+          kcalLogged:    true,
+          proteinLogged: true,
+          carbsLogged:   true,
+          fatLogged:     true,
+          food: { select: { kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
+        },
       })
+    })(),
+    // Pre-compute calendar week server-side (eliminates client-side fetch flash)
+    buildCalendarWeek(userId, rawWeekOffset),
+    // Pre-fetch water log (eliminates zeros flash in HydrationWidget)
+    (() => {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      return prisma.waterLog.findUnique({ where: { userId_date: { userId, date: todayStart } } })
     })(),
   ])
 
@@ -630,12 +657,15 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
     nutritionPlan: nutritionPlan ? { targetKcalHard: nutritionPlan.targetKcalHard } : null,
     todayConsumed: todayFoodLogs.length > 0
       ? todayFoodLogs.reduce(
-          (acc, l) => ({
-            kcal: acc.kcal + Math.round(l.kcalLogged ?? 0),
-            proteinG: acc.proteinG + Math.round(l.proteinLogged ?? 0),
-            carbsG: acc.carbsG + Math.round(l.carbsLogged ?? 0),
-            fatG: acc.fatG + Math.round(l.fatLogged ?? 0),
-          }),
+          (acc, l) => {
+            const r = l.grams / 100
+            return {
+              kcal:     acc.kcal     + Math.round(l.kcalLogged    ?? (l.food.kcalPer100g    * r)),
+              proteinG: acc.proteinG + Math.round(l.proteinLogged  ?? (l.food.proteinPer100g * r)),
+              carbsG:   acc.carbsG   + Math.round(l.carbsLogged    ?? (l.food.carbsPer100g   * r)),
+              fatG:     acc.fatG     + Math.round(l.fatLogged      ?? (l.food.fatPer100g     * r)),
+            }
+          },
           { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
         )
       : null,
@@ -646,5 +676,22 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
 
     hasEverLogged: dashSummary.hasEverLogged,
     phaseDisplay: phaseLabel(planData.phase),
+
+    initialCalendarWeek,
+
+    initialWater: {
+      mlLogged: todayWaterLog?.mlLogged ?? 0,
+      waterMlTarget: nutritionPlan?.waterMlTarget ?? 2000,
+    },
+
+    initialMealSlotLogs: (() => {
+      const kcalByType: Record<string, number> = {}
+      for (const fl of todayFoodLogs) {
+        const mealType = fl.mealType ?? 'SNACK'
+        const kcal = fl.kcalLogged ?? (fl.food.kcalPer100g * fl.grams / 100)
+        kcalByType[mealType] = (kcalByType[mealType] ?? 0) + kcal
+      }
+      return Object.entries(kcalByType).map(([mealType, kcal]) => ({ mealType, kcal: Math.round(kcal) }))
+    })(),
   }
 }

@@ -1,13 +1,4 @@
 import Link from 'next/link'
-import NutritionSnapshot from './ui/NutritionSnapshot'
-
-type NutritionInfo = {
-  targetKcal: number
-  intensityLabel: string
-  proteinG: number
-  carbsG: number
-  fatG: number
-}
 
 type CoachInfo = {
   name: string
@@ -16,21 +7,14 @@ type CoachInfo = {
 }
 
 type Props = {
-  nutrition: NutritionInfo | null
   coach: CoachInfo | null
   checkinPending: boolean
   hasActivePlan: boolean
 }
 
-export default function InfoBannerRow({ nutrition, coach, checkinPending, hasActivePlan }: Props) {
+export default function InfoBannerRow({ coach, checkinPending, hasActivePlan }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-      {/* Nutrición Hoy */}
-      <NutritionSnapshot
-        data={nutrition ? { kcal: nutrition.targetKcal, proteinG: nutrition.proteinG, carbsG: nutrition.carbsG, fatG: nutrition.fatG, label: nutrition.intensityLabel } : null}
-        variant="banner"
-      />
-
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
       {/* Coach */}
       {coach ? (
         <Link href="/messages" className="px-4 py-2.5 hover:bg-gray-50/50 transition-colors flex items-center gap-2.5">

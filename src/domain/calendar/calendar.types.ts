@@ -32,6 +32,7 @@ export type CalendarDay = {
   gym: {
     workoutDayId: string | null
     label: string         // WorkoutDay.label
+    templateName: string | null  // WorkoutTemplate.name (e.g. "Fuerza 5×5")
     gymSessionId: string | null
     done: boolean
     durationMin: number | null
