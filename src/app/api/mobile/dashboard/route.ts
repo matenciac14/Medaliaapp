@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/mobile-auth'
 import { rateLimitAsync } from '@/lib/rate-limit'
 import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import { calculateHRZones } from '@/domain/plan/formulas'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
 
@@ -16,12 +17,12 @@ export async function GET(req: NextRequest) {
 
   // PERF-01 Phase 1: plan metadata sin sesiones
   const todayUtc = new Date(); todayUtc.setHours(0, 0, 0, 0)
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation, pendingSuggestionsCount] = await Promise.all([
+  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation, pendingSuggestionsCount, todayFoodAgg, todayWaterLog] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
         name: true,
-        profile: { select: { weightKg: true, hrResting: true, weightGoalKg: true, sleepHoursAvg: true, sportDetails: true, sportGoal: true } },
+        profile: { select: { weightKg: true, hrResting: true, hrMax: true, weightGoalKg: true, sleepHoursAvg: true, sportDetails: true, sportGoal: true } },
       },
     }),
     prisma.trainingPlan.findFirst({
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       where: { userId },
       orderBy: { recordedAt: 'desc' },
       take: 12,
-      select: { recordedAt: true, weekNumber: true, weightKg: true, hrResting: true, sleepHours: true, energyLevel: true, hardestSessionRpe: true },
+      select: { recordedAt: true, weekNumber: true, weightKg: true, hrResting: true, sleepHours: true, energyLevel: true, hardestSessionRpe: true, stressLevel: true, motivationLevel: true },
     }),
     prisma.sessionLog.findMany({
       where: { userId },
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.assignedWorkout.findFirst({
       where: { athleteId: userId, isActive: true },
-      select: { template: { select: { name: true, days: { select: { dayOfWeek: true, isRestDay: true } } } } },
+      select: { template: { select: { name: true, days: { select: { dayOfWeek: true, isRestDay: true, label: true } } } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.weeklyRoutine.findUnique({ where: { userId } }),
@@ -79,6 +80,22 @@ export async function GET(req: NextRequest) {
     prisma.checkInSuggestion.count({
       where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
     }),
+    // UX-DASH-05a: totales nutricionales de hoy para NutritionProgressCard
+    // findMany en lugar de aggregate para manejar logs sin snapshot (kcalLogged null → calcular desde food)
+    prisma.foodLog.findMany({
+      where: { userId, date: todayUtc },
+      select: {
+        grams:         true,
+        mealType:      true,
+        kcalLogged:    true,
+        proteinLogged: true,
+        carbsLogged:   true,
+        fatLogged:     true,
+        food: { select: { kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
+      },
+    }),
+    // PERF-02: water data for HydrationWidget — avoid independent fetch
+    prisma.waterLog.findUnique({ where: { userId_date: { userId, date: todayUtc } }, select: { mlLogged: true } }),
   ])
 
   // PERF-01 Phase 2: cargar solo la semana actual con sesiones completas
@@ -192,5 +209,53 @@ export async function GET(req: NextRequest) {
     workoutName: assignedWorkoutRaw?.template.name ?? null,
     justCompletedPlan,
     pendingSuggestionsCount,
+    todayFoodTotals: (() => {
+      let kcal = 0, proteinG = 0, carbsG = 0, fatG = 0
+      for (const fl of todayFoodAgg) {
+        const r = fl.grams / 100
+        // Preferir snapshot; fallback a cálculo en runtime para logs sin snapshot (backward compat)
+        kcal     += fl.kcalLogged    ?? (fl.food.kcalPer100g    * r)
+        proteinG += fl.proteinLogged ?? (fl.food.proteinPer100g * r)
+        carbsG   += fl.carbsLogged   ?? (fl.food.carbsPer100g   * r)
+        fatG     += fl.fatLogged     ?? (fl.food.fatPer100g     * r)
+      }
+      return {
+        kcal:     Math.round(kcal),
+        proteinG: Math.round(proteinG * 10) / 10,
+        carbsG:   Math.round(carbsG   * 10) / 10,
+        fatG:     Math.round(fatG     * 10) / 10,
+      }
+    })(),
+    // PERF-02: pre-hydrate water + meal slots to avoid independent fetches
+    waterData: {
+      mlLogged: todayWaterLog?.mlLogged ?? 0,
+      waterMlTarget: nutritionPlan?.waterMlTarget ?? 2000,
+    },
+    mealSlotLogs: (() => {
+      const kcalByType: Record<string, number> = {}
+      for (const fl of todayFoodAgg) {
+        const mealType = fl.mealType ?? 'SNACK'
+        const kcal = fl.kcalLogged ?? (fl.food.kcalPer100g * fl.grams / 100)
+        kcalByType[mealType] = (kcalByType[mealType] ?? 0) + kcal
+      }
+      return Object.entries(kcalByType).map(([mealType, kcal]) => ({ mealType, kcal: Math.round(kcal) }))
+    })(),
+    checkInData: (() => {
+      const ci = checkIns[0]
+      if (!ci) return null
+      return {
+        energyLevel:     ci.energyLevel     ?? null,
+        sleepHours:      ci.sleepHours      ?? null,
+        stressLevel:     ci.stressLevel     ?? null,
+        motivationLevel: ci.motivationLevel ?? null,
+        recordedAt:      ci.recordedAt.toISOString(),
+      }
+    })(),
+    hrZones: (() => {
+      const hrMax = user?.profile?.hrMax ?? null
+      if (!hrMax) return null
+      const hrResting = user?.profile?.hrResting ?? 0
+      return calculateHRZones(hrMax, hrResting)
+    })(),
   })
 }
