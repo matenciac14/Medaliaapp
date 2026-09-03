@@ -19,6 +19,7 @@ export type AthleteData = {
   name: string | null
   email: string
   createdAt: Date
+  onboardingCompleted: boolean
 }
 
 export type HealthProfileData = {
@@ -35,23 +36,53 @@ export type HealthProfileData = {
   ftp: number | null
 } | null
 
+export type SessionLogData = {
+  rpe: number | null
+  distanceKm: number | null
+  durationMin: number | null
+  hrAvg: number | null
+  paceSecPerKm: number | null
+}
+
+export type GymLogData = {
+  rpe: number | null
+  durationMin: number | null
+  completed: boolean
+  totalSets: number
+  totalVolume: number
+  exerciseCount: number
+  prs: { name: string; kg: number }[]
+}
+
+export type WorkoutDayData = {
+  label: string
+  muscleGroups: string[]
+  exerciseCount: number
+  totalSets: number
+}
+
+export type PlanSessionData = {
+  id: string
+  dayOfWeek: number
+  type: string
+  durationMin: number
+  detailText: string | null
+  zoneTarget: string | null
+  coachNote: string | null
+  structure: string | null
+  intensity: string
+  date: Date | null
+  log: SessionLogData | null
+  gymLog: GymLogData | null
+  workoutDay: WorkoutDayData | null
+}
+
 export type PlanWeekData = {
   weekNumber: number
   phase: string
   focusDescription: string | null
   isRecoveryWeek: boolean
-  sessions: {
-    id: string
-    dayOfWeek: number
-    type: string
-    durationMin: number
-    detailText: string | null
-    zoneTarget: string | null
-    coachNote: string | null
-    structure: string | null
-    intensity: string
-    date: Date | null
-  }[]
+  sessions: PlanSessionData[]
 }
 
 export type ActivePlanData = {
@@ -110,11 +141,19 @@ export type PRRecord = {
   date: Date
 }
 
+export type GymRoutineDayData = {
+  label: string
+  dayOfWeek: number
+  muscleGroups: string[]
+  exercises: { name: string; sets: number; repsScheme: string }[]
+}
+
 export type GymRoutineData = {
   name: string
   goal: string | null
   daysPerWeek: number
   lastSessionDate: Date | null
+  days: GymRoutineDayData[]
 } | null
 
 export type AthleteStatus = 'ACTIVE' | 'PAUSED'
@@ -577,7 +616,7 @@ export default function AthleteDetailClient({
 
       {/* Athlete header */}
       <div className="flex items-start justify-between gap-4 mb-5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
             style={{ backgroundColor: '#1e3a5f' }}
@@ -586,9 +625,9 @@ export default function AthleteDetailClient({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+              <h1 className="text-2xl font-bold" style={{ color: '#1f2d3d' }}>{displayName}</h1>
               <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                 style={
                   athleteStatus === 'ACTIVE'
                     ? { backgroundColor: '#dcfce7', color: '#15803d' }
@@ -598,25 +637,22 @@ export default function AthleteDetailClient({
                 {athleteStatus === 'ACTIVE' ? 'Activo' : 'Pausado'}
               </span>
               {healthProfile?.sport && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                  {healthProfile.sport === 'RUNNING' ? 'Running' : healthProfile.sport === 'STRENGTH' ? 'Fuerza' : healthProfile.sport}
+                <span className="text-xs font-medium px-2.5 py-0.5 rounded-full" style={{ backgroundColor: '#f0f1f3', color: '#4a5568' }}>
+                  {healthProfile.sport === 'RUNNING' ? '🏃 Running' : healthProfile.sport === 'STRENGTH' ? '🏋️ Gym' : healthProfile.sport}
                   {healthProfile.experienceLevel && ` · ${healthProfile.experienceLevel === 'BEGINNER' ? 'Principiante' : healthProfile.experienceLevel === 'INTERMEDIATE' ? 'Intermedio' : healthProfile.experienceLevel === 'ADVANCED' ? 'Avanzado' : healthProfile.experienceLevel}`}
                 </span>
               )}
             </div>
+            <p className="text-sm mt-0.5" style={{ color: '#8c99a6' }}>
+              {athlete.email} · Cliente desde {new Date(athlete.createdAt).toLocaleDateString('es', { month: 'short', year: 'numeric' })}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm text-gray-500">{athlete.email}</p>
-            <p className="text-xs text-gray-400">
-              Cliente desde {new Date(athlete.createdAt).toLocaleDateString('es', { month: 'short', year: 'numeric' })}
-            </p>
-          </div>
           <button
             onClick={handleToggleStatus}
             disabled={togglingStatus}
-            className="shrink-0 text-xs font-medium px-4 py-2 rounded-lg border transition-colors disabled:opacity-50"
+            className="shrink-0 text-sm font-medium px-5 py-2 rounded-lg border transition-colors disabled:opacity-50"
             style={
               athleteStatus === 'ACTIVE'
                 ? { borderColor: '#d1d5db', color: '#6b7280' }
@@ -629,16 +665,16 @@ export default function AthleteDetailClient({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 mb-5 overflow-x-auto scrollbar-none">
+      <div className="flex gap-6 border-b mb-5" style={{ borderColor: '#e5e7eb' }}>
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className="px-3 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap shrink-0"
+            className="pb-2.5 text-sm transition-colors whitespace-nowrap shrink-0"
             style={
               activeTab === t
-                ? { color: '#1e3a5f', borderBottom: '2px solid #1e3a5f', marginBottom: '-1px' }
-                : { color: '#6b7280' }
+                ? { color: '#1e3a5f', fontWeight: 700, borderBottom: '3px solid #1e3a5f', marginBottom: '-1px' }
+                : { color: '#8c99a6', fontWeight: 500 }
             }
           >
             {t}
@@ -675,6 +711,7 @@ export default function AthleteDetailClient({
       {activeTab === 'Plan' && (
         <PlanTab
           athleteId={athleteId}
+          athlete={athlete}
           activePlan={activePlan}
           healthProfile={healthProfile}
           creatingPlan={creatingPlan}
@@ -710,6 +747,7 @@ export default function AthleteDetailClient({
           handleSaveNote={handleSaveNote}
           handleSaveSession={handleSaveSession}
           coachSpecialties={coachSpecialties}
+          gymRoutine={gymRoutine}
         />
       )}
 

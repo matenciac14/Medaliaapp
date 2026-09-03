@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Bot, Map, BarChart2, DollarSign, Bell, ClipboardList, Link2, Timer, Dumbbell, Apple, ToggleLeft } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, HelpCircle, UserPlus, Map, BarChart2, DollarSign, Bell, ClipboardList, Link2, Timer, Dumbbell, Apple, ToggleLeft } from 'lucide-react'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
@@ -28,7 +28,6 @@ export function AdminSidebarClient() {
     { href: '/admin/exercises',     label: 'Ejercicios',     icon: Dumbbell        },
     { href: '/admin/nutrition/proposals', label: 'Propuestas alim.', icon: Apple },
     { href: '/admin/features',      label: 'Features',       icon: ToggleLeft      },
-    { href: '/admin/ai',            label: s.ai,             icon: Bot             },
     { href: '/admin/roadmap',       label: s.roadmap,        icon: Map             },
     { href: '/admin/settings',      label: s.settings,       icon: Settings        },
     { href: '/admin/help',          label: s.help,           icon: HelpCircle      },

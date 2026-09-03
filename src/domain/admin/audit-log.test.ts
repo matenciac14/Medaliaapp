@@ -18,10 +18,6 @@ describe('labelForAction', () => {
     expect(labelForAction(ADMIN_ACTIONS.CHANGE_PLAN)).toBe('Cambio de plan')
   })
 
-  it('UPDATE_AI_PROFILE → "Actualización AI"', () => {
-    expect(labelForAction(ADMIN_ACTIONS.UPDATE_AI_PROFILE)).toBe('Actualización AI')
-  })
-
   it('acción desconocida → devuelve la acción tal cual', () => {
     expect(labelForAction('CUSTOM_ACTION')).toBe('CUSTOM_ACTION')
   })
@@ -67,15 +63,6 @@ describe('describeAuditEntry', () => {
     expect(desc).toContain('?')
   })
 
-  it('UPDATE_AI_PROFILE ignora target y meta', () => {
-    const desc = describeAuditEntry({
-      action: ADMIN_ACTIONS.UPDATE_AI_PROFILE,
-      meta: null,
-      targetUserName: null,
-    })
-    expect(desc).toBe('Actualizó el perfil de IA del sistema')
-  })
-
   it('acción desconocida devuelve "Acción: X"', () => {
     const desc = describeAuditEntry({
       action: 'MY_CUSTOM_ACTION',
@@ -99,11 +86,6 @@ describe('colorForAction', () => {
   it('CHANGE_PLAN → naranja', () => {
     const c = colorForAction(ADMIN_ACTIONS.CHANGE_PLAN)
     expect(c.bg).toContain('orange')
-  })
-
-  it('UPDATE_AI_PROFILE → púrpura', () => {
-    const c = colorForAction(ADMIN_ACTIONS.UPDATE_AI_PROFILE)
-    expect(c.bg).toContain('purple')
   })
 
   it('DELETE_USER → rojo', () => {

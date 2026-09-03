@@ -9,6 +9,7 @@ import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
 import { getSessionIntensity } from '@/lib/plan/intensity'
 import { selectActivePlan } from '@/lib/plan/active-plan'
 import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { calculateHRZones } from '@/domain/plan/formulas'
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -31,7 +32,7 @@ export default async function PlanPage() {
 
       const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
 
-      return <PlanEmptyClient isB2B={session.user.isB2B ?? false} showGymBuilder={!isRunner} />
+      return <PlanEmptyClient isB2B={session.user.isB2B ?? false} nutritionTarget={null} />
     }
   }
 
@@ -42,6 +43,9 @@ export default async function PlanPage() {
   let nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null = null
   let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
   let profileData: { weightKg: number | null; weightGoalKg: number | null; sport: string | null } | null = null
+  let checkInData: { energyLevel: number | null; sleepHours: number | null; stressLevel: number | null; motivationLevel: number | null; recordedAt: string } | null = null
+  let bodyMeasures: { waistCm: number | null; hipsCm: number | null; armsCm: number | null; thighsCm: number | null } | null = null
+  let hrZones: { z1: { min: number; max: number }; z2: { min: number; max: number }; z3: { min: number; max: number }; z4: { min: number; max: number }; z5: { min: number; max: number } } | null = null
 
   try {
     const [activePlansData, nutritionPlanData, profileDataRaw, checkIns, oldestCheckIn] = await Promise.all([
@@ -63,13 +67,13 @@ export default async function PlanPage() {
       prisma.nutritionPlan.findUnique({ where: { userId } }),
       prisma.healthProfile.findUnique({
         where: { userId },
-        select: { weightKg: true, weightGoalKg: true, sport: true },
+        select: { weightKg: true, weightGoalKg: true, sport: true, hrMax: true, hrResting: true },
       }),
       prisma.weeklyCheckIn.findMany({
         where: { userId },
         orderBy: { recordedAt: 'desc' },
         take: 2,
-        select: { recordedAt: true, weightKg: true },
+        select: { recordedAt: true, weightKg: true, energyLevel: true, sleepHours: true, stressLevel: true, motivationLevel: true, waistCm: true, hipsCm: true, armsCm: true, thighsCm: true },
       }),
       prisma.weeklyCheckIn.findFirst({
         where: { userId, weightKg: { not: null } },
@@ -89,6 +93,64 @@ export default async function PlanPage() {
       }).catch(() => {})
     }
 
+    // Shared data — available for active, completed, and empty states
+    if (profileData?.weightKg) {
+      const curr = profileData.weightKg
+      const goal = profileData.weightGoalKg ?? null
+      const startWeight = oldestCheckIn?.weightKg ?? null
+      let progressPct: number | null = null
+      if (startWeight && goal && startWeight !== goal) {
+        progressPct = Math.min(100, Math.max(0,
+          Math.round(((startWeight - curr) / (startWeight - goal)) * 100)
+        ))
+      }
+      let weeklyChange: number | null = null
+      if (checkIns.length >= 2 && checkIns[0].weightKg && checkIns[1].weightKg) {
+        const daysDiff = Math.max(1,
+          (new Date(checkIns[0].recordedAt).getTime() - new Date(checkIns[1].recordedAt).getTime()) / 86400000
+        )
+        weeklyChange = Math.round(((checkIns[0].weightKg - checkIns[1].weightKg) / daysDiff) * 7 * 10) / 10
+      }
+      weightData = { currentKg: curr, goalKg: goal, progressPct, weeklyChange }
+    }
+
+    if (checkIns.length > 0) {
+      const latest = checkIns[0]
+      checkInData = {
+        energyLevel: latest.energyLevel,
+        sleepHours: latest.sleepHours,
+        stressLevel: latest.stressLevel,
+        motivationLevel: latest.motivationLevel,
+        recordedAt: latest.recordedAt.toISOString(),
+      }
+      if (latest.waistCm || latest.hipsCm || latest.armsCm || latest.thighsCm) {
+        bodyMeasures = {
+          waistCm: latest.waistCm,
+          hipsCm: latest.hipsCm,
+          armsCm: latest.armsCm,
+          thighsCm: latest.thighsCm,
+        }
+      }
+    }
+
+    if (profileDataRaw?.hrMax) {
+      hrZones = calculateHRZones(profileDataRaw.hrMax, profileDataRaw.hrResting ?? 0)
+    }
+
+    // Nutrition target for non-active states (REST intensity)
+    if (!nutritionTarget && nutritionPlanData) {
+      const nt = getDailyNutritionTarget(null, {
+        targetKcalHard: nutritionPlanData.targetKcalHard,
+        targetKcalEasy: nutritionPlanData.targetKcalEasy,
+        targetKcalRest: nutritionPlanData.targetKcalRest,
+        proteinG: nutritionPlanData.proteinG,
+        carbsHardG: nutritionPlanData.carbsHardG,
+        carbsEasyG: nutritionPlanData.carbsEasyG,
+        fatG: nutritionPlanData.fatG,
+      })
+      nutritionTarget = { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label }
+    }
+
     if (activePlanData) {
       const currentWeek = getPlanWeekNumber(activePlanData.startDate, activePlanData.totalWeeks)
 
@@ -96,7 +158,6 @@ export default async function PlanPage() {
       const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay() // 1=Mon..7=Sun
       const currentWeekData = activePlanData.weeks.find(w => w.weekNumber === currentWeek)
       const todaySession = currentWeekData?.sessions.find(s => s.dayOfWeek === todayDow)
-      // Prefer stored intensity field (set by generator.ts); fall back to derived value
       const todayIntensity = (todaySession?.intensity as 'HIGH' | 'MODERATE' | 'LOW' | null) ?? (todaySession?.type ? getSessionIntensity(todaySession.type) : null)
 
       if (nutritionPlanData) {
@@ -110,26 +171,6 @@ export default async function PlanPage() {
           fatG: nutritionPlanData.fatG,
         })
         nutritionTarget = { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label }
-      }
-
-      if (profileData?.weightKg) {
-        const curr = profileData.weightKg
-        const goal = profileData.weightGoalKg ?? null
-        const startWeight = oldestCheckIn?.weightKg ?? null
-        let progressPct: number | null = null
-        if (startWeight && goal && startWeight !== goal) {
-          progressPct = Math.min(100, Math.max(0,
-            Math.round(((startWeight - curr) / (startWeight - goal)) * 100)
-          ))
-        }
-        let weeklyChange: number | null = null
-        if (checkIns.length >= 2 && checkIns[0].weightKg && checkIns[1].weightKg) {
-          const daysDiff = Math.max(1,
-            (new Date(checkIns[0].recordedAt).getTime() - new Date(checkIns[1].recordedAt).getTime()) / 86400000
-          )
-          weeklyChange = Math.round(((checkIns[0].weightKg - checkIns[1].weightKg) / daysDiff) * 7 * 10) / 10
-        }
-        weightData = { currentKg: curr, goalKg: goal, progressPct, weeklyChange }
       }
 
       plan = {
@@ -235,14 +276,27 @@ export default async function PlanPage() {
           lastWeekSessions={lastWeekSessions}
           phases={uniquePhases}
           currentWeek={lastCompleted.totalWeeks}
+          nutritionTarget={nutritionTarget}
+          weightData={weightData}
+          checkInData={checkInData}
+          bodyMeasures={bodyMeasures}
+          hrZones={hrZones}
         />
       )
     }
 
-    return <PlanEmptyClient isB2B={isB2B} showGymBuilder={!planPageIsRunner} />
+    return <PlanEmptyClient isB2B={isB2B} nutritionTarget={nutritionTarget} />
   }
 
   return (
-    <PlanClient plan={plan} weeks={weeks} nutritionTarget={nutritionTarget} weightData={weightData} />
+    <PlanClient
+      plan={plan}
+      weeks={weeks}
+      nutritionTarget={nutritionTarget}
+      weightData={weightData}
+      checkInData={checkInData}
+      bodyMeasures={bodyMeasures}
+      hrZones={hrZones}
+    />
   )
 }

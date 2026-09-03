@@ -22,29 +22,39 @@ const SLOTS: { key: string; label: string; emoji: string }[] = [
   { key: 'SNACK',     label: 'Snack',    emoji: '🍎' },
 ]
 
-export default function MealSlotsWidget() {
+type Props = {
+  initialLogs?: { mealType: string; kcal: number }[]
+}
+
+export default function MealSlotsWidget({ initialLogs }: Props = {}) {
+  const hasInitial = initialLogs !== undefined
+
+  function buildSlots(logs: { mealType: string; kcal: number }[]): MealSlot[] {
+    const kcalByType: Record<string, number> = {}
+    for (const log of logs) {
+      kcalByType[log.mealType] = (kcalByType[log.mealType] ?? 0) + (log.kcal ?? 0)
+    }
+    return SLOTS.map(s => ({
+      ...s,
+      kcal: kcalByType[s.key] ? Math.round(kcalByType[s.key]) : null,
+    }))
+  }
+
   const [slots, setSlots] = useState<MealSlot[]>(
-    SLOTS.map(s => ({ ...s, kcal: null }))
+    hasInitial ? buildSlots(initialLogs) : SLOTS.map(s => ({ ...s, kcal: null }))
   )
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!hasInitial)
 
   useEffect(() => {
+    if (hasInitial) return
     fetch('/api/nutrition/log')
       .then(r => r.json())
       .then(data => {
-        const logs: { mealType: string; kcal: number }[] = data.logs ?? []
-        const kcalByType: Record<string, number> = {}
-        for (const log of logs) {
-          kcalByType[log.mealType] = (kcalByType[log.mealType] ?? 0) + (log.kcal ?? 0)
-        }
-        setSlots(SLOTS.map(s => ({
-          ...s,
-          kcal: kcalByType[s.key] ? Math.round(kcalByType[s.key]) : null,
-        })))
+        setSlots(buildSlots(data.logs ?? []))
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [hasInitial])
 
   const loggedCount = slots.filter(s => s.kcal !== null).length
 

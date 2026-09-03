@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import WeekNavBar from '../../_components/WeekNavBar'
+import PageTopBar from '../../_components/PageTopBar'
 import { getGreeting, formatDate } from '../_lib/dashboard-helpers'
 
 type HeaderRowProps = {
@@ -24,14 +25,14 @@ export function MobileHeader({ firstName, timezone, weekLabel, weekOffset, canGo
           </h1>
           <div className="flex items-center gap-2.5 shrink-0">
             {streakDays >= 2 ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border border-[#ea580c]/50 text-[13px]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#ea580c]/50 bg-[#ea580c]/10 text-[11px] font-semibold">
                 <span className="text-[11px]">🔥</span>
-                <span className="font-bold text-[#ea580c]">{streakDays}</span>
+                <span className="text-[#ea580c]">{streakDays} {streakDays === 1 ? 'día' : 'días'}</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border border-white/20 text-[13px]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 bg-white/5 text-[11px] font-semibold">
                 <span className="text-[11px] opacity-50 grayscale">🔥</span>
-                <span className="font-bold text-white/30">{streakDays}</span>
+                <span className="text-white/40">{streakDays} días</span>
               </span>
             )}
             <Link href="/notifications" className="relative">
@@ -58,20 +59,34 @@ export function MobileHeader({ firstName, timezone, weekLabel, weekOffset, canGo
   )
 }
 
-export function DesktopHeader({ firstName, timezone, streakDays }: { firstName: string; timezone: string; streakDays: number }) {
+function StreakBadge({ streakDays }: { streakDays: number }) {
+  const isActive = streakDays >= 2
   return (
-    <div className="hidden sm:flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-          {getGreeting(timezone)}, {firstName}
-        </h1>
-        <p className="text-sm text-gray-400 mt-0.5">{formatDate()}</p>
-      </div>
-      {streakDays >= 2 && (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/60 text-[11px] font-semibold text-[#ea580c] mt-1">
-          🔥 {streakDays} días · racha activa
-        </span>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold ${
+      isActive
+        ? 'bg-orange-50 border border-orange-200/60 text-[#ea580c]'
+        : 'bg-gray-100 border border-gray-200 text-gray-400'
+    }`}>
+      <span className={isActive ? '' : 'grayscale opacity-50'}>🔥</span>
+      {streakDays} {streakDays === 1 ? 'día' : 'días'} · {isActive ? 'racha activa' : 'sin racha'}
+    </span>
+  )
+}
+
+export function DesktopHeader({ firstName, timezone, streakDays, weekLabel, weekOffset, canGoPrev, canGoNext }: HeaderRowProps) {
+  return (
+    <PageTopBar
+      title={`${getGreeting(timezone)}, ${firstName}`}
+      subtitle={formatDate()}
+      center={
+        <WeekNavBar
+          weekLabel={weekLabel}
+          weekOffset={weekOffset}
+          canGoPrev={canGoPrev}
+          canGoNext={canGoNext}
+        />
+      }
+      right={<StreakBadge streakDays={streakDays} />}
+    />
   )
 }

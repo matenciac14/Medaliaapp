@@ -181,7 +181,7 @@ export default function Home() {
               </a>
               <div className="flex items-center gap-2 mt-1 anim-fade-in delay-500">
                 <span className="text-[#ea580c] text-xs">★★★★★</span>
-                <span className="text-blue-200 text-xs">8 entrenadores ya reservaron su lugar</span>
+                <span className="text-blue-200 text-xs">Coaches en LatAm ya reservaron su lugar</span>
               </div>
             </div>
           </div>
@@ -350,8 +350,7 @@ export default function Home() {
           <RevealOnScroll delay={150}>
             <div className="inline-flex items-center gap-2 bg-[#1e3a5f]/06 px-6 py-3.5 rounded-full">
               <p className="text-[#1e3a5f] font-semibold text-base">
-                Medaliq reemplaza tu Excel y tus WhatsApps con{" "}
-                <span className="text-[#ea580c]">un solo panel.</span>
+{l.pain.bridge}
               </p>
             </div>
           </RevealOnScroll>
@@ -870,7 +869,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-sm text-blue-100 leading-relaxed">
                 <span className="text-[#ea580c] font-semibold">Resumen: </span>
-                {l.features.aiMsg}
+                {l.features.summaryMsg}
               </div>
             </div>
           </RevealOnScroll>
@@ -981,10 +980,10 @@ export default function Home() {
                 <div className="inline-flex items-center gap-2 bg-[#ea580c]/20 px-3 py-1 rounded-full mb-5 w-fit">
                   <span className="text-[#ea580c] text-xs font-bold">Pro · $9.99/mes</span>
                 </div>
-                <h3 className="text-white font-bold text-lg mb-3">Con inteligencia real</h3>
+                <h3 className="text-white font-bold text-lg mb-3">Con estructura real</h3>
                 <ul className="space-y-3 text-blue-200 text-sm flex-1">
                   {[
-                    'Plan periodizado calculado para tu cuerpo',
+                    'Plan periodizado + seguimiento semanal',
                     'Nutrición diferente cada día según la sesión',
                     'Check-in semanal que ajusta la carga automáticamente',
                     'Métricas de progreso semana a semana',

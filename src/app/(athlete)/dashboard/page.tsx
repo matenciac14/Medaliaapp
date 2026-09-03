@@ -3,7 +3,6 @@ import { ChevronRight } from 'lucide-react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import InstallPWABanner from '@/app/_components/InstallPWABanner'
-import WeekNavBar from '../_components/WeekNavBar'
 import DashboardCalendarStrip from '../_components/DashboardCalendarStrip'
 import InfoBannerRow from '../_components/InfoBannerRow'
 import WeeklySummaryCard from '../_components/WeeklySummaryCard'
@@ -12,9 +11,11 @@ import PlanCompletionCard from '../_components/PlanCompletionCard'
 import { getDashboardData } from './_lib/get-dashboard-data'
 import { PHASE_COLORS } from './_lib/dashboard-helpers'
 import { MobileHeader, DesktopHeader } from './_components/HeaderRow'
-import TodaySessionMobile from './_components/TodaySessionMobile'
 import HeroCardsRow from './_components/HeroCardsRow'
 import MobileCardsSection from './_components/MobileCardsSection'
+import DesktopRecentActivity from './_components/DesktopRecentActivity'
+import MealSlotsWidget from './_components/MealSlotsWidget'
+import HydrationWidget from '../nutrition/_components/HydrationWidget'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ weekOffset?: string }> }) {
   const session = await auth()
@@ -65,72 +66,34 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Link>
       )}
 
-      {/* Desktop header */}
-      <DesktopHeader firstName={d.firstName} timezone={d.timezone} streakDays={d.streakDays} />
+      {/* Mobile: flat CalendarStrip before TodaySession per Figma */}
+      <div className="sm:hidden">
+        <DashboardCalendarStrip
+          weekOffset={d.weekOffset}
+          dashboardMode={d.dashboardMode}
+          firstName={d.firstName}
+          weekLabel={d.dashboardMode === 'TRAINING' ? `Semana ${d.selectedWeekNum || d.planData.currentWeek} · ${d.weekDateLabel}` : d.weekDateLabel}
+          mobileCount={d.dashboardMode === 'TRAINING' && d.totalTraining > 0 ? `${d.completedCount}/${d.totalTraining} sesiones` : d.dashboardMode === 'FREE' ? `${d.weekSessionCount} registros` : ''}
+          isB2B={d.isB2B}
+          planPhase={d.phaseDisplay}
+          planWeekNum={d.selectedWeekNum || d.planData.currentWeek}
+          planTotalWeeks={d.planData.totalWeeks}
+        />
+      </div>
 
-      {/* Desktop: Hero KPI cards */}
-      <HeroCardsRow
-        dashboardMode={d.dashboardMode}
-        weekSessionCount={d.weekSessionCount}
-        weekSessionTarget={d.weekSessionTarget}
-        streakDays={d.streakDays}
-        assignedWorkoutName={d.assignedWorkout?.template.name ?? null}
-        isRecomp={d.isRecomp}
-        currentWeight={d.currentWeight}
-        targetWeight={d.targetWeight}
-        weeklyWeightChange={d.weeklyWeightChange}
-        weightProgressPct={d.weightProgressPct}
-        raceDays={d.raceDays}
-        raceDate={d.raceDate}
-        planData={d.planData}
-        activePlanId={d.activePlanId}
-        phaseDisplay={d.phaseDisplay}
-        formStatus={d.formStatus}
-        formMessage={d.formMessage}
-        lastCheckIn={d.lastCheckIn}
-        formCheckInDate={d.formCheckInDate}
-        dashSummary={d.dashSummary}
-        nutritionPlan={d.nutritionPlan}
-      />
-
-      <div className="space-y-5">
-        <div className="space-y-4">
-
-          {/* Mobile: flat CalendarStrip before TodaySession per Figma */}
-          <div className="sm:hidden">
-            <DashboardCalendarStrip
-              weekOffset={d.weekOffset}
-              dashboardMode={d.dashboardMode}
-              firstName={d.firstName}
-              weekLabel={d.dashboardMode === 'TRAINING' ? `Semana ${d.selectedWeekNum || d.planData.currentWeek} · ${d.weekDateLabel}` : d.weekDateLabel}
-              mobileCount={d.dashboardMode === 'TRAINING' && d.totalTraining > 0 ? `${d.completedCount}/${d.totalTraining} sesiones` : d.dashboardMode === 'FREE' ? `${d.weekSessionCount} registros` : ''}
-              isB2B={d.isB2B}
-            />
-          </div>
-
-          {/* Week section — desktop only (card wrapper) */}
-          <section className="hidden sm:block">
-            <div className="mb-3 hidden sm:flex items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Esta semana</h2>
-              {d.dashboardMode === 'TRAINING' ? (
-                <WeekNavBar
-                  weekLabel={`Semana ${d.selectedWeekNum || d.planData.currentWeek} · ${d.weekDateLabel}`}
-                  weekOffset={d.weekOffset}
-                  canGoPrev={d.selectedWeekNum > 1}
-                  canGoNext={true}
-                />
-              ) : (
-                <WeekNavBar weekLabel={d.weekDateLabel} weekOffset={d.weekOffset} canGoPrev={true} canGoNext={true} />
-              )}
-              {d.dashboardMode === 'TRAINING' && d.totalTraining > 0 && (
-                <span className="text-xs text-gray-400 shrink-0">{d.completedCount} / {d.totalTraining} completadas</span>
-              )}
-              {d.dashboardMode === 'FREE' && (
-                <span className="text-xs text-gray-400 shrink-0">{d.weekSessionCount} completadas</span>
-              )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-3">
+      {/* Week section — desktop: TopBar + CalendarStrip + Session in one card (Figma "Card — Esta Semana") */}
+      <section className="hidden sm:block">
+        <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <DesktopHeader
+            firstName={d.firstName}
+            timezone={d.timezone}
+            streakDays={d.streakDays}
+            weekLabel={d.dashboardMode === 'TRAINING' ? `Semana ${d.selectedWeekNum || d.planData.currentWeek} · ${d.weekDateLabel}` : d.weekDateLabel}
+            weekOffset={d.weekOffset}
+            canGoPrev={d.dashboardMode === 'TRAINING' ? d.selectedWeekNum > 1 : true}
+            canGoNext={true}
+          />
+          <div className="px-3 pb-3">
               {d.dashboardMode === 'RECOVERY' && d.lastCompletedPlanInfo && (
                 <div className="mb-4">
                   <PlanCompletionCard
@@ -151,29 +114,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 weekLabel={d.dashboardMode === 'TRAINING' ? `Semana ${d.selectedWeekNum || d.planData.currentWeek} · ${d.weekDateLabel}` : d.weekDateLabel}
                 mobileCount={d.dashboardMode === 'TRAINING' && d.totalTraining > 0 ? `${d.completedCount}/${d.totalTraining} sesiones` : d.dashboardMode === 'FREE' ? `${d.weekSessionCount} registros` : ''}
                 isB2B={d.isB2B}
+                planPhase={d.phaseDisplay}
+                planWeekNum={d.selectedWeekNum || d.planData.currentWeek}
+                planTotalWeeks={d.planData.totalWeeks}
+                coachName={d.coachRelation?.coach.name ?? null}
+                initialCalendarWeek={d.initialCalendarWeek}
               />
-
-              {d.dashboardMode === 'FREE' && !d.hasEverLogged && (
-                <div className="hidden sm:block mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-10 bg-[#ea580c] rounded-full shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Tu espacio de entrenamiento está listo, {d.firstName}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Anota tu actividad de hoy y empieza a construir tu historial.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Link href="/find-coach" className="text-xs font-semibold text-[#1e3a5f] border border-gray-200 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
-                        Conecta con un entrenador →
-                      </Link>
-                      <Link href="/gym" className="text-xs font-semibold text-white bg-[#ea580c] px-4 py-2 rounded-xl hover:bg-[#d14d07] transition-colors whitespace-nowrap">
-                        Arma tu rutina →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {d.dashboardMode !== 'FREE' && (
                 <DailySessionCard
@@ -197,25 +143,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   coachName={d.coachRelation?.coach.name ?? null}
                 />
               )}
-            </div>
-          </section>
+          </div>
+        </div>
+      </section>
 
-          {/* Mobile: TodaySession — after CalendarStrip per Figma */}
-          <TodaySessionMobile
-            dashboardMode={d.dashboardMode}
-            todaySession={d.todaySession}
-            todayRoutineDay={d.todayRoutineDay}
-            hasGymToday={d.hasGymToday}
-            gymDoneToday={d.gymDoneToday}
-            assignedWorkoutName={d.assignedWorkout?.template.name ?? null}
-            lastCompletedPlanInfo={d.lastCompletedPlanInfo ? {
-              name: d.lastCompletedPlanInfo.name,
-              totalWeeks: d.lastCompletedPlanInfo.totalWeeks,
-              sessionsLogged: d.lastCompletedPlanInfo.sessionsLogged,
-              sessionsTotal: d.lastCompletedPlanInfo.sessionsTotal,
-            } : null}
-            recoveryDaysSinceEnd={d.recoveryDaysSinceEnd}
-          />
+      {/* Desktop: Hero KPI cards — below week section per Figma */}
+      <HeroCardsRow
+        dashboardMode={d.dashboardMode}
+        weekSessionCount={d.weekSessionCount}
+        weekSessionTarget={d.weekSessionTarget}
+        streakDays={d.streakDays}
+        currentWeight={d.currentWeight}
+        targetWeight={d.targetWeight}
+        weeklyWeightChange={d.weeklyWeightChange}
+        weightProgressPct={d.weightProgressPct}
+        dashSummary={d.dashSummary}
+        nutritionPlan={d.nutritionPlan}
+        todayConsumed={d.todayConsumed}
+      />
+
+      <div className="space-y-5">
+        <div className="space-y-4">
+
+          {/* Mobile: TodaySession — now rendered inside CalendarStrip (synced with selected day) */}
 
           {/* Mobile cards */}
           <MobileCardsSection
@@ -239,19 +189,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             weekSessionTarget={d.weekSessionTarget}
             streakDays={d.streakDays}
             todayConsumed={d.todayConsumed}
+            initialWater={d.initialWater}
+            initialMealSlotLogs={d.initialMealSlotLogs}
           />
 
           {/* Desktop: Info banner row */}
           {d.dashboardMode !== 'FREE' && (
             <div className="hidden sm:block">
               <InfoBannerRow
-                nutrition={d.dashSummary.nutritionTarget ? {
-                  targetKcal: d.dashSummary.nutritionTarget.kcal,
-                  intensityLabel: d.dashSummary.nutritionTarget.label,
-                  proteinG: d.dashSummary.nutritionTarget.proteinG,
-                  carbsG: d.dashSummary.nutritionTarget.carbsG,
-                  fatG: d.dashSummary.nutritionTarget.fatG,
-                } : null}
                 coach={d.coachRelation ? {
                   name: d.coachRelation.coach.name ?? 'Tu coach',
                   headline: d.coachRelation.coach.coachProfile?.headline ?? d.coachRelation.coach.coachProfile?.specialties?.[0] ?? null,
@@ -291,11 +236,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </Link>
           )}
 
-          {/* Desktop: Weekly summary */}
-          {d.dashboardMode !== 'FREE' && (
-            <h2 className="hidden sm:block text-xs font-bold text-gray-900 uppercase tracking-wider">Resumen rápido</h2>
-          )}
-          <div className="hidden sm:block">
+          {/* Desktop: Meal slots + Water widget (per Figma "Tu alimentacion hoy") */}
+          <div className="hidden sm:grid sm:grid-cols-[1fr_220px] gap-3">
+            <MealSlotsWidget initialLogs={d.initialMealSlotLogs} />
+            <HydrationWidget initialMl={d.initialWater.mlLogged} initialTarget={d.initialWater.waterMlTarget} vertical />
+          </div>
+
+          {/* Desktop: Resumen Semanal + Actividad Reciente — side by side per Figma */}
+          <div className="hidden sm:grid sm:grid-cols-2 gap-3">
             <WeeklySummaryCard
               lastCheckIn={d.lastCheckIn ? {
                 hardestSessionRpe: d.lastCheckIn.hardestSessionRpe ?? null,
@@ -312,6 +260,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               weekSessionTarget={d.weekSessionTarget}
               weekSessionDelta={d.weekSessionDelta}
               avgKcalPerDay={d.avgKcalPerDay}
+            />
+            <DesktopRecentActivity
+              recentActivity={d.dashSummary.recentActivity}
+              hasEverLogged={d.dashSummary.hasEverLogged}
+              streakDays={d.streakDays}
             />
           </div>
 

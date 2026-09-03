@@ -18,20 +18,10 @@ export type Translations = {
       subtitle: string
       cta1: string
       cta2: string
-      stat1Label: string
-      stat2Label: string
-      stat3Label: string
     }
     profiles: {
       title: string
       subtitle: string
-      card1Title: string
-      card1Desc: string
-      card2Title: string
-      card2Desc: string
-      card3Title: string
-      card3Desc: string
-      // Tab-based profile switcher
       tab1Label: string
       tab1Title: string
       tab1Desc: string
@@ -40,14 +30,6 @@ export type Translations = {
       tab2Title: string
       tab2Desc: string
       tab2Gets: string
-      tab3Label: string
-      tab3Title: string
-      tab3Desc: string
-      tab3Gets: string
-      tab4Label: string
-      tab4Title: string
-      tab4Desc: string
-      tab4Gets: string
     }
     howItWorks: {
       title: string
@@ -58,10 +40,6 @@ export type Translations = {
       step2Desc: string
       step3Title: string
       step3Desc: string
-      step4Title: string
-      step4Desc: string
-      step5Title: string
-      step5Desc: string
     }
     features: {
       title: string
@@ -73,7 +51,7 @@ export type Translations = {
       sessionLabel: string
       weekLabel: string
       sessionTitle: string
-      aiMsg: string
+      summaryMsg: string
     }
     forCoaches: {
       badge: string
@@ -87,22 +65,6 @@ export type Translations = {
       card3Desc: string
       cta: string
     }
-    coachSection: {
-      title: string
-      subtitle: string
-      aiCoachName: string
-      aiCoachAvail: string
-      aiCoachDesc: string
-      aiCoachFrom: string
-      viewProfile: string
-      coachRunTitle: string
-      coachRunSub: string
-      coachGymTitle: string
-      coachGymSub: string
-      comingSoon: string
-      viewAll: string
-      viewAllLink: string
-    }
     pricing: {
       title: string
       subtitle: string
@@ -110,8 +72,6 @@ export type Translations = {
       freePeriod: string
       proLabel: string
       proPeriod: string
-      coachLabel: string
-      coachPeriod: string
       popular: string
       freeCta: string
       proCta: string
@@ -206,7 +166,7 @@ export type Translations = {
       progress: string
       log: string
       gym: string
-      aiCoach: string
+      coach: string
       coachPanel: string
       profile: string
       help: string
@@ -221,7 +181,6 @@ export type Translations = {
       subscriptions: string
       newAthlete: string
       activations: string
-      ai: string
       roadmap: string
     }
     common: {

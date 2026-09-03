@@ -24,7 +24,7 @@ type NutritionPlan = { targetKcalHard: number; targetKcalEasy: number; targetKca
 type RecentLogInput = { completedAt: Date; freeSessionType?: string | null; durationMin?: number | null; rpe?: number | null; plannedSession?: { type: string } | null }
 
 export type AssignedWorkoutInput = {
-  template: { days: { dayOfWeek: number; isRestDay: boolean }[] }
+  template: { days: { dayOfWeek: number; isRestDay: boolean; label?: string }[] }
 } | null
 
 export type GymSessionInput = { date: Date; durationMin?: number | null; templateName?: string | null }
@@ -59,6 +59,7 @@ export type WeekSessionSlot = {
   id: string | null
   durationMin: number | null
   zoneTarget: string | null
+  gymLabel: string | null
 }
 
 export type DashboardSummary = {
@@ -165,7 +166,10 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         completed: !!session.log,
       }
     }
-  } else if (assignedWorkout) {
+  }
+
+  // Fallback: if no running session today (no plan OR plan says DESCANSO), check gym
+  if (!todaySession && assignedWorkout) {
     const todayGymDay = assignedWorkout.template.days.find(d => d.dayOfWeek === todayDow)
     if (todayGymDay && !todayGymDay.isRestDay) {
       todaySession = {
@@ -175,7 +179,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
         intensity: 'MODERATE',
         durationMin: 60,
         zoneTarget: '',
-        detailText: '',
+        detailText: todayGymDay.label ?? '',
         completed: (input.gymCompletionDates ?? []).some(
           d => new Date(d).toDateString() === new Date().toDateString(),
         ),
@@ -188,7 +192,7 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
   let totalTraining = 0
   let planData: DashboardSummary['planData'] = null
   const weekSessions: WeekSessionSlot[] = Array.from({ length: 7 }, (_, i) => ({
-    dayIndex: i, type: null, done: false, isToday: i + 1 === todayDow, id: null, durationMin: null, zoneTarget: null,
+    dayIndex: i, type: null, done: false, isToday: i + 1 === todayDow, id: null, durationMin: null, zoneTarget: null, gymLabel: null,
   }))
 
   if (activePlan) {
@@ -211,9 +215,8 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     }
   }
 
-  // ── GYM users: populate weekSessions from assignedWorkout ────────
-  if (!activePlan && assignedWorkout) {
-    // Determine which days of the current week have gym completions
+  // ── GYM: overlay assignedWorkout on empty slots (matches web buildCalendarWeek) ──
+  if (assignedWorkout) {
     const thisWeekMonday = new Date(); thisWeekMonday.setHours(0, 0, 0, 0)
     const currDow = thisWeekMonday.getDay() === 0 ? 6 : thisWeekMonday.getDay() - 1
     thisWeekMonday.setDate(thisWeekMonday.getDate() - currDow)
@@ -225,17 +228,19 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     }
 
     for (const day of assignedWorkout.template.days) {
-      const idx = day.dayOfWeek - 1  // our DOW 1=Mon → index 0
-      if (idx >= 0 && idx < 7) {
-        weekSessions[idx].type = day.isRestDay ? 'DESCANSO' : 'FUERZA'
-        const done = !day.isRestDay && gymDoneThisWeek.has(idx)
-        weekSessions[idx].done = done
-        weekSessions[idx].durationMin = day.isRestDay ? null : 60
-        if (!day.isRestDay) {
-          totalTraining++
-          if (done) completedCount++
-        }
-      }
+      const idx = day.dayOfWeek - 1
+      if (idx < 0 || idx >= 7) continue
+      // Only fill empty slots — don't overwrite sport sessions
+      if (weekSessions[idx].type && weekSessions[idx].type !== 'DESCANSO') continue
+      if (day.isRestDay) continue
+
+      weekSessions[idx].type = 'FUERZA'
+      const done = gymDoneThisWeek.has(idx)
+      weekSessions[idx].done = done
+      weekSessions[idx].durationMin = 60
+      weekSessions[idx].gymLabel = day.label ?? null
+      totalTraining++
+      if (done) completedCount++
     }
   }
 
@@ -291,18 +296,6 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
     activePlan?.name?.toLowerCase().includes('body')
   )
 
-  // ── Form status ───────────────────────────────────────────────────
-  let formStatus: 'good' | 'moderate' | 'rest' = 'good'
-  let formMessage = 'Sin datos de check-in'
-  if (lastCheckIn) {
-    const energy = lastCheckIn.energyLevel ?? 3
-    const rpe = lastCheckIn.hardestSessionRpe ?? 5
-    const sleep = (lastCheckIn.sleepHours ?? 7) >= 6.5
-    if (energy >= 4 && rpe <= 7 && sleep) { formStatus = 'good'; formMessage = 'Listo para entrenar fuerte' }
-    else if (energy >= 3 && rpe <= 8) { formStatus = 'moderate'; formMessage = 'Carga moderada recomendada' }
-    else { formStatus = 'rest'; formMessage = 'Prioriza la recuperación hoy' }
-  }
-
   // ── Weight progress ───────────────────────────────────────────────
   const currentWeight = lastCheckIn?.weightKg ?? user?.profile?.weightKg ?? null
   const targetWeight = user?.profile?.weightGoalKg ?? null
@@ -336,6 +329,11 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
       volumeDeltaPct = Math.round(((currentVolume - prevVolume) / prevVolume) * 100)
     }
   }
+
+  // ── Form status (uses todaySession, volume, mode — must come after them) ──
+  const { formStatus, formMessage } = computeFormStatus({
+    lastCheckIn, todayMidnight, todaySession, mode, volumeDeltaPct,
+  })
 
   // ── Recent activity (merge SessionLog + GymSession) ─────────────────────
   const logEntries = recentLogs.map(l => ({
@@ -406,4 +404,69 @@ export function getDashboardSummary(input: DashboardInput): DashboardResult {
       hasEverLogged,
     },
   }
+}
+
+// ── Form status computation ──────────────────────────────────────────────────
+
+const CHECKIN_EXPIRY_DAYS = 7
+const VOLUME_SPIKE_THRESHOLD = 20 // % de aumento que sube la alerta
+
+function computeFormStatus(ctx: {
+  lastCheckIn: CheckIn | null
+  todayMidnight: Date
+  todaySession: DashboardSummary['todaySession']
+  mode: 'TRAINING' | 'RECOVERY' | 'FREE' | 'GYM'
+  volumeDeltaPct: number | null
+}): { formStatus: 'good' | 'moderate' | 'rest'; formMessage: string } {
+  const { lastCheckIn, todayMidnight, todaySession, mode, volumeDeltaPct } = ctx
+
+  // Recovery mode — siempre descanso, independiente del check-in
+  if (mode === 'RECOVERY') {
+    return { formStatus: 'rest', formMessage: 'Periodo de recuperacion post-plan' }
+  }
+
+  // Sin check-in nunca
+  if (!lastCheckIn) {
+    return { formStatus: 'good', formMessage: 'Sin datos de check-in' }
+  }
+
+  // Check-in expirado (>7 días) — no hacer recomendaciones con datos viejos
+  const daysAgo = Math.floor(
+    (todayMidnight.getTime() - new Date(lastCheckIn.recordedAt).getTime()) / 86_400_000,
+  )
+  if (daysAgo > CHECKIN_EXPIRY_DAYS) {
+    return { formStatus: 'good', formMessage: 'Haz tu check-in semanal' }
+  }
+
+  // Check-in fresco — calcular estado base con energía + RPE + sueño
+  const energy = lastCheckIn.energyLevel ?? 3
+  const rpe = lastCheckIn.hardestSessionRpe ?? 5
+  const sleep = (lastCheckIn.sleepHours ?? 7) >= 6.5
+
+  let formStatus: 'good' | 'moderate' | 'rest'
+  if (energy >= 4 && rpe <= 7 && sleep) formStatus = 'good'
+  else if (energy >= 3 && rpe <= 8) formStatus = 'moderate'
+  else formStatus = 'rest'
+
+  // Spike de volumen semanal (>20%) con fatiga moderada → subir a rest
+  if (formStatus === 'moderate' && volumeDeltaPct !== null && volumeDeltaPct > VOLUME_SPIKE_THRESHOLD) {
+    formStatus = 'rest'
+  }
+
+  // Mensaje contextual según si hoy hay sesión o es día libre
+  const isRestDay = !todaySession
+  const formMessage = buildFormMessage(formStatus, isRestDay)
+
+  return { formStatus, formMessage }
+}
+
+function buildFormMessage(status: 'good' | 'moderate' | 'rest', isRestDay: boolean): string {
+  if (isRestDay) {
+    if (status === 'rest') return 'Dia libre — prioriza descansar'
+    if (status === 'moderate') return 'Dia libre — recupera energia'
+    return 'Dia libre — buen momento para descansar'
+  }
+  if (status === 'good') return 'Listo para entrenar fuerte'
+  if (status === 'moderate') return 'Controla la intensidad hoy'
+  return 'Entrena suave o considera descansar'
 }

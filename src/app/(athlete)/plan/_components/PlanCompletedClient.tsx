@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import PlanCompletionCard from '../../_components/PlanCompletionCard'
+import PageTopBar from '../../_components/PageTopBar'
 
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -18,6 +19,8 @@ const PHASE_LABELS: Record<string, string> = {
   SPECIFIC: 'ESPECÍF', PEAK: 'ESPECÍF', TAPER: 'AFIN.', RACE: 'AFIN.',
 }
 
+const PHASES_ALL = ['Base', 'Desarrollo', 'Específico', 'Afinamiento']
+
 type LastWeekSession = {
   dayOfWeek: number
   type: string
@@ -26,6 +29,12 @@ type LastWeekSession = {
   zone: string
   done: boolean
 }
+
+type NutritionTarget = { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string }
+type WeightData = { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null }
+type CheckInData = { energyLevel: number | null; sleepHours: number | null; stressLevel: number | null; motivationLevel: number | null; recordedAt: string }
+type BodyMeasures = { waistCm: number | null; hipsCm: number | null; armsCm: number | null; thighsCm: number | null }
+type HRZoneData = { z1: { min: number; max: number }; z2: { min: number; max: number }; z3: { min: number; max: number }; z4: { min: number; max: number }; z5: { min: number; max: number } }
 
 type Props = {
   isB2B: boolean
@@ -38,12 +47,18 @@ type Props = {
   lastWeekSessions: LastWeekSession[]
   phases: string[]
   currentWeek: number
+  nutritionTarget: NutritionTarget | null
+  weightData: WeightData | null
+  checkInData: CheckInData | null
+  bodyMeasures: BodyMeasures | null
+  hrZones: HRZoneData | null
 }
 
 export default function PlanCompletedClient({
   isB2B, planName, totalWeeks, sessionsLogged, sessionsTotal,
   recoveryDaysSinceEnd, completedAdherencePct, lastWeekSessions,
-  phases, currentWeek,
+  phases, currentWeek, nutritionTarget, weightData, checkInData,
+  bodyMeasures, hrZones,
 }: Props) {
   const sessionsByDow = new Map(lastWeekSessions.map(s => [s.dayOfWeek, s]))
 
@@ -143,6 +158,21 @@ export default function PlanCompletedClient({
           </div>
         </div>
 
+        {/* Phase progress — completado */}
+        <CompletedPhaseBar totalWeeks={totalWeeks} />
+
+        {/* Nutrición hoy */}
+        {nutritionTarget && <CompletedNutritionCard nt={nutritionTarget} />}
+
+        {/* Estado semanal */}
+        <CompletedEstadoSemana checkInData={checkInData} />
+
+        {/* Zonas FC */}
+        <CompletedZonasFC hrZones={hrZones} />
+
+        {/* Composición corporal */}
+        <CompletedBodyCard weightData={weightData} bodyMeasures={bodyMeasures} />
+
         {/* CTA card */}
         {isB2B ? (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-2">
@@ -160,23 +190,25 @@ export default function PlanCompletedClient({
             </a>
           </div>
         )}
+
+        {/* Check-in banner */}
+        <CompletedCheckInBanner recordedAt={checkInData?.recordedAt ?? null} />
       </div>
     </div>
 
     {/* ══════ DESKTOP (sm+) ══════ */}
     <div className="hidden sm:block px-4 py-6 md:px-8 max-w-7xl mx-auto">
-      {/* TopBar */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
-            Mi Plan
-          </h1>
-          <p className="text-[12px] text-gray-400 mt-0.5">{planName} · {totalWeeks} semanas</p>
-        </div>
-        <div className="flex items-center gap-2 text-green-600 text-[12px] font-bold">
-          <span>✓</span> PLAN COMPLETADO
-        </div>
-      </div>
+      {/* TopBar — unified PageTopBar */}
+      <PageTopBar
+        title="Mi Plan"
+        subtitle={`${planName} · ${totalWeeks} semanas`}
+        right={
+          <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-3.5 py-1.5 rounded-[20px] text-[11px] font-semibold whitespace-nowrap">
+            ✓ PLAN COMPLETADO
+          </span>
+        }
+      />
+      <div className="h-6" />
 
       {/* Calendar Strip — Last week of completed plan */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
@@ -292,6 +324,13 @@ export default function PlanCompletedClient({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <CompletedEstadoSemana checkInData={checkInData} />
+            <CompletedZonasFC hrZones={hrZones} />
+          </div>
+
+          <CompletedBodyCard weightData={weightData} bodyMeasures={bodyMeasures} />
+
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
             {isB2B ? (
               <>
@@ -312,7 +351,167 @@ export default function PlanCompletedClient({
           </div>
         </div>
       </div>
+
+      {/* Nutrition + CheckIn — full width */}
+      {nutritionTarget && <CompletedNutritionCard nt={nutritionTarget} />}
+      <CompletedCheckInBanner recordedAt={checkInData?.recordedAt ?? null} />
     </div>
     </>
+  )
+}
+
+// ── Shared sub-components for completed state ─────────────────────────
+
+function CompletedPhaseBar({ totalWeeks }: { totalWeeks: number }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[13px] font-bold text-gray-900">Progreso del plan</p>
+        <p className="text-[11px] text-gray-400">Plan completado {totalWeeks}/{totalWeeks} · 100%</p>
+      </div>
+      <div className="flex gap-1.5">
+        {PHASES_ALL.map(p => (
+          <div key={p} className="flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold bg-[#1e3a5f] text-white">
+            {'✓ '}{p}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CompletedNutritionCard({ nt }: { nt: NutritionTarget }) {
+  const macros = [
+    { label: 'Proteína', value: `${nt.proteinG} g`, color: '#3b82f6' },
+    { label: 'Carbos', value: `${nt.carbsG} g`, color: '#22c55e' },
+    { label: 'Grasas', value: `${nt.fatG} g`, color: '#f97316' },
+  ]
+  return (
+    <a href="/nutrition" className="block bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mt-4 sm:mt-0">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Nutrición hoy</p>
+      <div className="flex items-end gap-6">
+        <div>
+          <span className="text-[28px] font-black text-gray-900 tracking-tight leading-none">{nt.kcal.toLocaleString('es')}</span>
+          <span className="text-[12px] text-gray-400 ml-1">kcal</span>
+        </div>
+        {macros.map(m => (
+          <div key={m.label} className="flex flex-col items-center gap-1">
+            <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: m.color }} />
+            <span className="text-[13px] font-bold text-gray-900">{m.value}</span>
+            <span className="text-[9px] text-gray-400">{m.label}</span>
+          </div>
+        ))}
+      </div>
+    </a>
+  )
+}
+
+function CompletedEstadoSemana({ checkInData }: { checkInData: CheckInData | null }) {
+  const { energyLevel, sleepHours, stressLevel, motivationLevel } = checkInData ?? {}
+  const items = [
+    { label: 'Energía', value: energyLevel ? `${energyLevel}/5` : '—', icon: '⚡' },
+    { label: 'Sueño', value: sleepHours ? `${sleepHours}h` : '—', icon: '😴' },
+    { label: 'Estrés', value: stressLevel ? `${stressLevel}/5` : '—', icon: '😤' },
+    { label: 'Motiv.', value: motivationLevel ? `${motivationLevel}/5` : '—', icon: '💪' },
+  ]
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <span className="text-[13px] font-bold text-gray-900 block mb-3">Tu estado esta semana</span>
+      <div className="flex gap-3">
+        {items.map(i => (
+          <div key={i.label} className="flex-1 text-center">
+            <span className="text-[16px] block mb-1">{i.icon}</span>
+            <span className="text-[14px] font-bold text-gray-900 block">{i.value}</span>
+            <span className="text-[9px] text-gray-400">{i.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CompletedZonasFC({ hrZones }: { hrZones: HRZoneData | null }) {
+  const defaultColors = ['#3b82f6', '#22c55e', '#f97316', '#ef4444', '#dc2626']
+  const zones = hrZones
+    ? [
+        { label: 'Z1', range: `${hrZones.z1.min}-${hrZones.z1.max}`, color: '#3b82f6' },
+        { label: 'Z2', range: `${hrZones.z2.min}-${hrZones.z2.max}`, color: '#22c55e' },
+        { label: 'Z3', range: `${hrZones.z3.min}-${hrZones.z3.max}`, color: '#f97316' },
+        { label: 'Z4', range: `${hrZones.z4.min}-${hrZones.z4.max}`, color: '#ef4444' },
+        { label: 'Z5', range: `${hrZones.z5.min}+`, color: '#dc2626' },
+      ]
+    : ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((l, i) => ({ label: l, range: '— bpm', color: defaultColors[i] }))
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <span className="text-[13px] font-bold text-gray-900 block mb-3">Zonas FC</span>
+      {!hrZones && <p className="text-[10px] text-gray-300 -mt-1 mb-2">Completa tu perfil con FC máx</p>}
+      <div className="flex gap-2">
+        {zones.map(z => (
+          <div key={z.label} className="flex-1 text-center">
+            <div className={cn('w-2.5 h-2.5 rounded-full mx-auto mb-1.5', !hrZones && 'opacity-30')} style={{ backgroundColor: z.color }} />
+            <span className="text-[11px] font-bold text-gray-900 block">{z.label}</span>
+            <span className={cn('text-[9px]', hrZones ? 'text-gray-400' : 'text-gray-300')}>{z.range}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CompletedBodyCard({ weightData, bodyMeasures }: { weightData: WeightData | null; bodyMeasures: BodyMeasures | null }) {
+  const currentKg = weightData?.currentKg ?? null
+  const goalKg = weightData?.goalKg ?? null
+  const hasData = currentKg != null || bodyMeasures != null
+  const measures = [
+    { label: 'Cintura', value: bodyMeasures?.waistCm },
+    { label: 'Cadera', value: bodyMeasures?.hipsCm },
+    { label: 'Brazo', value: bodyMeasures?.armsCm },
+    { label: 'Muslo', value: bodyMeasures?.thighsCm },
+  ]
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[13px] font-bold text-gray-900">Composición corporal</span>
+        {!hasData && <span className="text-[11px] text-gray-400">Sin datos</span>}
+      </div>
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="text-[24px] font-black text-gray-900 tracking-tight">
+          {currentKg != null ? `${currentKg} kg` : '— kg'}
+        </span>
+        {goalKg != null && <span className="text-[12px] text-gray-400">→ meta {goalKg} kg</span>}
+      </div>
+      <div className="flex gap-2">
+        {measures.map(m => (
+          <div key={m.label} className="flex-1 text-center">
+            <span className="text-[15px] font-bold text-gray-900">
+              {m.value != null ? `${m.value} cm` : '— cm'}
+            </span>
+            <p className="text-[9px] text-gray-400 mt-0.5">{m.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CompletedCheckInBanner({ recordedAt }: { recordedAt: string | null }) {
+  if (!recordedAt) {
+    return (
+      <a href="/checkin" className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-gray-500 transition-colors mt-2">
+        <span>📊</span>
+        <span>Sin check-ins registrados · Haz tu primer check-in semanal</span>
+      </a>
+    )
+  }
+  const d = new Date(recordedAt)
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  const label = `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`
+  return (
+    <a href="/checkin" className="flex items-center gap-2 text-[11px] text-gray-400 hover:text-gray-600 transition-colors mt-2">
+      <span>📊</span>
+      <span>Último check-in: {label}</span>
+    </a>
   )
 }

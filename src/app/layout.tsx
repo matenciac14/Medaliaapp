@@ -24,8 +24,8 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-const META_TITLE = 'Medaliq — Coaching deportivo inteligente'
-const META_DESCRIPTION = 'La plataforma de coaching deportivo para LatAm. Planes periodizados, nutrición y seguimiento en tiempo real.'
+const META_TITLE = 'Medaliq — Coaching y tracking deportivo'
+const META_DESCRIPTION = 'Plataforma de coaching y tracking deportivo para LatAm. Planes periodizados, nutrición y seguimiento para coaches y atletas.'
 const META_URL = 'https://medaliq.com'
 // opengraph-image.tsx en src/app/ genera la imagen dinámicamente en /opengraph-image
 const META_IMAGE = 'https://medaliq.com/opengraph-image'
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     title: META_TITLE,
     description: META_DESCRIPTION,
     siteName: 'Medaliq',
-    images: [{ url: META_IMAGE, width: 1200, height: 630, alt: 'Medaliq — Coaching deportivo inteligente' }],
+    images: [{ url: META_IMAGE, width: 1200, height: 630, alt: 'Medaliq — Coaching y tracking deportivo' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -108,11 +108,6 @@ export default async function RootLayout({
           name: 'Medaliq',
           url: META_URL,
           description: META_DESCRIPTION,
-          potentialAction: {
-            '@type': 'SearchAction',
-            target: { '@type': 'EntryPoint', urlTemplate: `${META_URL}/coaches?q={search_term_string}` },
-            'query-input': 'required name=search_term_string',
-          },
         }} />
         <Providers initialLocale={locale}>
           {children}

@@ -24,6 +24,7 @@ type Props = {
   hasGymToday: boolean
   gymDoneToday?: boolean
   todayGymDay: GymDay | null
+  // Plan context (kept for future use / callers still pass them)
   planPhase: string
   phaseDisplay: string
   phaseColors: Record<string, string>
@@ -33,17 +34,14 @@ type Props = {
   totalTraining?: number | null
   weekSessionCount?: number
   weekSessionTarget?: number
-  // B2B coach info
   isB2B?: boolean
   coachName?: string | null
 }
 
 export default function DailySessionCard({
-  dashboardMode, isCurrentWeek, todaySession, hasActivePlan,
-  hasGymToday, gymDoneToday = false, todayGymDay, planPhase, phaseDisplay, phaseColors,
-  selectedWeekNum, totalWeeks, completedCount, totalTraining,
+  dashboardMode, isCurrentWeek, todaySession,
+  hasGymToday, gymDoneToday = false, todayGymDay,
   weekSessionCount = 0, weekSessionTarget = 4,
-  isB2B = false, coachName,
 }: Props) {
   return (
     <>
@@ -104,29 +102,6 @@ export default function DailySessionCard({
           <Link href="/log/run" className="text-xs font-semibold text-gray-400 hover:text-[#1e3a5f] whitespace-nowrap">
             Registrar →
           </Link>
-        </div>
-      )}
-
-      {/* TRAINING: badges de fase + semana + completadas */}
-      {dashboardMode === 'TRAINING' && hasActivePlan && (
-        <div className="flex gap-2 flex-wrap items-center mt-2">
-          <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${phaseColors[planPhase] ?? 'bg-gray-100 text-gray-600'}`}>
-            Fase {phaseDisplay}
-          </span>
-          {selectedWeekNum != null && totalWeeks != null && (
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-              Semana {selectedWeekNum}/{totalWeeks}
-            </span>
-          )}
-          {isB2B && coachName ? (
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-              Coach: {coachName}
-            </span>
-          ) : completedCount != null && totalTraining != null ? (
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-              {completedCount}/{totalTraining} completadas
-            </span>
-          ) : null}
         </div>
       )}
     </>
