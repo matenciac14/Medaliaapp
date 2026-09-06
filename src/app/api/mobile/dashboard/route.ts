@@ -6,6 +6,7 @@ import { getDashboardSummary } from '@/domain/dashboard/get_dashboard_summary.us
 import { calculateHRZones } from '@/domain/plan/formulas'
 import { PlanStatus } from '@/generated/prisma/enums'
 import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { todayDowInTz } from '@/lib/core/date_utils'
 import {
   fetchCoreDashboardData,
   buildDashboardSummaryInput,
@@ -72,7 +73,9 @@ export async function GET(req: NextRequest) {
       }
     : null
 
-  const summaryInput = buildDashboardSummaryInput(core, activePlan, lastCompletedPlan)
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
+  const todayDow = todayDowInTz(tz)
+  const summaryInput = buildDashboardSummaryInput(core, activePlan, lastCompletedPlan, todayDow)
   const { summary, planIdToComplete } = getDashboardSummary(summaryInput)
 
   // When a plan just auto-completes, fetch stats to show the season-completed modal

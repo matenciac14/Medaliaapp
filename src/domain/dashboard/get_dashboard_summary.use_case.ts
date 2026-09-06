@@ -49,6 +49,7 @@ export type DashboardInput = {
   assignedWorkout?: AssignedWorkoutInput
   gymCompletionDates?: Date[]  // fechas de GymSession completadas — para streak
   recentGymSessions?: GymSessionInput[]  // gym sessions con detalle para recentActivity
+  todayDow?: number  // 1=Mon..7=Sun — timezone-aware, computed by caller
 }
 
 export type WeekSessionSlot = {
@@ -109,7 +110,7 @@ export type DashboardResult = {
 
 export function getDashboardSummary(input: DashboardInput): DashboardResult {
   const { user, activePlanRaw, lastCompletedPlan, checkIns, recentLogs, nutritionPlan, assignedWorkout } = input
-  const todayDow = jsToOurDow(new Date().getDay())
+  const todayDow = input.todayDow ?? jsToOurDow(new Date().getDay())
 
   // ── Plan lifecycle ────────────────────────────────────────────────
   let planIdToComplete: string | null = null

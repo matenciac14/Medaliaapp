@@ -411,7 +411,7 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
     ? { name: lastCompletedPlanInfo.name, endDate: lastCompletedPlanInfo.endDate }
     : null
 
-  const summaryInput = buildDashboardSummaryInput(core, activePlanForSummary, lastCompletedPlanForSummary)
+  const summaryInput = buildDashboardSummaryInput(core, activePlanForSummary, lastCompletedPlanForSummary, todayDow)
   const { summary: dashSummary } = getDashboardSummary(summaryInput)
 
   // ── Derived values ─────────────────────────────────────────────────────
