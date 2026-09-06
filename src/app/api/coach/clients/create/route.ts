@@ -6,7 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { sendAthleteWelcomeEmail } from '@/infrastructure/email/resend'
 import { nameSchema, emailSchema, parseBody } from '@/lib/validation'
-import { getCoachLimits, type CoachTier } from '@/domain/subscription/tier-features'
+import { getCoachLimits, type CoachTier } from '@/domain/subscription/tier_features'
 
 const CreateAthleteSchema = z.object({
   name: nameSchema,

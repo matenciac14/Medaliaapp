@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 
 const VALID_ACTIVITIES = ['GYM', 'RUN', 'REST'] as const
 const VALID_SPLITS = ['PUSH', 'PULL', 'LEGS', 'FULL_BODY'] as const

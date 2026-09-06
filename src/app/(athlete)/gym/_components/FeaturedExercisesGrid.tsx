@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Dumbbell } from 'lucide-react'
-import { translateBodyPart } from '@/lib/gym-labels'
+import { translateBodyPart } from '@/lib/gym/labels'
 
 type FeaturedExercise = {
   id: string

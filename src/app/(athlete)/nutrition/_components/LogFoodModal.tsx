@@ -101,7 +101,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   const [searching, setSearching]             = useState(false)
 
   useEffect(() => {
-    fetch('/api/nutrition/meal-templates')
+    fetch('/api/athlete/nutrition/meal-templates')
       .then(r => r.ok ? r.json() : null)
       .then(d => d?.templates && setTemplates(d.templates))
       .catch(() => {})
@@ -111,7 +111,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   const fetchSearchResults = useCallback((q: string) => {
     if (!q.trim()) { setSearchResults(null); return }
     setSearching(true)
-    fetch(`/api/nutrition/foods?q=${encodeURIComponent(q.trim())}`)
+    fetch(`/api/athlete/nutrition/foods?q=${encodeURIComponent(q.trim())}`)
       .then(r => r.ok ? r.json() : null)
       .then((data: FoodItem[] | null) => { if (data) setSearchResults(data) })
       .catch(() => {})
@@ -142,7 +142,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     if (isNaN(g) || g <= 0) return
     setSubmitting(true)
     try {
-      await fetch('/api/nutrition/log', {
+      await fetch('/api/athlete/nutrition/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ foodId: selected.id, grams: g, mealType, date }),
@@ -159,7 +159,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     try {
       await Promise.all(
         template.items.map(item =>
-          fetch('/api/nutrition/log', {
+          fetch('/api/athlete/nutrition/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ foodId: item.foodId, grams: item.grams, mealType, date }),
@@ -177,7 +177,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     if (!selected || !grams || !templateName.trim()) return
     setSavingTemplate(true)
     try {
-      const res = await fetch('/api/nutrition/meal-templates', {
+      const res = await fetch('/api/athlete/nutrition/meal-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -202,7 +202,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
     if (!name.trim() || !kcalPer100g || !proteinPer100g || !carbsPer100g || !fatPer100g) return
     setProposing(true)
     try {
-      await fetch('/api/nutrition/foods/propose', {
+      await fetch('/api/athlete/nutrition/foods/propose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,7 +223,7 @@ export default function LogFoodModal({ foods, date, onClose }: Props) {
   }
 
   async function handleDeleteTemplate(id: string) {
-    await fetch(`/api/nutrition/meal-templates/${id}`, { method: 'DELETE' })
+    await fetch(`/api/athlete/nutrition/meal-templates/${id}`, { method: 'DELETE' })
     setTemplates(prev => prev.filter(t => t.id !== id))
   }
 

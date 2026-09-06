@@ -19,7 +19,7 @@ export default function IntegrationsClient({ strava }: Props) {
     if (!confirm('¿Desconectar Strava? Dejarás de recibir actividades automáticamente.')) return
     setDisconnecting(true)
     try {
-      await fetch('/api/integrations/strava', { method: 'DELETE' })
+      await fetch('/api/athlete/integrations/strava', { method: 'DELETE' })
       router.refresh()
     } finally {
       setDisconnecting(false)
@@ -61,7 +61,7 @@ export default function IntegrationsClient({ strava }: Props) {
           </button>
         ) : (
           <a
-            href="/api/integrations/strava/connect"
+            href="/api/athlete/integrations/strava/connect"
             className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             Conectar

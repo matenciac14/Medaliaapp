@@ -14,7 +14,7 @@
  */
 
 import { prisma } from '@/lib/db/prisma'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 import { Prisma } from '@/generated/prisma/client'
 
 export async function createNotification(

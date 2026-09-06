@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
-import { getPaymentGateway } from '@/infrastructure/billing/payment-gateway.factory'
-import { createAthleteCheckout } from '@/domain/billing/checkout.use-case'
+import { getPaymentGateway } from '@/infrastructure/billing/payment_gateway.factory'
+import { createAthleteCheckout } from '@/domain/billing/checkout.use_case'
 
 export async function POST(req: NextRequest) {
   // NextRequest es requerido por la firma pero no se usa el body aquí

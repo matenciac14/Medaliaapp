@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'Medaliq — Coaching y tracking deportivo'
+export const alt = 'Medaliq — Plataforma de coaching y tracking deportivo para entrenadores y atletas en LatAm'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -55,7 +55,7 @@ export default function Image() {
             lineHeight: 1.4,
           }}
         >
-          Coaching y tracking deportivo para LatAm
+          Gestiona tus atletas desde un solo panel
         </div>
 
         {/* Pills */}

@@ -117,7 +117,7 @@ export default function ProfileClient({ user }: Props) {
   async function handleSaveProfile() {
     setSavingProfile(true)
     try {
-      await fetch('/api/user/profile', {
+      await fetch('/api/athlete/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,7 +143,7 @@ export default function ProfileClient({ user }: Props) {
   async function handleSave() {
     setSaving(true)
     try {
-      await fetch('/api/metrics/log', {
+      await fetch('/api/athlete/metrics/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

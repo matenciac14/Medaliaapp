@@ -1,30 +1,25 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { parseUserConfig, getUserPlan } from '@/lib/config/user-config'
+import { parseUserConfig, getUserPlan } from '@/lib/config/user_config'
+import { loadAthleteData } from '@/infrastructure/db/athlete_loader'
 import ProfileClient from './_components/ProfileClient'
 
 export default async function ProfilePage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
+  const userId = session.user.id
 
-  const [dbUser, plan, logs, coachLink] = await Promise.all([
+  const [dbUser, { activePlanMeta, coachRelation }, logs] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       include: { profile: true },
     }),
-    prisma.trainingPlan.findFirst({
-      where: { userId: session.user.id, status: 'ACTIVE' },
-      select: { name: true, totalWeeks: true },
-    }),
+    loadAthleteData(userId, ['activePlanMeta', 'coachRelation']),
     prisma.dailyLog.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       orderBy: { date: 'desc' },
       take: 14,
-    }),
-    prisma.coachAthlete.findFirst({
-      where: { athleteId: session.user.id, status: 'ACTIVE' },
-      select: { id: true },
     }),
   ])
 
@@ -33,7 +28,7 @@ export default async function ProfilePage() {
   const p = dbUser.profile
   const config = parseUserConfig(dbUser)
   const userPlan = getUserPlan(config.features)
-  const hasCoach = !!coachLink
+  const hasCoach = !!coachRelation
 
   return (
     <ProfileClient
@@ -57,7 +52,7 @@ export default async function ProfilePage() {
           experienceLevel: p.experienceLevel ?? null,
           sportDetails: p.sportDetails as Record<string, string | number | null>,
         } : null,
-        plan: plan ? { name: plan.name, totalWeeks: plan.totalWeeks } : null,
+        plan: activePlanMeta ? { name: activePlanMeta.name, totalWeeks: activePlanMeta.totalWeeks } : null,
         dailyLogs: logs.map(l => ({
           id: l.id,
           date: l.date.toISOString().split('T')[0],

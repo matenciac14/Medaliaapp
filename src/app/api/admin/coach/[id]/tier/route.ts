@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { logAdminAction } from '@/lib/admin/log-action'
-import { ADMIN_ACTIONS } from '@/domain/admin/audit-log'
+import { logAdminAction } from '@/lib/admin/log_action'
+import { ADMIN_ACTIONS } from '@/domain/admin/audit_log'
 import type { CoachSubscriptionTier } from '@/generated/prisma/client'
 
 const VALID_TIERS: CoachSubscriptionTier[] = ['STARTER', 'GROWTH', 'PRO', 'SCALE']

@@ -6,8 +6,8 @@ import {
   usdToCopDisplay,
 } from '@/domain/billing/billing.types'
 import { getTrmWithMeta } from '@/infrastructure/billing/trm'
-import { getCoachLimits } from '@/domain/subscription/tier-features'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import { getCoachLimits } from '@/domain/subscription/tier_features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 import CoachPlanClient from './_components/CoachPlanClient'
 
 export const metadata = { title: 'Mi Plan — MedalIQ' }

@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SESSION_ICONS, SESSION_NAMES, WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
 import type { CalendarWeek, CalendarDay } from '@/domain/calendar/calendar.types'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 const SESSION_COLORS: Record<string, string> = {
   RODAJE_Z2:    'bg-blue-500',
@@ -20,25 +19,6 @@ const SESSION_COLORS: Record<string, string> = {
   FUERZA:       'bg-emerald-600',
   DESCANSO:     'bg-gray-300',
   OTRO:         'bg-gray-500',
-}
-
-const SESSION_LABELS: Record<string, string> = {
-  RODAJE_Z2:    'Rodaje Z2',
-  FARTLEK:      'Fartlek',
-  TEMPO:        'Tempo',
-  INTERVALOS:   'Intervalos',
-  TIRADA_LARGA: 'Tirada Larga',
-  SIMULACRO:    'Simulacro',
-  TEST:         'Test',
-  FUERZA:       'Fuerza',
-  DESCANSO:     'Descanso',
-  OTRO:         'Entrenamiento',
-}
-
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃', FARTLEK: '🏃', TIRADA_LARGA: '🏃', TEMPO: '🏃',
-  INTERVALOS: '⚡', SIMULACRO: '🏁', TEST: '📊',
-  FUERZA: '💪', DESCANSO: '😴', OTRO: '🏅',
 }
 
 // ── Day dot ───────────────────────────────────────────────────────────────────
@@ -146,7 +126,7 @@ function SessionDetail({ day }: { day: CalendarDay }) {
               <span className="text-lg">{SESSION_ICONS[day.sport.type] ?? '🏅'}</span>
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
-                  {SESSION_LABELS[day.sport.type] ?? day.sport.type}
+                  {day.sport.detailText || SESSION_NAMES[day.sport.type] || day.sport.type}
                 </p>
                 {day.sport.durationMin > 0 && (
                   <p className="text-xs text-gray-400">{day.sport.durationMin} min</p>
@@ -212,7 +192,7 @@ function SessionDetail({ day }: { day: CalendarDay }) {
             <span className="text-lg">{SESSION_ICONS[day.freeRun.type] ?? '🏅'}</span>
             <div>
               <p className="font-semibold text-gray-900 text-sm">
-                {SESSION_LABELS[day.freeRun.type] ?? day.freeRun.type}{' '}
+                {SESSION_NAMES[day.freeRun.type] ?? day.freeRun.type}{' '}
                 <span className="text-xs font-normal text-sky-600 ml-1">sesión libre</span>
               </p>
               <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
@@ -315,7 +295,7 @@ export default function PlanCalendarView() {
 
       {/* ── Day labels ── */}
       <div className="grid grid-cols-7 gap-1">
-        {DAY_LABELS.map(label => (
+        {WEEK_DAYS_SHORT.map(label => (
           <div key={label} className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-1">
             {label}
           </div>

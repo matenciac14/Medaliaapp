@@ -1,6 +1,6 @@
-import type { MappedAthlete } from '@/infrastructure/db/coach-athlete.mapper'
-import type { OverduePayment, PendingOnboarding } from '@/domain/coach-dashboard/coach-dashboard.types'
-import { SPORT_LABELS } from '@/domain/coach-dashboard/get-coach-dashboard.use-case'
+import type { MappedAthlete } from '@/infrastructure/db/coach_athlete.mapper'
+import type { OverduePayment, PendingOnboarding } from '@/domain/coach_dashboard/coach_dashboard.types'
+import { SPORT_LABELS } from '@/domain/coach_dashboard/get_coach_dashboard.use_case'
 
 interface Props {
   overduePayments: OverduePayment[]

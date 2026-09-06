@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // templates.ts — Plantillas base de plan por GoalType
-// Define estructura sin texto personalizado. El generator.ts aplica AI encima.
+// Define estructura sin texto personalizado. El generator.ts aplica personalización encima.
 // ---------------------------------------------------------------------------
 
 export type SessionTemplate = {

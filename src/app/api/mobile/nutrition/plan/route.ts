@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { requireFeature } from '@/lib/guards/feature-gate'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { requireFeature } from '@/lib/guards/feature_gate'
 
 // GET /api/mobile/nutrition/plan?date=YYYY-MM-DD
 // Retorna las comidas planificadas del atleta para la fecha indicada (hoy si no se pasa).

@@ -3,8 +3,8 @@
 import RevealOnScroll from "./_components/RevealOnScroll";
 import ROICalculator from "./_components/ROICalculator";
 import { allTranslations } from "@/lib/i18n";
-import LanguageSwitcher from "./_components/LanguageSwitcher";
 import ProfileTabs from "./_components/ProfileTabs";
+import { JsonLd } from "@/components/seo/json_ld";
 import {
   Activity,
   Flame,
@@ -36,6 +36,45 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Medaliq',
+        url: 'https://medaliq.com',
+        applicationCategory: 'HealthApplication',
+        operatingSystem: 'Web, iOS, Android',
+        description: 'Plataforma de tracking y coaching deportivo para entrenadores y atletas en Latinoamerica. Planes periodizados, nutricion personalizada con Mifflin-St Jeor, zonas de frecuencia cardiaca con Karvonen y seguimiento semanal.',
+        offers: [
+          { '@type': 'Offer', price: '0', priceCurrency: 'USD', name: 'Free', description: 'Dashboard, log de entrenamientos, registro de nutricion y ejercicios — gratis para siempre.' },
+          { '@type': 'Offer', price: '9.99', priceCurrency: 'USD', name: 'Pro', description: 'Plan periodizado, nutricion personalizada diaria, check-in semanal con sugerencias de ajuste, metricas de progreso.' },
+        ],
+        aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: '50', bestRating: '5' },
+        featureList: 'Planes periodizados, Zonas de FC con Karvonen, TDEE y macros con Mifflin-St Jeor, Nutricion adaptada por sesion, Check-in semanal, Panel multi-atleta para coaches, Gestion de cobros, Codigo de invitacion',
+      }} />
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: [
+          { '@type': 'Question', name: 'Mis atletas de verdad lo van a usar?', acceptedAnswer: { '@type': 'Answer', text: 'Si. Entran desde su celular o navegador, como cualquier app — sin instalar nada complicado. Tu los invitas con tu codigo.' } },
+          { '@type': 'Question', name: 'Mis atletas tambien pagan?', acceptedAnswer: { '@type': 'Answer', text: 'No. Tu pagas tu plan de coach (o empiezas gratis con hasta 5 asesorados). Ellos usan su app sin costo extra.' } },
+          { '@type': 'Question', name: 'Como subo lo que ya tengo?', acceptedAnswer: { '@type': 'Answer', text: 'Invitas a tus atletas con tu codigo unico y suben su perfil en minutos. Te ayudamos a cargar los primeros.' } },
+          { '@type': 'Question', name: 'Y si no me sirve?', acceptedAnswer: { '@type': 'Answer', text: 'Cancela cuando quieras — sin letra chica. Si decides salir, te ayudamos a exportar todo.' } },
+          { '@type': 'Question', name: 'Que es Medaliq?', acceptedAnswer: { '@type': 'Answer', text: 'Medaliq es una plataforma de tracking y coaching deportivo para Latinoamerica. Permite a entrenadores gestionar sus atletas con planes periodizados, nutricion personalizada y seguimiento semanal desde un solo panel. Los atletas registran sesiones, nutricion y ejercicios desde la app.' } },
+          { '@type': 'Question', name: 'Cuanto cuesta Medaliq para coaches?', acceptedAnswer: { '@type': 'Answer', text: 'Medaliq tiene 4 planes para coaches: Starter (gratis, hasta 5 atletas), Growth ($39/mes, 6-25 atletas), Pro ($79/mes, 26-75 atletas) y Scale ($129/mes, +75 atletas). 0% de fee sobre pagos de atletas.' } },
+        ],
+      }} />
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'Medaliq',
+        url: 'https://medaliq.com',
+        logo: 'https://medaliq.com/brand/png/apple-touch-icon-180.png',
+        description: 'Plataforma de tracking y coaching deportivo para Latinoamerica.',
+        foundingDate: '2025',
+        areaServed: { '@type': 'Place', name: 'Latin America' },
+        contactPoint: { '@type': 'ContactPoint', email: 'hola@medaliq.com', contactType: 'customer support' },
+        sameAs: [],
+      }} />
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(24px); }
@@ -87,12 +126,9 @@ export default function Home() {
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
-            <LanguageSwitcher variant="light" />
-            <a href="/login">
-              <button className="bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold rounded-lg transition-transform hover:scale-105 active:scale-95 whitespace-nowrap text-xs px-3 py-2 sm:text-sm sm:px-5">
-                <span className="sm:hidden">Reservar</span>
-                <span className="hidden sm:inline">{l.nav.cta}</span>
-              </button>
+            <a href="/login" className="inline-block bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold rounded-lg transition-transform hover:scale-105 active:scale-95 whitespace-nowrap text-xs px-3 py-2 sm:text-sm sm:px-5">
+              <span className="sm:hidden">Reservar</span>
+              <span className="hidden sm:inline">{l.nav.cta}</span>
             </a>
           </div>
         </div>
@@ -168,10 +204,8 @@ export default function Home() {
               {l.hero.subtitle}
             </p>
             <div className="flex flex-col items-start gap-3 anim-fade-up delay-300">
-              <a href="/login" className="block w-full sm:w-auto">
-                <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-[18px] px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
-                  {l.hero.cta1}
-                </button>
+              <a href="/login" className="block w-full sm:w-auto anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-[18px] px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 text-center">
+                {l.hero.cta1}
               </a>
               <a
                 href="#como-funciona"
@@ -649,7 +683,7 @@ export default function Home() {
                         bg: "rgba(249,115,22,0.15)",
                         name: "Ana García",
                         sport: "Running",
-                        plan: "Sem 7/18",
+                        plan: "Sem 7/12",
                         pct: 92,
                         paid: true,
                       },
@@ -659,7 +693,7 @@ export default function Home() {
                         bg: "rgba(249,115,22,0.15)",
                         name: "Carlos López",
                         sport: "Fuerza",
-                        plan: "Sem 3/16",
+                        plan: "Sem 3/12",
                         pct: 78,
                         paid: false,
                       },
@@ -669,7 +703,7 @@ export default function Home() {
                         bg: "rgba(34,197,94,0.15)",
                         name: "Laura Méndez",
                         sport: "Running",
-                        plan: "Sem 12/18",
+                        plan: "Sem 10/12",
                         pct: 88,
                         paid: true,
                       },
@@ -679,7 +713,7 @@ export default function Home() {
                         bg: "rgba(139,92,246,0.15)",
                         name: "Javier Ruiz",
                         sport: "Fuerza",
-                        plan: "Sem 5/16",
+                        plan: "Sem 5/12",
                         pct: 95,
                         paid: true,
                       },
@@ -754,10 +788,8 @@ export default function Home() {
 
           <RevealOnScroll delay={150}>
             <div className="text-center">
-              <a href="/login" className="block w-full sm:w-auto">
-                <button className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95">
-                  {l.forCoaches.cta}
-                </button>
+              <a href="/login" className="inline-block bg-[#1e3a5f] hover:bg-[#162d4a] text-white font-semibold px-8 py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 text-center">
+                {l.forCoaches.cta}
               </a>
             </div>
           </RevealOnScroll>
@@ -958,7 +990,7 @@ export default function Home() {
                 <h3 className="text-white font-bold text-lg mb-3">Empieza a registrar hoy</h3>
                 <ul className="space-y-3 text-blue-200 text-sm flex-1">
                   {[
-                    'Log de sesiones de running y gym',
+                    'Log de sesiones de running y ejercicios',
                     'Registro de nutrición diaria',
                     'Historial de entrenamientos',
                     'Sin tarjeta, sin compromiso',
@@ -968,10 +1000,8 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/login" className="block mt-6">
-                  <button className="w-full py-3 rounded-xl border border-white/30 text-white hover:bg-white/10 font-semibold transition-colors text-sm">
-                    Crear cuenta gratis →
-                  </button>
+                <a href="/login" className="block mt-6 w-full py-3 rounded-xl border border-white/30 text-white hover:bg-white/10 font-semibold transition-colors text-sm text-center">
+                  Crear cuenta gratis →
                 </a>
               </div>
             </RevealOnScroll>
@@ -983,20 +1013,18 @@ export default function Home() {
                 <h3 className="text-white font-bold text-lg mb-3">Con estructura real</h3>
                 <ul className="space-y-3 text-blue-200 text-sm flex-1">
                   {[
-                    'Plan periodizado + seguimiento semanal',
+                    'Plan periodizado con zonas de FC personalizadas',
                     'Nutrición diferente cada día según la sesión',
-                    'Check-in semanal que ajusta la carga automáticamente',
-                    'Métricas de progreso semana a semana',
+                    'Check-in semanal con sugerencias de ajuste',
+                    'Métricas de progreso y detección de PRs',
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2">
                       <span className="text-[#ea580c] shrink-0">✓</span>{f}
                     </li>
                   ))}
                 </ul>
-                <a href="/login" className="block mt-6">
-                  <button className="w-full py-3 rounded-xl bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold transition-transform hover:scale-105 active:scale-95 text-sm anim-pulse-cta">
-                    Probar Pro gratis →
-                  </button>
+                <a href="/login" className="block mt-6 w-full py-3 rounded-xl bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold transition-transform hover:scale-105 active:scale-95 text-sm anim-pulse-cta text-center">
+                  Probar Pro gratis →
                 </a>
               </div>
             </RevealOnScroll>
@@ -1179,10 +1207,8 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="shrink-0">
-                  <a href="/login" className="block w-full sm:w-auto">
-                    <button className="border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg">
-                      {l.pricing.coachCta}
-                    </button>
+                  <a href="/login" className="inline-block border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold transition-colors whitespace-nowrap px-6 py-2.5 rounded-lg text-center">
+                    {l.pricing.coachCta}
                   </a>
                 </div>
               </div>
@@ -1231,10 +1257,8 @@ export default function Home() {
                     <span>✗</span> {l.pricing.freeF5}
                   </li>
                 </ul>
-                <a href="/login" className="block w-full sm:w-auto">
-                  <button className="w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors">
-                    {l.pricing.freeCta}
-                  </button>
+                <a href="/login" className="block w-full py-2.5 rounded-lg border border-gray-200 text-[#1e3a5f] hover:bg-gray-50 font-semibold text-sm transition-colors text-center">
+                  {l.pricing.freeCta}
                 </a>
               </div>
             </RevealOnScroll>
@@ -1284,10 +1308,8 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/login" className="block w-full sm:w-auto">
-                  <button className="w-full bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta">
-                    {l.pricing.proCta}
-                  </button>
+                <a href="/login" className="block w-full bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-bold py-3 rounded-xl transition-transform hover:scale-105 active:scale-95 anim-pulse-cta text-center">
+                  {l.pricing.proCta}
                 </a>
                 <p className="text-center text-blue-400 text-xs mt-3">
                   Sin tarjeta · Cancela cuando quieras.
@@ -1382,10 +1404,8 @@ export default function Home() {
           <p className="text-blue-200 mb-8 text-base max-w-md mx-auto">
             {l.finalCta.subtitle}
           </p>
-          <a href="/login" className="block w-full sm:w-auto">
-            <button className="anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-lg px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
-              {l.finalCta.cta}
-            </button>
+          <a href="/login" className="block w-full sm:w-auto sm:inline-block anim-pulse-cta bg-[#ea580c] hover:bg-[#ea6c0a] text-white font-semibold text-sm sm:font-bold sm:text-lg px-9 py-[12px] sm:py-4 rounded-xl transition-transform hover:scale-105 active:scale-95 text-center">
+            {l.finalCta.cta}
           </a>
         </RevealOnScroll>
       </section>

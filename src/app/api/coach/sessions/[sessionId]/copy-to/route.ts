@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getSessionIntensity } from '@/lib/plan/intensity'
+import { getSessionIntensity } from '@/domain/plan/intensity'
 
 /**
  * POST /api/coach/sessions/[sessionId]/copy-to

@@ -3,7 +3,7 @@
  * Sin dependencias de Prisma, Next.js ni ningún framework.
  */
 
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 export const ATHLETE_PRO_PRICE_USD = 9.99
 

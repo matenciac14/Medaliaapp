@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { generatePlanUseCase } from '@/domain/plan/generate-plan.use-case'
+import { generatePlanUseCase } from '@/domain/plan/generate_plan.use_case'
 import { PLAN_TEMPLATES } from '@/domain/plan/templates'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'

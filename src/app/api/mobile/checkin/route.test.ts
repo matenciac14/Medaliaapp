@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('@/lib/mobile-auth', () => ({ getMobileUser: vi.fn() }))
-vi.mock('@/lib/rate-limit', () => ({ rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }) }))
-vi.mock('@/lib/core/week-number', () => ({
+vi.mock('@/lib/auth/mobile_auth', () => ({ getMobileUser: vi.fn() }))
+vi.mock('@/lib/rate_limit', () => ({ rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }) }))
+vi.mock('@/lib/core/week_number', () => ({
   getPlanWeekNumber: vi.fn().mockReturnValue(3),
   getCurrentISOWeek: vi.fn().mockReturnValue(28),
 }))
@@ -16,9 +16,9 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }))
 
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import { GET } from './route'
 
 const MOBILE_USER = {

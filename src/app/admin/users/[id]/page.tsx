@@ -10,7 +10,7 @@ const ROLE_BADGE: Record<string, string> = {
   ADMIN:   'bg-red-100 text-red-700',
 }
 
-import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum-labels'
+import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum_labels'
 
 const SOURCE_LABEL: Record<string, string> = {
   COACH: 'Coach',

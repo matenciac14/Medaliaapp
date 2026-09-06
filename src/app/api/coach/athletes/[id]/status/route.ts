@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
-import { configToAthleteFeatures } from '@/domain/subscription/tier-features'
-import { getTierFeatureConfig } from '@/infrastructure/db/tier-feature-config.repository'
-import { sendPushNotification } from '@/lib/push'
+import { configToAthleteFeatures } from '@/domain/subscription/tier_features'
+import { getTierFeatureConfig } from '@/infrastructure/db/tier_feature_config.repository'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 // B2B-01: Al activar → features de tipo B2B según TierFeatureConfig (configurable por admin).
 // Al pausar → features de tipo B2C_FREE (configurable por admin).

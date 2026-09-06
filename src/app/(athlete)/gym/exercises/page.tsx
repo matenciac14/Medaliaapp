@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym/labels'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 import AthleteExercisesGrid from './_components/AthleteExercisesGrid'
 
 interface Props {
@@ -69,7 +69,7 @@ export default async function AthleteExercisesPage({ searchParams }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">

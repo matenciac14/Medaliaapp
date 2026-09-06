@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { completeOnboardingUseCase } from '@/domain/onboarding/complete-onboarding.use-case'
+import { getMobileUser, signMobileToken } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { completeOnboardingUseCase } from '@/domain/onboarding/complete_onboarding.use_case'
 import { PrismaPlanRepository } from '@/infrastructure/db/plan.repository'
-import { PrismaHealthProfileRepository } from '@/infrastructure/db/health-profile.repository'
+import { PrismaHealthProfileRepository } from '@/infrastructure/db/health_profile.repository'
 import { PrismaUserRepository } from '@/infrastructure/db/user.repository'
 import { sendAthleteReadyEmail } from '@/infrastructure/email/resend'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 import type { WizardData, ActivityType, GymGoal, RunningGoal } from '@/app/onboarding/_types'
 
 // ── Mobile payload → WizardData mapper ────────────────────────────────────────

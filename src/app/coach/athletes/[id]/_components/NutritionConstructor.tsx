@@ -57,7 +57,7 @@ const DAY_LABELS: Record<DayType, string> = {
 
 const EMPTY_DAY: DayMeals = { breakfast: [], lunch: [], dinner: [], snacks: [] }
 
-/** Detecta si el plan viene en formato coach {breakfast[]} vs formato AI {meals[]} */
+/** Detecta si el plan viene en formato coach {breakfast[]} vs formato canónico {meals[]} */
 function isCoachFormat(data: unknown): data is MealPlanData {
   if (!data || typeof data !== 'object') return false
   const d = data as Record<string, unknown>

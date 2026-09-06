@@ -1,5 +1,5 @@
 import type { StravaActivity } from './strava.service'
-import type { CreateWearableSessionInput, WearableDiscipline } from '@/domain/wearables/create-wearable-session.use-case'
+import type { CreateWearableSessionInput, WearableDiscipline } from '@/domain/wearables/create_wearable_session.use_case'
 
 const SPORT_TYPE_MAP: Record<string, WearableDiscipline> = {
   Run:                     'RUNNING',

@@ -1,16 +1,6 @@
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
 
-type TodaySession = {
-  id: string
-  type: string
-  intensity: string
-  durationMin: number
-  zoneTarget: string
-  detailText: string
-  completed: boolean
-}
-
 type GymDay = {
   label: string
   exercises: unknown[]
@@ -19,34 +9,22 @@ type GymDay = {
 type Props = {
   dashboardMode: 'TRAINING' | 'RECOVERY' | 'FREE' | 'GYM'
   isCurrentWeek: boolean
-  todaySession: TodaySession | null
-  hasActivePlan: boolean
   hasGymToday: boolean
   gymDoneToday?: boolean
   todayGymDay: GymDay | null
-  // Plan context (kept for future use / callers still pass them)
-  planPhase: string
-  phaseDisplay: string
-  phaseColors: Record<string, string>
-  selectedWeekNum?: number | null
-  totalWeeks?: number | null
-  completedCount?: number | null
-  totalTraining?: number | null
   weekSessionCount?: number
   weekSessionTarget?: number
-  isB2B?: boolean
-  coachName?: string | null
 }
 
 export default function DailySessionCard({
-  dashboardMode, isCurrentWeek, todaySession,
+  dashboardMode, isCurrentWeek,
   hasGymToday, gymDoneToday = false, todayGymDay,
   weekSessionCount = 0, weekSessionTarget = 4,
 }: Props) {
   return (
     <>
       {/* Gym hoy sin sesión de sport */}
-      {isCurrentWeek && hasGymToday && !todaySession && todayGymDay && (
+      {isCurrentWeek && hasGymToday && todayGymDay && (
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span>💪</span>

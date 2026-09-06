@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
+import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach_nutrition_proposal.repository'
 
 export async function GET() {
   const session = await auth()

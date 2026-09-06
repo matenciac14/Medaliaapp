@@ -2,7 +2,7 @@
  * Tipos puros del dominio de billing.
  * Sin dependencias de Prisma, Next.js ni ningún gateway de pago.
  */
-import type { CoachTier } from '../subscription/tier-features'
+import type { CoachTier } from '../subscription/tier_features'
 
 // ── Precios (fuente canónica del dominio) ─────────────────────────────────────
 

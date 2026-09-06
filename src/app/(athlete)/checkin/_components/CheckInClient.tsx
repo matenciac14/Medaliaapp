@@ -150,7 +150,7 @@ export default function CheckInClient({
     setSaveError(null)
     setShowAlertModal(false)
     try {
-      const res = await fetch('/api/checkin', {
+      const res = await fetch('/api/athlete/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -174,7 +174,7 @@ export default function CheckInClient({
   }
 
   async function respondToSuggestion(id: string, action: 'accept' | 'reject') {
-    await fetch(`/api/checkin/suggestions/${id}/${action}`, { method: 'POST' })
+    await fetch(`/api/athlete/checkin/suggestions/${id}/${action}`, { method: 'POST' })
     setSuggestions(prev => prev.filter(s => s.id !== id))
   }
 
@@ -257,7 +257,7 @@ export default function CheckInClient({
       </div>
 
       {/* ===== DESKTOP HEADER ===== */}
-      <div className="hidden lg:block max-w-5xl mx-auto px-4 pt-5">
+      <div className="hidden lg:block max-w-7xl mx-auto px-4 pt-5">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[11px] font-bold text-[#1e3a5f] uppercase tracking-wider mb-0.5">{`Revisi\u00f3n Semanal`}</p>
@@ -285,7 +285,7 @@ export default function CheckInClient({
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 pt-4 pb-8">
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-8">
         {/* Banner auto-datos */}
         {hasAutoData && (
           <div className="mb-4 bg-[#fff3e0] rounded-xl overflow-hidden flex items-stretch gap-0">

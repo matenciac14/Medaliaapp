@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { requireFeature } from '@/lib/guards/feature-gate'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { requireFeature } from '@/lib/guards/feature_gate'
 import { z } from 'zod'
 import type { SessionType } from '@/generated/prisma/enums'
-import { calcNutritionAdjustment } from '@/domain/nutrition/calculate-nutrition-adjustment'
+import { calcNutritionAdjustment } from '@/domain/nutrition/calculate_nutrition_adjustment'
 
 const INTENSITIES = ['HIGH', 'MODERATE', 'LOW', 'REST'] as const
 const DISCIPLINES = ['RUNNING', 'STRENGTH', 'CYCLING', 'SWIMMING', 'OTHER'] as const

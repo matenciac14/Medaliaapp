@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach_nutrition_proposal.repository'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)

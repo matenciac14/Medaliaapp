@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// Dispara POST /api/nutrition/init en el cliente y refresca la página cuando termina.
+// Dispara POST /api/athlete/nutrition/init en el cliente y refresca la página cuando termina.
 // Renderizado solo cuando el Server Component detecta que falta el NutritionPlan base.
 export default function NutritionInitClient() {
   const router = useRouter()
@@ -13,7 +13,7 @@ export default function NutritionInitClient() {
   function runInit() {
     setError(false)
     setRetrying(true)
-    fetch('/api/nutrition/init', { method: 'POST' })
+    fetch('/api/athlete/nutrition/init', { method: 'POST' })
       .then((res) => {
         if (!res.ok) throw new Error('init failed')
         router.refresh()

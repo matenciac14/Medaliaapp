@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { translateBodyPart, translateTarget } from '@/lib/gym/labels'
 import { LazyGif } from '@/components/LazyGif'
 import type { Exercise } from '@/domain/exercise/exercise.types'
 
@@ -30,7 +30,7 @@ export default function AthleteExercisesGrid({ exercises }: { exercises: GridExe
   async function openModal(id: string) {
     setLoading(true)
     try {
-      const res = await fetch(`/api/gym/exercises/${id}`)
+      const res = await fetch(`/api/athlete/gym/exercises/${id}`)
       if (res.ok) setDetail(await res.json())
     } finally {
       setLoading(false)

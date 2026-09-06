@@ -1,0 +1,54 @@
+# Medaliq
+
+> Plataforma de tracking y coaching deportivo para Latinoamerica.
+
+Medaliq es una plataforma web y mobile que conecta entrenadores deportivos con sus atletas. Los coaches gestionan planes de entrenamiento, nutricion y seguimiento desde un panel unificado. Los atletas registran sesiones, nutricion y ejercicios desde la app.
+
+## Que hace Medaliq
+
+- Planes periodizados de running y ejercicios (maximo 12 semanas)
+- Nutricion personalizada diaria calculada con Mifflin-St Jeor (TDEE, macros)
+- Zonas de frecuencia cardiaca personalizadas con formula de Karvonen
+- Check-in semanal: el atleta reporta sueno, energia y RPE; el sistema sugiere ajustes
+- Panel multi-atleta para coaches: cumplimiento, alertas, gestion de cobros
+- Codigo de invitacion unico por coach para onboarding de atletas
+
+## Precios
+
+### Para coaches
+- Starter: Gratis (hasta 5 atletas)
+- Growth: $39 USD/mes (6-25 atletas)
+- Pro: $79 USD/mes (26-75 atletas)
+- Scale: $129 USD/mes (+75 atletas)
+- 0% de fee sobre pagos de atletas
+
+### Para atletas
+- Free: $0 para siempre (log de sesiones, nutricion, ejercicios)
+- Pro: $9.99 USD/mes o $79.99/ano (plan periodizado, nutricion personalizada, check-in semanal, metricas de progreso)
+
+## Dos modos de uso
+
+1. **Atleta autonomo (B2C)**: se registra solo, registra su actividad. Con Pro, recibe sugerencias de plan y nutricion.
+2. **Atleta con coach (B2B)**: el coach lo invita, le asigna plan y rutinas. El atleta ejecuta y registra.
+
+## Publico objetivo
+- Entrenadores de running y fuerza en Latinoamerica (Colombia, Mexico, Argentina, Chile, Peru, Brasil)
+- Atletas que buscan tracking de entrenamientos y nutricion
+
+## Diferenciadores
+- Ciencia real: Karvonen para zonas de FC, Mifflin-St Jeor para nutricion (no estimaciones genericas)
+- 0% de fee sobre pagos de atletas (vs competidores que cobran comision)
+- Disenado para LatAm: espanol, precios en USD, timezone Colombia
+- El sistema sugiere ajustes; el atleta o coach decide que aplicar
+
+## Contacto
+- Web: https://medaliq.com
+- Email: hola@medaliq.com
+
+## Links
+- Landing: https://medaliq.com
+- Login: https://medaliq.com/login
+- Registro: https://medaliq.com/register
+- Coaches publicos: https://medaliq.com/coaches
+- Terminos: https://medaliq.com/terminos
+- Privacidad: https://medaliq.com/privacidad

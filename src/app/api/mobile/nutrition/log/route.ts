@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate-food-log'
-import { requireFeature } from '@/lib/guards/feature-gate'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate_food_log'
+import { requireFeature } from '@/lib/guards/feature_gate'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)

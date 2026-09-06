@@ -95,7 +95,7 @@ function FoodSearchModal({ onAdd, onClose }: { onAdd: (food: Food, grams: number
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return }
     setLoading(true)
-    const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(q)}`)
+    const res = await fetch(`/api/athlete/nutrition/foods?q=${encodeURIComponent(q)}`)
     const data = await res.json()
     setResults(Array.isArray(data) ? data : [])
     setLoading(false)
@@ -357,7 +357,7 @@ export default function AthleteNutritionBuilderClient({
       </div>
 
       {/* Two-column content */}
-      <div className="max-w-5xl mx-auto px-4 py-5 flex gap-5">
+      <div className="max-w-7xl mx-auto px-4 py-5 flex gap-5">
         {/* Main column */}
         <div className="flex-1 min-w-0 space-y-4">
 

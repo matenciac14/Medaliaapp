@@ -95,7 +95,7 @@ export default function AddFoodModal({
     setSaving(true)
     setSaveError(null)
     try {
-      const res = await fetch('/api/nutrition/foods', {
+      const res = await fetch('/api/athlete/nutrition/foods', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

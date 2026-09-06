@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/rate_limit', () => ({
   rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 vi.mock('bcryptjs', () => ({ default: { hash: vi.fn().mockResolvedValue('hashed-pw') } }))

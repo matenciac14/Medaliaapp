@@ -10,7 +10,7 @@
  */
 
 import type { ITrmProvider } from '@/domain/ports/trm.provider'
-import { BancoRepublicaTrmAdapter } from './banco-republica-trm.adapter'
+import { BancoRepublicaTrmAdapter } from './banco_republica_trm.adapter'
 
 export const DEFAULT_TRM = 4200
 const TTL_MS = 60 * 60 * 1000 // 1 hora

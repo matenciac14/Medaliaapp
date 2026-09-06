@@ -679,7 +679,7 @@ function AddBenchmarkForm({ onAdded }: { onAdded: (b: BenchmarkPoint) => void })
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch('/api/progress/benchmarks', {
+      const res = await fetch('/api/athlete/progress/benchmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sport, metric: selectedMetric?.value ?? metric, value, unit: selectedMetric?.unit ?? 'kg', testedAt, notes: notes.trim() || undefined }),
@@ -835,7 +835,7 @@ export default function ProgressClient({
   // Guard: si no hay datos suficientes, mostrar mensaje
   if (weightData.length === 0 && hrData.length === 0) {
     return (
-      <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl mx-auto space-y-6">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
           <span>←</span> Volver al inicio
         </Link>
@@ -863,7 +863,7 @@ export default function ProgressClient({
       : 0
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-5xl mx-auto space-y-6">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl mx-auto space-y-6">
       <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
         <span>←</span> Volver al inicio
       </Link>

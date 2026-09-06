@@ -3,9 +3,9 @@
  * Producción usa /api/webhooks/wompi (Wompi-específico con firma propia).
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getPaymentGateway } from '@/infrastructure/billing/payment-gateway.factory'
+import { getPaymentGateway } from '@/infrastructure/billing/payment_gateway.factory'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 export async function POST(req: NextRequest) {
   const rawBody   = await req.text()

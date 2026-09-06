@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from './route'
 
-vi.mock('@/lib/mobile-auth', () => ({ getMobileUser: vi.fn() }))
-vi.mock('@/lib/rate-limit', () => ({ rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }) }))
-vi.mock('@/lib/guards/feature-gate', () => ({ requireFeature: vi.fn().mockReturnValue(null) }))
-vi.mock('@/domain/nutrition/calculate-food-log', () => ({
+vi.mock('@/lib/auth/mobile_auth', () => ({ getMobileUser: vi.fn() }))
+vi.mock('@/lib/rate_limit', () => ({ rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }) }))
+vi.mock('@/lib/guards/feature_gate', () => ({ requireFeature: vi.fn().mockReturnValue(null) }))
+vi.mock('@/domain/nutrition/calculate_food_log', () => ({
   calcMacros: vi.fn().mockReturnValue({ kcal: 130, proteinG: 2.7, carbsG: 28, fatG: 0.3 }),
 }))
 vi.mock('@/lib/db/prisma', () => ({
@@ -15,7 +15,7 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }))
 
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { prisma } from '@/lib/db/prisma'
 
 const MOBILE_USER = {

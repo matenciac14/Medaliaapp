@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { buildCustomPlanWeeks, calcPlanEndDate } from '@/domain/plan/custom-plan'
+import { buildCustomPlanWeeks, calcPlanEndDate } from '@/domain/plan/custom_plan'
 
 export async function POST(
   req: NextRequest,

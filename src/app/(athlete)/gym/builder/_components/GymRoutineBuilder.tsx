@@ -202,7 +202,7 @@ export default function GymRoutineBuilder({ exercises }: { exercises: Exercise[]
 
       const template = await res.json() as { id: string }
 
-      const assignRes = await fetch('/api/gym/assign', {
+      const assignRes = await fetch('/api/athlete/gym/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: template.id }),

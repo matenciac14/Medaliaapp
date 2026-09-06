@@ -6,7 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { MealType, NutritionDayType } from '@/generated/prisma/enums'
 import { z } from 'zod'
-import { getIntensityMapForDateRange } from '@/lib/nutrition/get-intensity-for-date'
+import { getIntensityMapForDateRange } from '@/lib/nutrition/get_intensity_for_date'
 
 const bodySchema = z.object({
   weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD requerido'),

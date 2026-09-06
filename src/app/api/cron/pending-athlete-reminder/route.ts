@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { sendCoachPendingAthleteEmail } from '@/infrastructure/email/resend'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 const THRESHOLD_HOURS = 48
 

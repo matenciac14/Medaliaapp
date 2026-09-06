@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { sendCoachWelcomeEmail, sendEmailVerification } from '@/infrastructure/email/resend'
 import { emailSchema, passwordSchema, nameSchema, roleSchema, parseBody } from '@/lib/validation'
 

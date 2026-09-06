@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { getWeekBounds, buildDaySummaries, buildWeekDates } from '@/domain/gym/build-gym-week'
-import { requireFeature } from '@/lib/guards/feature-gate'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { getWeekBounds, buildDaySummaries, buildWeekDates } from '@/domain/gym/build_gym_week'
+import { requireFeature } from '@/lib/guards/feature_gate'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { todayDowInTz } from '@/lib/core/date_utils'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const athleteId = mobile.id
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0') || 0
   const selectedDow = parseInt(req.nextUrl.searchParams.get('selectedDow') ?? '0') || 0
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
 
   if (Math.abs(weekOffset) > 52) {
     return NextResponse.json({ error: 'weekOffset fuera de rango' }, { status: 400 })
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     }
 
     const completedDows = new Set(weekSessions.filter(s => s.completed).map(s => s.dayOfWeek))
-    const days = buildDaySummaries(monday, assigned.template.days, completedDows, isCurrentWeek).map(day => ({
+    const days = buildDaySummaries(monday, assigned.template.days, completedDows, isCurrentWeek, tz).map(day => ({
       ...day,
       runningSession: runningByDow[day.dow] ?? null,
     }))
@@ -218,7 +219,7 @@ export async function GET(req: NextRequest) {
     muscleGroups: s.workoutDay?.muscleGroups ?? [],
   }))
 
-  const todayDow = jsToOurDow(new Date().getDay())
+  const todayDow = todayDowInTz(tz)
   const weekDates = buildWeekDates(monday)
   const days = [1, 2, 3, 4, 5, 6, 7].map(dow => {
     const fuerzaDay = fakeDays.find(d => d.dayOfWeek === dow)

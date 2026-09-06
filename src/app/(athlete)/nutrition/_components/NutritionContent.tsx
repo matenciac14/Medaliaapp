@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Flame, Check, Moon, Activity } from 'lucide-react'
-import { type DayType } from '@/lib/nutrition/day-type'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+import { type DayType } from '@/lib/nutrition/day_type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
 
 type MealFoodItem = {
   name: string
@@ -46,7 +46,7 @@ export type MealPlanData = {
 }
 
 // Coach constructor saves a different format (slots: breakfast/lunch/dinner/snacks).
-// Normalize it to the canonical AI format before rendering.
+// Normalize it to the canonical format before rendering.
 type CoachMealEntry = { foodName: string; grams: number; kcal: number; protein: number; carbs: number; fat: number }
 type CoachDayMeals = { breakfast?: CoachMealEntry[]; lunch?: CoachMealEntry[]; dinner?: CoachMealEntry[]; snacks?: CoachMealEntry[] }
 
@@ -54,7 +54,7 @@ function normalizeDay(raw: unknown): DayMeals {
   if (!raw || typeof raw !== 'object') return { meals: [], supplements: [], hydrationL: 2, rules: [] }
   const r = raw as Record<string, unknown>
 
-  // Already canonical AI format
+  // Already canonical format
   if (Array.isArray(r.meals)) return raw as DayMeals
 
   // Coach constructor format — convert slots to meals array
@@ -94,7 +94,7 @@ function normalizeMealPlan(data: unknown): MealPlanData & { low: DayMeals } {
   return {
     hard: normalizeDay(d.hard),
     easy,
-    low: normalizeDay(d.low ?? d.easy), // no 'low' key in AI plans — fall back to easy meals
+    low: normalizeDay(d.low ?? d.easy), // no 'low' key in some plans — fall back to easy meals
     rest: normalizeDay(d.rest),
   }
 }

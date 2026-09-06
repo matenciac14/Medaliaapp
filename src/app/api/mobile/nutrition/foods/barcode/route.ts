@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { OpenFoodFactsClient } from '@/infrastructure/food/open-food-facts.client'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { OpenFoodFactsClient } from '@/infrastructure/food/open_food_facts.client'
 
 const foodSelect = {
   id: true, name: true, category: true,

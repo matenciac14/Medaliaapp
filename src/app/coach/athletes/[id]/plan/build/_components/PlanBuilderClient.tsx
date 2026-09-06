@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import Link from 'next/link'
 import { X, ChevronLeft, ChevronRight, Pencil, Copy } from 'lucide-react'
-import { getInitialWeekIdx } from '@/lib/core/week-number'
+import { getInitialWeekIdx } from '@/lib/core/week_number'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

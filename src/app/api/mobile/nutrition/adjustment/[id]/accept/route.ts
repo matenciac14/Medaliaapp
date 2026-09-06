@@ -2,8 +2,8 @@
 // Endpoint conservado para procesar ajustes históricos pendientes.
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const mobile = await getMobileUser(req)

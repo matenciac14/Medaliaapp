@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { WorkoutXClient } from '@/infrastructure/exercise-sync/workoutx.client'
-import { AscendApiClient } from '@/infrastructure/exercise-sync/ascendapi.client'
-import { ExerciseSyncUseCase } from '@/domain/exercise/exercise-sync.use-case'
+import { WorkoutXClient } from '@/infrastructure/exercise_sync/workoutx.client'
+import { AscendApiClient } from '@/infrastructure/exercise_sync/ascendapi.client'
+import { ExerciseSyncUseCase } from '@/domain/exercise/exercise_sync.use_case'
 import { PrismaExerciseRepository } from '@/infrastructure/db/exercise.repository'
-import type { IExerciseSourceClient } from '@/domain/exercise/ports/exercise-source.client'
+import type { IExerciseSourceClient } from '@/domain/exercise/ports/exercise_source.client'
 
 async function requireAdmin() {
   const session = await auth()

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
 import { ok, unauthorized, badRequest, serverError } from '@/lib/api/responses'
 import { z } from 'zod'

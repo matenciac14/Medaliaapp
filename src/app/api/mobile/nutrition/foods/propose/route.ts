@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { z } from 'zod'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { PrismaFoodProposalRepository } from '@/infrastructure/db/food-proposal.repository'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { PrismaFoodProposalRepository } from '@/infrastructure/db/food_proposal.repository'
 
 const VALID_CATEGORIES = ['PROTEIN', 'CARB', 'FAT', 'VEGETABLE', 'FRUIT', 'DAIRY', 'LEGUME', 'OTHER']
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { mapCoachAthleteRelation } from '@/infrastructure/db/coach-athlete.mapper'
+import { mapCoachAthleteRelation } from '@/infrastructure/db/coach_athlete.mapper'
 
 const TAKE = 20
 

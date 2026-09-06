@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
-import { signMobileToken } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { signMobileToken } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { emailSchema, passwordSchema, parseBody } from '@/lib/validation'
 
 const LoginSchema = z.object({ email: emailSchema, password: passwordSchema })

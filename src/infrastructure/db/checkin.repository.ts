@@ -3,8 +3,8 @@
  * Maps domain field names → actual weeklyCheckIn model columns.
  */
 import type { ICheckInRepository, SaveCheckInPayload } from '@/domain/ports/checkin.repository'
-import type { PreviousCheckIn } from '@/domain/checkin/check-in.types'
-import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { PreviousCheckIn, WeekActivitySummary } from '@/domain/checkin/check_in.types'
+import type { PrismaDbClient } from '@/lib/db/prisma_client'
 import { prisma } from '@/lib/db/prisma'
 
 export class PrismaCheckInRepository implements ICheckInRepository {
@@ -73,5 +73,119 @@ export class PrismaCheckInRepository implements ICheckInRepository {
 
   async count(userId: string): Promise<number> {
     return this.db.weeklyCheckIn.count({ where: { userId } })
+  }
+
+  async getWeekActivitySummary(userId: string): Promise<WeekActivitySummary> {
+    const now = new Date()
+    const todayDow = now.getDay() === 0 ? 7 : now.getDay()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - (todayDow - 1))
+    monday.setHours(0, 0, 0, 0)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 7)
+
+    // Current week + previous 4 weeks for volume trend
+    const fiveWeeksAgo = new Date(monday)
+    fiveWeeksAgo.setDate(monday.getDate() - 28)
+
+    const [sessionLogs, gymSessions] = await Promise.all([
+      this.db.sessionLog.findMany({
+        where: { userId, completedAt: { gte: fiveWeeksAgo, lt: sunday } },
+        select: { completedAt: true, sessionDate: true, durationMin: true, rpe: true, hrAvg: true },
+        orderBy: { completedAt: 'desc' },
+      }),
+      this.db.gymSession.findMany({
+        where: { athleteId: userId, completed: true, date: { gte: fiveWeeksAgo, lt: sunday } },
+        select: { date: true, durationMin: true, rpe: true },
+        orderBy: { date: 'desc' },
+      }),
+    ])
+
+    // Split into current week vs previous weeks
+    const thisWeekLogs = sessionLogs.filter(l => (l.sessionDate ?? l.completedAt) >= monday)
+    const thisWeekGym = gymSessions.filter(g => g.date >= monday)
+    const prevLogs = sessionLogs.filter(l => (l.sessionDate ?? l.completedAt) < monday)
+    const prevGym = gymSessions.filter(g => g.date < monday)
+
+    // Current week stats
+    let totalMinutes = 0
+    let rpeSum = 0; let rpeCount = 0; let maxRpe: number | null = null
+    let hrSum = 0; let hrCount = 0
+
+    for (const l of thisWeekLogs) {
+      totalMinutes += l.durationMin ?? 0
+      if (l.rpe != null) { rpeSum += l.rpe; rpeCount++; maxRpe = Math.max(maxRpe ?? 0, l.rpe) }
+      if (l.hrAvg != null) { hrSum += l.hrAvg; hrCount++ }
+    }
+    for (const g of thisWeekGym) {
+      totalMinutes += g.durationMin ?? 0
+      if (g.rpe != null) { rpeSum += g.rpe; rpeCount++; maxRpe = Math.max(maxRpe ?? 0, g.rpe) }
+    }
+
+    const totalSessions = thisWeekLogs.length + thisWeekGym.length
+
+    // Consecutive active days — count backwards from today
+    const activeDates = new Set<string>()
+    for (const l of thisWeekLogs) {
+      activeDates.add((l.sessionDate ?? l.completedAt).toISOString().slice(0, 10))
+    }
+    for (const g of thisWeekGym) {
+      activeDates.add(g.date.toISOString().slice(0, 10))
+    }
+    // Also check previous week logs for streak that started before this week
+    for (const l of prevLogs) {
+      activeDates.add((l.sessionDate ?? l.completedAt).toISOString().slice(0, 10))
+    }
+    for (const g of prevGym) {
+      activeDates.add(g.date.toISOString().slice(0, 10))
+    }
+
+    let consecutiveActiveDays = 0
+    const checkDate = new Date(now)
+    checkDate.setHours(0, 0, 0, 0)
+    for (let i = 0; i < 14; i++) {
+      if (activeDates.has(checkDate.toISOString().slice(0, 10))) {
+        consecutiveActiveDays++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        break
+      }
+    }
+
+    // Previous 4 weeks average minutes
+    let prevWeeksAvgMinutes: number | null = null
+    if (prevLogs.length > 0 || prevGym.length > 0) {
+      const weekBuckets = new Map<number, number>()
+      for (let w = 1; w <= 4; w++) {
+        const wStart = new Date(monday)
+        wStart.setDate(monday.getDate() - w * 7)
+        const wEnd = new Date(wStart)
+        wEnd.setDate(wStart.getDate() + 7)
+
+        let wMin = 0
+        for (const l of prevLogs) {
+          const d = l.sessionDate ?? l.completedAt
+          if (d >= wStart && d < wEnd) wMin += l.durationMin ?? 0
+        }
+        for (const g of prevGym) {
+          if (g.date >= wStart && g.date < wEnd) wMin += g.durationMin ?? 0
+        }
+        if (wMin > 0) weekBuckets.set(w, wMin)
+      }
+      if (weekBuckets.size > 0) {
+        const total = [...weekBuckets.values()].reduce((a, b) => a + b, 0)
+        prevWeeksAvgMinutes = Math.round(total / weekBuckets.size)
+      }
+    }
+
+    return {
+      totalSessions,
+      totalMinutes,
+      avgRpe: rpeCount > 0 ? Math.round((rpeSum / rpeCount) * 10) / 10 : null,
+      maxRpe,
+      consecutiveActiveDays,
+      avgHrReal: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
+      prevWeeksAvgMinutes,
+    }
   }
 }

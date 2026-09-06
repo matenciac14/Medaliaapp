@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
-import { computeCoachActivity } from '@/domain/admin/coach-activity'
+import { computeCoachActivity } from '@/domain/admin/coach_activity'
 import { CoachTierDropdown } from './_components/CoachTierDropdown'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000

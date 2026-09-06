@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { todayDowInTz } from '@/lib/core/date_utils'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
-import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { intensityToDayType, type DayType } from '@/lib/nutrition/day_type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
+import { parseMealPlanData } from '@/domain/nutrition/generate_meal_plan'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
@@ -19,7 +19,11 @@ import MacroTargetCards from './_components/MacroTargetCards'
 import HydrationWidget from './_components/HydrationWidget'
 import MealSummaryCards from './_components/MealSummaryCards'
 import TipCard from './_components/TipCard'
-import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
+import NutritionPageClient from './_components/NutritionPageClient'
+import EmptyMealPlanCard from './_components/EmptyMealPlanCard'
+import CoachNutritionBanner from './_components/CoachNutritionBanner'
+import PendingMealsBanner from './_components/PendingMealsBanner'
+import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach_nutrition_proposal.repository'
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -38,7 +42,7 @@ export default async function NutritionPage() {
   ])
   const tz = userRecord?.timezone ?? 'America/Bogota'
   const todayDate = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
-  const todayDow = jsToOurDow(todayDate.getDay())
+  const todayDow = todayDowInTz(tz)
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   // Ajuste nutricional pendiente para hoy (date es @db.Date — comparar por día completo)
@@ -77,6 +81,7 @@ export default async function NutritionPage() {
     weekSessions,
     athleteTemplate,
     plannedMealsThisWeek,
+    todayFoodLogs,
   ] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
@@ -173,14 +178,23 @@ export default async function NutritionPage() {
         mealType: true,
         grams: true,
         date: true,
-        food: { select: { name: true, kcalPer100g: true } },
+        food: { select: { name: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
       },
       orderBy: { date: 'asc' },
+    }),
+    // Today's food logs with full macro data (for DeficitHero + consumed totals)
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: todayStart, lt: tomorrow } },
+      select: {
+        id: true, mealType: true, grams: true,
+        kcalLogged: true, proteinLogged: true, carbsLogged: true, fatLogged: true,
+        food: { select: { name: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
+      },
     }),
   ])
 
   // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
-  // Si falta NutritionPlan, NutritionInitClient lo crea vía POST /api/nutrition/init y refresca.
+  // Si falta NutritionPlan, NutritionInitClient lo crea vía POST /api/athlete/nutrition/init y refresca.
   const nutritionPlan = nutritionPlanRaw
   const needsNutritionInit = !nutritionPlan && !!healthProfile?.weightKg && !!healthProfile?.heightCm && !!healthProfile?.age
 
@@ -401,231 +415,282 @@ export default async function NutritionPage() {
   const todayProtein = nt?.proteinG ?? 0
   const todayFat     = nt?.fatG ?? 0
 
+  // ── Consumed totals (from today's food logs) ──
+  const consumed = todayFoodLogs.reduce(
+    (acc, log) => {
+      const kcal = log.kcalLogged ?? (log.grams / 100) * (log.food?.kcalPer100g ?? 0)
+      const p = log.proteinLogged ?? (log.grams / 100) * (log.food?.proteinPer100g ?? 0)
+      const c = log.carbsLogged ?? (log.grams / 100) * (log.food?.carbsPer100g ?? 0)
+      const f = log.fatLogged ?? (log.grams / 100) * (log.food?.fatPer100g ?? 0)
+      return { kcal: acc.kcal + Math.round(kcal), proteinG: acc.proteinG + Math.round(p), carbsG: acc.carbsG + Math.round(c), fatG: acc.fatG + Math.round(f) }
+    },
+    { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+  )
+
+  // ── Meal checklist (planned meals + logged status) ──
+  const MEAL_TYPE_LABELS_CHECK: Record<string, string> = {
+    BREAKFAST: 'Desayuno', LUNCH: 'Almuerzo', DINNER: 'Cena',
+    SNACK: 'Merienda', PRE_WORKOUT: 'Pre-entreno', POST_WORKOUT: 'Post-entreno',
+  }
+  const loggedMealTypes = new Set(todayFoodLogs.map(l => String(l.mealType)).filter(Boolean))
+
+  // From assigned meal plan template (today's meals)
+  const mealChecklist = (() => {
+    const effectiveMealPlan = assignedMealPlan ?? parsedMealPlan
+    if (!effectiveMealPlan) return []
+    const dayKey = todayDayType as keyof typeof effectiveMealPlan
+    const dayPlan = effectiveMealPlan[dayKey]
+    if (!dayPlan || !('meals' in dayPlan)) return []
+    type MealShape = { label: string; foods: string; kcal: number }
+    return (dayPlan.meals as MealShape[]).map((m) => {
+      const mealType = Object.entries(MEAL_TYPE_LABELS_CHECK).find(([, v]) => v === m.label)?.[0] ?? m.label
+      return {
+        mealType,
+        label: m.label,
+        foods: m.foods,
+        kcal: m.kcal,
+        isLogged: loggedMealTypes.has(mealType),
+      }
+    })
+  })()
+
+  const pendingMeals = mealChecklist.filter(m => !m.isLogged).map(m => m.label)
+
+  // ── Next meal (first unlogged planned meal with a time estimate) ──
+  const MEAL_TIMES: Record<string, string> = {
+    BREAKFAST: '08:00', PRE_WORKOUT: '10:00', LUNCH: '12:30',
+    SNACK: '15:30', POST_WORKOUT: '17:00', DINNER: '19:30',
+  }
+  const nextMealItem = mealChecklist.find(m => !m.isLogged)
+  const nextMeal = nextMealItem ? {
+    label: nextMealItem.label,
+    time: MEAL_TIMES[nextMealItem.mealType] ?? '12:00',
+    foods: nextMealItem.foods,
+    kcal: nextMealItem.kcal,
+    proteinG: 0,
+  } : null
+
+  // ── Page state ──
+  const isB2B = !!assignedNutritionPlan
+  const pageState: 'sin-plan' | 'con-plan' | 'b2b' = isB2B ? 'b2b' : hasMealPlan ? 'con-plan' : 'sin-plan'
+
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl mx-auto space-y-6">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl mx-auto">
+      <NutritionPageClient
+        state={pageState}
+        hasMealPlan={hasMealPlan}
+        consumed={consumed}
+        target={nt ? { kcal: todayKcal, proteinG: todayProtein, carbsG: todayCarbs, fatG: todayFat } : null}
+        nextMeal={nextMeal}
+        mealChecklist={mealChecklist}
 
-      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
-        ← Volver al inicio
-      </Link>
-
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Nutrición de hoy</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Plan personalizado según tu sesión</p>
-        </div>
-        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${badge.color}`}>
-          {badge.emoji} {badge.label}
-        </span>
-      </div>
-
-      {/* Contexto de fase del plan */}
-      {planPhaseText && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 font-medium">
-          📅 {planPhaseText}
-        </div>
-      )}
-
-      {/* Propuestas de ajuste del coach */}
-      {coachProposals.map((p) => (
-        <CoachNutritionProposalCard
-          key={p.id}
-          id={p.id}
-          coachName={p.coach?.name ?? null}
-          message={p.message}
-          deltaKcal={p.deltaKcal}
-          deltaProtein={p.deltaProtein}
-          deltaCarbs={p.deltaCarbs}
-          deltaFat={p.deltaFat}
-        />
-      ))}
-
-      {/* DEPRECATED: NutritionAdjustmentCard removida — ajustes automáticos reemplazados por notificaciones informativas */}
-
-      {/* NUT-DASH-01 — Sesión del día */}
-      {(todaySession || hasGymSessionToday) && (
-        <ActivityCard
-          sessionType={todaySession?.type ?? null}
-          intensity={todaySession?.intensity ?? null}
-          durationMin={todaySession?.durationMin ?? null}
-          isGymDay={hasGymSessionToday}
-        />
-      )}
-
-      {/* NUT-DASH-02 — Targets del día (siempre visibles con plan nutricional) */}
-      {effectiveNutritionPlan && (todayKcal > 0 || todayProtein > 0) && (
-        <MacroTargetCards
-          kcal={todayKcal}
-          proteinG={todayProtein}
-          carbsG={todayCarbs}
-          fatG={todayFat}
-        />
-      )}
-
-      {/* Tracking hero — Lo que comí hoy (primer elemento visible) */}
-      {effectiveNutritionPlan && allFoods.length > 0 && (
-        <TrackingSection
-          target={{
-            kcal:     todayKcal,
-            proteinG: todayProtein,
-            carbsG:   todayCarbs,
-            fatG:     todayFat,
-          }}
-          foods={allFoods}
-        />
-      )}
-
-      {/* NUT-F-03 — Adherencia calórica semanal (barras) */}
-      {effectiveNutritionPlan && (
-        <WeeklyNutritionBars days={weekBars} />
-      )}
-
-      {/* NUT-F-02 — Menú semanal (solo si hay plan activo + meal plan) */}
-      {activePlan && hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && (
-        <WeeklyMenuStrip
-          days={weekMenuDays}
-          mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as Parameters<typeof WeeklyMenuStrip>[0]['mealPlan']}
-        />
-      )}
-
-      {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}
-      {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan && (
-        <>
-          {assignedNutritionPlan && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-800 font-medium">
-              Plan de tu coach: {assignedNutritionPlan.template.name}
+        headerSlot={
+          <div className="space-y-4">
+            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+              &larr; Volver al inicio
+            </Link>
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Nutricion de hoy</h1>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${badge.color}`}>
+                {badge.emoji} {badge.label}
+              </span>
             </div>
-          )}
-          <NutritionContent
-            mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
-            nutritionPlan={effectiveNutritionPlan}
-            todayDayType={todayDayType}
-          />
-        </>
-      )}
-
-      {/* Plan en DB pero datos inválidos — CTA a recrear plantilla */}
-      {mealPlan && !parsedMealPlan && nutritionPlan && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
-          <p className="text-sm font-semibold text-yellow-800 mb-1">Tu plan de comidas necesita actualizarse</p>
-          <p className="text-xs text-yellow-600 mb-3">El formato anterior no es compatible. Crea una nueva plantilla.</p>
-          <Link href="/nutrition/builder" className="inline-block text-xs font-bold text-white bg-[#1e3a5f] px-4 py-2 rounded-lg hover:bg-[#162d4a] transition-colors">
-            Crear plantilla →
-          </Link>
-        </div>
-      )}
-
-      {/* Macros rápidos — cuando hay nutritionPlan pero aún no meal plan */}
-      {!hasMealPlan && !mealPlan && nutritionPlan && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Tus macros de hoy</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Calorías', value: todayKcal, unit: 'kcal', color: 'text-[#ea580c]' },
-                { label: 'Proteína', value: nutritionPlan.proteinG, unit: 'g', color: 'text-blue-600' },
-                { label: 'Carbohidratos', value: todayCarbs, unit: 'g', color: 'text-yellow-600' },
-                { label: 'Grasas', value: todayFat, unit: 'g', color: 'text-green-600' },
-              ].map((m) => (
-                <div key={m.label} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500 mb-1">{m.label}</p>
-                  <p className={`text-xl font-bold ${m.color}`}>{m.value}<span className="text-xs font-normal text-gray-400 ml-1">{m.unit}</span></p>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-3">TDEE base: {nutritionPlan.tdee} kcal · Ajustado según intensidad del día</p>
           </div>
+        }
 
-          {/* NUT-FLOW-01 — CTA dinámico según estado del atleta B2C */}
-          {!assignedNutritionPlan && (
-            !athleteTemplate ? (
-              // (a) Sin plantilla → invitar a crear Constructor A
-              <div className="bg-[#1e3a5f]/4 border border-[#1e3a5f]/15 rounded-2xl p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#1e3a5f]">Configura tu plan de comidas</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Diseña tu menú tipo para días duros, fáciles y de descanso.</p>
-                </div>
-                <Link
-                  href="/nutrition/builder"
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#1e3a5f' }}
-                >
-                  Crear plantilla →
-                </Link>
-              </div>
-            ) : !hasPlannedMealsThisWeek ? (
-              // (b) Con plantilla, sin plan esta semana → invitar a Constructor B
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-orange-800">Planifica esta semana</p>
-                  <p className="text-xs text-orange-600 mt-0.5">Tu plantilla <strong>{athleteTemplate.name}</strong> está lista — asigna comidas a cada día.</p>
-                </div>
-                <Link
-                  href={`/nutrition/builder/${athleteTemplate.id}`}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#ea580c' }}
-                >
-                  Planificar semana →
-                </Link>
-              </div>
-            ) : (
-              // (c) Con plan semanal activo → cards de hoy + CTA planificador
-              <>
-                {todayPlannedMeals.length > 0 ? (
-                  <MealSummaryCards meals={todayPlannedMeals} />
-                ) : (
-                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+        proposalSlot={
+          <>
+            {coachProposals.map((p) => (
+              <CoachNutritionProposalCard
+                key={p.id}
+                id={p.id}
+                coachName={p.coach?.name ?? null}
+                message={p.message}
+                deltaKcal={p.deltaKcal}
+                deltaProtein={p.deltaProtein}
+                deltaCarbs={p.deltaCarbs}
+                deltaFat={p.deltaFat}
+              />
+            ))}
+          </>
+        }
+
+        activitySlot={
+          (todaySession || hasGymSessionToday) ? (
+            <ActivityCard
+              sessionType={todaySession?.type ?? null}
+              intensity={todaySession?.intensity ?? null}
+              durationMin={todaySession?.durationMin ?? null}
+              isGymDay={hasGymSessionToday}
+            />
+          ) : null
+        }
+
+        phaseBannerSlot={
+          planPhaseText ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 font-medium">
+              {planPhaseText}
+            </div>
+          ) : null
+        }
+
+        macroCardsSlot={
+          effectiveNutritionPlan && (todayKcal > 0 || todayProtein > 0) ? (
+            <MacroTargetCards kcal={todayKcal} proteinG={todayProtein} carbsG={todayCarbs} fatG={todayFat} />
+          ) : null
+        }
+
+        emptyMealPlanSlot={
+          !hasMealPlan ? (
+            <div className="space-y-4">
+              <EmptyMealPlanCard tdee={effectiveNutritionPlan?.tdee ?? null} isB2B={isB2B} />
+
+              {/* NUT-FLOW-01 — CTA dinamico segun estado */}
+              {!assignedNutritionPlan && nutritionPlan && !mealPlan && (
+                !athleteTemplate ? (
+                  <div className="bg-[#1e3a5f]/4 border border-[#1e3a5f]/15 rounded-2xl p-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-green-800">Tu plan semanal está activo</p>
-                      <p className="text-xs text-green-600 mt-0.5">{plannedMealsThisWeek.length} comidas planificadas esta semana — revisa o ajusta tu menú.</p>
+                      <p className="text-sm font-semibold text-[#1e3a5f]">Configura tu plan de comidas</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Disena tu menu tipo para dias duros, faciles y de descanso.</p>
                     </div>
-                    <Link
-                      href="/nutrition/planner"
-                      className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: '#22c35d' }}
-                    >
-                      Ver plan →
+                    <Link href="/nutrition/builder" className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: '#1e3a5f' }}>
+                      Crear plantilla &rarr;
                     </Link>
                   </div>
-                )}
-              </>
-            )
-          )}
-        </div>
-      )}
+                ) : !hasPlannedMealsThisWeek ? (
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-orange-800">Planifica esta semana</p>
+                      <p className="text-xs text-orange-600 mt-0.5">Tu plantilla <strong>{athleteTemplate.name}</strong> esta lista.</p>
+                    </div>
+                    <Link href={`/nutrition/builder/${athleteTemplate.id}`} className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: '#ea580c' }}>
+                      Planificar semana &rarr;
+                    </Link>
+                  </div>
+                ) : null
+              )}
 
-      {/* Sin plan nutricional base — solo cuando onboarding está incompleto (no hay healthProfile) */}
-      {!hasMealPlan && !nutritionPlan && !needsNutritionInit && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
-          Completa el onboarding para activar tu plan nutricional base.
-        </div>
-      )}
-      {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
-      {needsNutritionInit && <NutritionInitClient />}
+              {/* Plan en DB pero datos invalidos */}
+              {mealPlan && !parsedMealPlan && nutritionPlan && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-yellow-800 mb-1">Tu plan de comidas necesita actualizarse</p>
+                  <p className="text-xs text-yellow-600 mb-3">El formato anterior no es compatible.</p>
+                  <Link href="/nutrition/builder" className="inline-block text-xs font-bold text-white bg-[#1e3a5f] px-4 py-2 rounded-lg hover:bg-[#162d4a] transition-colors">
+                    Crear plantilla &rarr;
+                  </Link>
+                </div>
+              )}
 
-      {/* NUT-DASH-06 — Consejo contextual según tipo de día */}
-      {effectiveNutritionPlan && todayDayType && <TipCard dayType={todayDayType} />}
+              {/* Sin plan nutricional base */}
+              {!nutritionPlan && !needsNutritionInit && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
+                  Completa el onboarding para activar tu plan nutricional base.
+                </div>
+              )}
+            </div>
+          ) : null
+        }
 
-      {/* NUT-WATER-01 — Widget de hidratación */}
-      {effectiveNutritionPlan && <HydrationWidget />}
+        coachBannerSlot={
+          assignedNutritionPlan ? (
+            <CoachNutritionBanner
+              coachName={null}
+              planName={assignedNutritionPlan.template.name}
+            />
+          ) : null
+        }
 
-      {/* Guía de alimentos — solo cuando hay effectiveNutritionPlan (evita mostrar targets en 0) */}
-      {allFoods.length > 0 && effectiveNutritionPlan && (
-        <div className="pt-2">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Guía de alimentos</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-          <FoodGuide
-            foods={allFoods}
-            proteinTarget={todayProtein}
-            carbsTarget={todayCarbs}
-            fatTarget={todayFat}
-            kcalTarget={todayKcal}
-          />
-        </div>
-      )}
+        weeklyMenuSlot={
+          activePlan && hasMealPlan && (assignedMealPlan ?? parsedMealPlan) ? (
+            <WeeklyMenuStrip
+              days={weekMenuDays}
+              mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as Parameters<typeof WeeklyMenuStrip>[0]['mealPlan']}
+            />
+          ) : null
+        }
+
+        pendingBannerSlot={<PendingMealsBanner pendingMeals={pendingMeals} />}
+
+        mealCardsSlot={
+          hasMealPlan && todayPlannedMeals.length > 0 ? (
+            <MealSummaryCards meals={todayPlannedMeals} />
+          ) : null
+        }
+
+        mealPlanSlot={
+          hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan ? (
+            <NutritionContent
+              mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
+              nutritionPlan={effectiveNutritionPlan}
+              todayDayType={todayDayType}
+            />
+          ) : null
+        }
+
+        menuLinksSlot={
+          hasMealPlan ? (
+            <div className="flex gap-4 text-sm">
+              <Link href="/nutrition/builder" className="text-[#1e3a5f] font-semibold hover:underline">
+                Editar mi menu &rarr;
+              </Link>
+              <Link href="/nutrition/planner" className="text-[#1e3a5f] font-semibold hover:underline">
+                Aplicar menu a esta semana &rarr;
+              </Link>
+            </div>
+          ) : null
+        }
+
+        trackingSectionSlot={
+          effectiveNutritionPlan && allFoods.length > 0 ? (
+            <TrackingSection
+              target={{ kcal: todayKcal, proteinG: todayProtein, carbsG: todayCarbs, fatG: todayFat }}
+              foods={allFoods}
+            />
+          ) : null
+        }
+
+        hydrationSlot={
+          effectiveNutritionPlan ? (
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 hidden lg:block">Hidratacion</p>
+              <HydrationWidget />
+            </div>
+          ) : null
+        }
+
+        adherenceSlot={
+          effectiveNutritionPlan ? (
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Adherencia — 7 dias</p>
+              <WeeklyNutritionBars days={weekBars} />
+            </div>
+          ) : null
+        }
+
+        tipSlot={
+          effectiveNutritionPlan && todayDayType ? (
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 hidden lg:block">Consejo del dia</p>
+              <TipCard dayType={todayDayType} />
+            </div>
+          ) : null
+        }
+
+        initSlot={needsNutritionInit ? <NutritionInitClient /> : null}
+
+        foodGuideSlot={
+          allFoods.length > 0 && effectiveNutritionPlan ? (
+            <div className="pt-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Guia de alimentos</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <FoodGuide foods={allFoods} proteinTarget={todayProtein} carbsTarget={todayCarbs} fatTarget={todayFat} kcalTarget={todayKcal} />
+            </div>
+          ) : null
+        }
+      />
     </div>
   )
 }

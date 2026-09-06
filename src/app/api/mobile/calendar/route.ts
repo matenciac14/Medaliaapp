@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { buildCalendarWeek } from '@/infrastructure/db/calendar'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { rateLimitAsync } from '@/lib/rate_limit'
 
 export async function GET(req: NextRequest) {
   const user = await getMobileUser(req)
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid weekOffset' }, { status: 400 })
   }
 
-  const week = await buildCalendarWeek(user.id, weekOffset)
+  const timezone = req.nextUrl.searchParams.get('tz') || undefined
+  const week = await buildCalendarWeek(user.id, weekOffset, timezone)
   return NextResponse.json(week)
 }

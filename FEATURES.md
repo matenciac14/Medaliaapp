@@ -76,7 +76,7 @@ Para cada feature: ruta de acceso, endpoints clave y archivos principales.
 
 ---
 
-## ATLETA — GYM
+## ATLETA — EJERCICIOS
 
 | Feature | Web path | Mobile screen | Endpoint / Archivo |
 |---------|----------|---------------|--------------------|
@@ -144,7 +144,7 @@ Para cada feature: ruta de acceso, endpoints clave y archivos principales.
 
 ---
 
-## COACH — GYM & NUTRICIÓN
+## COACH — EJERCICIOS & NUTRICIÓN
 
 | Feature | Web path | Endpoint / Archivo |
 |---------|----------|--------------------|

@@ -1,302 +1,88 @@
 import { auth } from '@/auth'
-import { prisma } from '@/lib/db/prisma'
-import { PlanStatus } from '@/generated/prisma/enums'
 import { redirect } from 'next/navigation'
-import PlanClient, { type PlanClientPlan, type PlanClientWeek } from './_components/PlanClient'
-import PlanEmptyClient from './_components/PlanEmptyClient'
+import { loadAthleteData } from '@/infrastructure/db/athlete_loader'
+import { getPlanPageData } from './_lib/get_plan_data'
+import PlanClient from './_components/PlanClient'
+import PlanTrackingClient from './_components/PlanTrackingClient'
 import PlanCompletedClient from './_components/PlanCompletedClient'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { getSessionIntensity } from '@/lib/plan/intensity'
-import { selectActivePlan } from '@/lib/plan/active-plan'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
-import { calculateHRZones } from '@/domain/plan/formulas'
-
-const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 export default async function PlanPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
+  const isB2B = session.user.isB2B ?? false
+
+  // JWT may be stale post-onboarding — verify DB before showing tracking state
   if (!session.user.features?.plan) {
-    // JWT may be stale post-onboarding — verify DB before showing empty state
-    const hasActivePlan = await prisma.trainingPlan.findFirst({
-      where: { userId: session.user.id, status: 'ACTIVE' },
-      select: { id: true },
-    })
-
-    if (!hasActivePlan) {
-      const healthProfile = await prisma.healthProfile.findUnique({
-        where: { userId: session.user.id },
-        select: { sport: true },
-      })
-
-      const isRunner = healthProfile?.sport === 'RUNNING' || healthProfile?.sport === 'BOTH'
-
-      return <PlanEmptyClient isB2B={session.user.isB2B ?? false} nutritionTarget={null} />
-    }
-  }
-
-  const userId = session.user.id
-
-  let plan: PlanClientPlan | null = null
-  let weeks: PlanClientWeek[] = []
-  let nutritionTarget: { kcal: number; proteinG: number; carbsG: number; fatG: number; label: string } | null = null
-  let weightData: { currentKg: number | null; goalKg: number | null; progressPct: number | null; weeklyChange: number | null } | null = null
-  let profileData: { weightKg: number | null; weightGoalKg: number | null; sport: string | null } | null = null
-  let checkInData: { energyLevel: number | null; sleepHours: number | null; stressLevel: number | null; motivationLevel: number | null; recordedAt: string } | null = null
-  let bodyMeasures: { waistCm: number | null; hipsCm: number | null; armsCm: number | null; thighsCm: number | null } | null = null
-  let hrZones: { z1: { min: number; max: number }; z2: { min: number; max: number }; z3: { min: number; max: number }; z4: { min: number; max: number }; z5: { min: number; max: number } } | null = null
-
-  try {
-    const [activePlansData, nutritionPlanData, profileDataRaw, checkIns, oldestCheckIn] = await Promise.all([
-      prisma.trainingPlan.findMany({
-        where: { userId, status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          weeks: {
-            orderBy: { weekNumber: 'asc' },
-            include: {
-              sessions: {
-                orderBy: { dayOfWeek: 'asc' },
-                include: { log: true },
-              },
-            },
-          },
-        },
-      }),
-      prisma.nutritionPlan.findUnique({ where: { userId } }),
-      prisma.healthProfile.findUnique({
-        where: { userId },
-        select: { weightKg: true, weightGoalKg: true, sport: true, hrMax: true, hrResting: true },
-      }),
-      prisma.weeklyCheckIn.findMany({
-        where: { userId },
-        orderBy: { recordedAt: 'desc' },
-        take: 2,
-        select: { recordedAt: true, weightKg: true, energyLevel: true, sleepHours: true, stressLevel: true, motivationLevel: true, waistCm: true, hipsCm: true, armsCm: true, thighsCm: true },
-      }),
-      prisma.weeklyCheckIn.findFirst({
-        where: { userId, weightKg: { not: null } },
-        orderBy: { recordedAt: 'asc' },
-        select: { weightKg: true },
-      }),
-    ])
-
-    profileData = profileDataRaw ?? null
-
-    // Seleccionar el plan con más logs; desactivar duplicados en background
-    const { winner: activePlanData, loserIds: _planLoserIds } = selectActivePlan(activePlansData)
-    if (_planLoserIds.length > 0) {
-      await prisma.trainingPlan.updateMany({
-        where: { id: { in: _planLoserIds } },
-        data: { status: PlanStatus.COMPLETED },
-      }).catch(() => {})
-    }
-
-    // Shared data — available for active, completed, and empty states
-    if (profileData?.weightKg) {
-      const curr = profileData.weightKg
-      const goal = profileData.weightGoalKg ?? null
-      const startWeight = oldestCheckIn?.weightKg ?? null
-      let progressPct: number | null = null
-      if (startWeight && goal && startWeight !== goal) {
-        progressPct = Math.min(100, Math.max(0,
-          Math.round(((startWeight - curr) / (startWeight - goal)) * 100)
-        ))
-      }
-      let weeklyChange: number | null = null
-      if (checkIns.length >= 2 && checkIns[0].weightKg && checkIns[1].weightKg) {
-        const daysDiff = Math.max(1,
-          (new Date(checkIns[0].recordedAt).getTime() - new Date(checkIns[1].recordedAt).getTime()) / 86400000
-        )
-        weeklyChange = Math.round(((checkIns[0].weightKg - checkIns[1].weightKg) / daysDiff) * 7 * 10) / 10
-      }
-      weightData = { currentKg: curr, goalKg: goal, progressPct, weeklyChange }
-    }
-
-    if (checkIns.length > 0) {
-      const latest = checkIns[0]
-      checkInData = {
-        energyLevel: latest.energyLevel,
-        sleepHours: latest.sleepHours,
-        stressLevel: latest.stressLevel,
-        motivationLevel: latest.motivationLevel,
-        recordedAt: latest.recordedAt.toISOString(),
-      }
-      if (latest.waistCm || latest.hipsCm || latest.armsCm || latest.thighsCm) {
-        bodyMeasures = {
-          waistCm: latest.waistCm,
-          hipsCm: latest.hipsCm,
-          armsCm: latest.armsCm,
-          thighsCm: latest.thighsCm,
-        }
-      }
-    }
-
-    if (profileDataRaw?.hrMax) {
-      hrZones = calculateHRZones(profileDataRaw.hrMax, profileDataRaw.hrResting ?? 0)
-    }
-
-    // Nutrition target for non-active states (REST intensity)
-    if (!nutritionTarget && nutritionPlanData) {
-      const nt = getDailyNutritionTarget(null, {
-        targetKcalHard: nutritionPlanData.targetKcalHard,
-        targetKcalEasy: nutritionPlanData.targetKcalEasy,
-        targetKcalRest: nutritionPlanData.targetKcalRest,
-        proteinG: nutritionPlanData.proteinG,
-        carbsHardG: nutritionPlanData.carbsHardG,
-        carbsEasyG: nutritionPlanData.carbsEasyG,
-        fatG: nutritionPlanData.fatG,
-      })
-      nutritionTarget = { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label }
-    }
-
-    if (activePlanData) {
-      const currentWeek = getPlanWeekNumber(activePlanData.startDate, activePlanData.totalWeeks)
-
-      // Today's session for nutrition intensity
-      const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay() // 1=Mon..7=Sun
-      const currentWeekData = activePlanData.weeks.find(w => w.weekNumber === currentWeek)
-      const todaySession = currentWeekData?.sessions.find(s => s.dayOfWeek === todayDow)
-      const todayIntensity = (todaySession?.intensity as 'HIGH' | 'MODERATE' | 'LOW' | null) ?? (todaySession?.type ? getSessionIntensity(todaySession.type) : null)
-
-      if (nutritionPlanData) {
-        const nt = getDailyNutritionTarget(todayIntensity, {
-          targetKcalHard: nutritionPlanData.targetKcalHard,
-          targetKcalEasy: nutritionPlanData.targetKcalEasy,
-          targetKcalRest: nutritionPlanData.targetKcalRest,
-          proteinG: nutritionPlanData.proteinG,
-          carbsHardG: nutritionPlanData.carbsHardG,
-          carbsEasyG: nutritionPlanData.carbsEasyG,
-          fatG: nutritionPlanData.fatG,
-        })
-        nutritionTarget = { kcal: nt.kcal, proteinG: nt.proteinG, carbsG: nt.carbsG, fatG: nt.fatG, label: nt.label }
-      }
-
-      plan = {
-        name: activePlanData.name,
-        currentWeek,
-        totalWeeks: activePlanData.totalWeeks,
-        startDate: activePlanData.startDate.toISOString().split('T')[0],
-      }
-
-      weeks = activePlanData.weeks.map((w) => ({
-        weekNumber: w.weekNumber,
-        phase: w.phase,
-        volumeKm: w.volumeKm ?? 0,
-        isRecoveryWeek: w.isRecoveryWeek,
-        hasTest: w.sessions.some((s) => s.type === 'TEST' || s.type === 'SIMULACRO'),
-        focusDescription: w.focusDescription ?? '',
-        sessions: w.sessions.map((s) => ({
-          id: s.id,
-          dayOfWeek: s.dayOfWeek,
-          day: DAY_LABELS[s.dayOfWeek % 7] ?? String(s.dayOfWeek),
-          type: s.type,
-          label: s.detailText?.slice(0, 40) ?? s.type,
-          done: !!s.log,
-          durationMin: s.durationMin,
-          zoneTarget: s.zoneTarget ?? '',
-          detailText: s.detailText ?? '',
-          structure: s.structure ?? null,
-          intensity: (s.intensity as string) ?? null,
-          logId: s.log?.id ?? null,
-          logDurationMin: s.log?.durationMin ?? null,
-          logRpe: s.log?.rpe ?? null,
-          logHrAvg: s.log?.hrAvg ?? null,
-          logNotes: s.log?.notes ?? null,
-          logDistanceKm: s.log?.distanceKm ?? null,
-        })),
-      }))
-    }
-  } catch (err) {
-    console.error('[plan] Error cargando plan:', err)
-  }
-
-  if (!plan) {
-    const isB2B = session.user.isB2B ?? false
-    const planPageIsRunner = profileData?.sport === 'RUNNING' || profileData?.sport === 'BOTH'
-
-    // Buscar último plan completado para mostrar celebración
-    const lastCompleted = await prisma.trainingPlan.findFirst({
-      where: { userId: session.user.id, status: 'COMPLETED' },
-      orderBy: { endDate: 'desc' },
-      select: {
-        endDate: true, name: true, totalWeeks: true,
-        weeks: {
-          orderBy: { weekNumber: 'asc' },
-          select: {
-            weekNumber: true, phase: true,
-            sessions: {
-              orderBy: { dayOfWeek: 'asc' },
-              select: {
-                dayOfWeek: true, type: true, detailText: true,
-                durationMin: true, zoneTarget: true,
-                log: { select: { id: true } },
-              },
-            },
-          },
-        },
-      },
-    }).catch(() => null)
-
-    if (lastCompleted) {
-      const allSessions = lastCompleted.weeks.flatMap(w => w.sessions)
-      const sessionsLogged = allSessions.filter(s => s.log).length
-      const recoveryDaysSinceEnd = Math.floor(
-        (Date.now() - new Date(lastCompleted.endDate).getTime()) / 86_400_000
-      )
-      const completedAdherencePct = allSessions.length > 0
-        ? Math.round((sessionsLogged / allSessions.length) * 100)
-        : 0
-
-      // Last week's sessions for the CalendarStrip
-      const lastWeek = lastCompleted.weeks[lastCompleted.weeks.length - 1]
-      const lastWeekSessions = (lastWeek?.sessions ?? []).map(s => ({
-        dayOfWeek: s.dayOfWeek,
-        type: s.type,
-        label: s.detailText?.slice(0, 25) ?? s.type,
-        durationMin: s.durationMin,
-        zone: s.zoneTarget ?? '',
-        done: !!s.log,
-      }))
-
-      // Phase progression
-      const phases = lastCompleted.weeks.map(w => w.phase).filter(Boolean) as string[]
-      const uniquePhases = [...new Set(phases)]
-
+    const { activePlanMeta } = await loadAthleteData(session.user.id, ['activePlanMeta'])
+    if (!activePlanMeta) {
+      // No plan feature + no active plan → fetch calWeek for tracking mode
+      const data = await getPlanPageData(session.user.id, isB2B)
       return (
-        <PlanCompletedClient
+        <PlanTrackingClient
           isB2B={isB2B}
-          planName={lastCompleted.name}
-          totalWeeks={lastCompleted.totalWeeks}
-          sessionsLogged={sessionsLogged}
-          sessionsTotal={allSessions.length}
-          recoveryDaysSinceEnd={recoveryDaysSinceEnd}
-          completedAdherencePct={completedAdherencePct}
-          lastWeekSessions={lastWeekSessions}
-          phases={uniquePhases}
-          currentWeek={lastCompleted.totalWeeks}
-          nutritionTarget={nutritionTarget}
-          weightData={weightData}
-          checkInData={checkInData}
-          bodyMeasures={bodyMeasures}
-          hrZones={hrZones}
+          initialCalendarWeek={data.initialCalendarWeek}
+          nutritionTarget={data.nutritionTarget}
+          weightData={data.weightData}
+          bodyMeasures={data.bodyMeasures}
         />
       )
     }
-
-    return <PlanEmptyClient isB2B={isB2B} nutritionTarget={nutritionTarget} />
   }
 
+  const data = await getPlanPageData(session.user.id, isB2B)
+
+  if (data.state === 'active' && data.plan) {
+    return (
+      <PlanClient
+        plan={data.plan}
+        weeks={data.weeks}
+        initialCalendarWeek={data.initialCalendarWeek}
+        nutritionTarget={data.nutritionTarget}
+        weightData={data.weightData}
+        checkInData={data.checkInData}
+        bodyMeasures={data.bodyMeasures}
+        hrZones={data.hrZones}
+        coachName={data.coachName}
+        raceDays={data.raceDays}
+        pendingSuggestionsCount={data.pendingSuggestionsCount}
+        todayConsumed={data.todayConsumed}
+        isB2B={isB2B}
+      />
+    )
+  }
+
+  if (data.state === 'completed' && data.completedPlan) {
+    return (
+      <PlanCompletedClient
+        isB2B={isB2B}
+        planName={data.completedPlan.name}
+        totalWeeks={data.completedPlan.totalWeeks}
+        endDate={data.completedPlan.endDate}
+        sessionsLogged={data.completedPlan.sessionsLogged}
+        sessionsTotal={data.completedPlan.sessionsTotal}
+        recoveryDaysSinceEnd={data.completedPlan.recoveryDaysSinceEnd}
+        completedAdherencePct={data.completedPlan.completedAdherencePct}
+        lastWeekSessions={data.completedPlan.lastWeekSessions}
+        phases={data.completedPlan.phases}
+        currentWeek={data.completedPlan.totalWeeks}
+        nutritionTarget={data.nutritionTarget}
+        weightData={data.weightData}
+        checkInData={data.checkInData}
+        bodyMeasures={data.bodyMeasures}
+        hrZones={data.hrZones}
+      />
+    )
+  }
+
+  // No active plan, no completed plan → tracking mode
   return (
-    <PlanClient
-      plan={plan}
-      weeks={weeks}
-      nutritionTarget={nutritionTarget}
-      weightData={weightData}
-      checkInData={checkInData}
-      bodyMeasures={bodyMeasures}
-      hrZones={hrZones}
+    <PlanTrackingClient
+      isB2B={isB2B}
+      initialCalendarWeek={data.initialCalendarWeek}
+      nutritionTarget={data.nutritionTarget}
+      weightData={data.weightData}
+      bodyMeasures={data.bodyMeasures}
     />
   )
 }

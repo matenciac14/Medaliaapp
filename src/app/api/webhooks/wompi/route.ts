@@ -7,9 +7,9 @@
  * la integridad se verifica con signature.checksum dentro del payload.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { WompiPaymentGateway } from '@/infrastructure/billing/wompi-payment-gateway'
+import { WompiPaymentGateway } from '@/infrastructure/billing/wompi_payment_gateway'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()

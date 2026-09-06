@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import ExerciseForm from './_components/ExerciseForm'
-import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
+import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym/labels'
 import ExercisesGrid from './_components/ExercisesGrid'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 
 interface Props {
   searchParams: Promise<{ bodyPart?: string; q?: string; adding?: string; page?: string }>

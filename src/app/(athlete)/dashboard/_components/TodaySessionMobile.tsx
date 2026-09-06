@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
-import type { DashboardMode, TodaySessionData } from '../_lib/get-dashboard-data'
+import type { DashboardMode, TodaySessionData } from '../_lib/get_dashboard_data'
 
 type RoutineDayConfig = { dow: number; activity: 'GYM' | 'RUN' | 'REST'; split?: string; runType?: string }
 

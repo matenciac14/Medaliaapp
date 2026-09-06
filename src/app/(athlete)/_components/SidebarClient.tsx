@@ -22,7 +22,7 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { UserConfig } from '@/lib/config/user-config'
+import type { UserConfig } from '@/lib/config/user_config'
 import { useLanguage } from '@/app/_components/LanguageContext'
 import LanguageSwitcher from '@/app/_components/LanguageSwitcher'
 
@@ -56,7 +56,7 @@ export default function SidebarClient({ user, config, hasCoach = false }: Props)
 
   useEffect(() => {
     const load = () =>
-      fetch('/api/notifications')
+      fetch('/api/athlete/notifications')
         .then(r => r.json())
         .then(d => setNotifCount(d.unreadCount ?? 0))
         .catch(() => {})

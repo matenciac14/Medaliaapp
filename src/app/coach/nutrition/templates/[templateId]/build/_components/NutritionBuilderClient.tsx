@@ -100,7 +100,7 @@ function FoodSearchModal({
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return }
     setLoading(true)
-    const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(q)}`)
+    const res = await fetch(`/api/athlete/nutrition/foods?q=${encodeURIComponent(q)}`)
     const data = await res.json()
     setResults(data.foods ?? [])
     setLoading(false)

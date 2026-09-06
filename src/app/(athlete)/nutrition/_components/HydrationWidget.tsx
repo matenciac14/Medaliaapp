@@ -29,7 +29,7 @@ export default function HydrationWidget({ initialMl, initialTarget, vertical }: 
 
   useEffect(() => {
     if (hasInitial) return
-    fetch('/api/nutrition/water')
+    fetch('/api/athlete/nutrition/water')
       .then(r => r.json())
       .then(d => {
         setMlLogged(d.mlLogged ?? 0)
@@ -44,7 +44,7 @@ export default function HydrationWidget({ initialMl, initialTarget, vertical }: 
     const optimistic = Math.max(0, mlLogged + delta)
     setMlLogged(optimistic)
     try {
-      const res = await fetch('/api/nutrition/water', {
+      const res = await fetch('/api/athlete/nutrition/water', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ delta }),

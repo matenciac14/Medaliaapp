@@ -1,7 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
-import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week-number'
+import { getPlanWeekNumber, getCurrentISOWeek } from '@/lib/core/week_number'
+import { loadAthleteData } from '@/infrastructure/db/athlete_loader'
 import CheckInClient, { type PrevMetrics, type CheckInState } from './_components/CheckInClient'
 import type { WeekSession } from './_components/SessionsPanel'
 
@@ -13,8 +14,8 @@ export default async function CheckinPage() {
   const hasNutrition = session.user.features?.nutrition ?? false
   const hasGym = session.user.features?.gym ?? false
 
-  // Fetch en paralelo: plan activo + check-ins + timezone + sugerencias pendientes + perfil
-  const [activePlan, checkIns, userRecord, pendingSuggestions, healthProfile] = await Promise.all([
+  const [{ user: userRecord, healthProfile, checkIns }, activePlan, pendingSuggestions] = await Promise.all([
+    loadAthleteData(userId, ['user', 'healthProfile', 'checkIns']),
     prisma.trainingPlan.findFirst({
       where: { userId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
@@ -35,40 +36,14 @@ export default async function CheckinPage() {
         },
       },
     }),
-    // Últimos 2 check-ins (esta semana + semana pasada)
-    prisma.weeklyCheckIn.findMany({
-      where: { userId },
-      orderBy: { recordedAt: 'desc' },
-      take: 2,
-      select: {
-        weekNumber: true,
-        recordedAt: true,
-        adjustmentsTriggered: true,
-        weightKg: true,
-        hrResting: true,
-        sleepHours: true,
-        energyLevel: true,
-        hardestSessionRpe: true,
-        sleepScore: true,
-        stressLevel: true,
-        motivationLevel: true,
-        painLevel: true,
-        nutritionAdherencePct: true,
-      },
-    }),
-    prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
     prisma.checkInSuggestion.findMany({
       where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
       select: { id: true, type: true, title: true, description: true, expiresAt: true },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.healthProfile.findUnique({
-      where: { userId },
-      select: { weightKg: true, hrResting: true },
-    }),
   ])
 
-  const tz = userRecord?.timezone ?? 'America/Bogota'
+  const tz = userRecord.timezone ?? 'America/Bogota'
   const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
   const dayOfWeek = nowInTz.getDay() // 0=Dom, 1=Lun … 5=Vie, 6=Sáb
   const isEarlyInWeek = dayOfWeek >= 1 && dayOfWeek <= 4

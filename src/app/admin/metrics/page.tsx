@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 import { computeWAU } from '@/domain/admin/wau'
 import { activeUserIdsInWindow, computeRetention, retentionColor } from '@/domain/admin/retention'
-import { KpiCard } from '@/app/_components/kpi-card'
+import { KpiCard } from '@/app/_components/kpi_card'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

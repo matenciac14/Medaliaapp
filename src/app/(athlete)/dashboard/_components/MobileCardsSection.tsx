@@ -4,8 +4,8 @@ import TodayLogCard from '../../_components/TodayLogCard'
 import NutritionProgressCard from '../../_components/ui/NutritionProgressCard'
 import HydrationWidget from '../../nutrition/_components/HydrationWidget'
 import MealSlotsWidget from './MealSlotsWidget'
-import type { DashboardMode } from '../_lib/get-dashboard-data'
-import type { DashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import type { DashboardMode } from '../_lib/get_dashboard_data'
+import type { DashboardSummary } from '@/domain/dashboard/get_dashboard_summary.use_case'
 
 type Props = {
   dashboardMode: DashboardMode
@@ -45,6 +45,13 @@ type Props = {
 
   // Meal slot logs (pre-fetched from server)
   initialMealSlotLogs: { mealType: string; kcal: number }[]
+
+  // Coach (B2B)
+  coach: { name: string; headline: string | null; initial: string } | null
+
+  // Check-in pending
+  checkinPending: boolean
+  hasActivePlan: boolean
 
   // Flags
   hasEverLogged: boolean
@@ -153,6 +160,38 @@ function ProMobileCards(props: Props) {
 
       {/* Actividad reciente */}
       <RecentActivityCard recentActivity={dashSummary.recentActivity} hasEverLogged={true} streakDays={props.streakDays} />
+
+      {/* Coach card (B2B) */}
+      {props.coach && (
+        <Link href="/messages" className="flex items-center overflow-hidden bg-white rounded-2xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <div className="w-1 self-stretch bg-[#f97316] shrink-0" />
+          <div className="flex-1 flex items-center gap-3 px-3 py-2.5">
+            <div className="w-[34px] h-[34px] rounded-full bg-[#f97316] flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-white">{props.coach.initial}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-[#1e3a5f]">Coach {props.coach.name.split(' ')[0]}</p>
+              <p className="text-[11px] text-gray-500 truncate mt-0.5">{props.coach.headline || 'Entrenador personal'}</p>
+            </div>
+            <span className="text-sm text-gray-300 shrink-0">›</span>
+          </div>
+        </Link>
+      )}
+
+      {/* Check-in semanal pendiente */}
+      {props.checkinPending && (
+        <Link href="/checkin" className="flex overflow-hidden bg-[#fff7ed] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <div className="w-1 bg-[#f97316] shrink-0" />
+          <div className="flex-1 px-3.5 py-3.5">
+            <p className="text-xs font-semibold text-[#9a3412]">Check-in semanal pendiente</p>
+            <p className="text-[10px] text-[#c2410c] mt-1">
+              {props.hasActivePlan
+                ? 'Registra métricas · recibe sugerencias de ajuste →'
+                : 'Registra cómo te sientes esta semana →'}
+            </p>
+          </div>
+        </Link>
+      )}
     </>
   )
 }

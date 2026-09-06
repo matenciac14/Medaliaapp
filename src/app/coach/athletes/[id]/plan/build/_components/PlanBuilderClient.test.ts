@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getInitialWeekIdx } from '@/lib/core/week-number'
+import { getInitialWeekIdx } from '@/lib/core/week_number'
 
 // Stub mínimo de BuilderPlan para los tests
 function makePlan(startDate: string, totalWeeks: number): { startDate: string; totalWeeks: number; weeks: { id: string }[] } {

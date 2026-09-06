@@ -1,6 +1,6 @@
 import type { PlannedSessionUpdate, PlannedSession } from '@/domain/plan/plan.types'
-import type { BuiltSession, HRZones, GymExercise } from '@/domain/plan/session-builder'
-import type { NutritionTargets } from '@/domain/ports/health-profile.repository'
+import type { BuiltSession, HRZones, GymExercise } from '@/domain/plan/session_builder'
+import type { NutritionTargets } from '@/domain/ports/health_profile.repository'
 
 export type ActivePlanContext = {
   id: string

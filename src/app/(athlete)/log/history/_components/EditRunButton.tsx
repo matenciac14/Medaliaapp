@@ -40,7 +40,7 @@ export function EditRunButton({ logId, initDurationMin, initDistanceKm, initRpe,
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch(`/api/log/session/${logId}`, {
+      const res = await fetch(`/api/athlete/log/session/${logId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

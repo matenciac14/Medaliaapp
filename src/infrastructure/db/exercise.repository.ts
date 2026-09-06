@@ -4,7 +4,7 @@
 import type { IExerciseRepository } from '@/domain/exercise/ports/exercise.repository'
 import type { Exercise, ExerciseFilters, UpsertExerciseData } from '@/domain/exercise/exercise.types'
 import { prisma } from '@/lib/db/prisma'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 
 const PAGE_SIZE_DEFAULT = 20
 const PAGE_SIZE_MAX = 100

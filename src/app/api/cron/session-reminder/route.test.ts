@@ -8,12 +8,12 @@ vi.mock('@/lib/db/prisma', () => ({
     plannedSession: { findMany: vi.fn() },
   },
 }))
-vi.mock('@/lib/core/week-number', () => ({ getPlanWeekNumber: vi.fn() }))
+vi.mock('@/lib/core/week_number', () => ({ getPlanWeekNumber: vi.fn() }))
 vi.mock('@/infrastructure/email/resend', () => ({ sendSessionReminderEmail: vi.fn() }))
-vi.mock('@/lib/push', () => ({ sendPushNotification: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/push/expo_push', () => ({ sendPushNotification: vi.fn().mockResolvedValue(undefined) }))
 
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import { sendSessionReminderEmail } from '@/infrastructure/email/resend'
 
 const SECRET = 'test-secret'

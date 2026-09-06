@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getTemplate } from '@/lib/plan/templates'
-import { getSessionIntensity } from '@/lib/plan/intensity'
-import { calcPlanEndDate } from '@/domain/plan/custom-plan'
+import { getTemplate } from '@/domain/plan/templates'
+import { getSessionIntensity } from '@/domain/plan/intensity'
+import { calcPlanEndDate } from '@/domain/plan/custom_plan'
 import type { SessionType } from '@/generated/prisma/client'
 
 export async function POST(

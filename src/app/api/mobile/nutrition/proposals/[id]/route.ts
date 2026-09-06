@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { z } from 'zod'
-import { respondCoachProposal, ProposalError } from '@/domain/nutrition/respond-coach-proposal.use-case'
+import { respondCoachProposal, ProposalError } from '@/domain/nutrition/respond_coach_proposal.use_case'
 
 const bodySchema = z.object({
   action: z.enum(['ACCEPTED', 'REJECTED']),

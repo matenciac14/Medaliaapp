@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getISOWeekNumber } from '@/lib/core/week-number'
+import { getISOWeekNumber } from '@/lib/core/week_number'
 import { calcAdherencePct } from '@/lib/core/adherence'
 import ProgressClient, {
   type WeightPoint,

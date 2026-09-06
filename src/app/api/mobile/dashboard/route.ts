@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { getDashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { getDashboardSummary } from '@/domain/dashboard/get_dashboard_summary.use_case'
 import { calculateHRZones } from '@/domain/plan/formulas'
 import { PlanStatus } from '@/generated/prisma/enums'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import {
+  fetchCoreDashboardData,
+  buildDashboardSummaryInput,
+  computeFoodTotals,
+  computeMealSlotLogs,
+  buildWaterData,
+} from '@/infrastructure/db/dashboard_queries'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -15,88 +22,17 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
 
-  // PERF-01 Phase 1: plan metadata sin sesiones
-  const todayUtc = new Date(); todayUtc.setHours(0, 0, 0, 0)
-  const [user, planMeta, checkIns, recentLogs, nutritionPlan, assignedWorkoutRaw, weeklyRoutine, recentGymSessions, todayLog, coachRelation, pendingSuggestionsCount, todayFoodAgg, todayWaterLog] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        name: true,
-        profile: { select: { weightKg: true, hrResting: true, hrMax: true, weightGoalKg: true, sleepHoursAvg: true, sportDetails: true, sportGoal: true } },
-      },
-    }),
+  // ── Shared queries + PERF-01 Phase 1: plan metadata sin sesiones ───────
+  const [core, planMeta] = await Promise.all([
+    fetchCoreDashboardData(userId),
     prisma.trainingPlan.findFirst({
       where: { userId, status: PlanStatus.ACTIVE },
       orderBy: { createdAt: 'desc' },
       select: { id: true, name: true, startDate: true, endDate: true, totalWeeks: true },
     }),
-    prisma.weeklyCheckIn.findMany({
-      where: { userId },
-      orderBy: { recordedAt: 'desc' },
-      take: 12,
-      select: { recordedAt: true, weekNumber: true, weightKg: true, hrResting: true, sleepHours: true, energyLevel: true, hardestSessionRpe: true, stressLevel: true, motivationLevel: true },
-    }),
-    prisma.sessionLog.findMany({
-      where: { userId },
-      orderBy: { completedAt: 'desc' },
-      take: 60,
-      select: {
-        completedAt: true,
-        freeSessionType: true,
-        durationMin: true,
-        rpe: true,
-        plannedSession: { select: { type: true } },
-      },
-    }),
-    prisma.nutritionPlan.findUnique({ where: { userId } }),
-    prisma.assignedWorkout.findFirst({
-      where: { athleteId: userId, isActive: true },
-      select: { template: { select: { name: true, days: { select: { dayOfWeek: true, isRestDay: true, label: true } } } } },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.weeklyRoutine.findUnique({ where: { userId } }),
-    prisma.gymSession.findMany({
-      where: { athleteId: userId, completed: true },
-      orderBy: { date: 'desc' },
-      take: 60,
-      select: { date: true, durationMin: true, assignedWorkout: { select: { template: { select: { name: true } } } } },
-    }),
-    // DAILY-02: registro de hoy para widget en dashboard
-    prisma.dailyLog.findUnique({
-      where: { userId_date: { userId, date: todayUtc } },
-      select: { weightKg: true, energyLevel: true },
-    }),
-    prisma.coachAthlete.findFirst({
-      where: { athleteId: userId },
-      select: {
-        coach: {
-          select: {
-            name: true,
-            coachProfile: { select: { headline: true } },
-          },
-        },
-      },
-    }),
-    prisma.checkInSuggestion.count({
-      where: { userId, status: 'PENDING', expiresAt: { gt: new Date() } },
-    }),
-    // UX-DASH-05a: totales nutricionales de hoy para NutritionProgressCard
-    // findMany en lugar de aggregate para manejar logs sin snapshot (kcalLogged null → calcular desde food)
-    prisma.foodLog.findMany({
-      where: { userId, date: todayUtc },
-      select: {
-        grams:         true,
-        mealType:      true,
-        kcalLogged:    true,
-        proteinLogged: true,
-        carbsLogged:   true,
-        fatLogged:     true,
-        food: { select: { kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
-      },
-    }),
-    // PERF-02: water data for HydrationWidget — avoid independent fetch
-    prisma.waterLog.findUnique({ where: { userId_date: { userId, date: todayUtc } }, select: { mlLogged: true } }),
   ])
+
+  const { dbUser, recentGymSessions, coachRelation, weeklyRoutine, nutritionPlan, assignedWorkout: assignedWorkoutRaw, pendingSuggestionsCount, todayLog, todayFoodLogs, todayWaterLog } = core
 
   // PERF-01 Phase 2: cargar solo la semana actual con sesiones completas
   const currentWeekNum = planMeta ? getPlanWeekNumber(planMeta.startDate, planMeta.totalWeeks) : 0
@@ -120,7 +56,7 @@ export async function GET(req: NextRequest) {
     select: { name: true, endDate: true },
   }).then(r => r?.endDate ? { name: r.name, endDate: new Date(r.endDate) } : null)
 
-  // Map Prisma field names → domain names before passing to the pure use case
+  // Map Prisma field names -> domain names before passing to the pure use case
   const activePlan = activePlanRaw && !planIsExpired
     ? {
         ...activePlanRaw,
@@ -136,16 +72,8 @@ export async function GET(req: NextRequest) {
       }
     : null
 
-  const { summary, planIdToComplete } = getDashboardSummary({
-    user, activePlanRaw: activePlan, lastCompletedPlan, checkIns, recentLogs, nutritionPlan,
-    assignedWorkout: assignedWorkoutRaw ?? null,
-    gymCompletionDates: recentGymSessions.map(gs => gs.date),
-    recentGymSessions: recentGymSessions.map(gs => ({
-      date: gs.date,
-      durationMin: gs.durationMin ?? null,
-      templateName: gs.assignedWorkout?.template.name ?? null,
-    })),
-  })
+  const summaryInput = buildDashboardSummaryInput(core, activePlan, lastCompletedPlan)
+  const { summary, planIdToComplete } = getDashboardSummary(summaryInput)
 
   // When a plan just auto-completes, fetch stats to show the season-completed modal
   let justCompletedPlan: { name: string; totalWeeks: number; totalSessions: number; totalKm: number | null; seasonNumber: number; adherencePct: number | null } | null = null
@@ -165,7 +93,6 @@ export async function GET(req: NextRequest) {
       totalWeeks,
       totalSessions: sessionCount,
       totalKm: kmAgg._sum.distanceKm ? Math.round(kmAgg._sum.distanceKm) : null,
-      // isNewCompletion: plan not yet marked COMPLETED → +1 for the season number
       seasonNumber: isNewCompletion ? completedCount + 1 : completedCount,
       adherencePct: plannedCount > 0 ? Math.round((sessionCount / plannedCount) * 100) : null,
     }
@@ -179,7 +106,6 @@ export async function GET(req: NextRequest) {
   }
 
   // Gap fix: if no justCompletedPlan from this request, check for recently completed plans
-  // so the season modal still shows if the user opens the app after plan auto-completed on a previous request
   if (!justCompletedPlan) {
     const recentlyCompleted = await prisma.trainingPlan.findFirst({
       where: {
@@ -195,6 +121,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const todayFoodTotals = computeFoodTotals(todayFoodLogs) ?? { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+
   return NextResponse.json({
     ...summary,
     weeklyRoutine: weeklyRoutine ? { daysPerWeek: weeklyRoutine.daysPerWeek, days: weeklyRoutine.days } : null,
@@ -209,39 +137,16 @@ export async function GET(req: NextRequest) {
     workoutName: assignedWorkoutRaw?.template.name ?? null,
     justCompletedPlan,
     pendingSuggestionsCount,
-    todayFoodTotals: (() => {
-      let kcal = 0, proteinG = 0, carbsG = 0, fatG = 0
-      for (const fl of todayFoodAgg) {
-        const r = fl.grams / 100
-        // Preferir snapshot; fallback a cálculo en runtime para logs sin snapshot (backward compat)
-        kcal     += fl.kcalLogged    ?? (fl.food.kcalPer100g    * r)
-        proteinG += fl.proteinLogged ?? (fl.food.proteinPer100g * r)
-        carbsG   += fl.carbsLogged   ?? (fl.food.carbsPer100g   * r)
-        fatG     += fl.fatLogged     ?? (fl.food.fatPer100g     * r)
-      }
-      return {
-        kcal:     Math.round(kcal),
-        proteinG: Math.round(proteinG * 10) / 10,
-        carbsG:   Math.round(carbsG   * 10) / 10,
-        fatG:     Math.round(fatG     * 10) / 10,
-      }
-    })(),
-    // PERF-02: pre-hydrate water + meal slots to avoid independent fetches
-    waterData: {
-      mlLogged: todayWaterLog?.mlLogged ?? 0,
-      waterMlTarget: nutritionPlan?.waterMlTarget ?? 2000,
+    todayFoodTotals: {
+      ...todayFoodTotals,
+      proteinG: Math.round(todayFoodTotals.proteinG * 10) / 10,
+      carbsG:   Math.round(todayFoodTotals.carbsG   * 10) / 10,
+      fatG:     Math.round(todayFoodTotals.fatG     * 10) / 10,
     },
-    mealSlotLogs: (() => {
-      const kcalByType: Record<string, number> = {}
-      for (const fl of todayFoodAgg) {
-        const mealType = fl.mealType ?? 'SNACK'
-        const kcal = fl.kcalLogged ?? (fl.food.kcalPer100g * fl.grams / 100)
-        kcalByType[mealType] = (kcalByType[mealType] ?? 0) + kcal
-      }
-      return Object.entries(kcalByType).map(([mealType, kcal]) => ({ mealType, kcal: Math.round(kcal) }))
-    })(),
+    waterData: buildWaterData(todayWaterLog, nutritionPlan),
+    mealSlotLogs: computeMealSlotLogs(todayFoodLogs),
     checkInData: (() => {
-      const ci = checkIns[0]
+      const ci = dbUser.checkIns[0]
       if (!ci) return null
       return {
         energyLevel:     ci.energyLevel     ?? null,
@@ -252,9 +157,9 @@ export async function GET(req: NextRequest) {
       }
     })(),
     hrZones: (() => {
-      const hrMax = user?.profile?.hrMax ?? null
+      const hrMax = dbUser.profile?.hrMax ?? null
       if (!hrMax) return null
-      const hrResting = user?.profile?.hrResting ?? 0
+      const hrResting = dbUser.profile?.hrResting ?? 0
       return calculateHRZones(hrMax, hrResting)
     })(),
   })

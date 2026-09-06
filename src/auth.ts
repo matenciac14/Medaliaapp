@@ -5,8 +5,8 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
-import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user_config'
+import { rateLimitAsync } from '@/lib/rate_limit'
 
 // Shape de columnas de User que se leen en auth
 const USER_SELECT = {
@@ -91,7 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const features = buildFeaturesFromUser(user)
 
         const coachRelation = await prisma.coachAthlete.findFirst({
-          where: { athleteId: user.id },
+          where: { athleteId: user.id, status: 'ACTIVE' },
           select: { id: true },
         })
 
@@ -143,7 +143,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const [dbUser, coachRelation] = await Promise.all([
             prisma.user.findUnique({ where: { id: t.id }, select: USER_SELECT }),
-            prisma.coachAthlete.findFirst({ where: { athleteId: t.id }, select: { id: true } }),
+            prisma.coachAthlete.findFirst({ where: { athleteId: t.id, status: 'ACTIVE' }, select: { id: true } }),
           ])
           if (dbUser) {
             if (dbUser.needsRoleSelection) {
@@ -178,7 +178,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const [dbUser, coachRelation] = await Promise.all([
             prisma.user.findUnique({ where: { id: t.id }, select: USER_SELECT }),
-            prisma.coachAthlete.findFirst({ where: { athleteId: t.id }, select: { id: true } }),
+            prisma.coachAthlete.findFirst({ where: { athleteId: t.id, status: 'ACTIVE' }, select: { id: true } }),
           ])
           if (dbUser) {
             const features = buildFeaturesFromUser(dbUser)

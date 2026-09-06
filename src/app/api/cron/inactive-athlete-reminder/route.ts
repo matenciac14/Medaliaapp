@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { sendReengagementEmail } from '@/infrastructure/email/resend'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 // Cron: diario 14:00 UTC = 09:00 COT
 // Atletas con historial pero sin actividad en 3+ días → push + email re-engagement

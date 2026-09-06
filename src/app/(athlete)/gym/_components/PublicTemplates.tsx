@@ -59,7 +59,7 @@ export default function PublicTemplates({ templates }: { templates: PublicTempla
   async function handleSelect(templateId: string) {
     setLoading(templateId)
     try {
-      const res = await fetch('/api/gym/assign', {
+      const res = await fetch('/api/athlete/gym/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId }),

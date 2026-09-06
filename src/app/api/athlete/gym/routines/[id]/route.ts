@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import type { SetType } from '@/generated/prisma/enums'
 
 async function getAthleteId(req: NextRequest): Promise<string | null> {

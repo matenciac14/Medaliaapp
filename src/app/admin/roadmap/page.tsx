@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { GROUPS, getAllItems } from './roadmap-data'
-import type { RoadmapGroup, RoadmapItem } from './roadmap-data'
+import { GROUPS, getAllItems } from './roadmap_data'
+import type { RoadmapGroup, RoadmapItem } from './roadmap_data'
 
 function progress(items: { done: boolean }[]) {
   const done = items.filter((i) => i.done).length
@@ -331,7 +331,7 @@ export default function AdminRoadmapPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-8 text-center">
-        Medaliq Roadmap · Fuente canónica: <code className="bg-gray-100 px-1 rounded">src/app/admin/roadmap/roadmap-data.ts</code>
+        Medaliq Roadmap · Fuente canónica: <code className="bg-gray-100 px-1 rounded">src/app/admin/roadmap/roadmap_data.ts</code>
       </p>
     </div>
   )

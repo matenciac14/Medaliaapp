@@ -9,11 +9,11 @@ vi.mock('@/lib/db/prisma', () => ({
     adminAuditLog: { create: vi.fn() },
   },
 }))
-vi.mock('@/lib/admin/log-action', () => ({ logAdminAction: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/admin/log_action', () => ({ logAdminAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { logAdminAction } from '@/lib/admin/log-action'
+import { logAdminAction } from '@/lib/admin/log_action'
 
 const ADMIN_SESSION = { user: { id: 'admin-1' } }
 const TARGET_USER = { id: 'user-2', name: 'Ana López', email: 'ana@test.com', role: 'ATHLETE' }

@@ -68,7 +68,7 @@ export default function CheckInResultScreen({ weekLabel, triggers, adjustments, 
   async function respond(id: string, action: 'accept' | 'reject') {
     setResponding(id)
     try {
-      await fetch(`/api/checkin/suggestions/${id}/${action}`, { method: 'POST' })
+      await fetch(`/api/athlete/checkin/suggestions/${id}/${action}`, { method: 'POST' })
       setRespondedIds(prev => ({ ...prev, [id]: action === 'accept' ? 'accepted' : 'rejected' }))
     } finally {
       setResponding(null)

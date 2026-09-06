@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { todayDowInTz } from '@/lib/core/date_utils'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { requireFeature } from '@/lib/guards/feature-gate'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
-import { intensityToDayType } from '@/lib/nutrition/day-type'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { requireFeature } from '@/lib/guards/feature_gate'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { intensityToDayType } from '@/lib/nutrition/day_type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
+import { parseMealPlanData } from '@/domain/nutrition/generate_meal_plan'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
   if (featureGuard) return featureGuard
 
   const userId = mobile.id
-  const todayDow = jsToOurDow(new Date().getDay())
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
+  const todayDow = todayDowInTz(tz)
 
   // Fetch plan first to compute current week — avoid date-based query (timezone-sensitive)
   const activePlan = await prisma.trainingPlan.findFirst({
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   // PERSIST-09: GET no hace writes. El lazy-init fue eliminado para no violar REST
   // y evitar race conditions entre requests concurrentes. La inicialización del plan
-  // nutricional ocurre en POST /api/onboarding/generate o POST /api/nutrition/generate.
+  // nutricional ocurre en POST /api/onboarding/generate o POST /api/athlete/nutrition/generate.
   const nutritionPlan = nutritionPlanRaw
 
   const hasGymToday = !!(gymToday?.template.days[0] && !gymToday.template.days[0].isRestDay)
