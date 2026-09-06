@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 
 export async function GET(
   _req: NextRequest,
@@ -19,9 +20,9 @@ export async function GET(
   })
   if (!coachRelation) return NextResponse.json({ error: 'Atleta no encontrado' }, { status: 404 })
 
-  const since = new Date()
-  since.setDate(since.getDate() - 7)
-  since.setHours(0, 0, 0, 0)
+  const athlete = await prisma.user.findUnique({ where: { id: athleteId }, select: { timezone: true } })
+  const since = todayInTz(athlete?.timezone ?? null)
+  since.setUTCDate(since.getUTCDate() - 7)
 
   const logs = await prisma.dailyLog.findMany({
     where: { userId: athleteId, date: { gte: since } },

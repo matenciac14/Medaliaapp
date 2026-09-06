@@ -5,14 +5,15 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { NextResponse } from 'next/server'
+import { todayInTz } from '@/lib/core/date_utils'
 
 export async function POST() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  const today = todayInTz(u?.timezone ?? null)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 

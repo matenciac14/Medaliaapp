@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'weekOffset fuera de rango' }, { status: 400 })
   }
 
-  const { monday, sunday } = getWeekBounds(weekOffset)
+  const { monday, sunday } = getWeekBounds(weekOffset, tz)
   const isCurrentWeek = weekOffset === 0
 
   const targetWeekNumber = (() => {
@@ -102,10 +102,9 @@ export async function GET(req: NextRequest) {
         selectedDetail = { type: 'rest' }
       } else {
         const selDayStart = new Date(monday)
-        selDayStart.setDate(monday.getDate() + (selectedDow - 1))
-        selDayStart.setHours(0, 0, 0, 0)
+        selDayStart.setUTCDate(monday.getUTCDate() + (selectedDow - 1))
         const selDayEnd = new Date(selDayStart)
-        selDayEnd.setDate(selDayStart.getDate() + 1)
+        selDayEnd.setUTCDate(selDayStart.getUTCDate() + 1)
 
         const session = await prisma.gymSession.findFirst({
           where: { athleteId, assignedWorkoutId: assigned.id, dayOfWeek: selectedDow, date: { gte: selDayStart, lt: selDayEnd } },

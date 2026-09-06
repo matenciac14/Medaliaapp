@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { todayDowInTz } from '@/lib/core/date_utils'
+import { todayDowInTz, todayInTz } from '@/lib/core/date_utils'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { rateLimitAsync } from '@/lib/rate_limit'
@@ -29,8 +29,7 @@ export async function GET(req: NextRequest) {
   })
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  const todayStart = todayInTz(tz)
 
   const [nutritionPlanRaw, mealPlan, todaySession, , gymToday, healthProfile, gymSessionToday, currentPlanWeek] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),

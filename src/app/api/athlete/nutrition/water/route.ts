@@ -5,18 +5,19 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { NextResponse } from 'next/server'
+import { todayInTz } from '@/lib/core/date_utils'
 
-function todayUtcMidnight() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+async function getUserTimezone(userId: string): Promise<string | null> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  return u?.timezone ?? null
 }
 
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
-  const today = todayUtcMidnight()
+  const tz = await getUserTimezone(userId)
+  const today = todayInTz(tz)
 
   const [log, plan] = await Promise.all([
     prisma.waterLog.findUnique({ where: { userId_date: { userId, date: today } } }),
@@ -38,7 +39,8 @@ export async function POST(req: Request) {
   const delta = Number(body.delta)
   if (!delta || isNaN(delta)) return NextResponse.json({ error: 'delta requerido' }, { status: 400 })
 
-  const today = todayUtcMidnight()
+  const tz = await getUserTimezone(userId)
+  const today = todayInTz(tz)
   const existing = await prisma.waterLog.findUnique({ where: { userId_date: { userId, date: today } } })
   const newMl = Math.max(0, (existing?.mlLogged ?? 0) + delta)
 

@@ -6,11 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { rateLimitAsync } from '@/lib/rate_limit'
+import { todayInTz } from '@/lib/core/date_utils'
 
-function todayUtcMidnight() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+async function getUserTimezone(userId: string): Promise<string | null> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  return u?.timezone ?? null
 }
 
 export async function GET(req: NextRequest) {
@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
   const userId = mobile.id
-  const today = todayUtcMidnight()
+  const tz = await getUserTimezone(userId)
+  const today = todayInTz(tz)
 
   const [log, plan] = await Promise.all([
     prisma.waterLog.findUnique({ where: { userId_date: { userId, date: today } } }),
@@ -44,7 +45,8 @@ export async function POST(req: NextRequest) {
   const delta = Number(body.delta)
   if (!delta || isNaN(delta)) return NextResponse.json({ error: 'delta requerido' }, { status: 400 })
 
-  const today = todayUtcMidnight()
+  const tz = await getUserTimezone(userId)
+  const today = todayInTz(tz)
   const existing = await prisma.waterLog.findUnique({ where: { userId_date: { userId, date: today } } })
   const newMl = Math.max(0, (existing?.mlLogged ?? 0) + delta)
 

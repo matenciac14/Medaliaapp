@@ -92,7 +92,7 @@ export default function NutritionSummaryDonut({ consumed, target }: Props) {
               <span className="text-gray-600">{m.label}</span>
             </div>
             <span className="font-semibold text-gray-800">
-              {m.value} / {m.max}{m.unit}
+              {m.value} {m.unit} · {m.max > 0 ? Math.round((m.value / m.max) * 100) : 0}%
             </span>
           </div>
         ))}

@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getWeekMonday } from '@/lib/core/date_utils'
 import { MealType } from '@/generated/prisma/enums'
 
 const VALID_MEAL_TYPES = new Set(Object.values(MealType))
-
-function getThisMonday(): Date {
-  const now = new Date()
-  const dow = now.getDay()
-  const offset = dow === 0 ? -6 : 1 - dow
-  const monday = new Date(now)
-  monday.setDate(monday.getDate() + offset)
-  monday.setHours(0, 0, 0, 0)
-  return monday
-}
 
 // GET /api/coach/athletes/[id]/nutrition/plan?week=YYYY-MM-DD
 export async function GET(
@@ -29,16 +20,15 @@ export async function GET(
 
   const link = await prisma.coachAthlete.findFirst({
     where: { coachId: session.user.id, athleteId, status: 'ACTIVE' },
-    select: { id: true },
+    select: { id: true, athlete: { select: { timezone: true } } },
   })
   if (!link) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
   const weekParam = req.nextUrl.searchParams.get('week')
-  const weekStart = weekParam ? new Date(weekParam) : getThisMonday()
-  weekStart.setHours(0, 0, 0, 0)
+  const weekStart = weekParam ? new Date(`${weekParam}T00:00:00.000Z`) : getWeekMonday(0, link.athlete.timezone)
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
+  weekEnd.setUTCHours(23, 59, 59, 999)
 
   const meals = await prisma.plannedMeal.findMany({
     where: { userId: athleteId, date: { gte: weekStart, lte: weekEnd } },

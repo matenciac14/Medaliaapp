@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getWeekMonday } from '@/lib/core/date_utils'
 import { MealType } from '@/generated/prisma/enums'
 
 const VALID_MEAL_TYPES = new Set(Object.values(MealType))
@@ -13,12 +14,12 @@ export async function GET(req: NextRequest) {
 
   const userId = session.user.id
   const weekStartParam = req.nextUrl.searchParams.get('weekStart')
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
 
-  const weekStart = weekStartParam ? new Date(weekStartParam) : getThisMonday()
-  weekStart.setHours(0, 0, 0, 0)
+  const weekStart = weekStartParam ? new Date(`${weekStartParam}T00:00:00.000Z`) : getWeekMonday(0, u?.timezone)
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
+  weekEnd.setUTCHours(23, 59, 59, 999)
 
   const meals = await prisma.plannedMeal.findMany({
     where: { userId, date: { gte: weekStart, lte: weekEnd } },
@@ -89,11 +90,3 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ meal }, { status: 201 })
 }
 
-function getThisMonday(): Date {
-  const now = new Date()
-  const dow = now.getDay()
-  const offset = dow === 0 ? -6 : 1 - dow
-  const monday = new Date(now)
-  monday.setDate(monday.getDate() + offset)
-  return monday
-}

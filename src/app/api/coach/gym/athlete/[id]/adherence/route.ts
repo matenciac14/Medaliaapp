@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-
-/** Lunes de la semana que contiene `date` (semana ISO: Lunes=inicio). */
-function getMondayOf(date: Date): Date {
-  const d = new Date(date)
-  const dow = d.getDay() // 0=Dom
-  const diff = dow === 0 ? -6 : 1 - dow
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
+import { getWeekMonday } from '@/lib/core/date_utils'
 
 /** Domingo (fin de semana) a partir del lunes. */
 function getSundayOf(monday: Date): Date {
   const d = new Date(monday)
-  d.setDate(d.getDate() + 6)
-  d.setHours(23, 59, 59, 999)
+  d.setUTCDate(d.getUTCDate() + 6)
+  d.setUTCHours(23, 59, 59, 999)
+  return d
+}
+
+/** Lunes de la semana que contiene `date` — timezone-aware si se pasa tz. */
+function getMondayOf(date: Date): Date {
+  const d = new Date(date)
+  const dow = d.getUTCDay()
+  const diff = dow === 0 ? -6 : 1 - dow
+  d.setUTCDate(d.getUTCDate() + diff)
+  d.setUTCHours(0, 0, 0, 0)
   return d
 }
 
@@ -38,15 +39,15 @@ export async function GET(
 
   const relation = await prisma.coachAthlete.findFirst({
     where: { coachId: session.user.id, athleteId },
-    select: { id: true },
+    select: { id: true, athlete: { select: { timezone: true } } },
   })
   if (!relation) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
   // Calcular lunes de las últimas 4 semanas (incluyendo la actual)
-  const thisMonday = getMondayOf(new Date())
+  const thisMonday = getWeekMonday(0, relation.athlete.timezone)
   const mondays = [0, 1, 2, 3].map((i) => {
     const d = new Date(thisMonday)
-    d.setDate(d.getDate() - i * 7)
+    d.setUTCDate(d.getUTCDate() - i * 7)
     return d
   }).reverse() // cronológico ascendente
 

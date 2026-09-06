@@ -2,18 +2,13 @@
  * Shared gym week helpers — used by mobile/gym/week route.
  */
 
-import { todayDowInTz } from '@/lib/core/date_utils'
+import { todayDowInTz, getWeekMonday } from '@/lib/core/date_utils'
 
-export function getWeekBounds(offsetWeeks = 0): { monday: Date; sunday: Date } {
-  const now = new Date()
-  const dow = now.getDay()
-  const diffToMon = dow === 0 ? -6 : 1 - dow
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMon + offsetWeeks * 7)
-  monday.setHours(0, 0, 0, 0)
+export function getWeekBounds(offsetWeeks = 0, timezone?: string | null): { monday: Date; sunday: Date } {
+  const monday = getWeekMonday(offsetWeeks, timezone)
   const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+  sunday.setUTCHours(23, 59, 59, 999)
   return { monday, sunday }
 }
 

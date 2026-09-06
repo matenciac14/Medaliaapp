@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
 import type { SessionIntensity } from '@/generated/prisma/client'
 
@@ -50,8 +51,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Determinar el tipo de día según la sesión de hoy
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const u = await prisma.user.findUnique({ where: { id: mobile.id }, select: { timezone: true } })
+  const today = todayInTz(u?.timezone ?? null)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
