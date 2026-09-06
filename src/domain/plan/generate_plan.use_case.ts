@@ -136,6 +136,8 @@ export type GeneratePlanInput = {
   experienceLevel?: string
   /** Recent 5K time in seconds — used to calibrate pace hints in running sessions. */
   recentBenchmark5KSecs?: number
+  /** IANA timezone — used to set plan start date in user's local date. */
+  timezone?: string
 }
 
 export type GeneratePlanResult = {
@@ -167,8 +169,10 @@ export async function generatePlanUseCase(
   const tdee = calculateTDEE(input.weightKg, input.heightCm, input.age, input.gender ?? 'male', input.daysPerWeek)
   const macros = calculateMacros(tdee, input.weightKg, !!input.weightGoalKg)
 
-  const planStart = new Date()
-  planStart.setHours(0, 0, 0, 0)
+  // Use timezone-aware "today" if provided, else UTC midnight
+  const planStart = input.timezone
+    ? (() => { const ds = new Date().toLocaleDateString('en-CA', { timeZone: input.timezone }); return new Date(`${ds}T00:00:00.000Z`) })()
+    : (() => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d })()
   const totalWeeks = template.totalWeeks
   const planEnd = new Date(planStart)
   planEnd.setDate(planEnd.getDate() + totalWeeks * 7)

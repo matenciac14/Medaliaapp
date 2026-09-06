@@ -121,6 +121,8 @@ export function parseFoodLogPost(body: unknown): { foodId: string; gramsNum: num
   if (isNaN(gramsNum) || gramsNum <= 0) return { error: 'grams debe ser un número positivo' }
   if (gramsNum > 5000) return { error: 'grams no puede superar 5000g por registro' }
   if (date && !DATE_REGEX.test(date)) return { error: 'date debe tener formato YYYY-MM-DD' }
+  // When no date is provided, callers should pass the timezone-aware date.
+  // Fallback uses UTC — callers should always provide `date` from todayInTz(tz).
   const logDate = date
     ? new Date(`${date}T00:00:00.000Z`)
     : new Date(new Date().toISOString().split('T')[0] + 'T00:00:00.000Z')

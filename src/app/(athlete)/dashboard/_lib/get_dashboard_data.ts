@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { getPlanWeekNumber } from '@/lib/core/week_number'
-import { getWeekMonday, todayDowInTz } from '@/lib/core/date_utils'
+import { getWeekMonday, todayDowInTz, todayInTz } from '@/lib/core/date_utils'
 import { getDashboardSummary, type DashboardSummary } from '@/domain/dashboard/get_dashboard_summary.use_case'
 import { buildCalendarWeek } from '@/infrastructure/db/calendar'
 import {
@@ -370,10 +370,9 @@ export async function getDashboardData(userId: string, rawWeekOffset: number, se
     currentWeekVolumeKm = selectedPlanWeek?.volumeKm ?? null
   }
 
-  // BUG-056: free session fallback
+  // BUG-056: free session fallback — use timezone-aware "today"
   if (!todaySession) {
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    const todayStart = todayInTz(userTz)
     const todayFreeLog = recentLogs.find(l => new Date(l.completedAt) >= todayStart)
     if (todayFreeLog) {
       todaySession = {

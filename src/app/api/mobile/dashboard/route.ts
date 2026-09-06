@@ -22,10 +22,12 @@ export async function GET(req: NextRequest) {
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un minuto.' }, { status: 429 })
 
   const userId = mobile.id
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
 
+  try {
   // ── Shared queries + PERF-01 Phase 1: plan metadata sin sesiones ───────
   const [core, planMeta] = await Promise.all([
-    fetchCoreDashboardData(userId),
+    fetchCoreDashboardData(userId, tz),
     prisma.trainingPlan.findFirst({
       where: { userId, status: PlanStatus.ACTIVE },
       orderBy: { createdAt: 'desc' },
@@ -73,7 +75,6 @@ export async function GET(req: NextRequest) {
       }
     : null
 
-  const tz = req.nextUrl.searchParams.get('tz') || undefined
   const todayDow = todayDowInTz(tz)
   const summaryInput = buildDashboardSummaryInput(core, activePlan, lastCompletedPlan, todayDow)
   const { summary, planIdToComplete } = getDashboardSummary(summaryInput)
@@ -103,7 +104,10 @@ export async function GET(req: NextRequest) {
 
   if (planIdToComplete && planMeta) {
     justCompletedPlan = await buildJustCompletedPlan(planIdToComplete, planMeta.name, planMeta.totalWeeks, true)
-    prisma.trainingPlan.update({ where: { id: planIdToComplete }, data: { status: PlanStatus.COMPLETED } }).catch((err) => {
+    await prisma.trainingPlan.updateMany({
+      where: { id: planIdToComplete, status: PlanStatus.ACTIVE },
+      data: { status: PlanStatus.COMPLETED },
+    }).catch((err) => {
       console.error('[dashboard] failed to auto-complete plan', planIdToComplete, err)
     })
   }
@@ -166,4 +170,8 @@ export async function GET(req: NextRequest) {
       return calculateHRZones(hrMax, hrResting)
     })(),
   })
+  } catch (err) {
+    console.error('[mobile/dashboard]', err)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  }
 }

@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
   const kcalByDay = new Map<string, number>()
   for (const log of weekFoodLogs) {
     const dateKey = log.date.toISOString().split('T')[0]
-    const kcal = Math.round((log.food.kcalPer100g * log.grams) / 100)
+    const kcal = log.kcalLogged != null ? Math.round(log.kcalLogged) : Math.round((log.food.kcalPer100g * log.grams) / 100)
     kcalByDay.set(dateKey, (kcalByDay.get(dateKey) ?? 0) + kcal)
   }
   const daysWithLog = kcalByDay.size
