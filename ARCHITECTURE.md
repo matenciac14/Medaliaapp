@@ -303,7 +303,7 @@ const [plan, profile, existing] = await Promise.all([
   prisma.weeklyCheckIn.findFirst(...),
 ])
 
-// Phase 2: I/O externo FUERA del tx (AI, emails, APIs)
+// Phase 2: I/O externo FUERA del tx (emails, APIs externas)
 // Dentro de tx → timeout + rollback
 const suggestion = await externalService.call(data)
 
@@ -443,7 +443,7 @@ Estas son decisiones tomadas que no deben revertirse sin discusión explícita:
 | Feature flags como columnas Boolean en User | Un JSON blob en DB requiere parsing y no es typesafe. Las columnas son indexables, se incluyen en el JWT sin query extra, y el coach puede activarlas con un `update` simple. |
 | Pool de DB `max: 10` (PrismaPg + Neon pooler) | Vercel serverless puede abrir múltiples instancias. El pooler de Neon (PgBouncer) multiplexea las conexiones del lado del servidor — el `max: 10` es el límite por instancia de función, no el total. |
 | Rate limiting con fallback in-memory | Si Upstash cae, el tráfico legítimo no se bloquea. El fallback in-memory no comparte estado entre instancias serverless — es solo protección local, no global. |
-| Sin AI activa hoy | `@anthropic-ai/sdk` no está instalado. El producto es 100% determinista. Toda la lógica de ajuste (check-in, nutrición) es algoritmos fijos — Karvonen, Mifflin-St Jeor. Cuando se active AI, se agrega como adapter en `infrastructure/ai/`. |
+| Producto 100% determinista | Toda la lógica de ajuste (check-in, nutrición) son algoritmos fijos — Karvonen, Mifflin-St Jeor. Sin dependencias externas de terceros para la lógica de negocio. |
 | Billing hardcodeado en PRO durante beta | `getUserPlan()` retorna `'PRO'` para todos mientras no hay Wompi integrado. Cambiar esto requiere activar `BILLING_ENABLED=true` + tener el webhook de Wompi funcionando. No cambiar antes. |
 
 ---
@@ -456,6 +456,6 @@ Estas son decisiones tomadas que no deben revertirse sin discusión explícita:
 | Reglas por actor | `../domains/flujos-por-actor.md` | Qué puede hacer cada rol, con qué endpoint, bajo qué restricción |
 | Reglas de negocio por módulo | `../domains/[módulo].md` | `atleta.md` · `coach.md` · `nutricion.md` · `fuerza.md` · `plan-running.md` · `pagos.md` · `plataforma.md` · `seguridad.md` |
 | Contexto de mercado | `../MERCADO.md` | Competidores, pricing, matriz de features, ventanas de oportunidad |
-| Contexto del proyecto | `../CLAUDE.md` | Reglas del proyecto para agentes AI |
+| Contexto del proyecto | `../CLAUDE.md` | Reglas del proyecto para agentes de desarrollo |
 | Mobile | `../MEDALIQ-MOBILE/CLAUDE.md` | Stack mobile, patrones, reglas |
 | Roadmap | `src/app/admin/roadmap/roadmap-data.ts` | Features pendientes y completadas con notas técnicas |

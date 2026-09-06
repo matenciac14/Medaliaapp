@@ -684,6 +684,7 @@ model GymSession {
   @@unique([athleteId, date, plannedSessionId])   // plan-based sessions
   @@index([athleteId, completed])
   @@index([athleteId, date])
+  @@index([athleteId, completed, date])
 }
 
 model SetLog {

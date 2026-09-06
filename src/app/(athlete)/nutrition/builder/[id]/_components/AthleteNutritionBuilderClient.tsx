@@ -357,7 +357,7 @@ export default function AthleteNutritionBuilderClient({
       </div>
 
       {/* Two-column content */}
-      <div className="max-w-5xl mx-auto px-4 py-5 flex gap-5">
+      <div className="max-w-7xl mx-auto px-4 py-5 flex gap-5">
         {/* Main column */}
         <div className="flex-1 min-w-0 space-y-4">
 

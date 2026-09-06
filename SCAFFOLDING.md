@@ -259,7 +259,7 @@ src/
 │   ├── coaches/                  → URL /coaches (directorio público — condición: 20+ coaches)
 │   ├── join/[code]/              → URL /join/:code (atleta acepta invitación B2B)
 │   ├── p/[slug]/                 → URL /p/:slug (perfil público del coach)
-│   ├── p/ai-coach/               → URL /p/ai-coach (landing AI coach B2C)
+│   ├── p/ai-coach/               → ELIMINADO (AI removida 2026-08-29)
 │   │
 │   ├── login/ · register/        → URLs públicas de auth
 │   ├── onboarding/               → URL /onboarding (multi-step, atleta + coach)
