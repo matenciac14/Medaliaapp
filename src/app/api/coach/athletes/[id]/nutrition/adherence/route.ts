@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getDailyNutritionTarget, type NutritionPlanTargets } from '@/lib/nutrition/daily-target'
-import { getIntensityMapForDateRange } from '@/lib/nutrition/get-intensity-for-date'
+import { getDailyNutritionTarget, type NutritionPlanTargets } from '@/lib/nutrition/daily_target'
+import { getIntensityMapForDateRange } from '@/lib/nutrition/get_intensity_for_date'
 
 export async function GET(
   _req: Request,

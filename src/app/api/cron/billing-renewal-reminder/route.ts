@@ -8,9 +8,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { WompiPaymentGateway } from '@/infrastructure/billing/wompi-payment-gateway'
+import { WompiPaymentGateway } from '@/infrastructure/billing/wompi_payment_gateway'
 import { sendBillingRenewalReminderEmail } from '@/infrastructure/email/resend'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 const TIER_NAMES: Record<string, string> = {
   STARTER: 'Starter',

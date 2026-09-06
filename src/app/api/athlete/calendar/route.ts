@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid weekOffset' }, { status: 400 })
   }
 
-  const week = await buildCalendarWeek(session.user.id, weekOffset)
+  const timezone = req.nextUrl.searchParams.get('tz') || undefined
+  const week = await buildCalendarWeek(session.user.id, weekOffset, timezone)
   return NextResponse.json(week)
 }

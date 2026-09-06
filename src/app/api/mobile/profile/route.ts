@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
 import { ok, unauthorized, serverError, badRequest } from '@/lib/api/responses'
-import { estimateHRMax } from '@/lib/plan/formulas'
+import { estimateHRMax } from '@/domain/plan/formulas'
 import { z } from 'zod'
 
 function calcAge(dob: Date): number {

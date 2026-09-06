@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { wearableRepository } from '@/infrastructure/db/wearable.repository'
 import { refreshStravaTokenIfNeeded, fetchStravaActivity } from '@/infrastructure/wearable/strava.service'
 import { stravaActivityToSessionLog } from '@/infrastructure/wearable/strava.mapper'
-import { createWearableSession } from '@/domain/wearables/create-wearable-session.use-case'
-import { PrismaSessionLogRepository } from '@/infrastructure/db/session-log.repository'
+import { createWearableSession } from '@/domain/wearables/create_wearable_session.use_case'
+import { PrismaSessionLogRepository } from '@/infrastructure/db/session_log.repository'
 import { prisma } from '@/lib/db/prisma'
 
 interface StravaWebhookEvent {

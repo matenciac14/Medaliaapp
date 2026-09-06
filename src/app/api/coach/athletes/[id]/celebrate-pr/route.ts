@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 export async function POST(
   req: NextRequest,

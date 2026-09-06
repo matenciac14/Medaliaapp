@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
-import { runBillingCheck } from '@/domain/billing/downgrade.use-case'
+import { runBillingCheck } from '@/domain/billing/downgrade.use_case'
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('authorization')

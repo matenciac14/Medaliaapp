@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 // Cron: diario 20:00 UTC = 15:00 COT
 // Atletas que entrenaron ayer pero no hoy y tienen racha activa ≥ 3 días → push

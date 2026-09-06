@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { BillingRepository } from '@/infrastructure/billing/billing.repository'
-import { getPaymentGateway } from '@/infrastructure/billing/payment-gateway.factory'
-import { createCoachCheckout } from '@/domain/billing/checkout.use-case'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import { getPaymentGateway } from '@/infrastructure/billing/payment_gateway.factory'
+import { createCoachCheckout } from '@/domain/billing/checkout.use_case'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 const VALID_TIERS = new Set<string>(['STARTER', 'GROWTH', 'PRO', 'SCALE'])
 

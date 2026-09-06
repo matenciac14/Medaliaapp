@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { sendPushNotification } from '@/lib/push'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { sendPushNotification } from '@/lib/push/expo_push'
 import { createNotification } from '@/infrastructure/db/notification'
 
 // GET /api/mobile/messages?with=[userId] — paginada, asc

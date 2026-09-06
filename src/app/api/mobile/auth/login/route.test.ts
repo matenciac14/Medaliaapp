@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/rate_limit', () => ({
   rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 vi.mock('bcryptjs', () => ({
@@ -13,14 +13,14 @@ vi.mock('@/lib/db/prisma', () => ({
     healthProfile: { findUnique: vi.fn() },
   },
 }))
-vi.mock('@/lib/mobile-auth', () => ({
+vi.mock('@/lib/auth/mobile_auth', () => ({
   signMobileToken: vi.fn().mockResolvedValue('signed-jwt'),
 }))
 
 import bcrypt from 'bcryptjs'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
-import { signMobileToken } from '@/lib/mobile-auth'
+import { signMobileToken } from '@/lib/auth/mobile_auth'
 import { POST } from './route'
 
 const ACTIVE_USER = {

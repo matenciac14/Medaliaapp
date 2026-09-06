@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { signMobileToken } from '@/lib/mobile-auth'
-import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { signMobileToken } from '@/lib/auth/mobile_auth'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user_config'
+import { rateLimitAsync } from '@/lib/rate_limit'
 
 const USER_SELECT = {
   id: true, email: true, name: true, role: true, status: true, image: true,

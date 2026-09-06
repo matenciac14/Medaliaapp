@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { prisma } from '@/lib/db/prisma'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
 import type { SessionIntensity } from '@/generated/prisma/client'
 
 // GET /api/mobile/nutrition/assigned-plan

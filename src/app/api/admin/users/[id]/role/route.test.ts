@@ -8,11 +8,11 @@ vi.mock('@/lib/db/prisma', () => ({
     user: { findUnique: vi.fn(), update: vi.fn() },
   },
 }))
-vi.mock('@/lib/admin/log-action', () => ({ logAdminAction: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/admin/log_action', () => ({ logAdminAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { logAdminAction } from '@/lib/admin/log-action'
+import { logAdminAction } from '@/lib/admin/log_action'
 
 const ADMIN_SESSION = { user: { id: 'admin-1' } }
 const PARAMS = { params: Promise.resolve({ id: 'user-2' }) }

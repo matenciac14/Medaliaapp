@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
         zoneTarget: s.zoneTarget ?? '',
         dayOfWeek: s.dayOfWeek,
         coachNote: s.coachNote ?? null,
+        sportLabel: s.sportLabel ?? null,
         detailText: s.detailText ?? null,
         structure: s.structure ?? null,
         intensity: s.intensity ?? null,
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
         log: s.log ? {
           id: s.log.id,
           durationMin: s.log.durationMin ?? null,
+          distanceKm: s.log.distanceKm ?? null,
           rpe: s.log.rpe ?? null,
           hrAvg: s.log.hrAvg ?? null,
           notes: s.log.notes ?? null,

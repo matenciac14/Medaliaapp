@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { requireFeature } from '@/lib/guards/feature-gate'
-import { calcMacros } from '@/domain/nutrition/calculate-food-log'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { requireFeature } from '@/lib/guards/feature_gate'
+import { calcMacros } from '@/domain/nutrition/calculate_food_log'
 
 // POST /api/mobile/nutrition/plan/[id]/log
 // Convierte un PlannedMeal → FoodLog con 1 tap (idempotente: si ya fue registrado, suma gramos)

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { sendPushNotification } from '@/lib/push'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { sendPushNotification } from '@/lib/push/expo_push'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { createNotification } from '@/infrastructure/db/notification'
 
 // GET /api/messages?with=[userId] — conversación paginada (más recientes primero)
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   const [recipient, relationship] = await Promise.all([
     prisma.user.findUnique({ where: { id: toId }, select: { id: true, name: true, pushToken: true } }),
     prisma.coachAthlete.findFirst({
-      where: { OR: [{ coachId: fromId, athleteId: toId }, { coachId: toId, athleteId: fromId }] },
+      where: { status: 'ACTIVE', OR: [{ coachId: fromId, athleteId: toId }, { coachId: toId, athleteId: fromId }] },
       select: { id: true },
     }),
   ])

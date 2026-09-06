@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('@/lib/mobile-auth', () => ({
+vi.mock('@/lib/auth/mobile_auth', () => ({
   getMobileUser: vi.fn(),
 }))
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/rate_limit', () => ({
   rateLimitAsync: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 vi.mock('@/lib/db/prisma', () => ({
@@ -16,8 +16,8 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }))
 
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
 import { GET, POST } from '../route'
 

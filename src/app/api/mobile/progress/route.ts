@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { requireFeature } from '@/lib/guards/feature-gate'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { requireFeature } from '@/lib/guards/feature_gate'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { calcAdherencePct } from '@/lib/core/adherence'
 
 export async function GET(req: NextRequest) {

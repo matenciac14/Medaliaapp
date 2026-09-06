@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { PrismaFoodProposalRepository } from '@/infrastructure/db/food-proposal.repository'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { PrismaFoodProposalRepository } from '@/infrastructure/db/food_proposal.repository'
 
 const repo = new PrismaFoodProposalRepository()
 

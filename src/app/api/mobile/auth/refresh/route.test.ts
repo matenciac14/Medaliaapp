@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from './route'
 
-vi.mock('@/lib/mobile-auth', () => ({
+vi.mock('@/lib/auth/mobile_auth', () => ({
   getMobileUser: vi.fn(),
   signMobileToken: vi.fn(),
 }))
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/rate_limit', () => ({
   rateLimitAsync: vi.fn(),
 }))
 vi.mock('@/lib/db/prisma', () => ({
@@ -15,8 +15,8 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }))
 
-import { getMobileUser, signMobileToken } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
+import { getMobileUser, signMobileToken } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
 
 const MOBILE_USER = { id: 'user-1', email: 'test@test.com', role: 'ATHLETE' }

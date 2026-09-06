@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { sendPushNotification } from '@/lib/push'
-import { getDailyNutritionTarget, type NutritionPlanTargets } from '@/lib/nutrition/daily-target'
-import { getIntensityMapForDateRange } from '@/lib/nutrition/get-intensity-for-date'
+import { sendPushNotification } from '@/lib/push/expo_push'
+import { getDailyNutritionTarget, type NutritionPlanTargets } from '@/lib/nutrition/daily_target'
+import { getIntensityMapForDateRange } from '@/lib/nutrition/get_intensity_for_date'
 
 // Cron: diario 09:00 UTC
 // Coach recibe push si un atleta tiene adherencia nutricional < 60% tres días seguidos
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
   const now = new Date()
 
+  // Phase 1: batch relationships (includes nutritionPlan + foodLogs per athlete)
   const relationships = await prisma.coachAthlete.findMany({
     where: { status: 'ACTIVE' },
     select: {
@@ -39,30 +40,43 @@ export async function GET(req: NextRequest) {
     },
   })
 
+  // Phase 2: batch assigned plans + intensity maps (parallel, not N+1)
+  const athletesWithoutPlan = relationships
+    .filter(r => r.coach.pushToken && !r.athlete.nutritionPlan)
+    .map(r => r.athlete.id)
+
+  const assignedPlans = athletesWithoutPlan.length > 0
+    ? await prisma.assignedNutritionPlan.findMany({
+        where: { athleteId: { in: athletesWithoutPlan } },
+        include: { template: { include: { days: { include: { meals: { include: { items: true } } } } } } },
+      })
+    : []
+
+  const assignedByAthlete = new Map(assignedPlans.map(a => [a.athleteId, a]))
+
+  const eligibleAthleteIds = relationships
+    .filter(r => r.coach.pushToken && (r.athlete.nutritionPlan || assignedByAthlete.has(r.athlete.id)))
+    .map(r => r.athlete.id)
+
+  const intensityMaps = await Promise.all(
+    eligibleAthleteIds.map(async id => [id, await getIntensityMapForDateRange(id, threeDaysAgo, now)] as const),
+  )
+  const intensityByAthlete = new Map(intensityMaps)
+
   let alerted = 0
 
   for (const rel of relationships) {
     const { athlete, coach } = rel
     if (!coach.pushToken) continue
 
-    // Determinar targets: NutritionPlan directo o sintetizado desde template
     let effectiveTargets: NutritionPlanTargets | null = athlete.nutritionPlan
     if (!effectiveTargets) {
-      const assigned = await prisma.assignedNutritionPlan.findUnique({
-        where: { athleteId: athlete.id },
-        include: {
-          template: {
-            select: {
-              days: { include: { meals: { include: { items: true } } } },
-            },
-          },
-        },
-      })
+      const assigned = assignedByAthlete.get(athlete.id)
       if (assigned) effectiveTargets = synthesizeTargetsFromTemplate(assigned)
     }
     if (!effectiveTargets) continue
 
-    const intensityMap = await getIntensityMapForDateRange(athlete.id, threeDaysAgo, now)
+    const intensityMap = intensityByAthlete.get(athlete.id) ?? new Map()
 
     // Agrupar kcal por día
     const kcalByDay: Record<string, number> = {}

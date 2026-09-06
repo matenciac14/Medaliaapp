@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
-import { respondCoachProposal, ProposalError } from '@/domain/nutrition/respond-coach-proposal.use-case'
+import { respondCoachProposal, ProposalError } from '@/domain/nutrition/respond_coach_proposal.use_case'
 
 const bodySchema = z.object({
   action: z.enum(['ACCEPTED', 'REJECTED']),

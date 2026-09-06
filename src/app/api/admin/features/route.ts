@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { getAllTierFeatureConfigs, updateTierFeatureConfig } from '@/infrastructure/db/tier-feature-config.repository'
+import { getAllTierFeatureConfigs, updateTierFeatureConfig } from '@/infrastructure/db/tier_feature_config.repository'
 import type { AthleteUserType } from '../../../../generated/prisma/client'
 
 const VALID_USER_TYPES: AthleteUserType[] = ['B2C_FREE', 'B2C_PRO', 'B2B']

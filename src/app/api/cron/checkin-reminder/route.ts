@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { sendCheckinReminderEmail } from '@/infrastructure/email/resend'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 // Cron: domingo 23:00 UTC = 18:00 COT
 // Envia recordatorio a atletas con plan activo que no hicieron check-in esta semana

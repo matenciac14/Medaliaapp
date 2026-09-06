@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jsToOurDow, MONTHS, getWeekMonday } from '@/lib/core/date-utils'
+import { jsToOurDow, MONTHS, getWeekMonday, todayDowInTz } from '@/lib/core/date_utils'
 import { prisma } from '@/lib/db/prisma'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 
 function formatWeekLabel(startDate: Date, endDate: Date): string {
   if (startDate.getMonth() === endDate.getMonth()) {
@@ -31,11 +31,10 @@ async function overlayGymSessions(
   weekSessions: WeekSessionSlot[],
   userId: string,
   weekOffset: number,
+  timezone?: string,
 ): Promise<{ addedTraining: number; addedCompleted: number }> {
-  const monday = getWeekMonday(weekOffset)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
+  const monday = getWeekMonday(weekOffset, timezone)
+  const sunday = new Date(monday.getTime() + 7 * 86_400_000 - 1)
 
   const [assignedWorkout, gymCompletions] = await Promise.all([
     prisma.assignedWorkout.findFirst({
@@ -88,7 +87,8 @@ export async function GET(req: NextRequest) {
 
   const userId = mobile.id
   const weekOffset = parseInt(req.nextUrl.searchParams.get('weekOffset') ?? '0') || 0
-  const todayDow = jsToOurDow(new Date().getDay())
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
+  const todayDow = todayDowInTz(tz)
 
   const planMeta = await prisma.trainingPlan.findFirst({
     where: { userId, status: 'ACTIVE' },
@@ -104,14 +104,12 @@ export async function GET(req: NextRequest) {
     }))
 
     // Try gym overlay first (same user might have gym without running plan)
-    const { addedTraining, addedCompleted } = await overlayGymSessions(weekSessions, userId, weekOffset)
+    const { addedTraining, addedCompleted } = await overlayGymSessions(weekSessions, userId, weekOffset, tz)
 
     if (addedTraining === 0) {
       // B2C Free: no plan, no gym — show free SessionLogs for the requested week
-      const monday = getWeekMonday(weekOffset)
-      const sunday = new Date(monday)
-      sunday.setDate(monday.getDate() + 6)
-      sunday.setHours(23, 59, 59, 999)
+      const monday = getWeekMonday(weekOffset, tz)
+      const sunday = new Date(monday.getTime() + 7 * 86_400_000 - 1)
 
       const freeLogs = await prisma.sessionLog.findMany({
         where: { userId, completedAt: { gte: monday, lte: sunday } },
@@ -199,10 +197,8 @@ export async function GET(req: NextRequest) {
     weekLabel = formatWeekLabel(selectedWeek.startDate, selectedWeek.endDate)
   } else {
     // Plan activo pero sin PlanWeek para esta semana — mostrar SessionLogs libres
-    const monday = getWeekMonday(weekOffset)
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    sunday.setHours(23, 59, 59, 999)
+    const monday = getWeekMonday(weekOffset, tz)
+    const sunday = new Date(monday.getTime() + 7 * 86_400_000 - 1)
 
     const freeLogs = await prisma.sessionLog.findMany({
       where: { userId, completedAt: { gte: monday, lte: sunday }, plannedSessionId: null },
@@ -224,7 +220,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Overlay gym sessions on empty slots — same logic as web's buildCalendarWeek
-  const { addedTraining, addedCompleted } = await overlayGymSessions(weekSessions, userId, weekOffset)
+  const { addedTraining, addedCompleted } = await overlayGymSessions(weekSessions, userId, weekOffset, tz)
   totalTraining += addedTraining
   completedCount += addedCompleted
 

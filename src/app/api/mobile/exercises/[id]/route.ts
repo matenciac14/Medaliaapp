@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { PrismaExerciseRepository } from '@/infrastructure/db/exercise.repository'
 
 const repo = new PrismaExerciseRepository()

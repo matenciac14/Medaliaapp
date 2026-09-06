@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { prisma } from '@/lib/db/prisma'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 
 export async function GET(
   req: NextRequest,

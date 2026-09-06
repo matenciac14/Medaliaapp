@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { z } from 'zod'
-import { PrismaFoodProposalRepository } from '@/infrastructure/db/food-proposal.repository'
+import { PrismaFoodProposalRepository } from '@/infrastructure/db/food_proposal.repository'
 
 const ReviewSchema = z.object({
   action:     z.enum(['APPROVE', 'REJECT']),

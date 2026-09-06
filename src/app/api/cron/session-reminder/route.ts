@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import { sendSessionReminderEmail } from '@/infrastructure/email/resend'
-import { sendPushNotification } from '@/lib/push'
+import { sendPushNotification } from '@/lib/push/expo_push'
 
 const SESSION_LABELS: Record<string, string> = {
   RODAJE_Z2: 'Rodaje Z2',

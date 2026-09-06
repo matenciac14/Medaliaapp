@@ -2,11 +2,11 @@
 // Convierte todos los PlannedMeals de HOY en FoodLog con un tap (idempotente)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getMobileUser } from '@/lib/mobile-auth'
-import { rateLimitAsync } from '@/lib/rate-limit'
-import { requireFeature } from '@/lib/guards/feature-gate'
+import { getMobileUser } from '@/lib/auth/mobile_auth'
+import { rateLimitAsync } from '@/lib/rate_limit'
+import { requireFeature } from '@/lib/guards/feature_gate'
 import { prisma } from '@/lib/db/prisma'
-import { calcMacros } from '@/domain/nutrition/calculate-food-log'
+import { calcMacros } from '@/domain/nutrition/calculate_food_log'
 
 export async function POST(req: NextRequest) {
   const mobile = await getMobileUser(req)
