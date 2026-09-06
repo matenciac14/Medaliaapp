@@ -2,7 +2,7 @@ import type { NextAuthConfig } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
-import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user_config'
 
 // Config sin Prisma — compatible con Edge Runtime (middleware)
 export const authConfig: NextAuthConfig = {

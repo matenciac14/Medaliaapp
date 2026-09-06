@@ -119,7 +119,7 @@ export default function CoachPlannedMealPlanner({ athleteId }: Props) {
     const timer = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(foodQuery.trim())}`)
+        const res = await fetch(`/api/athlete/nutrition/foods?q=${encodeURIComponent(foodQuery.trim())}`)
         if (res.ok) {
           const data = (await res.json()) as Food[]
           setFoodResults(data)

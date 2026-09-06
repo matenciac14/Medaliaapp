@@ -5,7 +5,7 @@ import { getServerLocale } from "@/lib/i18n/server";
 import Providers from "./_components/Providers";
 import ServiceWorkerRegistration from "./_components/ServiceWorkerRegistration";
 import CookieConsent from "./_components/CookieConsent";
-import { JsonLd } from "@/components/seo/json-ld";
+import { JsonLd } from "@/components/seo/json_ld";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

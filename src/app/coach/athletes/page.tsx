@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import AthleteTabs from './_components/AthleteTabs'
 import PendingAthletesSection from './_components/PendingAthletesSection'
-import { mapRelation } from './_lib/map-athlete'
+import { mapRelation } from './_lib/map_athlete'
 
 const TAKE = 20
 

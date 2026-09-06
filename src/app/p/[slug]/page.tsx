@@ -1,3 +1,4 @@
+// Public coach profile page — /p/[slug] (short URL for SEO, like twitter.com/username)
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import { auth } from '@/auth'
@@ -5,7 +6,7 @@ import { MedaliqLogo } from '@/components/brand/MedaliqLogo'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { JoinProgramButton } from '@/app/p/_components/JoinProgramButton'
-import { JsonLd } from '@/components/seo/json-ld'
+import { JsonLd } from '@/components/seo/json_ld'
 
 export async function generateMetadata({
   params,

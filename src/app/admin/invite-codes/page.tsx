@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { InviteCodesClient } from './_components/InviteCodesClient'
-import { computeOverallConversion, computePerCoachConversion } from '@/domain/admin/invite-conversion'
+import { computeOverallConversion, computePerCoachConversion } from '@/domain/admin/invite_conversion'
 
 export default async function AdminInviteCodesPage() {
   const now = new Date()

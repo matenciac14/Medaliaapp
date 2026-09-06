@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { translateBodyPart, translateTarget } from '@/lib/gym/labels'
 import { LazyGif } from '@/components/LazyGif'
 import type { Exercise } from '@/domain/exercise/exercise.types'
 

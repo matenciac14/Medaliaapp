@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 type UpgradeTier = {
   tier: CoachTier

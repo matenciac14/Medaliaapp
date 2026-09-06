@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
-import { labelForAction, describeAuditEntry, colorForAction } from '@/domain/admin/audit-log'
+import { labelForAction, describeAuditEntry, colorForAction } from '@/domain/admin/audit_log'
 
 export default async function AdminAuditPage() {
   const logs = await prisma.adminAuditLog.findMany({

@@ -9,7 +9,7 @@ export default function DowngradeButton() {
 
   async function handleDowngrade() {
     setLoading(true)
-    await fetch('/api/upgrade/downgrade', { method: 'POST' })
+    await fetch('/api/athlete/upgrade/downgrade', { method: 'POST' })
     router.push('/dashboard')
   }
 

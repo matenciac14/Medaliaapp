@@ -985,7 +985,7 @@ export default function Home() {
                   {[
                     'Plan periodizado + seguimiento semanal',
                     'Nutrición diferente cada día según la sesión',
-                    'Check-in semanal que ajusta la carga automáticamente',
+                    'Check-in semanal con sugerencias de ajuste',
                     'Métricas de progreso semana a semana',
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2">

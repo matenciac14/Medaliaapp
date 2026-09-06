@@ -232,7 +232,7 @@ export default function JoinPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-6">
-        Medaliq — Coaching deportivo con inteligencia artificial
+        Medaliq — Tracking y coaching deportivo
       </p>
     </div>
   )

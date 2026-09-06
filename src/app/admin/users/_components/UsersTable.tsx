@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChangeRoleButton } from './ChangeRoleButton'
 import { PlanSelector } from './PlanSelector'
-import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum-labels'
+import { GOAL_LABEL, SPORT_LABEL } from '@/lib/labels/enum_labels'
 
 type PlanTier = 'FREE' | 'PRO' | 'COACH'
 

@@ -480,7 +480,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const isB2B = (session?.user as { isB2B?: boolean } | undefined)?.isB2B
     if (!isB2B) return
-    fetch('/api/onboarding/prefilled')
+    fetch('/api/athlete/onboarding/prefilled')
       .then((r) => r.json())
       .catch((err) => { console.error('[onboarding] prefill fetch failed:', err) })
       .then(({ prefilled } = {}) => {
@@ -535,7 +535,7 @@ export default function OnboardingPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/onboarding/generate', {
+      const res = await fetch('/api/athlete/onboarding/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { getCoachDashboardData } from './_lib/get-coach-dashboard-data'
+import { getCoachDashboardData } from './_lib/get_coach_dashboard_data'
 import { CoachKpiRow } from './_components/CoachKpiRow'
 import { CoachAlertsList } from './_components/CoachAlertsList'
 import { CoachPendingSection } from './_components/CoachPendingSection'

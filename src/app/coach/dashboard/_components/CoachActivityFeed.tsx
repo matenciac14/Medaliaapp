@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import type { FeedItem, LastWeekSummary } from '@/domain/coach-dashboard/coach-dashboard.types'
-import { avatarColor, timeAgo } from '@/domain/coach-dashboard/get-coach-dashboard.use-case'
+import type { FeedItem, LastWeekSummary } from '@/domain/coach_dashboard/coach_dashboard.types'
+import { avatarColor, timeAgo } from '@/domain/coach_dashboard/get_coach_dashboard.use_case'
 
 export function CoachActivityFeed({
   lastWeek,

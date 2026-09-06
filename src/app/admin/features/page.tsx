@@ -1,4 +1,4 @@
-import { getAllTierFeatureConfigs } from '@/infrastructure/db/tier-feature-config.repository'
+import { getAllTierFeatureConfigs } from '@/infrastructure/db/tier_feature_config.repository'
 import FeatureConfigClient from './_components/FeatureConfigClient'
 
 export const dynamic = 'force-dynamic'

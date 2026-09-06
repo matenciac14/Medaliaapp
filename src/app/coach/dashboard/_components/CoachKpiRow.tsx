@@ -1,4 +1,4 @@
-import type { CoachKpis } from '@/domain/coach-dashboard/coach-dashboard.types'
+import type { CoachKpis } from '@/domain/coach_dashboard/coach_dashboard.types'
 
 export function CoachKpiRow({ kpis }: { kpis: CoachKpis }) {
   const {

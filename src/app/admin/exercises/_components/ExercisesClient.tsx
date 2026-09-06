@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { validateExercise } from '@/domain/admin/exercise'
-import { translateBodyPart, translateTarget } from '@/lib/gym-labels'
+import { translateBodyPart, translateTarget } from '@/lib/gym/labels'
 
 type Exercise = {
   id: string

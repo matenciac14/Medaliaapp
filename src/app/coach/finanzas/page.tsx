@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { KpiCard } from '@/app/_components/kpi-card'
-import { getDisplayStatus } from '@/lib/coach/payment-status'
-import type { DisplayStatus } from '@/lib/coach/payment-status'
-import { formatCurrency as fmt } from '@/lib/utils/format-currency'
+import { KpiCard } from '@/app/_components/kpi_card'
+import { getDisplayStatus } from '@/lib/coach/payment_status'
+import type { DisplayStatus } from '@/lib/coach/payment_status'
+import { formatCurrency as fmt } from '@/lib/utils/format_currency'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

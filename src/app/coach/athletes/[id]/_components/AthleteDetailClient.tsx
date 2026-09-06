@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getInitialWeekIdx } from '@/lib/core/week-number'
+import { getInitialWeekIdx } from '@/lib/core/week_number'
 import Link from 'next/link'
 import { FoodLogsSection, type FoodLogEntry } from './FoodLogsSection'
 import { type DayAdherence } from './NutritionAdherenceCard'
-import ResumenTab from './tabs/ResumenTab'
+import SummaryTab from './tabs/SummaryTab'
 import PlanTab from './tabs/PlanTab'
-import ProgresoTab from './tabs/ProgresoTab'
-import NutricionTab from './tabs/NutricionTab'
-import MensajesTab from './tabs/MensajesTab'
+import ProgressTab from './tabs/ProgressTab'
+import NutritionTab from './tabs/NutritionTab'
+import MessagesTab from './tabs/MessagesTab'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -683,7 +683,7 @@ export default function AthleteDetailClient({
       </div>
 
       {activeTab === 'Resumen' && (
-        <ResumenTab
+        <SummaryTab
           athleteId={athleteId}
           athlete={athlete}
           healthProfile={healthProfile}
@@ -752,7 +752,7 @@ export default function AthleteDetailClient({
       )}
 
       {activeTab === 'Progreso' && (
-        <ProgresoTab
+        <ProgressTab
           checkInsSorted={checkInsSorted}
           weights={weights}
           maxWeight={maxWeight}
@@ -761,7 +761,7 @@ export default function AthleteDetailClient({
       )}
 
       {activeTab === 'Nutrición' && (
-        <NutricionTab
+        <NutritionTab
           athleteId={athleteId}
           nutritionPlan={nutritionPlan}
           activePlan={activePlan}
@@ -774,7 +774,7 @@ export default function AthleteDetailClient({
       )}
 
       {activeTab === 'Mensajes' && (
-        <MensajesTab
+        <MessagesTab
           athleteId={athleteId}
           msgs={msgs}
           msgsLoaded={msgsLoaded}

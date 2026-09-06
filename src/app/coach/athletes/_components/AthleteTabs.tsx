@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { MappedAthlete } from '../_lib/map-athlete'
+import type { MappedAthlete } from '../_lib/map_athlete'
 import AthleteDropdown from './AthleteDropdown'
 
 type Athlete = MappedAthlete

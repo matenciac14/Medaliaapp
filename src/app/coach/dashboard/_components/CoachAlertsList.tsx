@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import type { MappedAthlete } from '@/infrastructure/db/coach-athlete.mapper'
-import { TRIGGER_LABEL } from '@/domain/coach-dashboard/get-coach-dashboard.use-case'
+import type { MappedAthlete } from '@/infrastructure/db/coach_athlete.mapper'
+import { TRIGGER_LABEL } from '@/domain/coach_dashboard/get_coach_dashboard.use_case'
 
 interface Props {
   athletesWithAlerts: MappedAthlete[]
