@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { rateLimitAsync } from '@/lib/rate_limit'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 import { z } from 'zod'
 
 const DailyLogSchema = z.object({
@@ -12,6 +13,11 @@ const DailyLogSchema = z.object({
   notes:       z.string().max(500).optional(),
 })
 
+async function getUserTimezone(userId: string): Promise<string | null> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  return u?.timezone ?? null
+}
+
 // GET — today's DailyLog for this user
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -19,8 +25,8 @@ export async function GET(req: NextRequest) {
   const { allowed } = await rateLimitAsync(`mobile-${mobile.id}:metrics-log-get`, { limit: 120, windowMs: 60_000 })
   if (!allowed) return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const tz = await getUserTimezone(mobile.id)
+  const today = todayInTz(tz)
 
   const log = await prisma.dailyLog.findUnique({
     where: { userId_date: { userId: mobile.id, date: today } },
@@ -46,8 +52,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Al menos un campo requerido.' }, { status: 400 })
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const tz = await getUserTimezone(mobile.id)
+  const today = todayInTz(tz)
 
   const log = await prisma.dailyLog.upsert({
     where: { userId_date: { userId: mobile.id, date: today } },

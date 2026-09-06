@@ -6,6 +6,7 @@ import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { rateLimitAsync } from '@/lib/rate_limit'
 import { requireFeature } from '@/lib/guards/feature_gate'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 import { calcMacros } from '@/domain/nutrition/calculate_food_log'
 
 export async function POST(req: NextRequest) {
@@ -17,8 +18,8 @@ export async function POST(req: NextRequest) {
   if (featureGuard) return featureGuard
 
   const userId = mobile.id
-  const today  = new Date()
-  today.setHours(0, 0, 0, 0)
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  const today = todayInTz(u?.timezone ?? null)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
