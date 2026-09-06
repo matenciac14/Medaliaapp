@@ -44,7 +44,7 @@ export default function NotificationsPage() {
   const [marking, setMarking] = useState(false)
 
   useEffect(() => {
-    fetch('/api/notifications')
+    fetch('/api/athlete/notifications')
       .then(r => r.json())
       .then(d => {
         setNotifications(d.notifications ?? [])
@@ -56,7 +56,7 @@ export default function NotificationsPage() {
   async function markAllRead() {
     if (marking || unreadCount === 0) return
     setMarking(true)
-    await fetch('/api/notifications/read-all', { method: 'PATCH' })
+    await fetch('/api/athlete/notifications/read-all', { method: 'PATCH' })
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
     setUnreadCount(0)
     setMarking(false)

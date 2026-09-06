@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import WeekNavBar from '../../_components/WeekNavBar'
 import PageTopBar from '../../_components/PageTopBar'
-import { getGreeting, formatDate } from '../_lib/dashboard-helpers'
+import { getGreeting, formatDate } from '../_lib/dashboard_helpers'
 
 type HeaderRowProps = {
   firstName: string
@@ -25,17 +25,17 @@ export function MobileHeader({ firstName, timezone, weekLabel, weekOffset, canGo
           </h1>
           <div className="flex items-center gap-2.5 shrink-0">
             {streakDays >= 2 ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#ea580c]/50 bg-[#ea580c]/10 text-[11px] font-semibold">
+              <span className="inline-flex items-center gap-[3px] px-[7px] py-[3px] rounded-[10px] border border-[#ea580c]/50 text-[11px] font-bold">
                 <span className="text-[11px]">🔥</span>
-                <span className="text-[#ea580c]">{streakDays} {streakDays === 1 ? 'día' : 'días'}</span>
+                <span className="text-[13px] text-[#f97316] font-bold">{streakDays}</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 bg-white/5 text-[11px] font-semibold">
-                <span className="text-[11px] opacity-50 grayscale">🔥</span>
-                <span className="text-white/40">{streakDays} días</span>
+              <span className="inline-flex items-center gap-[3px] px-[7px] py-[3px] rounded-[10px] border border-white/20 text-[11px] font-bold">
+                <span className="text-[11px] opacity-50">🔥</span>
+                <span className="text-[13px] text-white/30 font-bold">{streakDays}</span>
               </span>
             )}
-            <Link href="/notifications" className="relative">
+            <Link href="/notifications" className="relative flex items-center justify-center w-6 h-6">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
             </Link>
           </div>
@@ -44,7 +44,7 @@ export function MobileHeader({ firstName, timezone, weekLabel, weekOffset, canGo
         <p className="text-[16px] font-semibold text-white/80">{firstName}</p>
       </div>
       {/* DateLabel — centered */}
-      <p className="text-[11px] text-[#999] text-center mt-1.5">{formatDate()}</p>
+      <p className="text-[11px] text-white/60 text-center mt-1.5">{formatDate()}</p>
       {/* WeekNav */}
       <div className="mt-1.5">
         <WeekNavBar

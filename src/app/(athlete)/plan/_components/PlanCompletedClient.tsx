@@ -40,6 +40,7 @@ type Props = {
   isB2B: boolean
   planName: string
   totalWeeks: number
+  endDate: string
   sessionsLogged: number
   sessionsTotal: number
   recoveryDaysSinceEnd: number
@@ -55,12 +56,18 @@ type Props = {
 }
 
 export default function PlanCompletedClient({
-  isB2B, planName, totalWeeks, sessionsLogged, sessionsTotal,
+  isB2B, planName, totalWeeks, endDate, sessionsLogged, sessionsTotal,
   recoveryDaysSinceEnd, completedAdherencePct, lastWeekSessions,
   phases, currentWeek, nutritionTarget, weightData, checkInData,
   bodyMeasures, hrZones,
 }: Props) {
   const sessionsByDow = new Map(lastWeekSessions.map(s => [s.dayOfWeek, s]))
+
+  // Compute last week's Monday from endDate (endDate is typically the Sunday)
+  const endDateObj = new Date(endDate + 'T00:00:00')
+  const endDow = endDateObj.getDay() === 0 ? 7 : endDateObj.getDay()
+  const lastWeekMonday = new Date(endDateObj)
+  lastWeekMonday.setDate(endDateObj.getDate() - (endDow - 1))
 
   const displayPhases = phases.length > 0
     ? [...new Set(phases.map(p => PHASE_LABELS[p] ?? p))]
@@ -84,11 +91,11 @@ export default function PlanCompletedClient({
 
         {/* Completion date bar */}
         <div className="bg-white/10 rounded-xl px-4 py-2 text-center">
-          <span className="text-[13px] font-semibold text-white">Completado el {new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <span className="text-[13px] font-semibold text-white">Completado el {endDateObj.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </div>
 
-      {/* Day Pills — all green */}
+      {/* Day Pills — last week dates */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex justify-between">
           {Array.from({ length: 7 }, (_, i) => {
@@ -96,15 +103,18 @@ export default function PlanCompletedClient({
             const session = sessionsByDow.get(dow)
             const isDone = session?.done ?? false
             const isRest = session?.type === 'DESCANSO' || session?.type === 'REST'
+            const dayDate = new Date(lastWeekMonday)
+            dayDate.setDate(lastWeekMonday.getDate() + i)
 
             return (
               <div key={dow} className="flex flex-col items-center gap-1">
+                <span className="text-[11px] font-semibold text-gray-400">{WEEK_DAYS[i]}</span>
                 <div className={cn('w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold',
                   isDone && !isRest ? 'bg-[#22c55e] text-white' :
-                  isRest ? 'bg-gray-200 text-gray-400' :
-                  'bg-[#22c55e] text-white'
+                  isRest ? 'bg-[#f1f5f9] text-gray-400 border border-[#cbd5e1]' :
+                  'bg-gray-100 text-gray-400 border border-gray-200'
                 )}>
-                  {i + 14}
+                  {isDone && !isRest ? '\u2713' : dayDate.getDate()}
                 </div>
               </div>
             )
@@ -240,7 +250,7 @@ export default function PlanCompletedClient({
                   <span className={cn('text-[22px] font-black leading-none',
                     isDone && !isRest ? 'text-green-600' : 'text-gray-300'
                   )}>
-                    {i + 14}
+                    {new Date(lastWeekMonday.getTime() + i * 86400000).getDate()}
                   </span>
                   {isDone && !isRest && (
                     <span className="text-[10px] font-bold text-green-600">✓</span>

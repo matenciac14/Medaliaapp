@@ -95,7 +95,7 @@ function FoodSearchModal({ onAdd, onClose }: { onAdd: (food: Food, grams: number
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return }
     setLoading(true)
-    const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(q)}`)
+    const res = await fetch(`/api/athlete/nutrition/foods?q=${encodeURIComponent(q)}`)
     const data = await res.json()
     setResults(Array.isArray(data) ? data : [])
     setLoading(false)

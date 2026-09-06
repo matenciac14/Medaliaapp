@@ -62,7 +62,7 @@ export default function RoutineEditPage() {
 
   // Load existing routine
   useEffect(() => {
-    fetch('/api/routine')
+    fetch('/api/athlete/routine')
       .then((r) => r.json())
       .then(({ routine }) => {
         if (routine?.days && Array.isArray(routine.days) && routine.days.length > 0) {
@@ -102,7 +102,7 @@ export default function RoutineEditPage() {
     setSaving(true)
     try {
       const activeDays = days.filter((d) => d.activity !== 'REST')
-      await fetch('/api/routine', {
+      await fetch('/api/athlete/routine', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days: activeDays, daysPerWeek: Math.max(activeDays.length, 1) }),

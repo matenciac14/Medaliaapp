@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import type { DashboardMode } from '../_lib/get-dashboard-data'
-import type { DashboardSummary } from '@/domain/dashboard/get-dashboard-summary.use-case'
+import type { DashboardMode } from '../_lib/get_dashboard_data'
+import type { DashboardSummary } from '@/domain/dashboard/get_dashboard_summary.use_case'
 import ProgressBar from '../../_components/ui/ProgressBar'
 import NutritionProgressCard from '../../_components/ui/NutritionProgressCard'
 

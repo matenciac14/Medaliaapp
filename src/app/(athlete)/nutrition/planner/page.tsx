@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { loadAthleteData } from '@/infrastructure/db/athlete_loader'
 import PlannedMealPlannerClient from './_components/PlannedMealPlannerClient'
 
 function getMondayOf(dateStr: string | null): Date {
@@ -29,15 +30,12 @@ export default async function NutritionPlannerPage({
   weekEnd.setHours(23, 59, 59, 999)
 
   // B2B: redirect — el planner es solo para atleta B2C
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { featurePlan: true },
-  })
-  const isB2B = await prisma.coachAthlete.findFirst({ where: { athleteId: userId }, select: { id: true } })
-  if (isB2B) redirect('/nutrition')
+  const { coachRelation } = await loadAthleteData(userId, ['coachRelation'])
+  if (coachRelation) redirect('/nutrition')
 
-  // Cargar en paralelo
-  const [plannedMeals, nutritionPlan, activePlan] = await Promise.all([
+  // Cargar en paralelo — loader handles nutritionPlan + activePlanMeta
+  const [{ nutritionPlan, activePlanMeta: activePlan }, plannedMeals] = await Promise.all([
+    loadAthleteData(userId, ['nutritionPlan', 'activePlanMeta']),
     prisma.plannedMeal.findMany({
       where: { userId, date: { gte: weekStart, lte: weekEnd } },
       include: {
@@ -50,11 +48,6 @@ export default async function NutritionPlannerPage({
         },
       },
       orderBy: [{ date: 'asc' }, { mealType: 'asc' }],
-    }),
-    prisma.nutritionPlan.findUnique({ where: { userId } }),
-    prisma.trainingPlan.findFirst({
-      where: { userId, status: 'ACTIVE' },
-      select: { id: true, startDate: true, totalWeeks: true },
     }),
   ])
 

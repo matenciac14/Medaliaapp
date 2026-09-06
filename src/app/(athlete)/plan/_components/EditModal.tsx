@@ -2,21 +2,10 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { PlanClientWeekSession } from './PlanClient'
+import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
+import type { PlanWeekSession as PlanClientWeekSession } from '../_lib/plan.types'
 
 const RUNNING_TYPES = new Set(['RODAJE_Z2','FARTLEK','TEMPO','INTERVALOS','TIRADA_LARGA','SIMULACRO','TEST'])
-
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃', FARTLEK: '🏃', TIRADA_LARGA: '🏃', TEMPO: '🏃',
-  INTERVALOS: '⚡', SIMULACRO: '🏁', TEST: '📊',
-  CICLA: '🚴', NATACION: '🏊', FUERZA: '💪', DESCANSO: '😴', OTRO: '🏅',
-}
-
-const SESSION_LABELS: Record<string, string> = {
-  RODAJE_Z2: 'Rodaje Z2', FARTLEK: 'Fartlek', TIRADA_LARGA: 'Tirada Larga',
-  TEMPO: 'Tempo', INTERVALOS: 'Intervalos', SIMULACRO: 'Simulacro', TEST: 'Test',
-  CICLA: 'Cicla', NATACION: 'Natación', FUERZA: 'Fuerza', DESCANSO: 'Descanso', OTRO: 'Entrenamiento',
-}
 
 const SESSION_TYPE_OPTIONS = [
   { value: 'RODAJE_Z2',    label: 'Rodaje Z2' },
@@ -96,7 +85,7 @@ export default function EditModal({ session, onClose, onSaved }: {
             })
           : Promise.resolve(null),
         isLogged && Object.keys(logUpdates).length > 0
-          ? fetch(`/api/log/session/${session.logId}`, {
+          ? fetch(`/api/athlete/log/session/${session.logId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(logUpdates),
@@ -110,11 +99,11 @@ export default function EditModal({ session, onClose, onSaved }: {
       const merged: Partial<PlanClientWeekSession> = {
         ...sessionUpdates as Partial<PlanClientWeekSession>,
         ...(isLogged ? {
-          logDurationMin:  logUpdates.durationMin  as number ?? session.logDurationMin,
-          logRpe:          logUpdates.rpe          as number ?? session.logRpe,
-          logHrAvg:        logUpdates.hrAvg        as number ?? session.logHrAvg,
-          logNotes:        logUpdates.notes        as string ?? session.logNotes,
-          logDistanceKm:   logUpdates.distanceKm  as number ?? session.logDistanceKm,
+          logDurationMin:  (logUpdates.durationMin as number) ?? session.logDurationMin,
+          logRpe:          (logUpdates.rpe as number) ?? session.logRpe,
+          logHrAvg:        (logUpdates.hrAvg as number) ?? session.logHrAvg,
+          logNotes:        (logUpdates.notes as string) ?? session.logNotes,
+          logDistanceKm:   (logUpdates.distanceKm as number) ?? session.logDistanceKm,
         } : {}),
       }
       onSaved(merged)
@@ -137,7 +126,7 @@ export default function EditModal({ session, onClose, onSaved }: {
             <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Editar sesión</p>
-              <p className="font-black text-gray-900">{SESSION_LABELS[session.type] ?? session.type}</p>
+              <p className="font-black text-gray-900">{session.label || SESSION_NAMES[session.type] || session.type}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>

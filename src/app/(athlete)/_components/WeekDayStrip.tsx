@@ -3,7 +3,7 @@
 import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WEEK_DAYS_SHORT, SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
-import type { WeekDayCell } from './week-day-cells'
+import type { WeekDayCell } from './week_day_cells'
 
 export type { WeekDayCell }
 
@@ -135,7 +135,7 @@ function DashboardCard({ cell, isSelected = false, onClick }: { cell: WeekDayCel
           : !sessionType ? 'text-gray-400'
           : 'text-gray-700'
         )}>
-          {sessionName ?? (isToday ? 'Registrar →' : 'Sin sesión')}
+          {sessionName ?? (isToday ? 'Registrar →' : null)}
         </span>
         {hasSession && durationMin > 0 && (
           <span className={cn('text-[10px] leading-none', isInverted ? 'text-white/70' : 'text-gray-400')}>

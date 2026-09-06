@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { ATHLETE_PRO_PRICE_USD, usdToCopDisplay } from '@/domain/billing/billing.types'
 import { getTrmWithMeta } from '@/infrastructure/billing/trm'
+import { loadAthleteData } from '@/infrastructure/db/athlete_loader'
 import AthletePlanClient from './_components/AthletePlanClient'
 
 export const metadata = { title: 'Mi Plan — MedalIQ' }
@@ -18,22 +19,20 @@ export default async function AthletePlanPage({
 
   const params = await searchParams
   const billingStatus = params.billing ?? null
+  const userId = session.user.id
 
-  const [sub, b2bRelation, trmMeta] = await Promise.all([
+  const [sub, { coachRelation }, trmMeta] = await Promise.all([
     prisma.userSubscription.findUnique({
-      where: { userId: session.user.id },
+      where: { userId },
       select: { tier: true, currentPeriodEnd: true },
     }),
-    prisma.coachAthlete.findFirst({
-      where: { athleteId: session.user.id, status: 'ACTIVE' },
-      select: { coach: { select: { name: true } } },
-    }),
+    loadAthleteData(userId, ['coachRelation']),
     getTrmWithMeta(),
   ])
 
   const tier = (sub?.tier === 'PRO' ? 'PRO' : 'FREE') as 'FREE' | 'PRO'
   const currentPeriodEnd = sub?.currentPeriodEnd?.toISOString() ?? null
-  const coachName = b2bRelation?.coach.name ?? null
+  const coachName = coachRelation?.coach.name ?? null
 
   const priceCOP = usdToCopDisplay(ATHLETE_PRO_PRICE_USD, trmMeta.value)
 

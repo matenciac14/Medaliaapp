@@ -28,8 +28,8 @@ export default function QuickSessionFeedback({ logId, logType, sessionLabel, ses
     setSaving(true)
     try {
       const url = logType === 'gym'
-        ? `/api/gym/session/${logId}`
-        : `/api/log/session/${logId}`
+        ? `/api/athlete/gym/session/${logId}`
+        : `/api/athlete/log/session/${logId}`
       await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

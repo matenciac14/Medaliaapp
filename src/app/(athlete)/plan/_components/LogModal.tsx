@@ -2,21 +2,10 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { PlanClientWeekSession } from './PlanClient'
+import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
+import type { PlanWeekSession as PlanClientWeekSession } from '../_lib/plan.types'
 
 const RUNNING_TYPES = new Set(['RODAJE_Z2','FARTLEK','TEMPO','INTERVALOS','TIRADA_LARGA','SIMULACRO','TEST'])
-
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃', FARTLEK: '🏃', TIRADA_LARGA: '🏃', TEMPO: '🏃',
-  INTERVALOS: '⚡', SIMULACRO: '🏁', TEST: '📊',
-  CICLA: '🚴', NATACION: '🏊', FUERZA: '💪', DESCANSO: '😴', OTRO: '🏅',
-}
-
-const SESSION_LABELS: Record<string, string> = {
-  RODAJE_Z2: 'Rodaje Z2', FARTLEK: 'Fartlek', TIRADA_LARGA: 'Tirada Larga',
-  TEMPO: 'Tempo', INTERVALOS: 'Intervalos', SIMULACRO: 'Simulacro', TEST: 'Test',
-  CICLA: 'Cicla', NATACION: 'Natación', FUERZA: 'Fuerza', DESCANSO: 'Descanso', OTRO: 'Entrenamiento',
-}
 
 function formatPace(distanceKm: number, durationMin: number): string {
   const secPerKm = (durationMin * 60) / distanceKm
@@ -44,11 +33,11 @@ export default function LogModal({ session, onClose, onSuccess }: {
 
   async function handleSubmit() {
     if (completed === null) { setError('¿Completaste la sesión?'); return }
-    if (!completed) { onSuccess(); return }
+    if (!completed) { onClose(); return }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/log/session', {
+      const res = await fetch('/api/athlete/log/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +71,7 @@ export default function LogModal({ session, onClose, onSuccess }: {
             <span className="text-2xl">{SESSION_ICONS[session.type] ?? '🏅'}</span>
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Registrar sesión</p>
-              <p className="font-black text-gray-900">{session.durationMin} min · {SESSION_LABELS[session.type] ?? session.type}</p>
+              <p className="font-black text-gray-900">{session.durationMin} min · {session.label || SESSION_NAMES[session.type] || session.type}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none pb-0.5">×</button>

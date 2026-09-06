@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym-labels'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { BODY_PART_LABELS, translateBodyPart } from '@/lib/gym/labels'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 import AthleteExercisesGrid from './_components/AthleteExercisesGrid'
 
 interface Props {

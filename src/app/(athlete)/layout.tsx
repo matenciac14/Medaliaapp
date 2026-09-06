@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
-import { DEFAULT_USER_CONFIG } from '@/lib/config/user-config'
+import { DEFAULT_USER_CONFIG } from '@/lib/config/user_config'
 import SidebarClient from './_components/SidebarClient'
+import TimezoneSync from './_components/TimezoneSync'
 
 export default async function AthleteLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -51,6 +52,7 @@ export default async function AthleteLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      <TimezoneSync />
       <SidebarClient user={user} config={config} hasCoach={!!coachRelation} />
 
       <div className="flex-1 flex flex-col min-w-0">

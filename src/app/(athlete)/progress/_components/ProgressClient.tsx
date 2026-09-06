@@ -679,7 +679,7 @@ function AddBenchmarkForm({ onAdded }: { onAdded: (b: BenchmarkPoint) => void })
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch('/api/progress/benchmarks', {
+      const res = await fetch('/api/athlete/progress/benchmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sport, metric: selectedMetric?.value ?? metric, value, unit: selectedMetric?.unit ?? 'kg', testedAt, notes: notes.trim() || undefined }),

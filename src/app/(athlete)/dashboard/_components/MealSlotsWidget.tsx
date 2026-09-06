@@ -47,7 +47,7 @@ export default function MealSlotsWidget({ initialLogs }: Props = {}) {
 
   useEffect(() => {
     if (hasInitial) return
-    fetch('/api/nutrition/log')
+    fetch('/api/athlete/nutrition/log')
       .then(r => r.json())
       .then(data => {
         setSlots(buildSlots(data.logs ?? []))

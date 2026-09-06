@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { translateMuscleGroup } from '@/lib/gym-labels'
+import { translateMuscleGroup } from '@/lib/gym/labels'
 import MuscleMapWeb, { buildSessionMuscleData } from '@/components/MuscleMapWeb'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -362,7 +362,7 @@ export default function GymSessionPage() {
     setPickerLoading(true)
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/gym/exercises/search?q=${encodeURIComponent(pickerQuery)}`)
+        const res = await fetch(`/api/athlete/gym/exercises/search?q=${encodeURIComponent(pickerQuery)}`)
         const data = await res.json()
         setPickerResults(data.exercises ?? [])
       } finally {
@@ -376,7 +376,7 @@ export default function GymSessionPage() {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch('/api/gym/session/today')
+        const res = await fetch('/api/athlete/gym/session/today')
         if (!res.ok) {
           const data = await res.json()
           setError(data.error ?? 'Error cargando la sesión')
@@ -543,7 +543,7 @@ export default function GymSessionPage() {
     }
 
     try {
-      const res = await fetch('/api/gym/session/complete', {
+      const res = await fetch('/api/athlete/gym/session/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

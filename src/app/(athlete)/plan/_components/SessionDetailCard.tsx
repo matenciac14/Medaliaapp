@@ -1,26 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { PlanClientWeekSession } from './PlanClient'
+import { SESSION_ICONS, SESSION_NAMES } from '@/lib/constants/sessions'
+import type { PlanWeekSession as PlanClientWeekSession } from '../_lib/plan.types'
 import EditModal from './EditModal'
 import LogModal from './LogModal'
-
-// ── Constants ─────────────────────────────────────────────────────────
-
-const SESSION_ICONS: Record<string, string> = {
-  RODAJE_Z2: '🏃', FARTLEK: '🏃', TIRADA_LARGA: '🏃', TEMPO: '🏃',
-  INTERVALOS: '⚡', SIMULACRO: '🏁', TEST: '📊',
-  CICLA: '🚴', NATACION: '🏊', FUERZA: '💪', DESCANSO: '😴', OTRO: '🏅',
-}
-
-const SESSION_LABELS: Record<string, string> = {
-  RODAJE_Z2: 'Rodaje Z2', FARTLEK: 'Fartlek', TIRADA_LARGA: 'Tirada Larga',
-  TEMPO: 'Tempo', INTERVALOS: 'Intervalos', SIMULACRO: 'Simulacro', TEST: 'Test',
-  CICLA: 'Cicla', NATACION: 'Natación', FUERZA: 'Fuerza', DESCANSO: 'Descanso', OTRO: 'Entrenamiento',
-}
 
 const INTENSITY_BADGE: Record<string, { bg: string; label: string }> = {
   HIGH:     { bg: 'bg-orange-50 text-orange-600 border-orange-100', label: '🔥 ALTA intensidad' },
@@ -73,7 +60,9 @@ export default function SessionDetailCard({ session, isToday, isLogged, onLogged
   const [showEdit, setShowEdit] = useState(false)
 
   // Sync if parent's optimistic state arrives after mount
-  if (!logDone && isLogged) setLogDone(true)
+  useEffect(() => {
+    if (!logDone && isLogged) setLogDone(true)
+  }, [isLogged])
 
   if (session.type === 'DESCANSO') {
     return (
@@ -111,7 +100,7 @@ export default function SessionDetailCard({ session, isToday, isLogged, onLogged
           <div className="flex items-center gap-3">
             <span className="text-[22px]">{SESSION_ICONS[session.type] ?? '🏅'}</span>
             <h3 className="text-[22px] font-black text-gray-900 leading-tight">
-              {SESSION_LABELS[session.type] ?? session.type}
+              {session.label || SESSION_NAMES[session.type] || session.type}
             </h3>
             {isToday && (
               <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
@@ -170,6 +159,14 @@ export default function SessionDetailCard({ session, isToday, isLogged, onLogged
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Coach note */}
+          {session.coachNote && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1">💬 Nota de tu coach</p>
+              <p className="text-[12px] text-blue-800 leading-relaxed">{session.coachNote}</p>
             </div>
           )}
 

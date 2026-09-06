@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import type { CalendarWeek, CalendarDay } from '@/domain/calendar/calendar.types'
-import { calendarDaysToWeekCells, type WeekDayCell } from './week-day-cells'
+import { calendarDaysToWeekCells, type WeekDayCell } from './week_day_cells'
 import WeekDayStrip from './WeekDayStrip'
-import { jsToWeekIdx } from '@/lib/core/date-utils'
+import { jsToWeekIdx } from '@/lib/core/date_utils'
 import { SESSION_ICONS, SESSION_NAMES, WEEK_DAYS_SHORT } from '@/lib/constants/sessions'
 
 
@@ -436,7 +436,7 @@ function MobileSelectedDayCard({ day, isToday }: { day: CalendarDay; isToday: bo
 
   const sessionType = isSportPrimary ? sport!.type : isGymPrimary ? 'FUERZA' : freeRun!.type
   const sessionName = isSportPrimary
-    ? (SESSION_NAMES[sport!.type] ?? sport!.type.replace(/_/g, ' '))
+    ? (sport!.detailText ?? SESSION_NAMES[sport!.type] ?? sport!.type.replace(/_/g, ' '))
     : isGymPrimary
     ? (gym!.templateName ?? gym!.label)
     : (SESSION_NAMES[freeRun!.type] ?? freeRun!.type.replace(/_/g, ' '))

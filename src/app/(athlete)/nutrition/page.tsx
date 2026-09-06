@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { jsToOurDow } from '@/lib/core/date-utils'
+import { todayDowInTz } from '@/lib/core/date_utils'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
-import { intensityToDayType, type DayType } from '@/lib/nutrition/day-type'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily-target'
-import { parseMealPlanData } from '@/domain/nutrition/generate-meal-plan'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
+import { intensityToDayType, type DayType } from '@/lib/nutrition/day_type'
+import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
+import { parseMealPlanData } from '@/domain/nutrition/generate_meal_plan'
 import NutritionContent, { type MealPlanData } from './_components/NutritionContent'
 import FoodGuide from './_components/FoodGuide'
 import TrackingSection from './_components/TrackingSection'
@@ -19,7 +19,11 @@ import MacroTargetCards from './_components/MacroTargetCards'
 import HydrationWidget from './_components/HydrationWidget'
 import MealSummaryCards from './_components/MealSummaryCards'
 import TipCard from './_components/TipCard'
-import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach-nutrition-proposal.repository'
+import NutritionPageClient from './_components/NutritionPageClient'
+import EmptyMealPlanCard from './_components/EmptyMealPlanCard'
+import CoachNutritionBanner from './_components/CoachNutritionBanner'
+import PendingMealsBanner from './_components/PendingMealsBanner'
+import { CoachNutritionProposalRepository } from '@/infrastructure/db/coach_nutrition_proposal.repository'
 
 export default async function NutritionPage() {
   const session = await auth()
@@ -38,7 +42,7 @@ export default async function NutritionPage() {
   ])
   const tz = userRecord?.timezone ?? 'America/Bogota'
   const todayDate = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
-  const todayDow = jsToOurDow(todayDate.getDay())
+  const todayDow = todayDowInTz(tz)
   const currentWeek = activePlan ? getPlanWeekNumber(activePlan.startDate, activePlan.totalWeeks) : null
 
   // Ajuste nutricional pendiente para hoy (date es @db.Date — comparar por día completo)
@@ -173,14 +177,23 @@ export default async function NutritionPage() {
         mealType: true,
         grams: true,
         date: true,
-        food: { select: { name: true, kcalPer100g: true } },
+        food: { select: { name: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
       },
       orderBy: { date: 'asc' },
+    }),
+    // Today's food logs with full macro data (for DeficitHero + consumed totals)
+    prisma.foodLog.findMany({
+      where: { userId, date: { gte: todayStart, lt: tomorrow } },
+      select: {
+        id: true, mealType: true, grams: true,
+        kcalLogged: true, proteinG: true, carbsG: true, fatG: true,
+        food: { select: { name: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
+      },
     }),
   ])
 
   // Sin lazy-init: no se escribe a DB durante el render (violación REST, race conditions).
-  // Si falta NutritionPlan, NutritionInitClient lo crea vía POST /api/nutrition/init y refresca.
+  // Si falta NutritionPlan, NutritionInitClient lo crea vía POST /api/athlete/nutrition/init y refresca.
   const nutritionPlan = nutritionPlanRaw
   const needsNutritionInit = !nutritionPlan && !!healthProfile?.weightKg && !!healthProfile?.heightCm && !!healthProfile?.age
 
@@ -488,7 +501,7 @@ export default async function NutritionPage() {
         />
       )}
 
-      {/* Contenido real — si hay meal plan completo (plan AI o plantilla del coach) */}
+      {/* Contenido real — si hay meal plan completo (plantilla del coach) */}
       {hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan && (
         <>
           {assignedNutritionPlan && (
@@ -600,7 +613,7 @@ export default async function NutritionPage() {
           Completa el onboarding para activar tu plan nutricional base.
         </div>
       )}
-      {/* Init automático — dispara POST /api/nutrition/init si hay perfil pero falta el plan */}
+      {/* Init automático — dispara POST /api/athlete/nutrition/init si hay perfil pero falta el plan */}
       {needsNutritionInit && <NutritionInitClient />}
 
       {/* NUT-DASH-06 — Consejo contextual según tipo de día */}

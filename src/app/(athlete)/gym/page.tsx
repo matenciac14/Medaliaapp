@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { jsToOurDow, getWeekMonday, formatWeekRange } from '@/lib/core/date-utils'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getWeekMonday, formatWeekRange, todayDowInTz } from '@/lib/core/date_utils'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import { DAY_LABELS } from '@/lib/constants/sessions'
-import { translateMuscleGroup } from '@/lib/gym-labels'
+import { translateMuscleGroup } from '@/lib/gym/labels'
 import { prisma } from '@/lib/db/prisma'
 import { ChevronRight, Dumbbell, Calendar, Clock, CheckCircle2, History } from 'lucide-react'
-import { resolveExerciseGifUrl } from '@/lib/gym/gif-url'
+import { resolveExerciseGifUrl } from '@/lib/gym/gif_url'
 import PublicTemplates from './_components/PublicTemplates'
 import FeaturedExercisesGrid from './_components/FeaturedExercisesGrid'
 import WeekNavBar from '../_components/WeekNavBar'
@@ -50,9 +50,15 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
       })
     : null
 
+  // Timezone del usuario — necesario para calcular "hoy" correctamente
+  const userTz = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { timezone: true },
+  }).then(u => u?.timezone ?? undefined)
+
   // Check today's planned session usando dayOfWeek + semana actual del plan
   // (PlannedSession no tiene campo date — usa dayOfWeek 1=Lun…7=Dom)
-  const todayDowForBanner = jsToOurDow(new Date().getDay())
+  const todayDowForBanner = todayDowInTz(userTz)
   const activePlanForBanner = await prisma.trainingPlan.findFirst({
     where: { userId: athleteId, status: 'ACTIVE' },
     select: { id: true, startDate: true, totalWeeks: true },
@@ -281,14 +287,12 @@ export default async function GymPage({ searchParams }: { searchParams: Promise<
     )
   }
 
-  const todayDow = jsToOurDow(new Date().getDay())
+  const todayDow = todayDowInTz(userTz)
   const todayWorkoutDay = assigned.template.days.find((d) => d.dayOfWeek === todayDow) ?? null
 
   // Weekly adherence: sessions logged for the selected week
-  const monday = getWeekMonday(weekOffset)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
+  const monday = getWeekMonday(weekOffset, userTz)
+  const sunday = new Date(monday.getTime() + 7 * 86_400_000 - 1)
   const weekRangeLabel = formatWeekRange(monday)
   // Build DOW→dateNumber map (1=Mon … 7=Sun)
   const weekDates: Record<number, number> = {}

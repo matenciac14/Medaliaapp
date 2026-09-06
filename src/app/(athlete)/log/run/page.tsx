@@ -40,7 +40,7 @@ export default function LogRunPage() {
 
   useEffect(() => {
     if (!runType) { setPrevSession(null); return }
-    fetch(`/api/log/last-session?type=${runType}`)
+    fetch(`/api/athlete/log/last-session?type=${runType}`)
       .then((r) => r.json())
       .then((d) => setPrevSession(d.log ?? null))
       .catch(() => {})
@@ -54,7 +54,7 @@ export default function LogRunPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/log/run', {
+      const res = await fetch('/api/athlete/log/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

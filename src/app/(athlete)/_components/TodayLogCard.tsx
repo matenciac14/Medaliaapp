@@ -19,7 +19,7 @@ export default function TodayLogCard({ initial }: Props) {
     if (!weightKg && !energy) return
     setSaving(true)
     try {
-      await fetch('/api/metrics/log', {
+      await fetch('/api/athlete/metrics/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(weightKg && { weightKg }), ...(energy && { energyLevel: energy }) }),

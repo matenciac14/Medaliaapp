@@ -8,8 +8,7 @@ import InfoBannerRow from '../_components/InfoBannerRow'
 import WeeklySummaryCard from '../_components/WeeklySummaryCard'
 import DailySessionCard from '../_components/DailySessionCard'
 import PlanCompletionCard from '../_components/PlanCompletionCard'
-import { getDashboardData } from './_lib/get-dashboard-data'
-import { PHASE_COLORS } from './_lib/dashboard-helpers'
+import { getDashboardData } from './_lib/get_dashboard_data'
 import { MobileHeader, DesktopHeader } from './_components/HeaderRow'
 import HeroCardsRow from './_components/HeroCardsRow'
 import MobileCardsSection from './_components/MobileCardsSection'
@@ -26,7 +25,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const d = await getDashboardData(session.user.id, rawWeekOffset, session.user.isB2B ?? false)
 
   return (
-    <div className="sm:py-5 lg:px-8 lg:py-6 max-w-6xl mx-auto sm:space-y-5">
+    <div className="sm:py-5 lg:px-8 lg:py-6 max-w-7xl mx-auto sm:space-y-5">
 
       {/* Mobile gradient header */}
       <MobileHeader
@@ -125,22 +124,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <DailySessionCard
                   dashboardMode={d.dashboardMode}
                   isCurrentWeek={d.isCurrentWeek}
-                  todaySession={d.todaySession}
-                  hasActivePlan={!!d.activePlanId}
                   hasGymToday={d.hasGymToday}
                   gymDoneToday={d.gymDoneToday}
                   todayGymDay={d.todayGymDay ? { label: d.todayGymDay.label ?? '', exercises: d.todayGymDay.exercises } : null}
-                  planPhase={d.planData.phase}
-                  phaseDisplay={d.phaseDisplay}
-                  phaseColors={PHASE_COLORS}
-                  selectedWeekNum={d.selectedWeekNum || d.planData.currentWeek}
-                  totalWeeks={d.planData.totalWeeks}
-                  completedCount={d.completedCount}
-                  totalTraining={d.totalTraining}
                   weekSessionCount={d.weekSessionCount}
                   weekSessionTarget={d.weekSessionTarget}
-                  isB2B={d.isB2B}
-                  coachName={d.coachRelation?.coach.name ?? null}
                 />
               )}
           </div>
@@ -191,6 +179,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             todayConsumed={d.todayConsumed}
             initialWater={d.initialWater}
             initialMealSlotLogs={d.initialMealSlotLogs}
+            coach={d.coachRelation ? {
+              name: d.coachRelation.coach.name ?? 'Tu coach',
+              headline: d.coachRelation.coach.coachProfile?.headline ?? d.coachRelation.coach.coachProfile?.specialties?.[0] ?? null,
+              initial: (d.coachRelation.coach.name ?? 'C').charAt(0).toUpperCase(),
+            } : null}
+            checkinPending={d.checkinPending}
+            hasActivePlan={!!d.activePlanId}
           />
 
           {/* Desktop: Info banner row */}

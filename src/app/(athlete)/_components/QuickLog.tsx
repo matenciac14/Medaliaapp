@@ -27,7 +27,7 @@ export default function QuickLog({
   async function complete() {
     setLoading(true)
     try {
-      await fetch('/api/log/session', {
+      await fetch('/api/athlete/log/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plannedSessionId: sessionId }),

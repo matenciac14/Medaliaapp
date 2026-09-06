@@ -150,7 +150,7 @@ export default function CheckInClient({
     setSaveError(null)
     setShowAlertModal(false)
     try {
-      const res = await fetch('/api/checkin', {
+      const res = await fetch('/api/athlete/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -174,7 +174,7 @@ export default function CheckInClient({
   }
 
   async function respondToSuggestion(id: string, action: 'accept' | 'reject') {
-    await fetch(`/api/checkin/suggestions/${id}/${action}`, { method: 'POST' })
+    await fetch(`/api/athlete/checkin/suggestions/${id}/${action}`, { method: 'POST' })
     setSuggestions(prev => prev.filter(s => s.id !== id))
   }
 

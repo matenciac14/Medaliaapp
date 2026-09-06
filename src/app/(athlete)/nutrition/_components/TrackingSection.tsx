@@ -125,7 +125,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
     setLoading(true)
     try {
       const param = date ? `?date=${date}` : ''
-      const res = await fetch(`/api/nutrition/log${param}`)
+      const res = await fetch(`/api/athlete/nutrition/log${param}`)
       if (res.ok) {
         const data = await res.json()
         setLogs(data.logs ?? [])
@@ -148,7 +148,7 @@ export default function TrackingSection({ target, foods, date }: Props) {
   async function handleDelete(id: string) {
     setDeletingId(id)
     try {
-      await fetch(`/api/nutrition/log/${id}`, { method: 'DELETE' })
+      await fetch(`/api/athlete/nutrition/log/${id}`, { method: 'DELETE' })
       setRefreshKey(k => k + 1)
     } finally {
       setDeletingId(null)
