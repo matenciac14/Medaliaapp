@@ -21,12 +21,6 @@ export default function CoachNutritionBanner({ coachName, planName }: Props) {
         </div>
       )}
 
-      {planName && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-800 font-medium">
-          Plan nutricional asignado por tu coach · {planName}
-        </div>
-      )}
-
       <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-4">
         <span className="text-2xl">👨‍🍳</span>
         <div>

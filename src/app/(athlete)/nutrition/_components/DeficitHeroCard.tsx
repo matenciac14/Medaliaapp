@@ -7,9 +7,11 @@ type Props = {
   target: { kcal: number; proteinG: number; carbsG: number; fatG: number }
   onViewConsumed: () => void
   onRegister: () => void
+  activityKcalBonus?: number
+  activityLabel?: string | null
 }
 
-export default function DeficitHeroCard({ consumed, target, onViewConsumed, onRegister }: Props) {
+export default function DeficitHeroCard({ consumed, target, onViewConsumed, onRegister, activityKcalBonus = 0, activityLabel }: Props) {
   const remaining = Math.max(0, target.kcal - consumed.kcal)
   const pct = target.kcal > 0 ? Math.min(100, Math.round((consumed.kcal / target.kcal) * 100)) : 0
 
@@ -46,6 +48,11 @@ export default function DeficitHeroCard({ consumed, target, onViewConsumed, onRe
           />
         </div>
         <p className="text-xs font-semibold text-[#ea580c] mt-1">{pct}% completado</p>
+        {activityKcalBonus > 0 && activityLabel && (
+          <p className="text-[11px] text-gray-400 mt-1">
+            ← incluye ~{activityKcalBonus} kcal del {activityLabel} de hoy
+          </p>
+        )}
       </div>
 
       {/* Macro pills */}

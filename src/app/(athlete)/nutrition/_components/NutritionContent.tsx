@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Flame, Check, Moon, Activity } from 'lucide-react'
 import { type DayType } from '@/lib/nutrition/day_type'
-import { getDailyNutritionTarget } from '@/lib/nutrition/daily_target'
 
 type MealFoodItem = {
   name: string
@@ -99,17 +98,6 @@ function normalizeMealPlan(data: unknown): MealPlanData & { low: DayMeals } {
   }
 }
 
-type NutritionPlanTargets = {
-  tdee: number
-  targetKcalHard: number
-  targetKcalEasy: number
-  targetKcalRest: number
-  proteinG: number
-  carbsHardG: number
-  carbsEasyG: number
-  fatG: number
-}
-
 const DAY_TABS: { key: DayType; label: string; Icon: React.ElementType; color: string }[] = [
   { key: 'hard', label: 'Día duro',   Icon: Flame,    color: '#ea580c' },
   { key: 'easy', label: 'Día fácil',  Icon: Check,    color: '#16a34a' },
@@ -130,28 +118,14 @@ const MEAL_ICONS: Record<string, string> = {
 
 interface Props {
   mealPlan: MealPlanData | (MealPlanData & { low: DayMeals })
-  nutritionPlan: NutritionPlanTargets
   todayDayType: DayType
 }
 
-export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType }: Props) {
+export default function NutritionContent({ mealPlan, todayDayType }: Props) {
   const [activeTab, setActiveTab] = useState<DayType>(todayDayType)
-  const [barsReady, setBarsReady] = useState(false)
-
-  useEffect(() => {
-    const t = setTimeout(() => setBarsReady(true), 80)
-    return () => clearTimeout(t)
-  }, [])
 
   const normalizedPlan = normalizeMealPlan(mealPlan)
   const dayData = normalizedPlan[activeTab]
-  const intensityByDay: Record<DayType, string> = { hard: 'HIGH', easy: 'MODERATE', low: 'LOW', rest: 'REST' }
-  const target = getDailyNutritionTarget(intensityByDay[activeTab], nutritionPlan)
-
-  const totalKcal = dayData.meals.reduce((s, m) => s + (m.kcal ?? 0), 0)
-  const totalProtein = dayData.meals.reduce((s, m) => s + (m.protein ?? 0), 0)
-  const totalCarbs = dayData.meals.reduce((s, m) => s + (m.carbs ?? 0), 0)
-  const totalFat = dayData.meals.reduce((s, m) => s + (m.fat ?? 0), 0)
 
   return (
     <div className="space-y-6">
@@ -177,57 +151,10 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
         ))}
       </div>
 
-      {/* Macros objetivo */}
-      <div className="bg-[#1e3a5f] rounded-2xl p-5 text-white">
-        <p className="text-xs font-semibold uppercase tracking-wide text-white/60 mb-4">Macros objetivo del día</p>
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-[#ea580c]">{target.kcal.toLocaleString()}</p>
-            <p className="text-xs text-white/60 mt-0.5">kcal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.proteinG}g</p>
-            <p className="text-xs text-white/60 mt-0.5">proteína</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.carbsG}g</p>
-            <p className="text-xs text-white/60 mt-0.5">carbos</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">{target.fatG}g</p>
-            <p className="text-xs text-white/60 mt-0.5">grasas</p>
-          </div>
-        </div>
-
-        {/* Barras vs menú */}
-        <div className="space-y-3 bg-white/10 rounded-xl p-4">
-          <p className="text-xs text-white/50 mb-1">Aporte del menú vs objetivo</p>
-          {[
-            { label: 'Calorías', value: totalKcal, max: target.kcal, unit: ' kcal' },
-            { label: 'Proteína', value: totalProtein, max: target.proteinG, unit: 'g' },
-            { label: 'Carbohidratos', value: totalCarbs, max: target.carbsG, unit: 'g' },
-            { label: 'Grasas', value: totalFat, max: target.fatG, unit: 'g' },
-          ].map(bar => (
-            <div key={bar.label} className="space-y-1">
-              <div className="flex justify-between text-xs text-white/70">
-                <span>{bar.label}</span>
-                <span>{bar.value}{bar.unit} / {bar.max}{bar.unit}</span>
-              </div>
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white/80 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: barsReady ? `${Math.min((bar.value / bar.max) * 100, 100)}%` : '0%' }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Menú del día */}
       <section>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Menú del día · {dayData.meals.length} comidas
+          Menu del dia · {dayData.meals.length} comidas
         </h2>
         <div className="space-y-3">
           {dayData.meals.map((meal, idx) => (
@@ -268,44 +195,16 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
         </div>
       </section>
 
-      {/* Hidratación */}
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Hidratación 💧</h2>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl">💧</div>
-            <div>
-              <p className="text-2xl font-bold text-[#1e3a5f]">{dayData.hydrationL} L</p>
-              <p className="text-xs text-gray-500">Meta diaria</p>
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            {[
-              'Al despertar: 500 ml con una pizca de sal marina',
-              'Durante el entreno: 150-200 ml cada 20 minutos',
-              'Post-sesión inmediato: 500 ml para recuperación',
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <p className="text-sm text-gray-700">{tip}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Suplementación */}
       {dayData.supplements.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Suplementación</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Suplementacion</h2>
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="grid grid-cols-4 bg-gray-50 px-4 py-2.5 border-b border-gray-100">
               <span className="text-xs font-semibold text-gray-500 col-span-1">Suplemento</span>
               <span className="text-xs font-semibold text-gray-500">Dosis</span>
-              <span className="text-xs font-semibold text-gray-500">Cuándo</span>
-              <span className="text-xs font-semibold text-gray-500">Para qué</span>
+              <span className="text-xs font-semibold text-gray-500">Cuando</span>
+              <span className="text-xs font-semibold text-gray-500">Para que</span>
             </div>
             {dayData.supplements.map((s, idx) => (
               <div
@@ -321,52 +220,6 @@ export default function NutritionContent({ mealPlan, nutritionPlan, todayDayType
           </div>
         </section>
       )}
-
-      {/* Reglas */}
-      {dayData.rules.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Reglas no negociables</h2>
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
-            {dayData.rules.map((rule, idx) => (
-              <div key={idx} className="flex items-start gap-3 px-4 py-3.5">
-                <span className="text-lg shrink-0">
-                  {['🕔', '🌙', '🚫', '⚖️', '💊'][idx] ?? '📌'}
-                </span>
-                <p className="text-sm text-gray-700">{rule}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* TDEE info */}
-      <div className="bg-[#1e3a5f]/5 border border-[#1e3a5f]/20 rounded-2xl p-4">
-        <p className="text-xs text-gray-500 mb-1">Tu TDEE estimado</p>
-        <p className="text-lg font-bold text-[#1e3a5f]">{nutritionPlan.tdee.toLocaleString()} kcal / día</p>
-        {(() => {
-          const diff = nutritionPlan.tdee - target.kcal
-          if (diff > 150) {
-            const weeklyKg = ((diff * 7) / 7700).toFixed(1)
-            return (
-              <p className="text-xs text-gray-500 mt-1">
-                Déficit: {diff.toLocaleString()} kcal hoy · Pérdida proyectada ~{weeklyKg} kg/semana
-              </p>
-            )
-          }
-          if (diff < -150) {
-            return (
-              <p className="text-xs text-gray-500 mt-1">
-                Superávit: {Math.abs(diff).toLocaleString()} kcal hoy · Objetivo: ganancia muscular
-              </p>
-            )
-          }
-          return (
-            <p className="text-xs text-gray-500 mt-1">
-              Mantenimiento calórico · Sin déficit ni superávit significativo
-            </p>
-          )
-        })()}
-      </div>
     </div>
   )
 }

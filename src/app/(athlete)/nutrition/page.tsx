@@ -82,6 +82,7 @@ export default async function NutritionPage() {
     athleteTemplate,
     plannedMealsThisWeek,
     todayFoodLogs,
+    todayWaterLog,
   ] = await Promise.all([
     prisma.nutritionPlan.findUnique({ where: { userId } }),
     prisma.mealPlan.findUnique({ where: { userId } }),
@@ -190,6 +191,11 @@ export default async function NutritionPage() {
         kcalLogged: true, proteinLogged: true, carbsLogged: true, fatLogged: true,
         food: { select: { name: true, kcalPer100g: true, proteinPer100g: true, carbsPer100g: true, fatPer100g: true } },
       },
+    }),
+    // Water log for today (pre-fetch to avoid client-side flash)
+    prisma.waterLog.findUnique({
+      where: { userId_date: { userId, date: todayStart } },
+      select: { mlLogged: true },
     }),
   ])
 
@@ -380,10 +386,20 @@ export default async function NutritionPage() {
     const dayDate = new Date(todayMonday)
     dayDate.setDate(todayMonday.getDate() + i)
     const MONTH_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    const SESSION_LABELS_MENU: Record<string, string> = {
+      EASY_RUN: 'Carrera suave', TEMPO_RUN: 'Tempo', INTERVAL: 'Intervalos',
+      LONG_RUN: 'Carrera larga', RECOVERY_RUN: 'Recuperacion',
+      RACE: 'Carrera', FARTLEK: 'Fartlek', HILL_REPEATS: 'Cuestas',
+      STRENGTH: 'Fuerza', GYM: 'Fuerza',
+    }
+    const sessionLabel = session && session.type !== 'DESCANSO'
+      ? (SESSION_LABELS_MENU[session.type as string] ?? 'Entreno')
+      : null
     return {
       label: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][i],
       date: `${dayDate.getDate()} ${MONTH_SHORT[dayDate.getMonth()]}`,
       dayType: (weekSessions.length > 0 ? dayType : null) as 'hard' | 'easy' | 'rest' | null,
+      sessionLabel: weekSessions.length > 0 ? (sessionLabel ?? 'Descanso') : null,
       isToday: dow === todayDow,
       hasSession: !!session && session.type !== 'DESCANSO',
     }
@@ -415,6 +431,21 @@ export default async function NutritionPage() {
   const todayProtein = nt?.proteinG ?? 0
   const todayFat     = nt?.fatG ?? 0
 
+  // Activity kcal bonus: difference between today's target and rest-day target
+  const restNt = effectiveNutritionPlan ? getDailyNutritionTarget('REST', effectiveNutritionPlan) : null
+  const activityKcalBonus = todayIntensity && todayIntensity !== 'REST' && restNt
+    ? Math.max(0, todayKcal - restNt.kcal)
+    : 0
+  const SESSION_TYPE_LABELS: Record<string, string> = {
+    EASY_RUN: 'Carrera suave', TEMPO_RUN: 'Tempo', INTERVAL: 'Intervalos',
+    LONG_RUN: 'Carrera larga', RECOVERY_RUN: 'Carrera de recuperacion',
+    RACE: 'Carrera', FARTLEK: 'Fartlek', HILL_REPEATS: 'Cuestas',
+    STRENGTH: 'Entrenamiento de fuerza', GYM: 'Entrenamiento de fuerza',
+  }
+  const activityLabel = todaySession?.type
+    ? (SESSION_TYPE_LABELS[todaySession.type as string] ?? 'Entrenamiento')
+    : hasGymSessionToday ? 'Entrenamiento de fuerza' : null
+
   // ── Consumed totals (from today's food logs) ──
   const consumed = todayFoodLogs.reduce(
     (acc, log) => {
@@ -441,7 +472,7 @@ export default async function NutritionPage() {
     const dayKey = todayDayType as keyof typeof effectiveMealPlan
     const dayPlan = effectiveMealPlan[dayKey]
     if (!dayPlan || !('meals' in dayPlan)) return []
-    type MealShape = { label: string; foods: string; kcal: number }
+    type MealShape = { label: string; foods: string; kcal: number; protein?: number }
     return (dayPlan.meals as MealShape[]).map((m) => {
       const mealType = Object.entries(MEAL_TYPE_LABELS_CHECK).find(([, v]) => v === m.label)?.[0] ?? m.label
       return {
@@ -449,6 +480,7 @@ export default async function NutritionPage() {
         label: m.label,
         foods: m.foods,
         kcal: m.kcal,
+        proteinG: m.protein ?? 0,
         isLogged: loggedMealTypes.has(mealType),
       }
     })
@@ -467,7 +499,7 @@ export default async function NutritionPage() {
     time: MEAL_TIMES[nextMealItem.mealType] ?? '12:00',
     foods: nextMealItem.foods,
     kcal: nextMealItem.kcal,
-    proteinG: 0,
+    proteinG: nextMealItem.proteinG,
   } : null
 
   // ── Page state ──
@@ -483,18 +515,16 @@ export default async function NutritionPage() {
         target={nt ? { kcal: todayKcal, proteinG: todayProtein, carbsG: todayCarbs, fatG: todayFat } : null}
         nextMeal={nextMeal}
         mealChecklist={mealChecklist}
+        planName={assignedNutritionPlan?.template.name ?? null}
+        activityKcalBonus={activityKcalBonus}
+        activityLabel={activityLabel}
 
         headerSlot={
-          <div className="space-y-4">
-            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
-              &larr; Volver al inicio
-            </Link>
-            <div className="flex items-start justify-between flex-wrap gap-2">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Nutricion de hoy</h1>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${badge.color}`}>
-                {badge.emoji} {badge.label}
-              </span>
-            </div>
+          <div className="flex items-start justify-between flex-wrap gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Nutricion de hoy</h1>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${badge.color}`}>
+              {badge.emoji} {badge.label}
+            </span>
           </div>
         }
 
@@ -601,11 +631,8 @@ export default async function NutritionPage() {
         }
 
         weeklyMenuSlot={
-          activePlan && hasMealPlan && (assignedMealPlan ?? parsedMealPlan) ? (
-            <WeeklyMenuStrip
-              days={weekMenuDays}
-              mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as Parameters<typeof WeeklyMenuStrip>[0]['mealPlan']}
-            />
+          activePlan && weekMenuDays.some(d => d.dayType !== null) ? (
+            <WeeklyMenuStrip days={weekMenuDays} />
           ) : null
         }
 
@@ -621,7 +648,6 @@ export default async function NutritionPage() {
           hasMealPlan && (assignedMealPlan ?? parsedMealPlan) && effectiveNutritionPlan ? (
             <NutritionContent
               mealPlan={(assignedMealPlan ?? parsedMealPlan) as unknown as MealPlanData}
-              nutritionPlan={effectiveNutritionPlan}
               todayDayType={todayDayType}
             />
           ) : null
@@ -653,7 +679,10 @@ export default async function NutritionPage() {
           effectiveNutritionPlan ? (
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 hidden lg:block">Hidratacion</p>
-              <HydrationWidget />
+              <HydrationWidget
+                initialMl={todayWaterLog?.mlLogged ?? 0}
+                initialTarget={nutritionPlan?.waterMlTarget ?? 2000}
+              />
             </div>
           ) : null
         }

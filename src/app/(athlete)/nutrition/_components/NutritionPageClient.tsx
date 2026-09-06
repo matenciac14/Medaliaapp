@@ -39,6 +39,9 @@ type Props = {
   mealChecklist: MealCheckItem[]
   hasMealPlan: boolean
   state: 'sin-plan' | 'con-plan' | 'b2b'
+  planName: string | null
+  activityKcalBonus: number
+  activityLabel: string | null
 }
 
 export default function NutritionPageClient({
@@ -46,7 +49,8 @@ export default function NutritionPageClient({
   mealPlanSlot, pendingBannerSlot, mealCardsSlot, menuLinksSlot, trackingSectionSlot,
   hydrationSlot, adherenceSlot, tipSlot, emptyMealPlanSlot, coachBannerSlot,
   weeklyMenuSlot, initSlot, foodGuideSlot,
-  consumed, target, nextMeal, mealChecklist, hasMealPlan, state,
+  consumed, target, nextMeal, mealChecklist, hasMealPlan, state, planName,
+  activityKcalBonus, activityLabel,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -59,8 +63,24 @@ export default function NutritionPageClient({
       {/* Hydration */}
       {hydrationSlot}
 
+      {/* Why track — only sin-plan */}
+      {state === 'sin-plan' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3">
+          <span className="text-2xl">📊</span>
+          <div>
+            <p className="text-sm font-bold text-[#1e3a5f]">¿Por que registrar comidas?</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Conocer tus macros te ayuda a optimizar energia y rendimiento.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Adherence */}
       {adherenceSlot}
+
+      {/* Activity card in sidebar — only sin-plan */}
+      {state === 'sin-plan' && activitySlot}
 
       {/* Distribution donut (only with consumed data) */}
       {target && state !== 'sin-plan' && (
@@ -92,13 +112,22 @@ export default function NutritionPageClient({
   return (
     <>
       {/* ─── Desktop: 2-column layout ─── */}
-      <div className="hidden lg:grid lg:grid-cols-5 lg:gap-6 lg:items-start">
-        {/* LEFT — Main column (3/5) */}
-        <div className="lg:col-span-3 space-y-5">
+      <div className="hidden lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:items-start">
+        {/* LEFT — Main column */}
+        <div className="space-y-5">
           {headerSlot}
           {proposalSlot}
-          {activitySlot}
+          {/* Activity in main column only for con-plan and b2b (sin-plan shows it in sidebar) */}
+          {state !== 'sin-plan' && activitySlot}
           {phaseBannerSlot}
+
+          {state === 'b2b' && planName && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <span className="text-lg">🏆</span>
+              <p className="text-sm font-semibold text-amber-800">Plan asignado: {planName}</p>
+            </div>
+          )}
+
           {macroCardsSlot}
           {initSlot}
 
@@ -114,6 +143,8 @@ export default function NutritionPageClient({
                 const el = document.getElementById('tracking')
                 el?.scrollIntoView({ behavior: 'smooth' })
               }}
+              activityKcalBonus={activityKcalBonus}
+              activityLabel={activityLabel}
             />
           )}
 
@@ -130,8 +161,8 @@ export default function NutritionPageClient({
           {foodGuideSlot}
         </div>
 
-        {/* RIGHT — Sidebar (2/5) */}
-        <div className="lg:col-span-2">
+        {/* RIGHT — Sidebar (320px fixed) */}
+        <div>
           {sidebarContent}
         </div>
       </div>
@@ -142,6 +173,14 @@ export default function NutritionPageClient({
         {proposalSlot}
         {activitySlot}
         {phaseBannerSlot}
+
+        {state === 'b2b' && planName && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <span className="text-lg">🏆</span>
+            <p className="text-sm font-semibold text-amber-800">Plan asignado: {planName}</p>
+          </div>
+        )}
+
         {macroCardsSlot}
         {initSlot}
 
@@ -156,6 +195,8 @@ export default function NutritionPageClient({
               const el = document.getElementById('tracking-mobile')
               el?.scrollIntoView({ behavior: 'smooth' })
             }}
+            activityKcalBonus={activityKcalBonus}
+            activityLabel={activityLabel}
           />
         )}
 
