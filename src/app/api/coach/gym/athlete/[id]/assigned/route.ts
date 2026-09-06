@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getWeekMonday } from '@/lib/core/date_utils'
 
 export async function GET(
   req: Request,
@@ -15,18 +16,14 @@ export async function GET(
 
   const relation = await prisma.coachAthlete.findFirst({
     where: { coachId: session.user.id, athleteId },
-    select: { id: true },
+    select: { id: true, athlete: { select: { timezone: true } } },
   })
   if (!relation) {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
   }
 
-  // Current week Monday (same logic as calendar route)
-  const now = new Date()
-  const diffToMon = now.getDay() === 0 ? -6 : 1 - now.getDay()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMon)
-  monday.setHours(0, 0, 0, 0)
+  // Current week Monday — timezone-aware for the athlete
+  const monday = getWeekMonday(0, relation.athlete.timezone)
 
   const [activePlan, assignment] = await Promise.all([
     prisma.trainingPlan.findFirst({
