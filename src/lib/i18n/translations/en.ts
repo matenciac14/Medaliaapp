@@ -49,7 +49,7 @@ export const en: Translations = {
       item3: 'Nutrition that changes every day: high if you train hard, moderate if easy, recovery if you rest',
       item4: '2-minute weekly check-in: report sleep, energy and RPE — and if you have an active plan, Medaliq suggests adjustments for the following week. You decide what to apply.',
       sessionLabel: "Today's session",
-      weekLabel: 'Week 7 of 18',
+      weekLabel: 'Week 7 of 12',
       sessionTitle: '4×8 min intervals',
       summaryMsg: 'Resting HR ↓3 bpm vs. last week · Adherence: 92% · Suggestion: maintain load.',
     },

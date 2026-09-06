@@ -49,7 +49,7 @@ export const pt: Translations = {
       item3: 'Nutrição que muda todo dia: alta se você treina forte, moderada se é leve, de recuperação se descansa',
       item4: 'Check-in semanal de 2 minutos: reporte sono, energia e RPE — e se você tiver plano ativo, o Medaliq sugere ajustes para a próxima semana. Você decide o que aplicar.',
       sessionLabel: 'Sessão de hoje',
-      weekLabel: 'Semana 7 de 18',
+      weekLabel: 'Semana 7 de 12',
       sessionTitle: 'Intervalos 4×8 min',
       summaryMsg: 'FC repouso ↓3 bpm vs. semana passada · Adesão: 92% · Sugestão: manter carga.',
     },

@@ -49,16 +49,16 @@ export default function DeficitHeroCard({ consumed, target, onViewConsumed, onRe
       </div>
 
       {/* Macro pills */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         {([
           { label: 'Proteina', value: consumed.proteinG, max: target.proteinG, unit: 'g', color: COLORS.protein },
           { label: 'Carbos', value: consumed.carbsG, max: target.carbsG, unit: 'g', color: COLORS.carbs },
           { label: 'Grasas', value: consumed.fatG, max: target.fatG, unit: 'g', color: COLORS.fat },
         ] as const).map((m) => (
-          <div key={m.label} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-1.5">
+          <div key={m.label} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2.5 py-1.5">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
-            <span className="text-xs text-gray-600">{m.label}</span>
-            <span className="text-xs font-bold text-gray-800">{m.value} / {m.max} {m.unit}</span>
+            <span className="text-[11px] text-gray-600">{m.label}</span>
+            <span className="text-[11px] font-bold text-gray-800">{m.value} / {m.max} {m.unit}</span>
           </div>
         ))}
       </div>
