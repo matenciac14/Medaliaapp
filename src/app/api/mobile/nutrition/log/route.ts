@@ -5,6 +5,7 @@ import { getPlanWeekNumber } from '@/lib/core/week_number'
 import { rateLimitAsync } from '@/lib/rate_limit'
 import { buildFoodLogResponse, parseFoodLogPost, calcMacros } from '@/domain/nutrition/calculate_food_log'
 import { requireFeature } from '@/lib/guards/feature_gate'
+import { todayInTz } from '@/lib/core/date_utils'
 
 export async function GET(req: NextRequest) {
   const mobile = await getMobileUser(req)
@@ -19,9 +20,10 @@ export async function GET(req: NextRequest) {
   if (rawDate && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
     return NextResponse.json({ error: 'Formato de fecha inválido. Usa YYYY-MM-DD.' }, { status: 400 })
   }
-  const dateParam = rawDate ?? new Date().toISOString().split('T')[0]
-  const dayStart = new Date(`${dateParam}T00:00:00.000Z`)
-  const dayEnd   = new Date(`${dateParam}T23:59:59.999Z`)
+  const tz = req.nextUrl.searchParams.get('tz') || undefined
+  const dayStart = rawDate ? new Date(`${rawDate}T00:00:00.000Z`) : todayInTz(tz)
+  const dateParam = dayStart.toISOString().split('T')[0]
+  const dayEnd = new Date(dayStart.getTime() + 86_399_999)
 
   const activePlan = await prisma.trainingPlan.findFirst({
     where: { userId, status: 'ACTIVE' },
