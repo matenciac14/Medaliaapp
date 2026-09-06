@@ -24,15 +24,25 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-const META_TITLE = 'Medaliq — Coaching y tracking deportivo'
-const META_DESCRIPTION = 'Plataforma de coaching y tracking deportivo para LatAm. Planes periodizados, nutrición y seguimiento para coaches y atletas.'
+const META_TITLE = 'Medaliq — Plataforma de coaching y tracking deportivo para LatAm'
+const META_DESCRIPTION = 'Gestiona tus atletas desde un solo panel. Planes periodizados, nutricion personalizada con Mifflin-St Jeor, zonas de FC con Karvonen y seguimiento semanal. Gratis para coaches con hasta 5 atletas.'
 const META_URL = 'https://medaliq.com'
-// opengraph-image.tsx en src/app/ genera la imagen dinámicamente en /opengraph-image
 const META_IMAGE = 'https://medaliq.com/opengraph-image'
 
 export const metadata: Metadata = {
-  title: META_TITLE,
+  title: {
+    default: META_TITLE,
+    template: '%s | Medaliq',
+  },
   description: META_DESCRIPTION,
+  keywords: [
+    'coaching deportivo', 'tracking deportivo', 'plataforma para entrenadores',
+    'planes periodizados', 'nutricion deportiva', 'gestion de atletas',
+    'software para coaches', 'running', 'fuerza', 'ejercicios',
+    'Karvonen', 'Mifflin-St Jeor', 'macros', 'TDEE',
+    'entrenador personal', 'LatAm', 'Colombia', 'Mexico',
+    'app para entrenadores', 'seguimiento deportivo',
+  ],
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -52,13 +62,20 @@ export const metadata: Metadata = {
   other: {
     'mobile-web-app-capable': 'yes',
   },
+  robots: {
+    index: true,
+    follow: true,
+    'max-snippet': -1,
+    'max-image-preview': 'large',
+    'max-video-preview': -1,
+  },
   formatDetection: { telephone: false },
   alternates: {
     canonical: META_URL,
     languages: {
       'es': META_URL,
-      'en': META_URL,
-      'pt': META_URL,
+      'en': `${META_URL}?lang=en`,
+      'pt': `${META_URL}?lang=pt`,
     },
   },
   openGraph: {
@@ -67,7 +84,8 @@ export const metadata: Metadata = {
     title: META_TITLE,
     description: META_DESCRIPTION,
     siteName: 'Medaliq',
-    images: [{ url: META_IMAGE, width: 1200, height: 630, alt: 'Medaliq — Coaching y tracking deportivo' }],
+    locale: 'es_CO',
+    images: [{ url: META_IMAGE, width: 1200, height: 630, alt: 'Medaliq — Plataforma de coaching y tracking deportivo para entrenadores y atletas en LatAm' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -100,6 +118,7 @@ export default async function RootLayout({
     >
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs.txt — Medaliq product info for AI" />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <JsonLd data={{
@@ -108,6 +127,12 @@ export default async function RootLayout({
           name: 'Medaliq',
           url: META_URL,
           description: META_DESCRIPTION,
+          inLanguage: ['es', 'en', 'pt'],
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: `${META_URL}/coaches?q={search_term_string}`,
+            'query-input': 'required name=search_term_string',
+          },
         }} />
         <Providers initialLocale={locale}>
           {children}
