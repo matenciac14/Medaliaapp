@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
 import { autoCompleteStrengthSession } from '@/infrastructure/db/auto_complete_strength'
+import { todayInTz } from '@/lib/core/date_utils'
 import { revalidatePath } from 'next/cache'
 import { sendPushNotification } from '@/lib/push/expo_push'
 import { z } from 'zod'
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   if (!athleteId) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   // Feature gate
-  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true, name: true } })
+  const userRecord = await prisma.user.findUnique({ where: { id: athleteId }, select: { featureGym: true, name: true, timezone: true } })
   if (!userRecord?.featureGym) {
     return NextResponse.json({ error: 'La función de Ejercicios está disponible en el plan Pro.' }, { status: 403 })
   }
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest) {
     return isPRByName(exerciseName, weightKg, completed, maxPerFreeExerciseName)
   }
 
-  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const today = todayInTz(userRecord?.timezone ?? null)
 
   // ─── Plan-based path ────────────────────────────────────────────────────────
   if (body.plannedSessionId) {

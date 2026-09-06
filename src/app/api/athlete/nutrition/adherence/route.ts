@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 
 // GET /api/athlete/nutrition/adherence?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Adherencia calórica diaria: planificado (PlannedMeal) vs registrado (FoodLog)
@@ -11,8 +12,8 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id
   const sp = req.nextUrl.searchParams
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+  const today = todayInTz(u?.timezone ?? null)
 
   const to = parseDateParam(sp.get('to')) ?? today
   const from = parseDateParam(sp.get('from')) ?? (() => { const d = new Date(to); d.setDate(d.getDate() - 6); return d })()

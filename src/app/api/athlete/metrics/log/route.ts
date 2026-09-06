@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
+import { todayInTz } from '@/lib/core/date_utils'
 import { z } from 'zod'
 
 const DailyLogSchema = z.object({
@@ -39,8 +40,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Al menos un campo requerido.' }, { status: 400 })
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const u = await prisma.user.findUnique({ where: { id: session.user.id }, select: { timezone: true } })
+  const today = todayInTz(u?.timezone ?? null)
 
   const log = await prisma.dailyLog.upsert({
     where: { userId_date: { userId: session.user.id, date: today } },

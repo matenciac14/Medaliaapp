@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jsToOurDow } from '@/lib/core/date_utils'
+import { jsToOurDow, todayInTz } from '@/lib/core/date_utils'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getMobileUser } from '@/lib/auth/mobile_auth'
@@ -152,11 +152,9 @@ export async function GET(req: NextRequest) {
 
   // ─── Plan-based fallback (FUERZA session with workoutDayId) ────────────────
   if (activePlan) {
-    const planStart = new Date(activePlan.startDate)
-    planStart.setHours(0, 0, 0, 0)
-    const todayLocalStr = new Date().toLocaleString('en-US', { timeZone: tz })
-    const todayDate = new Date(todayLocalStr)
-    todayDate.setHours(0, 0, 0, 0)
+    const planStartStr = activePlan.startDate.toISOString().slice(0, 10)
+    const planStart = new Date(`${planStartStr}T00:00:00.000Z`)
+    const todayDate = todayInTz(tz)
     const targetWeekNumber = Math.floor((todayDate.getTime() - planStart.getTime()) / 86_400_000 / 7) + 1
 
     if (targetWeekNumber >= 1) {
