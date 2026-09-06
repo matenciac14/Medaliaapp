@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
-import { getWeekMonday, formatWeekRange, jsToWeekIdx } from '@/lib/core/date-utils'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getWeekMonday, formatWeekRange } from '@/lib/core/date_utils'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import type { CalendarDay, CalendarWeek } from '@/domain/calendar/calendar.types'
 
 /**
@@ -12,11 +12,9 @@ import type { CalendarDay, CalendarWeek } from '@/domain/calendar/calendar.types
  * @param userId  Athlete's user ID
  * @param weekOffset  0 = current week, -1 = last week, +1 = next week, etc.
  */
-export async function buildCalendarWeek(userId: string, weekOffset: number): Promise<CalendarWeek> {
-  const monday = getWeekMonday(weekOffset)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
+export async function buildCalendarWeek(userId: string, weekOffset: number, timezone?: string | null): Promise<CalendarWeek> {
+  const monday = getWeekMonday(weekOffset, timezone)
+  const sunday = new Date(monday.getTime() + 6 * 86_400_000 + 86_400_000 - 1)
 
   const weekStart = monday.toISOString().split('T')[0]
   const weekEnd = sunday.toISOString().split('T')[0]
@@ -27,7 +25,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
   // Find active plan first — needed to compute weekNumber from calendar date
   const activePlan = await prisma.trainingPlan.findFirst({
     where: { userId, status: 'ACTIVE' },
-    select: { id: true, startDate: true },
+    select: { id: true, startDate: true, totalWeeks: true },
   })
 
   // Map calendar week → plan weekNumber usando la misma fórmula que dashboard/plan/checkin.
@@ -35,7 +33,7 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
   // weekOffset 0 = semana actual, -1 = semana pasada, +1 = semana siguiente.
   let targetWeekNumber: number | null = null
   if (activePlan) {
-    const currentPlanWeek = getPlanWeekNumber(new Date(activePlan.startDate))
+    const currentPlanWeek = getPlanWeekNumber(new Date(activePlan.startDate), activePlan.totalWeeks)
     targetWeekNumber = currentPlanWeek + weekOffset
   }
 
@@ -138,14 +136,16 @@ export async function buildCalendarWeek(userId: string, weekOffset: number): Pro
   }
 
   // ── 3. Build 7 CalendarDay objects (Mon–Sun) ─────────────────────────────────
+  // CRITICAL: getWeekMonday with timezone returns a UTC-midnight date.
+  // Must use UTC methods (getUTCDate) or arithmetic — NOT local .getDate()/.getDay()
+  // which shift dates on non-UTC servers (e.g. Colombia UTC-5).
   const days: CalendarDay[] = []
 
   for (let i = 0; i < 7; i++) {
-    const day = new Date(monday)
-    day.setDate(monday.getDate() + i)
-    const dow = i + 1  // 1=Mon … 7=Sun
-    const dateNum = day.getDate()
-    const weekIdx = jsToWeekIdx(day.getDay())
+    const day = new Date(monday.getTime() + i * 86_400_000)
+    const dow = i + 1  // 1=Mon … 7=Sun (we start from Monday, guaranteed)
+    const weekIdx = i  // 0=Mon … 6=Sun
+    const dateNum = day.getUTCDate()
     const dateStr = day.toISOString().split('T')[0]
 
     const sport = sportByDow.get(dow) ?? null

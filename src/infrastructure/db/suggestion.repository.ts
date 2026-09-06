@@ -2,8 +2,8 @@
  * Infrastructure — Prisma implementation of ISuggestionRepository.
  */
 import type { ISuggestionRepository, PendingSuggestion } from '@/domain/ports/suggestion.repository'
-import type { SuggestionDraft } from '@/domain/checkin/generate-suggestions'
-import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { SuggestionDraft } from '@/domain/checkin/generate_suggestions'
+import type { PrismaDbClient } from '@/lib/db/prisma_client'
 import { prisma } from '@/lib/db/prisma'
 
 export class PrismaSuggestionRepository implements ISuggestionRepository {

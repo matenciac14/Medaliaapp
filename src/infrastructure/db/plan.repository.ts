@@ -9,12 +9,12 @@ import type {
   CreatedWeek,
 } from '@/domain/ports/plan.repository'
 import type { PlannedSession, PlannedSessionUpdate } from '@/domain/plan/plan.types'
-import type { BuiltSession, GymExercise } from '@/domain/plan/session-builder'
-import type { NutritionTargets } from '@/domain/ports/health-profile.repository'
-import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { BuiltSession, GymExercise } from '@/domain/plan/session_builder'
+import type { NutritionTargets } from '@/domain/ports/health_profile.repository'
+import type { PrismaDbClient } from '@/lib/db/prisma_client'
 import type { Prisma } from '@/generated/prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { getPlanWeekNumber } from '@/lib/core/week-number'
+import { getPlanWeekNumber } from '@/lib/core/week_number'
 import type { Phase, SessionType as PrismaSessionType, GoalType } from '../../generated/prisma/enums'
 
 export class PrismaPlanRepository implements IPlanRepository {

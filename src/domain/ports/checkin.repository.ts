@@ -1,4 +1,4 @@
-import type { CheckInInput, PreviousCheckIn } from '@/domain/checkin/check-in.types'
+import type { CheckInInput, PreviousCheckIn, WeekActivitySummary } from '@/domain/checkin/check_in.types'
 
 export type SaveCheckInPayload = CheckInInput & {
   trainingAdherence: number    // calculated server-side from session logs
@@ -20,4 +20,7 @@ export interface ICheckInRepository {
 
   /** Count total check-ins for a user (used to activate progress feature on first check-in). */
   count(userId: string): Promise<number>
+
+  /** Objective training data for the current week — aggregates SessionLog + GymSession. */
+  getWeekActivitySummary(userId: string): Promise<WeekActivitySummary>
 }

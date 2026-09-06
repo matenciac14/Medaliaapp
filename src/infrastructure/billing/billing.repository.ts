@@ -3,9 +3,9 @@
  * Único lugar donde billing toca la DB.
  */
 import { prisma } from '@/lib/db/prisma'
-import type { IBillingRepository, UpgradeCoachData, UpgradeAthleteData } from '@/domain/ports/billing.repository.port'
+import type { IBillingRepository, UpgradeCoachData, UpgradeAthleteData } from '@/domain/ports/billing.repository'
 import type { SubscriptionSnapshot } from '@/domain/billing/billing.types'
-import type { CoachTier } from '@/domain/subscription/tier-features'
+import type { CoachTier } from '@/domain/subscription/tier_features'
 
 export class BillingRepository implements IBillingRepository {
 

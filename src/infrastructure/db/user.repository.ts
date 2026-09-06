@@ -3,7 +3,7 @@
  * Escribe directamente a columnas de User (no al JSON blob config).
  */
 import type { IUserRepository, FeatureKey } from '@/domain/ports/user.repository'
-import type { PrismaDbClient } from '@/lib/db/prisma-client'
+import type { PrismaDbClient } from '@/lib/db/prisma_client'
 import { prisma } from '@/lib/db/prisma'
 
 const FEATURE_COLUMN: Record<FeatureKey, string> = {
